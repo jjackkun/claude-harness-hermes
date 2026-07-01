@@ -1,4 +1,39 @@
-# 하네스 + 헤르메스 엔지니어링 (Harness + Hermes Engineering)
+# Claude Harness + Hermes Engineering (하네스 + 헤르메스 엔지니어링)
+
+![License](https://img.shields.io/badge/license-MIT-green.svg)
+![Python](https://img.shields.io/badge/python-3.x-blue.svg)
+![Shell](https://img.shields.io/badge/shell-bash-89e051.svg)
+![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20WSL2-lightgrey.svg)
+![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-8A2BE2.svg)
+
+> **A preset-based installer & manager for Claude Code development environments — plus a self-evolving learning loop that improves your AI assistant from your own conversations.**
+
+Two pillars:
+
+- **Harness** — human-authored rules & guardrails (CLAUDE.md, hooks, skills). On install it injects a *"read the docs first, don't rely on memory"* guard plus a rules/skills index into CLAUDE.md, and safely merges into your existing file via managed marker blocks.
+- **Hermes** — a self-evolving learning loop that learns from your conversations and turns recurring patterns into reusable skills.
+
+**Hermes learning loop:**
+
+- **Rolling summary** — distills every turn (ping-pong) into a 5-slot summary (decisions / facts / open / prefs / next)
+- **Dreaming** — consolidates accumulated summaries "while you sleep" and crystallizes repeated knowledge into skills (auto, once per session start)
+- **Skill crystallization & evolution** — hardens recurring patterns into skills and evolves them from your corrections
+- **Recall injection** — restores the previous session's summary and relevant skills at the start of a new session
+- **Objective-signal learning** — learns not only from your corrections but from test/build failures and git reverts
+- **Redaction** — irreversibly masks secrets (tokens, passwords) at the storage/summary boundary
+
+Assets are shared as Git-versioned presets; a single `git clone` restores your whole environment on a new machine.
+
+```bash
+git clone https://github.com/jjackkun/claude-harness-hermes ~/PROJECT/ai-dev-setting
+~/PROJECT/ai-dev-setting/setup.sh
+```
+
+> **Note:** Hermes' hook-based automation depends on the `claude` CLI and is **Claude Code only** (Codex support is currently frozen — see below).
+
+---
+
+*English overview above · 한국어 상세 문서가 아래로 이어집니다.*
 
 `setup.sh` (대화형 UI) + `project-claude.sh` + `project-codex.sh` + `public-claude.sh` 로
 Claude Code / Codex 의 스킬·에이전트·룰·훅·프로젝트 지침 파일을 일관되게 관리합니다.
