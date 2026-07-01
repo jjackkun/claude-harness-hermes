@@ -13,7 +13,7 @@
 set -uo pipefail
 
 usage() {
-  echo "usage: hermes-cron-run.sh <project-dir> <start|check|end|dream> [projects-csv]" >&2
+  echo "usage: hermes-cron-run.sh <project-dir> <start|check|end> [projects-csv]" >&2
   exit 1
 }
 
@@ -22,7 +22,7 @@ action="${2:-}"
 projects="${3:-}"
 
 [[ -z "$project_dir" || -z "$action" ]] && usage
-[[ "$action" != "start" && "$action" != "check" && "$action" != "end" && "$action" != "dream" ]] && usage
+[[ "$action" != "start" && "$action" != "check" && "$action" != "end" ]] && usage
 [[ ! -d "$project_dir" ]] && { echo "[hermes-cron] 프로젝트 디렉터리 없음: $project_dir" >&2; exit 1; }
 [[ "$action" == "start" && -z "$projects" ]] && { echo "[hermes-cron] start 액션에는 projects-csv 가 필요합니다" >&2; usage; }
 
@@ -36,14 +36,6 @@ db_path="$project_dir/.hermes/state.db"
 log_dir="$project_dir/.hermes/logs"
 mkdir -p "$log_dir"
 log_file="$log_dir/cron-$action-$(date +%Y%m%d).log"
-
-# dream 액션은 매니저 프롬프트 경로를 거치지 않고 hermes-dream.py 를 직접 실행한다.
-if [[ "$action" == "dream" ]]; then
-  echo "[hermes-cron] $(date '+%F %T') 드리밍 실행" >>"$log_file"
-  python3 "$scripts_dir/hermes-dream.py" --db "$db_path" --project-dir "$project_dir" >>"$log_file" 2>&1
-  echo "[hermes-cron] 드리밍 완료 log=$log_file"
-  exit 0
-fi
 
 prompt_file="$(mktemp /tmp/hermes-cron-prompt-XXXXXX)"
 trap 'rm -f "$prompt_file"' EXIT

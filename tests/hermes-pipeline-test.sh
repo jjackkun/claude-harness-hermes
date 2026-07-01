@@ -465,18 +465,7 @@ ev=$(sql "SELECT evolved FROM dream_log ORDER BY id DESC LIMIT 1")
 check "정정 요약 → 진화 1건 기록" test "$ev" -ge 1
 
 echo ""
-echo "== 22. cron-run.sh — dream 액션 =="
-bump_clock  # 직전 (21) dream 의 run_at 이후 초로 cron-dsess 를 확실히 분리
-add_summary cron-dsess '{"decisions":["cron 드림 결정"],"facts":["cron 사실"],"open":[],"prefs":[],"next":[]}'
-"$S/hermes-cron-run.sh" "$PROJ" dream
-python3 -c "import time; time.sleep(0.5)"
-cdlog="$PROJ/.hermes/logs/cron-dream-$(date +%Y%m%d).log"
-check "cron dream 로그 생성" test -f "$cdlog"
-dlc=$(sql "SELECT COUNT(*) FROM dream_log")
-check "cron dream 이 dream_log 기록" test "$dlc" -ge 1
-
-echo ""
-echo "== 23. crystallize 장부: 드림 등 pattern_count-밖 키도 멱등/거부 마킹 적중 =="
+echo "== 22. crystallize 장부: 드림 등 pattern_count-밖 키도 멱등/거부 마킹 적중 =="
 ledger_ok() {
 S_DIR="$S" python3 - "$DB" <<'PY'
 import importlib.util, os, sys
@@ -548,6 +537,60 @@ print("OK")
 PY
 }
 if redact_ok 2>/dev/null | grep -q OK; then check "save-session: 비밀 마스킹·산문 보존" true; else check "save-session 마스킹" false; fi
+
+echo ""
+echo "== 26. SessionStart 훅 — 드리밍 자동 트리거 (source 게이트·throttle·dry-run·stdout) =="
+DREAM_HOOK="$REPO_ROOT/assets/hooks/claude-sessionstart-dream.sh"
+marker="$PROJ/.hermes/dream-last-run"
+hlog="$PROJ/.hermes/hooks.log"
+# 드림 백그라운드 완료 폴링 (setsid 분리라 마커 대신 hooks.log 완료 라인으로 동기화)
+wait_dream_done() { # wait_dream_done <기대 누적 개수>
+  python3 - "$hlog" "$1" <<'EOF'
+import sys, time
+want = int(sys.argv[2])
+for _ in range(100):
+    try:
+        n = open(sys.argv[1]).read().count("[hermes-dream-hook] dream done")
+    except FileNotFoundError:
+        n = 0
+    if n >= want:
+        break
+    time.sleep(0.3)
+EOF
+}
+
+# (a) stdout 무출력 + 실제 기동 — startup, 마커 없는 상태
+rm -f "$marker"
+out_a="$(echo '{"source":"startup"}' | CLAUDE_PROJECT_DIR="$PROJ" bash "$DREAM_HOOK")"
+check "startup: stdout 무출력 (세션 컨텍스트 오염 방지)" test -z "$out_a"
+wait_dream_done 1
+check "startup: 드림 백그라운드 기동 (dream done 마커)" bash -c "grep -q '\[hermes-dream-hook\] dream done' '$hlog'"
+check "startup: throttle 마커 생성" test -f "$marker"
+check "startup: 실행 로그 기록" bash -c "grep -q 'action=run' '$hlog'"
+
+# (b) throttle — 마커가 방금 생성됐으므로 두 번째 startup 은 미실행
+echo '{"source":"resume"}' | CLAUDE_PROJECT_DIR="$PROJ" bash "$DREAM_HOOK" >/dev/null
+check "resume+최근마커: throttle 로 미실행" bash -c "grep -q 'action=skip:throttle' '$hlog'"
+
+# (c) source 게이트 — clear/compact 는 마커도 안 만들고 즉시 종료
+rm -f "$marker"
+out_c="$(echo '{"source":"clear"}' | CLAUDE_PROJECT_DIR="$PROJ" bash "$DREAM_HOOK")"
+check "clear: stdout 무출력" test -z "$out_c"
+check "clear: 마커 미생성 (드림 미기동)" bash -c "! test -f '$marker'"
+check "clear: skip:source 로그" bash -c "grep -q 'source=clear action=skip:source' '$hlog'"
+echo '{"source":"compact"}' | CLAUDE_PROJECT_DIR="$PROJ" bash "$DREAM_HOOK" >/dev/null
+check "compact: 마커 미생성" bash -c "! test -f '$marker'"
+check "compact: skip:source 로그" bash -c "grep -q 'source=compact action=skip:source' '$hlog'"
+
+# (d) 옵트아웃 — HERMES_DREAM_ON_SESSION_START=0
+rm -f "$marker"
+echo '{"source":"startup"}' | HERMES_DREAM_ON_SESSION_START=0 CLAUDE_PROJECT_DIR="$PROJ" bash "$DREAM_HOOK" >/dev/null
+check "옵트아웃: 마커 미생성 (미실행)" bash -c "! test -f '$marker'"
+
+# (e) DB 부재 안전 종료 — .hermes 없는 임시 프로젝트
+NODB="$T/nodb"; mkdir -p "$NODB"
+echo '{"source":"startup"}' | CLAUDE_PROJECT_DIR="$NODB" bash "$DREAM_HOOK" >/dev/null
+check "DB 부재: 마커 미생성·안전 종료" bash -c "! test -f '$NODB/.hermes/dream-last-run'"
 
 echo ""
 echo "PASS=$pass FAIL=$fail"
