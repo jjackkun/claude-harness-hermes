@@ -1,0 +1,17 @@
+{
+  "_comment": "PM2 프로세스 매니저 읽기 권한. 재시작·중지는 허용하되 delete/kill 은 제외.",
+  "permissions": {
+    "allow": [
+      "Bash(pm2 list)",
+      "Bash(pm2 ls)",
+      "Bash(pm2 status:*)",
+      "Bash(pm2 logs:*)",
+      "Bash(pm2 show:*)",
+      "Bash(pm2 describe:*)",
+      "Bash(pm2 restart:*)",
+      "Bash(pm2 reload:*)",
+      "Bash(pm2 stop:*)",
+      "Bash(pm2 start:*)"
+    ]
+  }
+}

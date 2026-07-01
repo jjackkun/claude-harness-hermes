@@ -1,0 +1,21 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # jq / python3 / bash 는 ubuntu-latest 기본 제공.
+      # fzf 등 외부 의존·대화형 테스트는 SKIP_INTERACTIVE=1 로 건너뛴다
+      # (windows-smoke.sh 는 비-WSL 환경에서 자체 SKIP).
+      - name: Run all tests
+        env:
+          SKIP_INTERACTIVE: "1"
+        run: bash tests/run-all.sh

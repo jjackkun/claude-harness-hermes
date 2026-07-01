@@ -1,0 +1,55 @@
+{
+  "_comment": "문서 전용 — 실제 등록은 presets/workflow/harness.conf 의 배열이 lib/generate_settings.py 로 전달되어 이뤄진다. 경로는 ${CLAUDE_PROJECT_DIR}/scripts/hooks — Claude Code 가 hook 실행 시 주입하는 env var. 상대 경로 사용 시 CWD 가 프로젝트 루트가 아니면 silent-fail (2026-04-17 버그).",
+  "_pdf_reference": "PDF 9·11쪽 — 에이전트 컨텍스트에 수정 지침 주입 + 어려움을 신호로 간주",
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "_purpose": "매 턴 규율 7개를 컨텍스트에 주입 (PDF 4쪽 '컨텍스트 내에서 액세스할 수 없는 것은 존재하지 않는다')",
+        "command": "${CLAUDE_PROJECT_DIR}/scripts/hooks/claude-userpromptsubmit-reminders.sh"
+      },
+      {
+        "_purpose": "사용자 지적에서 실수 카테고리(worktree-not-synced, css-property-missing 등)를 감지해 pattern_count 즉시 +1 — 세션 종료 전에도 즉시 기록 (2026-05-14)",
+        "command": "${CLAUDE_PROJECT_DIR}/scripts/hooks/claude-userpromptsubmit-mistake-detect.sh"
+      }
+    ],
+    "PreToolUse": [
+      {
+        "_purpose": "Bash 도구 — git commit 시 리뷰 검토 리마인드 + --no-verify 탐지",
+        "matcher": "Bash",
+        "command": "${CLAUDE_PROJECT_DIR}/scripts/hooks/claude-pretooluse-bash-guard.sh"
+      },
+      {
+        "_purpose": "Task/Agent 도구 — frontend/DB/TS 작업을 general-purpose 로 dispatch 하는 것을 차단",
+        "matcher": "Task|Agent",
+        "command": "${CLAUDE_PROJECT_DIR}/scripts/hooks/claude-pretooluse-agent-guard.sh"
+      },
+      {
+        "_purpose": "[serena 프리셋] Serena 미초기화 시 Edit/Write/MultiEdit 차단 (exit 2) — 2026-05-07",
+        "matcher": "Edit|Write|MultiEdit",
+        "command": "${CLAUDE_PROJECT_DIR}/scripts/hooks/claude-pretooluse-serena-guard.sh"
+      }
+    ],
+    "PostToolUse": [
+      {
+        "_purpose": "Write/Edit 후 prettier 위반 경고 (차단 X — 감각 학습)",
+        "matcher": "Write|Edit",
+        "command": "${CLAUDE_PROJECT_DIR}/scripts/hooks/claude-posttooluse-prettier-warn.sh"
+      },
+      {
+        "_purpose": "Write/Edit 후 파일 줄 수 soft(400)/hard(500) 조기 경고 — 2026-04-15 자성",
+        "matcher": "Write|Edit",
+        "command": "${CLAUDE_PROJECT_DIR}/scripts/hooks/claude-posttooluse-size-warn.sh"
+      },
+      {
+        "_purpose": "Write/Edit 누적 15 회 도달 시 code-reviewer dispatch 리마인드 — 2026-04-15 자성",
+        "matcher": "Write|Edit",
+        "command": "${CLAUDE_PROJECT_DIR}/scripts/hooks/claude-posttooluse-review-reminder.sh"
+      },
+      {
+        "_purpose": "[serena 프리셋] check_onboarding_performed 완료 시 serena-ready flag 생성 — 2026-05-07",
+        "matcher": "mcp__plugin_serena_serena__check_onboarding_performed",
+        "command": "${CLAUDE_PROJECT_DIR}/scripts/hooks/claude-posttooluse-serena-ready.sh"
+      }
+    ]
+  }
+}

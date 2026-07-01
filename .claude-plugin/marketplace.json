@@ -1,0 +1,18 @@
+{
+  "name": "ai-dev-setting",
+  "metadata": {
+    "description": "하네스 엔지니어링 기반 로컬 개발 환경 프리셋. 프로젝트별 도메인 에이전트/스킬/훅 번들."
+  },
+  "owner": {
+    "name": "jjackkun",
+    "email": "local@ai-dev-setting"
+  },
+  "plugins": [
+    {
+      "name": "ai-dev-setting",
+      "description": "하네스 엔지니어링 도메인 에이전트 번들 — fullstack-developer, database-reviewer, typescript-reviewer.",
+      "category": "development",
+      "source": "./plugins/ai-dev-setting"
+    }
+  ]
+}

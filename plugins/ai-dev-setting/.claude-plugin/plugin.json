@@ -1,0 +1,10 @@
+{
+  "name": "ai-dev-setting",
+  "description": "하네스 엔지니어링 도메인 에이전트 번들 (fullstack-developer, database-reviewer, typescript-reviewer)",
+  "version": "0.1.0",
+  "author": {
+    "name": "jjackkun",
+    "email": "local@ai-dev-setting"
+  },
+  "keywords": ["harness", "fullstack", "review", "local"]
+}

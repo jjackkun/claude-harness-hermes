@@ -1,0 +1,106 @@
+# Nightly Quality Score — PDF 12쪽 "품질 등급을 업데이트"
+#
+# 매일 새벽에 리포 상태를 점수화해 docs/QUALITY_SCORE.md 를 갱신한다.
+# 점수가 떨어지면 다음 날 에이전트가 core-beliefs.md 와 함께 이 파일을
+# 읽고 어디가 무너졌는지 자가 판단한다.
+#
+# 일반화 금지: 점수 계산 로직(jobs.score.run)은 *예시*. 자기 프로젝트의
+# "편차 지표"로 고쳐 쓸 것. 기본 예시는 다음을 점수화한다:
+#   - CLAUDE.md 100줄 한도 준수 여부
+#   - core-beliefs.md R 룰 수 대비 테스트 커버리지
+#   - docs/ 고아 파일(어디서도 링크되지 않음)
+#   - eslint/ruff 경고 건수
+
+name: nightly-quality-score
+
+on:
+  schedule:
+    - cron: "17 19 * * *"  # UTC 19:17 = KST 04:17
+  workflow_dispatch:
+
+permissions:
+  contents: write  # QUALITY_SCORE.md 커밋용
+
+jobs:
+  score:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      ### EDIT ME — 프로젝트 스택에 맞게 setup 추가 (node/python 등)
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Compute quality score
+        id: compute
+        run: |
+          set -euo pipefail
+          score=100
+          notes=""
+
+          # (1) CLAUDE.md 100줄 한도
+          if [[ -f CLAUDE.md ]]; then
+            lines=$(wc -l < CLAUDE.md)
+            if (( lines > 100 )); then
+              penalty=$(( (lines - 100) * 2 ))
+              score=$(( score - penalty ))
+              notes+="- [R-claude-md] ${lines}줄 (한도 100) → -${penalty}"$'\n'
+            fi
+          fi
+
+          # (2) core-beliefs.md 존재 여부
+          if [[ ! -f docs/design-docs/core-beliefs.md ]]; then
+            score=$(( score - 20 ))
+            notes+="- [R-core-beliefs] 없음 → -20"$'\n'
+          fi
+
+          # (3) docs/ 고아 감지 (아무도 링크 안 하는 md)
+          if [[ -d docs ]]; then
+            orphans=0
+            while IFS= read -r f; do
+              name=$(basename "$f")
+              if ! grep -rq --include='*.md' "$name" docs/ CLAUDE.md 2>/dev/null; then
+                orphans=$((orphans + 1))
+              fi
+            done < <(find docs -name '*.md' -not -name 'README.md')
+            if (( orphans > 0 )); then
+              penalty=$(( orphans * 3 ))
+              score=$(( score - penalty ))
+              notes+="- [R-orphan-docs] ${orphans}개 고아 문서 → -${penalty}"$'\n'
+            fi
+          fi
+
+          ### EDIT ME — 프로젝트별 편차 지표 추가
+          # 예: eslint 경고, pytest 실패, 파일 크기 위반 등
+
+          mkdir -p docs
+          {
+            echo "# Quality Score — $(date -u +%Y-%m-%d)"
+            echo
+            echo "## 점수: ${score}/100"
+            echo
+            echo "## 편차 내역"
+            if [[ -z "$notes" ]]; then
+              echo "_오늘은 편차 없음._"
+            else
+              echo "$notes"
+            fi
+            echo
+            echo "## 판단 가이드"
+            echo "이 점수는 *행동 명령* 이 아니다. 에이전트는 이 파일과"
+            echo "\`core-beliefs.md\` 를 함께 읽고, 어떤 편차가 *가장 먼저*"
+            echo "갚아야 할 기술 부채인지 스스로 판단해야 한다."
+          } > docs/QUALITY_SCORE.md
+
+          echo "score=$score" >> "$GITHUB_OUTPUT"
+
+      - name: Commit if changed
+        run: |
+          if ! git diff --quiet docs/QUALITY_SCORE.md; then
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add docs/QUALITY_SCORE.md
+            git commit -m "chore(quality): nightly score ${{ steps.compute.outputs.score }}/100"
+            git push
+          fi

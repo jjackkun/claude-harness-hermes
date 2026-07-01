@@ -1,0 +1,46 @@
+{
+  "_comment": "공통 권한 화이트리스트 — ai-dev-setting 의 모든 preset 에 머지된다. 언어/런타임별 추가 권한은 node.json/python.json 등 별도 파일.",
+  "_pdf_reference": "PDF 9쪽 — '엄격한 경계와 예측 가능한 구조'. 명령 화이트리스트는 그 경계의 한 형태.",
+  "_design_principle": "원칙: 읽기·검색·git 메타 명령은 허용. 시스템 변경·네트워크·삭제는 사용자 승인. rim-kanban .claude/settings.local.json 의 40+ 항목을 generic 핵심으로 추렸다.",
+  "permissions": {
+    "allow": [
+      "Bash(ls:*)",
+      "Bash(cat:*)",
+      "Bash(head:*)",
+      "Bash(tail:*)",
+      "Bash(wc:*)",
+      "Bash(file:*)",
+      "Bash(stat:*)",
+      "Bash(find:*)",
+      "Bash(grep:*)",
+      "Bash(rg:*)",
+      "Bash(tree:*)",
+      "Bash(pwd)",
+      "Bash(echo:*)",
+      "Bash(printf:*)",
+      "Bash(which:*)",
+      "Bash(type:*)",
+      "Bash(env)",
+      "Bash(date)",
+      "Bash(uname:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git show:*)",
+      "Bash(git branch:*)",
+      "Bash(git remote:*)",
+      "Bash(git config --get:*)",
+      "Bash(git ls-files:*)",
+      "Bash(git rev-parse:*)",
+      "Bash(git stash list)"
+    ],
+    "deny": [
+      "Bash(rm -rf /*)",
+      "Bash(sudo:*)",
+      "Bash(curl * | sh*)",
+      "Bash(curl * | bash*)",
+      "Bash(wget * | sh*)",
+      "Bash(wget * | bash*)"
+    ]
+  }
+}

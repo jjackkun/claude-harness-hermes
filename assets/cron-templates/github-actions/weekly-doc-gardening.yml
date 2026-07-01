@@ -1,0 +1,116 @@
+# Weekly Doc Gardening — PDF 12쪽 "정기적으로 편차를 검사"
+#
+# 매주 한 번, 코드와 docs/ 를 동기화 검증한다. 사람이 놓친 것을 잡는다.
+# 검사 내용(예시):
+#   - CLAUDE.md 가 가리키는 파일이 실제로 존재하는가 (dead link)
+#   - docs/exec-plans/ 에 남은 완료 플랜을 docs/audits/ 로 이동 가능한가
+#   - ARCHITECTURE.md 에 언급된 디렉터리가 실제로 있는가
+#   - core-beliefs.md 의 R 룰이 코드/테스트에 대응하는 강제 장치를 가지고 있는가
+#
+# 결과: Issue 를 하나 생성하거나, 아무 문제 없으면 조용히 종료.
+
+name: weekly-doc-gardening
+
+on:
+  schedule:
+    - cron: "0 18 * * 0"  # UTC 일요일 18:00 = KST 월요일 03:00
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  garden:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Detect drift
+        id: drift
+        run: |
+          set -euo pipefail
+          report="/tmp/drift-report.md"
+          : > "$report"
+
+          # (1) CLAUDE.md dead links (상대 경로 .md 파일만 체크)
+          if [[ -f CLAUDE.md ]]; then
+            while IFS= read -r link; do
+              [[ -z "$link" ]] && continue
+              if [[ ! -e "$link" ]]; then
+                echo "- [dead-link] \`CLAUDE.md\` → \`$link\` (존재하지 않음)" >> "$report"
+              fi
+            done < <(grep -oE '\]\([^)]+\.md[^)]*\)' CLAUDE.md | sed -E 's/^\]\(//; s/\).*$//; s/#.*$//')
+          fi
+
+          # (2) exec-plans 완료 플랜 감지
+          if [[ -d docs/exec-plans ]]; then
+            while IFS= read -r plan; do
+              if grep -qiE '^(status|상태):\s*(done|완료)' "$plan" 2>/dev/null; then
+                echo "- [plan-graduation] \`$plan\` 은 완료 상태 → \`docs/audits/\` 로 이동 고려" >> "$report"
+              fi
+            done < <(find docs/exec-plans -name '*.md' -not -name 'template.md')
+          fi
+
+          # (3) core-beliefs R 룰 ↔ 강제 장치
+          if [[ -f docs/design-docs/core-beliefs.md ]]; then
+            while IFS= read -r rule; do
+              rid=$(echo "$rule" | grep -oE '^R[0-9]+')
+              [[ -z "$rid" ]] && continue
+              if ! grep -rq "$rid" --include='*.py' --include='*.ts' --include='*.js' --include='*.sh' . 2>/dev/null; then
+                echo "- [rule-unenforced] \`$rid\` 에 대응하는 테스트/린터 강제가 발견되지 않음" >> "$report"
+              fi
+            done < <(grep -E '^##\s*R[0-9]+' docs/design-docs/core-beliefs.md)
+          fi
+
+          # (4) 룰 승격 후보 감지 (PDF 10쪽 피드백 루프)
+          #     최근 30일 커밋 메시지에서 fix/bug/revert 키워드를 카운트.
+          #     같은 파일에 3회 이상 수정이 쏠리면 승격 후보로 플래그.
+          if [[ -d .git ]]; then
+            since=$(date -u -d '30 days ago' +%Y-%m-%d 2>/dev/null || date -u -v-30d +%Y-%m-%d)
+            git log --since="$since" --name-only --pretty=format: \
+              --grep='^\(fix\|bug\|revert\)' 2>/dev/null \
+              | grep -v '^$' | sort | uniq -c | sort -rn \
+              | awk '$1 >= 3 { print $2 " (" $1 "회 수정)" }' > /tmp/hot-files.txt || true
+            if [[ -s /tmp/hot-files.txt ]]; then
+              echo "" >> "$report"
+              echo "### 🔥 룰 승격 후보 (반복 수정 파일)" >> "$report"
+              echo "" >> "$report"
+              while IFS= read -r line; do
+                echo "- [rule-candidate] \`$line\` — \`harness-promote-rule\` 스킬 invoke 고려" >> "$report"
+              done < /tmp/hot-files.txt
+            fi
+          fi
+
+          ### EDIT ME — 프로젝트별 편차 검사 추가
+
+          if [[ -s "$report" ]]; then
+            echo "has_drift=true" >> "$GITHUB_OUTPUT"
+            {
+              echo 'body<<EOF'
+              echo "# Doc Gardening Report — $(date -u +%Y-%m-%d)"
+              echo
+              echo "다음 편차가 감지됐다. **차단 명령이 아니라 판단 가이드**다."
+              echo "각 항목은 *살펴봐야 할 대상* 이며, 고칠지 말지는 도메인 맥락을"
+              echo "아는 사람/에이전트가 결정한다."
+              echo
+              cat "$report"
+              echo EOF
+            } >> "$GITHUB_OUTPUT"
+          else
+            echo "has_drift=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Open issue if drift
+        if: steps.drift.outputs.has_drift == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const body = `${{ steps.drift.outputs.body }}`;
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `[doc-gardening] 편차 감지 — ${new Date().toISOString().slice(0,10)}`,
+              body,
+              labels: ['harness', 'doc-gardening']
+            });

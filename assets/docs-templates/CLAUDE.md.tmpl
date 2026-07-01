@@ -1,0 +1,35 @@
+# CLAUDE.md — {{PROJECT_NAME}}
+
+에이전트(Claude)용 **부트 섹터/맵**. 100 줄 이내 유지. 상세는 링크로 위임.
+PDF 4~5쪽: "AGENTS.md 를 백과사전이 아닌 *목차* 로 취급한다."
+
+## 프로젝트 한 줄
+
+(여기에 프로젝트의 한 줄 설명. 도메인·생애주기·돈이 걸려 있는지 여부.)
+
+## 먼저 읽어야 할 것
+
+1. `ARCHITECTURE.md` — 도메인·패키지 레이어링 최상위 맵
+2. `docs/design-docs/core-beliefs.md` — 검증 상태와 핵심 신념 (R1~Rn)
+3. `docs/audits/` 의 최신 phase handoff 문서 — 현재 단계의 발견·결정
+
+## 핵심 한 줄 룰
+
+- 프로젝트 고유 불변 원칙(R1~Rn) 위반 발견 시 즉시 중단·보고. 우회 금지.
+- 비자명한 작업은 계획 → 구현 → 검증 흐름. 깊은 리뷰는 위험 신호가 있을 때 승격.
+- 강제 장치: `.git/hooks/pre-commit` (4단 검사) + `.claude/settings.json` (3 hook).
+
+## 작업 흐름
+
+- 작업 전: 관련 `docs/design-docs/` 와 `docs/exec-plans/active/` 확인.
+- 새 설계 결정: `docs/design-docs/` 에 새 파일 (이름은 결정 주제).
+- 새 실행 계획: `docs/exec-plans/active/YYYY-MM-DD-slug.md`. 완료 시 `completed/` 로 이동.
+- 감사·인시던트·핸드오프: `docs/audits/YYYY-MM-DD-slug.md`.
+
+## 환경
+
+(여기에 dev/prod 포트, 기동 명령, 핵심 환경변수.)
+
+<!--===DS:BEGIN===-->
+<!-- ai-dev-setting 의 project-claude.sh 가 관리. 마커 안쪽은 재실행 시 덮어쓰기. -->
+<!--===DS:END===-->

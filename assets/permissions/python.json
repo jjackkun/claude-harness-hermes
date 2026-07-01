@@ -1,0 +1,20 @@
+{
+  "_comment": "Python 생태계 읽기/빌드/테스트 권한. harness base.json 과 함께 사용.",
+  "permissions": {
+    "allow": [
+      "Bash(python:*)",
+      "Bash(python3:*)",
+      "Bash(pip:*)",
+      "Bash(pip3:*)",
+      "Bash(uv:*)",
+      "Bash(poetry:*)",
+      "Bash(pytest:*)",
+      "Bash(ruff:*)",
+      "Bash(black:*)",
+      "Bash(mypy:*)",
+      "Bash(pyright:*)",
+      "Bash(alembic:*)",
+      "Bash(uvicorn:*)"
+    ]
+  }
+}
