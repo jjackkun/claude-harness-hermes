@@ -58,8 +58,13 @@ fi
 
 echo ""
 echo "== install_skills Windows path (cp, not symlink) =="
-# /mnt/c/ 로 시작하는 실제 Windows 마운트 경로 사용
-TMP_WIN="/mnt/c/tmp/ai-dev-test-$$"
+# 실제 /mnt/c 마운트는 WSL 에만 존재하므로(CI Ubuntu 러너엔 없음),
+# is_windows_path 를 오버라이드해 Windows 타깃으로 취급하고
+# 일반 temp 디렉터리에서 cp-vs-symlink 분기를 검증한다.
+_saved_is_windows_path="$(declare -f is_windows_path)"
+is_windows_path() { return 0; }
+
+TMP_WIN="$(mktemp -d)"
 mkdir -p "$TMP_WIN/.claude/skills"
 
 _ORIG_ASSETS="$ASSETS_DIR"
@@ -81,7 +86,7 @@ rm -rf "$TMP_WIN" "$_TMP_ASSETS"
 
 echo ""
 echo "== install_agents Windows path (cp, not symlink) =="
-TMP_WIN2="/mnt/c/tmp/ai-dev-test2-$$"
+TMP_WIN2="$(mktemp -d)"
 mkdir -p "$TMP_WIN2/.claude/agents"
 
 _TMP_ASSETS2="$(mktemp -d)"
@@ -99,6 +104,9 @@ else
 fi
 export ASSETS_DIR="$_ORIG_ASSETS"
 rm -rf "$TMP_WIN2" "$_TMP_ASSETS2"
+
+# is_windows_path 원복 (이후 wrap_hooks_for_windows 테스트는 실제 경로 판별 필요)
+eval "$_saved_is_windows_path"
 
 echo ""
 echo "== wrap_hooks_for_windows =="
