@@ -233,5 +233,16 @@ check "run 이 dangerously-skip 미사용 (G9)" bash -c "! grep -q 'dangerously-
 check "래퍼도 dangerously-skip 미사용 (G9)" bash -c "! grep -q 'dangerously-skip-permissions' '$S/hermes-loop-run.sh'"
 
 echo ""
+echo "== 14. 설치·제거 매니페스트 정합성 (G10·G13·§8) =="
+CONF="$REPO_ROOT/presets/workflow/hermes.conf"
+for f in hermes_loop.py hermes_loop_prompt.py hermes-loop.py hermes-loop-run.sh; do
+  check "hermes.conf 매니페스트: $f" bash -c "grep -q '$f' '$CONF'"
+done
+check "SKILLS 에 hermes-loop 등록 (G10)" bash -c "grep -qE '^  hermes-loop$' '$CONF'"
+check "스킬 파일 존재 (G10)" test -f "$REPO_ROOT/assets/skills/hermes-loop/SKILL.md"
+check "uninstall 매니페스트에 루프 스크립트" bash -c "grep -q 'hermes_loop' '$REPO_ROOT/uninstall.sh'"
+check "run-all.sh 에 루프 테스트 등록" bash -c "grep -q 'hermes-loop-test.sh' '$REPO_ROOT/tests/run-all.sh'"
+
+echo ""
 echo "PASS=$pass FAIL=$fail"
 [[ $fail -eq 0 ]]
