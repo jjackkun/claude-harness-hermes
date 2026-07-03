@@ -92,5 +92,33 @@ check "조건 0개 → 최소 5회 (§6.1)" test "$mi0" = "5"
 check "GOAL.md 에 완료 조건 체크박스" bash -c "grep -q '\- \[ \] 조건 A' '$PROJ/.hermes/loops/$ID1/GOAL.md'"
 
 echo ""
+echo "== 11. G9 — 파괴적 작업 차단 + REPORT 계약 =="
+pout=$(python3 -c "
+import sys; sys.path.insert(0, '$S')
+from hermes_loop_prompt import build_iteration_prompt
+print(build_iteration_prompt('/p', '/g', '목표', [], [], 'none', 1, 5, 'loop/test-id'))
+")
+check "프롬프트에 파괴적 금지 문구 (G9)" bash -c "echo '$pout' | grep -q '파괴적'"
+check "프롬프트에 REPORT 계약 지시" bash -c "echo '$pout' | grep -q 'HERMES-LOOP REPORT'"
+check "프롬프트에 루프 브랜치 규칙 (G14)" bash -c "echo '$pout' | grep -q 'loop/test-id' && echo '$pout' | grep -q '머지'"
+parse_ok=$(python3 -c "
+import sys; sys.path.insert(0, '$S')
+from hermes_loop_prompt import parse_report
+r = parse_report('''잡담
+=== HERMES-LOOP REPORT ===
+ACTION: 라우터 수정
+VERDICT: continue
+VERIFY: pytest -q
+NEXT: 경계 테스트
+=== END REPORT ===''')
+assert r == {'action': '라우터 수정', 'verdict': 'continue',
+             'verify': 'pytest -q', 'next': '경계 테스트'}, r
+assert parse_report('리포트 없음') is None
+assert parse_report('=== HERMES-LOOP REPORT ===\nVERDICT: maybe\n=== END REPORT ===') is None
+print('OK')
+")
+check "REPORT 파서 정상/실패 경로" test "$parse_ok" = "OK"
+
+echo ""
 echo "PASS=$pass FAIL=$fail"
 [[ $fail -eq 0 ]]
