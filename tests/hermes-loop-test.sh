@@ -39,6 +39,9 @@ print(con.execute(sys.argv[1]).fetchone()[0])
 loop_cli() { python3 "$S/hermes-loop.py" --project-dir "$PROJ" "$@"; }
 new_loop() { # new_loop [init 추가 인자...] → LOOP_ID 출력
   loop_cli init --goal "테스트 목표" "$@" | sed -n 's/^LOOP_ID://p'; }
+# bash -c 서브셸(check 헬퍼가 파이프 조건 검증에 사용)에서 loop_cli 를 쓸 수 있도록 노출
+export S PROJ
+export -f loop_cli
 
 # ── mock claude (PATH 가짜 실행파일) — Task 4 의 run 테스트에서 사용 ──
 cat > "$T/bin/claude" <<'EOF'
@@ -90,6 +93,23 @@ check "max_iterations = 조건2×3=6 (§6.1)" test "$mi" = "6"
 mi0=$(sql "SELECT max_iterations FROM loops WHERE id='$(new_loop)'")
 check "조건 0개 → 최소 5회 (§6.1)" test "$mi0" = "5"
 check "GOAL.md 에 완료 조건 체크박스" bash -c "grep -q '\- \[ \] 조건 A' '$PROJ/.hermes/loops/$ID1/GOAL.md'"
+
+echo ""
+echo "== 7. 재개 준비 — step 커맨드 (G8 전반부·G10 공용 판정 코어) =="
+ID7=$(new_loop)
+sout=$(loop_cli step "$ID7" --action "부분 작업" --verdict continue --signal none)
+check "step 출력 DECISION:continue" bash -c "echo '$sout' | grep -q 'DECISION:continue'"
+check "step 후 iterations_used=1" test "$(sql "SELECT iterations_used FROM loops WHERE id='$ID7'")" = "1"
+check "step 후 status=running (중단 상태 재현)" test "$(sql "SELECT status FROM loops WHERE id='$ID7'")" = "running"
+check "step 이 GOAL.md 진행 로그 기록" bash -c "grep -q '\- \[iter 1\]' '$PROJ/.hermes/loops/$ID7/GOAL.md'"
+
+echo ""
+echo "== 12. stop — user-stop =="
+ID12=$(new_loop)
+loop_cli stop "$ID12" >/dev/null
+check "finish_reason=user-stop" test "$(sql "SELECT finish_reason FROM loops WHERE id='$ID12'")" = "user-stop"
+check "status=stopped" test "$(sql "SELECT status FROM loops WHERE id='$ID12'")" = "stopped"
+check "stop 후 status 커맨드 조회 가능" bash -c "loop_cli status '$ID12' | grep -q 'user-stop'"
 
 echo ""
 echo "== 11. G9 — 파괴적 작업 차단 + REPORT 계약 =="
