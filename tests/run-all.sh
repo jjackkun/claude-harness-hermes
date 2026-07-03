@@ -108,6 +108,7 @@ for t in \
   harness-hooks-smoke.sh \
   windows-smoke.sh \
   hermes-pipeline-test.sh \
+  hermes-loop-test.sh \
   hermes-redact-test.sh \
   hermes-dream-test.sh \
   hermes-recall-measurement-test.sh \
