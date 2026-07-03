@@ -52,6 +52,10 @@
 - [ ] **G13 설치·마이그레이션** — `hermes` 프리셋 설치 시 신규 스크립트 4개 + 스킬이 배포되고,
   `hermes-init.py` 가 `loops`/`loop_steps` 테이블을 `CREATE TABLE IF NOT EXISTS` 로 만든다. 검증:
   기존 DB 에 대해 init 재실행 시 오류 없이 테이블 추가.
+- [ ] **G14 루프 전용 브랜치** — `run`/`resume` 시작 시 대상 프로젝트에 `loop/<loop-id>` 브랜치를
+  생성·체크아웃하고, 에이전트 커밋은 그 브랜치에서만 허용한다. 머지·push 는 절대 자동 실행하지 않는다
+  (종료 후 사용자가 브랜치 diff 를 검토하고 수동 머지). git 저장소가 아니면 경고 후 건너뛴다.
+  검증: 모킹 run 후 현재 브랜치가 `loop/<id>` 이고 main HEAD 미변경.
 
 ## 3. 비목표 (Out of Scope)
 
@@ -122,6 +126,7 @@ CREATE TABLE IF NOT EXISTS loops (
   title             TEXT NOT NULL,
   goal_md_path      TEXT NOT NULL,
   mode              TEXT NOT NULL DEFAULT 'goal',
+  branch            TEXT,                               -- loop/<id> (git 아니면 NULL, G14)
   status            TEXT NOT NULL DEFAULT 'running',   -- running|done|stopped|failed
   max_iterations    INTEGER NOT NULL,
   no_progress_limit INTEGER NOT NULL DEFAULT 3,
@@ -153,6 +158,8 @@ end 아카이브와 동일 패턴.
 ```
 init: GOAL.md 생성 + loops row INSERT(status=running)
 
+run/resume 진입: loop/<loop-id> 브랜치 생성·체크아웃 (G14 — git 저장소 아니면 경고 후 건너뜀)
+
 while status == running:
   1. 안전캡 선행 체크 (목표 미달로 멈추는 것이므로 status=stopped)
        iterations_used ≥ max_iterations      → stop(finish_reason=max-iter, status=stopped)
@@ -167,7 +174,7 @@ while status == running:
        NEXT:    다음 단계 제안
   5. 객관신호 게이트: VERIFY 명령을 '드라이버가' 실행 → pass/fail
        VERDICT=goal-met 인데 VERIFY=fail → goal-met 기각, continue 로 강등(교차검증)
-  6. 진전 판정: GOAL.md 체크박스 변화 / 새 커밋 / 신호 개선 → progressed
+  6. 진전 판정: GOAL.md 체크박스 변화 / 새 커밋(루프 브랜치 커밋 허용으로 활성, G14) / 신호 개선 → progressed
        progressed=true → no_progress_count=0  else → no_progress_count++
   7. loop_steps INSERT, iterations_used++, updated_at 갱신
   8. 종료 판정:
@@ -201,6 +208,9 @@ NEXT: 토큰 만료 경계 테스트 보강
 - **파괴적 작업 차단(G9)**: 헤드리스 → 프롬프트 명문화 + 기존 harness `bash-guard` 훅 재사용(파일삭제·
   force push·배포 차단). `run` 은 `--dangerously-skip-permissions` 를 절대 쓰지 않는다. 대화형 →
   표준 Claude Code 권한 프롬프트가 승인 게이트.
+- **루프 브랜치 격리(G14)**: 에이전트 커밋은 `loop/<loop-id>` 브랜치에서만 허용. 머지·push 는 절대
+  자동 실행하지 않는다 — 종료 후 사용자가 브랜치 diff 를 검토하고 수동 머지. 주의: 브랜치 체크아웃은
+  작업 트리 전체에 적용되므로 **루프 실행 중 같은 저장소에서 직접 작업하지 않는다** (가이드 명시).
 - **재개(G8)**: cold start 구조라 안전 — `resume <id>` 가 GOAL.md+DB 로 이어감. 사용자 강제중단은
   `hermes-loop.py stop <id>`(finish_reason=user-stop).
 - **마스킹(G12)**: GOAL.md/DB 저장 경계에서 `hermes_redact.py` 재사용.
@@ -231,6 +241,7 @@ NEXT: 토큰 만료 경계 테스트 보강
 - run 1회 후 kill → resume → iterations_used 이어짐 (G8)
 - 종료 후 `messages` 아카이브 행 검증 (G11)
 - 진행로그의 토큰 문자열 → `[REDACTED:*]` 치환 (G12)
+- run 후 현재 브랜치 = `loop/<id>` + main HEAD 미변경 (G14)
 
 `run-all.sh` 의 `py_compile`·`bash -n` 글롭에 신규 스크립트가 자동 포함된다.
 
