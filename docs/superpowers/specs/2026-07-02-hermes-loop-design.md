@@ -56,6 +56,12 @@
   생성·체크아웃하고, 에이전트 커밋은 그 브랜치에서만 허용한다. 머지·push 는 절대 자동 실행하지 않는다
   (종료 후 사용자가 브랜치 diff 를 검토하고 수동 머지). git 저장소가 아니면 경고 후 건너뛴다.
   검증: 모킹 run 후 현재 브랜치가 `loop/<id>` 이고 main HEAD 미변경.
+- [ ] **G15 완료 시 HTML 보고서** — 루프가 어떤 사유로든 종료되면 결정적 코드가 자체완결(self-contained)
+  HTML 보고서를 `.hermes/loops/<loop-id>/report.html` 로 생성한다. 사용자가 이를 열어 **머지 여부를
+  판단**한다(사람 검토 게이트의 시각화). 보고서 내용: 목표·완료조건 체크상태, 반복별 verdict·객관신호·
+  진전, 루프 브랜치 커밋 목록, 종료 사유. **헤드리스는 파일 생성까지**(claude.ai 게시 도구 부재 가능),
+  **대화형 `/hermes-loop` 은 그 파일을 아티팩트로 추가 게시**한다. 저장 값은 이미 G12 로 마스킹된 것을 쓴다.
+  검증: 종료 후 report.html 존재 + 종료사유·반복수 문자열 포함 + 외부 URL(http/https·CDN) 미포함(CSP 안전).
 
 ## 3. 비목표 (Out of Scope)
 
@@ -63,7 +69,8 @@
 - **자율 매니저(cron start/check/end)** — 별개 기능. 본 루프는 이를 대체하지 않고 인프라만 공유(messages·redact).
 - **멀티 루프 병렬 오케스트레이션** — v1 은 한 번에 루프 1개 실행. 큐/스케줄러는 후속.
 - **드리밍·결정화 연동** — 루프 결과를 러닝 루프(스킬 결정화)에 먹이는 것은 후속(§11). v1 은 아카이브 기록까지만.
-- **웹/대시보드 UI** — CLI + GOAL.md(사람이 읽는 파일)로 충분. 시각화는 후속.
+- **실시간 웹 대시보드·멀티루프 모니터링 UI** — 후속. G15 의 완료 HTML 보고서는 종료 시점 1회 생성되는
+  정적 스냅숏이며, 실행 중 실시간 갱신·다중 루프 집계 화면은 범위 밖.
 
 ## 4. 아키텍처
 
@@ -73,7 +80,8 @@
 scripts/
 ├── hermes_loop.py          # 공용 코어 모듈(importable): DB 스키마·loops 상태모델·GOAL.md I/O
 ├── hermes_loop_prompt.py   # 반복 프롬프트 템플릿·조립 (hermes-manager.py 템플릿 방식 계승)
-├── hermes-loop.py          # CLI(dash): init / run / status / resume, while-루프 소유
+├── hermes_loop_report.py   # 완료 HTML 보고서 생성 (G15, importable): loops·loop_steps·GOAL.md·git → self-contained HTML
+├── hermes-loop.py          # CLI(dash): init / run / status / resume / report, while-루프 소유
 └── hermes-loop-run.sh      # 헤드리스 nohup 래퍼 (hermes-cron-run.sh 형제)
 
 assets/skills/hermes-loop/SKILL.md   # 대화형 진입점 /hermes-loop <목표> (승인 게이트)
@@ -89,6 +97,9 @@ tests/hermes-loop-test.sh            # HOME 격리 + claude 모킹 테스트
 
 - `hermes_loop.py` — `loops`/`loop_steps` 스키마·마이그레이션, GOAL.md 읽기/쓰기(체크박스·진행로그
   파싱 포함), 루프 상태 전이(running→done/stopped/failed), 안전캡 판정 함수, `hermes_redact` 호출.
+- `hermes_loop_report.py` — 종료 시 loops·loop_steps·GOAL.md·git 로그를 읽어 자체완결 HTML 보고서
+  문자열을 조립(외부 URL·CDN 없음, 인라인 CSS)하고 `report.html` 로 저장(G15). 저장 데이터는 이미
+  마스킹된 것(G12)을 그대로 사용. 결정적 코드가 담당 — 드라이버가 종료 판정 직후 호출.
 - `hermes_loop_prompt.py` — 반복 프롬프트 조립(목표+완료조건+최근 진행로그+직전 신호+REPORT 계약),
   파괴적 작업 금지 문구. `hermes-manager.py` 의 템플릿 상수 방식을 그대로 계승.
 
@@ -180,6 +191,10 @@ while status == running:
   8. 종료 판정:
        VERDICT=goal-met & (VERIFY 없거나 pass) → stop(goal-met, done)
        VERDICT=blocked                         → stop(blocked, stopped)   # 사람 개입 필요
+
+종료 후(모든 finish_reason 공통): hermes_loop_report.render() → report.html 생성 (G15)
+  → 헤드리스: 파일 경로를 완료 로그에 출력
+  → 대화형(/hermes-loop): 스킬이 그 파일을 아티팩트로 추가 게시
 ```
 
 REPORT 계약 예시(에이전트가 응답 말미에 출력, 드라이버가 정규식 파싱):
@@ -214,14 +229,17 @@ NEXT: 토큰 만료 경계 테스트 보강
 - **재개(G8)**: cold start 구조라 안전 — `resume <id>` 가 GOAL.md+DB 로 이어감. 사용자 강제중단은
   `hermes-loop.py stop <id>`(finish_reason=user-stop).
 - **마스킹(G12)**: GOAL.md/DB 저장 경계에서 `hermes_redact.py` 재사용.
+- **완료 보고서(G15)**: 종료 시 report.html 생성은 자체완결(인라인 CSS, 외부 URL·CDN 없음)이라 아티팩트
+  CSP 에 안전. 저장된 마스킹 데이터(G12)만 렌더하므로 비밀 재노출 없음. 보고서 생성 실패는 루프 종료
+  자체를 막지 않는다(best-effort — stderr 경고 후 진행).
 - **오류 안전 종료**: claude 실행 실패·파싱 실패는 그 반복을 fail 로 기록하되 루프를 즉시 죽이지 않고
   no_progress 로 취급(안전캡이 결국 잡음). DB 부재·python3 부재는 명확한 에러로 exit.
 
 ## 8. 설치 · 통합
 
-- `presets/workflow/hermes.conf`: 신규 스크립트 4개(`hermes_loop.py`, `hermes_loop_prompt.py`,
-  `hermes-loop.py`, `hermes-loop-run.sh`) 설치 매니페스트 등록, 스킬 `hermes-loop` 를 SKILLS 에 등록,
-  CLAUDE.md 섹션에 루프 사용법 추가.
+- `presets/workflow/hermes.conf`: 신규 스크립트 5개(`hermes_loop.py`, `hermes_loop_prompt.py`,
+  `hermes_loop_report.py`, `hermes-loop.py`, `hermes-loop-run.sh`) 설치 매니페스트 등록, 스킬
+  `hermes-loop` 를 SKILLS 에 등록, CLAUDE.md 섹션에 루프 사용법 추가.
 - `hermes-init.py`: `loops`/`loop_steps` 테이블 `CREATE TABLE IF NOT EXISTS` 추가(기존 DB 자동
   마이그레이션).
 - `uninstall.sh`: 신규 스크립트를 제거 매니페스트에 등록(README 규약 — 하네스 설치물만 제거).
@@ -242,6 +260,7 @@ NEXT: 토큰 만료 경계 테스트 보강
 - 종료 후 `messages` 아카이브 행 검증 (G11)
 - 진행로그의 토큰 문자열 → `[REDACTED:*]` 치환 (G12)
 - run 후 현재 브랜치 = `loop/<id>` + main HEAD 미변경 (G14)
+- 종료 후 `report.html` 존재 + 종료사유·반복수 포함 + 외부 URL(`http`/`https`) 미포함 (G15)
 
 `run-all.sh` 의 `py_compile`·`bash -n` 글롭에 신규 스크립트가 자동 포함된다.
 
@@ -254,6 +273,8 @@ init(CLI/스킬) → hermes_loop.write_goal_md() + loops INSERT
                    → hermes_loop.run_verify() → hermes_loop.update_step() (redact 경유)
                    → hermes_loop.check_caps() → 종료 or 다음 반복
               → 종료 시 hermes_loop.archive_to_messages()
+              → 종료 시 hermes_loop_report.render() → report.html (G15)
+                   (대화형이면 스킬이 그 파일을 아티팩트로 게시)
 ```
 
 REPORT 필드명(ACTION/VERDICT/VERIFY/NEXT)은 프롬프트 지시 ↔ 드라이버 파서 ↔ `loop_steps` 컬럼에서
