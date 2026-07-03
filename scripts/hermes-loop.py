@@ -109,20 +109,26 @@ def _drive(args):
             goal["conditions"], goal["log_lines"], prev_signal,
             iteration, loop["max_iterations"], branch_label)
         print(f"[hermes-loop] iter {iteration}/{loop['max_iterations']} 시작")
+        report = None
+        fail_reason = None                     # 실패 모드 구분 (사후 디버깅)
         try:                                   # 3. 동기 실행 (격리 cold start)
             proc = subprocess.run(
                 [args.claude_cmd, "-p", prompt], capture_output=True,
                 text=True, cwd=args.project_dir,
                 timeout=(args.iter_timeout or None))
-            report = parse_report(proc.stdout) if proc.returncode == 0 else None
-        except (subprocess.TimeoutExpired, OSError):
-            report = None
+            if proc.returncode != 0:
+                fail_reason = f"claude 비정상 종료 (rc={proc.returncode})"
+            else:
+                report = parse_report(proc.stdout)
+                if report is None:
+                    fail_reason = "REPORT 파싱 실패 (계약 블록 없음/형식 오류)"
+        except (subprocess.TimeoutExpired, OSError) as e:
+            fail_reason = f"claude 실행 실패 ({type(e).__name__})"
         if report is None:                     # 오류 = 무진전 취급 (설계 §7)
-            action = "claude 실행 실패 또는 REPORT 파싱 실패"
             core.record_iteration(db, args.loop_id, iteration,
-                                  action, "continue", "none", False)
+                                  fail_reason, "continue", "none", False)
             core.append_progress_log(loop["goal_md_path"], iteration,
-                                     action, "none", "continue")
+                                     fail_reason, "none", "continue")
             continue
         verify_cmd = (report["verify"]
                       if report["verify"].lower() != "none" else None)

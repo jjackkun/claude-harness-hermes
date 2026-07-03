@@ -246,7 +246,8 @@ for f in hermes_loop.py hermes_loop_prompt.py hermes_loop_report.py hermes-loop.
 done
 check "SKILLS 에 hermes-loop 등록 (G10)" bash -c "grep -qE '^  hermes-loop$' '$CONF'"
 check "스킬 파일 존재 (G10)" test -f "$REPO_ROOT/assets/skills/hermes-loop/SKILL.md"
-check "uninstall 매니페스트에 루프 스크립트" bash -c "grep -q 'hermes_loop' '$REPO_ROOT/uninstall.sh'"
+# uninstall 은 일반 패턴(hermes_*.py)으로 언더스코어 루프 모듈까지 회수한다
+check "uninstall 매니페스트가 언더스코어 모듈 회수 패턴 포함" bash -c "grep -q 'hermes_\*.py' '$REPO_ROOT/uninstall.sh'"
 check "run-all.sh 에 루프 테스트 등록" bash -c "grep -q 'hermes-loop-test.sh' '$REPO_ROOT/tests/run-all.sh'"
 
 echo ""
