@@ -185,6 +185,15 @@ def _apply_schema(con: sqlite3.Connection, scope: str):
         )
     """)
 
+    # loops / loop_steps — 목표 기반 자율 루프 (hermes_loop 과 단일 DDL 공유, G13)
+    try:
+        from hermes_loop import LOOP_SCHEMA_STATEMENTS
+        for ddl in LOOP_SCHEMA_STATEMENTS:
+            cur.execute(ddl)
+    except ImportError:
+        print("[hermes] hermes_loop.py 없음 — loops 테이블 생성 건너뜀",
+              file=sys.stderr)
+
     con.commit()
 
 
