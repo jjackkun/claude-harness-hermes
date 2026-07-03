@@ -174,7 +174,7 @@ do_uninstall() {
   # 10. package.json scripts.serena
   uninstall_pkg_serena "$project_path"
 
-  # 11. scripts/hermes-*.py + hermes-cron-run.sh
+  # 11. scripts/hermes-*.py + hermes_loop*.py + hermes-*-run.sh
   local scripts_dir="$project_path/scripts"
   if [[ -d "$scripts_dir" ]]; then
     local hermes_scripts

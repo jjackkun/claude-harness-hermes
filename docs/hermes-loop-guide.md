@@ -128,6 +128,10 @@ git -C /path/to/project branch -D loop/<loop-id>
 > **verify 명령에 비밀을 직접 넣지 말 것** — verify 문자열은 드라이버가
 > 재실행해야 하므로 마스킹되지 않는다. 토큰 등은 환경변수로 전달한다.
 
+> **verify 명령은 드라이버가 무샌드박스로 직접 실행한다** (`subprocess.run(shell=True)`,
+> harness `bash-guard` 훅 밖) — denylist 는 알려진 파괴 패턴만 차단하는 최후 방어선이므로,
+> 부작용 없는 검증 명령(테스트/빌드/린트)만 verify 로 지정할 것.
+
 ## 한계
 
 1. **반복당 cold start**: 매 반복이 독립 `claude -p` 세션 — 이전 반복의 대화

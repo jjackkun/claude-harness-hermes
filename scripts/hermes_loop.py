@@ -33,7 +33,9 @@ SIGNALS = ("pass", "fail", "none")
 # 파괴적 verify 명령 차단 — "탐지는 정규식(결정적 코드)" 원칙 (G9)
 _DENY_VERIFY_RE = re.compile(
     r"rm\s+-[a-z]*f|git\s+push\s+--force|--force-with-lease|"
-    r"git\s+reset\s+--hard|git\s+clean|drop\s+(table|database)|mkfs|>\s*/dev/sd",
+    r"git\s+reset\s+--hard|git\s+clean|drop\s+(table|database)|mkfs|>\s*/dev/sd|"
+    r"\|\s*(ba|z|k)?sh\b|find\b.*-delete|find\b.*-exec\s+rm|"
+    r"dd\s|truncate\b|chmod\s+-R|chown\s+-R|git\s+push|sudo\b|:\s*>\s*\S",
     re.I)
 
 # hermes-init.py 가 import 하여 동일 DDL 로 마이그레이션한다 (G13)
@@ -130,7 +132,7 @@ def create_loop(db_path, project_dir, goal, title=None, conditions=None,
     ensure_schema(db_path)
     conditions = conditions or []
     goal = redact(goal)                      # 저장 경계 마스킹 (G12)
-    title = redact(title) if title else goal.strip().splitlines()[0][:60]
+    title = (redact(title) if title else goal.strip().splitlines()[0])[:60]
     if max_iterations is None:
         max_iterations = default_max_iterations(len(conditions))
     # 초 단위 타임스탬프 충돌 방지용 uuid 6자리 (16^6 ≈ 1,678만 조합)
@@ -347,7 +349,10 @@ def ensure_loop_branch(db_path, project_dir, loop_id):
     """루프 전용 브랜치 loop/<id> 생성·체크아웃 (G14).
 
     에이전트 커밋을 이 브랜치에 격리한다 — 머지·push 는 사용자 수동.
-    git 저장소가 아니거나 체크아웃 실패 시 경고 후 None (루프는 계속).
+    git 저장소가 아니면 경고 후 None (루프는 파일 수정만으로 계속, 설계 G14).
+    실제 git 저장소인데 체크아웃에 실패하면 격리를 보장할 수 없으므로
+    None 을 반환하지 않고 RuntimeError 를 던진다 — 호출부가 루프를 시작하지
+    않도록 강제해 커밋이 격리 없이 main(또는 이전 브랜치)에 쌓이는 사고를 막는다.
     """
     try:
         probe = subprocess.run(
@@ -367,12 +372,11 @@ def ensure_loop_branch(db_path, project_dir, loop_id):
         proc = subprocess.run(args, cwd=project_dir, capture_output=True,
                               text=True, timeout=GIT_CMD_TIMEOUT)
         if proc.returncode != 0:
-            print(f"[hermes-loop] 브랜치 체크아웃 실패: {proc.stderr.strip()}",
-                  file=sys.stderr)
-            return None
+            raise RuntimeError(
+                f"루프 브랜치 격리 실패: {branch} 체크아웃 실패 —"
+                f" {proc.stderr.strip()}")
     except (subprocess.TimeoutExpired, OSError) as e:
-        print(f"[hermes-loop] 루프 브랜치 준비 실패: {e}", file=sys.stderr)
-        return None
+        raise RuntimeError(f"루프 브랜치 준비 실패: {e}") from e
     con = connect_db(db_path)
     con.execute("UPDATE loops SET branch=?, updated_at=? WHERE id=?",
                 (branch, _now(), loop_id))

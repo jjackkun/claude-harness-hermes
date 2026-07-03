@@ -51,6 +51,12 @@ cat > "$T/bin/claude" <<'EOF'
 cnt_file="${MOCK_COUNT_FILE:?}"
 n=$(cat "$cnt_file" 2>/dev/null || echo 0)
 echo $((n+1)) > "$cnt_file"
+# MOCK_COMMIT=1 이면 반복마다 파일 수정 + 커밋 (G14 브랜치 격리 검증용, Minor 3)
+if [[ -n "${MOCK_COMMIT:-}" ]]; then
+  echo "mock change $n" > mock-commit-file.txt
+  git add -A -- mock-commit-file.txt 2>/dev/null
+  git -c user.email=t@test -c user.name=t commit -qm "mock commit iter $n" 2>/dev/null
+fi
 IFS=',' read -ra plan <<< "${MOCK_LOOP_PLAN:-continue}"
 idx=$n; [[ $idx -ge ${#plan[@]} ]] && idx=$((${#plan[@]}-1))
 emit() { # emit <verdict> <verify>
@@ -242,6 +248,49 @@ check "SKILLS 에 hermes-loop 등록 (G10)" bash -c "grep -qE '^  hermes-loop$' 
 check "스킬 파일 존재 (G10)" test -f "$REPO_ROOT/assets/skills/hermes-loop/SKILL.md"
 check "uninstall 매니페스트에 루프 스크립트" bash -c "grep -q 'hermes_loop' '$REPO_ROOT/uninstall.sh'"
 check "run-all.sh 에 루프 테스트 등록" bash -c "grep -q 'hermes-loop-test.sh' '$REPO_ROOT/tests/run-all.sh'"
+
+echo ""
+echo "== 15. G14 커밋 격리 — 루프 브랜치에만 쌓이고 main 불변 (Important 2 검증) =="
+ID15=$(new_loop)
+MOCK_COMMIT=1 run_loop "$ID15" "continue,goalmet-pass" >/dev/null
+check "루프 브랜치에 커밋 2건 추가" test "$(git -C "$PROJ" rev-list --count "loop/$ID15" "^main")" = "2"
+check "main HEAD 여전히 불변 (G14)" test "$(git -C "$PROJ" rev-parse main)" = "$MAIN_HEAD"
+check "현재 브랜치가 loop 브랜치로 유지 (G14)" test "$(git -C "$PROJ" branch --show-current)" = "loop/$ID15"
+
+echo ""
+echo "== 16. ensure_loop_branch — non-git=None / 체크아웃 실패=예외 (Important 2 단위검증) =="
+branch_py=$(python3 -c "
+import sys, os, subprocess, tempfile
+sys.path.insert(0, '$S')
+import hermes_loop
+
+# (a) non-git 디렉터리 → None (기존 G14 동작 보존)
+nongit = tempfile.mkdtemp()
+db_a = os.path.join(nongit, 'a.db')
+hermes_loop.ensure_schema(db_a)
+res = hermes_loop.ensure_loop_branch(db_a, nongit, 'loop-a')
+print('A_NONE' if res is None else 'A_FAIL:' + repr(res))
+
+# (b) 실제 git 저장소이지만 loop/<id> 체크아웃이 실패하도록 ref 를 막아둠
+# → 격리 실패이므로 None 대신 RuntimeError 를 던져야 함
+repo = tempfile.mkdtemp()
+subprocess.run(['git', 'init', '-q', '-b', 'main'], cwd=repo, check=True)
+subprocess.run(['git', '-c', 'user.email=t@test', '-c', 'user.name=t',
+                 'commit', '--allow-empty', '-qm', 'init'], cwd=repo, check=True)
+refs_dir = os.path.join(repo, '.git', 'refs', 'heads')
+os.makedirs(refs_dir, exist_ok=True)
+with open(os.path.join(refs_dir, 'loop'), 'w') as f:
+    f.write('bad')  # 'loop' 를 파일로 선점 → 'loop/<id>' 중첩 ref 생성 불가
+db_b = os.path.join(repo, 'b.db')
+hermes_loop.ensure_schema(db_b)
+try:
+    hermes_loop.ensure_loop_branch(db_b, repo, 'x')
+    print('B_NO_RAISE')
+except RuntimeError:
+    print('B_RAISED')
+")
+check "(a) non-git → None 유지" bash -c "echo '$branch_py' | grep -q 'A_NONE'"
+check "(b) 체크아웃 실패 → RuntimeError" bash -c "echo '$branch_py' | grep -q 'B_RAISED'"
 
 echo ""
 echo "PASS=$pass FAIL=$fail"

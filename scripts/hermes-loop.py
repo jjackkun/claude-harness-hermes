@@ -77,7 +77,14 @@ def _drive(args):
     db = _db_path(args.project_dir)
     _require_running(db, args.loop_id)
     # 루프 전용 브랜치 — 커밋을 loop/<id> 에 격리, 머지·push 는 사용자 수동 (G14)
-    branch = core.ensure_loop_branch(db, args.project_dir, args.loop_id)
+    try:
+        branch = core.ensure_loop_branch(db, args.project_dir, args.loop_id)
+    except RuntimeError as e:
+        # git 저장소인데 격리(체크아웃)에 실패 — 격리 없이 진행하면 커밋이
+        # main(또는 이전 브랜치)에 남을 위험이 있으므로 루프를 시작하지 않는다.
+        print(f"[hermes-loop] {e}", file=sys.stderr)
+        _finish(db, args.loop_id, "failed", "error")  # DECISION:stop:error 출력 포함
+        return
     branch_label = branch or "(git 저장소 아님 — 커밋 없이 파일 수정만)"
     while True:
         loop = core.get_loop(db, args.loop_id)
@@ -176,6 +183,7 @@ def cmd_status(args):
               f" no_progress={loop['no_progress_count']}"
               f"/{loop['no_progress_limit']}")
         print(f"  GOAL.md: {loop['goal_md_path']}")
+        print(f"  branch: {loop['branch'] or '-'}")
         con = core.connect_db(db)
         rows = con.execute(
             "SELECT iteration, verdict, objective_signal, progressed,"
