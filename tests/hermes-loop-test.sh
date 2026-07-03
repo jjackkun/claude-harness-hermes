@@ -183,6 +183,26 @@ check "status=stopped" test "$(sql "SELECT status FROM loops WHERE id='$ID12'")"
 check "stop 후 status 커맨드 조회 가능" bash -c "loop_cli status '$ID12' | grep -q 'user-stop'"
 
 echo ""
+echo "== 13. 헤드리스 래퍼 =="
+badargs=$("$S/hermes-loop-run.sh" 2>&1 || true)
+check "인자 검증 (usage)" bash -c "echo '$badargs' | grep -q 'usage'"
+wout=$(MOCK_COUNT_FILE="$T/cnt-wrap" MOCK_LOOP_PLAN="goalmet-pass" "$S/hermes-loop-run.sh" "$PROJ" "래퍼 테스트 목표")
+check "래퍼가 loop-id/pid/log 출력" bash -c "echo '$wout' | grep -q 'id=loop-'"
+wid=$(echo "$wout" | sed -n 's/.*id=\(loop-[^ ]*\).*/\1/p')
+# nohup 백그라운드 완료 폴링 (고정 sleep 은 CI 고부하에서 flaky)
+python3 - "$DB" "$wid" <<'EOF'
+import sqlite3, sys, time
+for _ in range(100):
+    st = sqlite3.connect(sys.argv[1]).execute(
+        "SELECT status FROM loops WHERE id=?", (sys.argv[2],)).fetchone()
+    if st and st[0] == "done":
+        break
+    time.sleep(0.3)
+EOF
+check "백그라운드 루프 완료" test "$(sql "SELECT status FROM loops WHERE id='$wid'")" = "done"
+check "래퍼 로그 생성" test -f "$PROJ/.hermes/logs/loop-$wid.log"
+
+echo ""
 echo "== 11. G9 — 파괴적 작업 차단 + REPORT 계약 =="
 pout=$(python3 -c "
 import sys; sys.path.insert(0, '$S')
@@ -210,6 +230,7 @@ print('OK')
 ")
 check "REPORT 파서 정상/실패 경로" test "$parse_ok" = "OK"
 check "run 이 dangerously-skip 미사용 (G9)" bash -c "! grep -q 'dangerously-skip-permissions' '$S/hermes-loop.py'"
+check "래퍼도 dangerously-skip 미사용 (G9)" bash -c "! grep -q 'dangerously-skip-permissions' '$S/hermes-loop-run.sh'"
 
 echo ""
 echo "PASS=$pass FAIL=$fail"
