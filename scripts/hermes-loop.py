@@ -3,7 +3,7 @@
 
 드라이버 while-루프를 소유한다. 완료판정·안전캡은 이 결정적 코드가 쥐고,
 창의적 판단·VERIFY 제안은 에이전트(claude -p)가 맡는다 (설계 §6).
-run/resume 은 --dangerously-skip-permissions 를 절대 사용하지 않는다 (G9).
+run/resume 은 권한 확인을 건너뛰는 위험 플래그를 절대 사용하지 않는다 (G9).
 
 사용법:
   hermes-loop.py [--project-dir PATH] init --goal "..." [--title T]
@@ -74,7 +74,64 @@ def cmd_init(args):
 # ── run / resume (드라이버) — Task 4 에서 구현 ───────────────────────────────
 
 def _drive(args):
-    raise NotImplementedError("Task 4 에서 구현")
+    db = _db_path(args.project_dir)
+    _require_running(db, args.loop_id)
+    # 루프 전용 브랜치 — 커밋을 loop/<id> 에 격리, 머지·push 는 사용자 수동 (G14)
+    branch = core.ensure_loop_branch(db, args.project_dir, args.loop_id)
+    branch_label = branch or "(git 저장소 아님 — 커밋 없이 파일 수정만)"
+    while True:
+        loop = core.get_loop(db, args.loop_id)
+        cap = core.check_caps(loop)           # 1. 안전캡 선행 체크 (G5·G6)
+        if cap:
+            _finish(db, args.loop_id, "stopped", cap)
+            return
+        goal = core.read_goal_md(loop["goal_md_path"])
+        iteration = loop["iterations_used"] + 1
+        checked_before = core.checked_count(goal["conditions"])
+        head_before = core.git_head(args.project_dir)
+        prev_signal = core.last_signal(db, args.loop_id)
+        prompt = build_iteration_prompt(      # 2. 프롬프트 조립
+            args.project_dir, loop["goal_md_path"], goal["goal"],
+            goal["conditions"], goal["log_lines"], prev_signal,
+            iteration, loop["max_iterations"], branch_label)
+        print(f"[hermes-loop] iter {iteration}/{loop['max_iterations']} 시작")
+        try:                                   # 3. 동기 실행 (격리 cold start)
+            proc = subprocess.run(
+                [args.claude_cmd, "-p", prompt], capture_output=True,
+                text=True, cwd=args.project_dir,
+                timeout=(args.iter_timeout or None))
+            report = parse_report(proc.stdout) if proc.returncode == 0 else None
+        except (subprocess.TimeoutExpired, OSError):
+            report = None
+        if report is None:                     # 오류 = 무진전 취급 (설계 §7)
+            action = "claude 실행 실패 또는 REPORT 파싱 실패"
+            core.record_iteration(db, args.loop_id, iteration,
+                                  action, "continue", "none", False)
+            core.append_progress_log(loop["goal_md_path"], iteration,
+                                     action, "none", "continue")
+            continue
+        verify_cmd = (report["verify"]
+                      if report["verify"].lower() != "none" else None)
+        if report["verdict"] == "goal-met" and not verify_cmd:
+            verify_cmd = goal["verify_cmd"]   # GOAL.md 최종 게이트 (§5.1)
+        signal = (core.run_verify(verify_cmd, args.project_dir)  # 4~5. 교차검증
+                  if verify_cmd else "none")
+        verdict = _decide(report["verdict"], signal)
+        after = core.read_goal_md(loop["goal_md_path"])
+        progressed = (                         # 6. 진전 판정
+            core.checked_count(after["conditions"]) > checked_before
+            or core.git_head(args.project_dir) != head_before
+            or (signal == "pass" and prev_signal == "fail"))
+        core.record_iteration(db, args.loop_id, iteration,    # 7. 기록
+                              report["action"], verdict, signal, progressed)
+        core.append_progress_log(loop["goal_md_path"], iteration,
+                                 report["action"], signal, verdict)
+        if verdict == "goal-met":              # 8. 종료 판정
+            _finish(db, args.loop_id, "done", "goal-met")
+            return
+        if verdict == "blocked":
+            _finish(db, args.loop_id, "stopped", "blocked")
+            return
 
 
 # ── step (대화형 스킬용 — 공용 판정 코어 노출) ───────────────────────────────

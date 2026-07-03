@@ -95,6 +95,52 @@ check "조건 0개 → 최소 5회 (§6.1)" test "$mi0" = "5"
 check "GOAL.md 에 완료 조건 체크박스" bash -c "grep -q '\- \[ \] 조건 A' '$PROJ/.hermes/loops/$ID1/GOAL.md'"
 
 echo ""
+echo "== 2. run — continue×2 후 goal-met (G2·G4) =="
+ID2=$(new_loop)
+run_loop "$ID2" "continue,continue,goalmet-pass" >/dev/null
+check "status=done (G4)" test "$(sql "SELECT status FROM loops WHERE id='$ID2'")" = "done"
+check "finish_reason=goal-met (G4)" test "$(sql "SELECT finish_reason FROM loops WHERE id='$ID2'")" = "goal-met"
+check "3회 반복 (G2)" test "$(sql "SELECT iterations_used FROM loops WHERE id='$ID2'")" = "3"
+check "loop_steps 3행 기록" test "$(sql "SELECT COUNT(*) FROM loop_steps WHERE loop_id='$ID2'")" = "3"
+lg=$(grep -c '^- \[iter ' "$PROJ/.hermes/loops/$ID2/GOAL.md")
+check "GOAL.md 진행 로그 3줄" test "$lg" = "3"
+check "GOAL.md status=done 동기화" bash -c "grep -q 'status: done' '$PROJ/.hermes/loops/$ID2/GOAL.md'"
+check "루프 브랜치 생성·체크아웃 (G14)" test "$(git -C "$PROJ" branch --show-current)" = "loop/$ID2"
+check "main HEAD 미변경 (G14)" test "$(git -C "$PROJ" rev-parse main)" = "$MAIN_HEAD"
+check "loops.branch 기록 (G14)" test "$(sql "SELECT branch FROM loops WHERE id='$ID2'")" = "loop/$ID2"
+
+echo ""
+echo "== 3. 교차검증 — goal-met + VERIFY fail 은 강등 (G3) =="
+ID3=$(new_loop)
+run_loop "$ID3" "goalmet-fail,goalmet-pass" >/dev/null
+check "1회차 기각 → 2회 반복 후 완료" test "$(sql "SELECT iterations_used FROM loops WHERE id='$ID3'")" = "2"
+check "1회차 verdict continue 강등" test "$(sql "SELECT verdict FROM loop_steps WHERE loop_id='$ID3' AND iteration=1")" = "continue"
+check "1회차 objective_signal=fail" test "$(sql "SELECT objective_signal FROM loop_steps WHERE loop_id='$ID3' AND iteration=1")" = "fail"
+check "최종 done" test "$(sql "SELECT status FROM loops WHERE id='$ID3'")" = "done"
+
+echo ""
+echo "== 4. 안전캡 — max-iter (G5) =="
+ID4=$(new_loop --max-iter 2)
+run_loop "$ID4" "continue" >/dev/null
+check "finish_reason=max-iter" test "$(sql "SELECT finish_reason FROM loops WHERE id='$ID4'")" = "max-iter"
+check "status=stopped" test "$(sql "SELECT status FROM loops WHERE id='$ID4'")" = "stopped"
+check "2회에서 중단" test "$(sql "SELECT iterations_used FROM loops WHERE id='$ID4'")" = "2"
+
+echo ""
+echo "== 5. 안전캡 — no-progress (G6) =="
+ID5=$(new_loop)   # max_iter=5, no_progress_limit=3
+run_loop "$ID5" "continue" >/dev/null
+check "finish_reason=no-progress" test "$(sql "SELECT finish_reason FROM loops WHERE id='$ID5'")" = "no-progress"
+check "3회 무진전에서 중단" test "$(sql "SELECT iterations_used FROM loops WHERE id='$ID5'")" = "3"
+
+echo ""
+echo "== 6. blocked → 사람 개입 (G7) =="
+ID6=$(new_loop)
+run_loop "$ID6" "blocked" >/dev/null
+check "status=stopped" test "$(sql "SELECT status FROM loops WHERE id='$ID6'")" = "stopped"
+check "finish_reason=blocked" test "$(sql "SELECT finish_reason FROM loops WHERE id='$ID6'")" = "blocked"
+
+echo ""
 echo "== 7. 재개 준비 — step 커맨드 (G8 전반부·G10 공용 판정 코어) =="
 ID7=$(new_loop)
 sout=$(loop_cli step "$ID7" --action "부분 작업" --verdict continue --signal none)
@@ -102,6 +148,31 @@ check "step 출력 DECISION:continue" bash -c "echo '$sout' | grep -q 'DECISION:
 check "step 후 iterations_used=1" test "$(sql "SELECT iterations_used FROM loops WHERE id='$ID7'")" = "1"
 check "step 후 status=running (중단 상태 재현)" test "$(sql "SELECT status FROM loops WHERE id='$ID7'")" = "running"
 check "step 이 GOAL.md 진행 로그 기록" bash -c "grep -q '\- \[iter 1\]' '$PROJ/.hermes/loops/$ID7/GOAL.md'"
+run_loop "$ID7" "goalmet-pass" resume >/dev/null
+check "resume 후 완료 (G8)" test "$(sql "SELECT status FROM loops WHERE id='$ID7'")" = "done"
+check "iterations_used 이어짐 (=2) (G8)" test "$(sql "SELECT iterations_used FROM loops WHERE id='$ID7'")" = "2"
+
+echo ""
+echo "== 8. 완료 아카이브 (G11) =="
+ar=$(sql "SELECT COUNT(*) FROM messages WHERE from_agent='loop' AND to_agent='archive' AND content LIKE '%$ID2%'")
+check "messages 아카이브 행 존재" test "$ar" = "1"
+
+echo ""
+echo "== 9. 마스킹 (G12) =="
+ID9=$(new_loop)
+MOCK_ACTION_EXTRA="ghp_abcdefghijklmnopqrstuvwxyz0123456789" run_loop "$ID9" "goalmet-pass" >/dev/null
+raw=$(sql "SELECT COUNT(*) FROM loop_steps WHERE loop_id='$ID9' AND action_summary LIKE '%ghp_abcdef%'")
+check "DB 에 원문 토큰 없음" test "$raw" = "0"
+red=$(sql "SELECT COUNT(*) FROM loop_steps WHERE loop_id='$ID9' AND action_summary LIKE '%[REDACTED:TOKEN]%'")
+check "DB 에 [REDACTED:TOKEN] 치환" test "$red" = "1"
+check "GOAL.md 로그도 치환" bash -c "grep -q 'REDACTED:TOKEN' '$PROJ/.hermes/loops/$ID9/GOAL.md' && ! grep -q 'ghp_abcdef' '$PROJ/.hermes/loops/$ID9/GOAL.md'"
+
+echo ""
+echo "== 10. 오류 안전 — REPORT 파싱 실패는 무진전 취급 (§7) =="
+ID10=$(new_loop)
+run_loop "$ID10" "noreport,goalmet-pass" >/dev/null
+check "파싱 실패 후에도 완료" test "$(sql "SELECT status FROM loops WHERE id='$ID10'")" = "done"
+check "실패 반복 기록됨 (2회)" test "$(sql "SELECT iterations_used FROM loops WHERE id='$ID10'")" = "2"
 
 echo ""
 echo "== 12. stop — user-stop =="
@@ -138,6 +209,7 @@ assert parse_report('=== HERMES-LOOP REPORT ===\nVERDICT: maybe\n=== END REPORT 
 print('OK')
 ")
 check "REPORT 파서 정상/실패 경로" test "$parse_ok" = "OK"
+check "run 이 dangerously-skip 미사용 (G9)" bash -c "! grep -q 'dangerously-skip-permissions' '$S/hermes-loop.py'"
 
 echo ""
 echo "PASS=$pass FAIL=$fail"
