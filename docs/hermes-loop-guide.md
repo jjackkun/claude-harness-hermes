@@ -7,7 +7,7 @@
 
 ## 개요
 
-```
+```text
 목표 입력 (init)
     ↓  GOAL.md 생성 + loops 행 INSERT
 드라이버 while-루프 (hermes-loop.py run)
@@ -40,7 +40,7 @@ scripts/hermes-loop-run.sh /path/to/project "로그인 버그 수정" \
 
 Claude Code 세션에서:
 
-```
+```text
 /hermes-loop 테스트 커버리지 80% 달성
 ```
 
