@@ -241,7 +241,7 @@ check "래퍼도 dangerously-skip 미사용 (G9)" bash -c "! grep -q 'dangerousl
 echo ""
 echo "== 14. 설치·제거 매니페스트 정합성 (G10·G13·§8) =="
 CONF="$REPO_ROOT/presets/workflow/hermes.conf"
-for f in hermes_loop.py hermes_loop_prompt.py hermes-loop.py hermes-loop-run.sh; do
+for f in hermes_loop.py hermes_loop_prompt.py hermes_loop_report.py hermes-loop.py hermes-loop-run.sh; do
   check "hermes.conf 매니페스트: $f" bash -c "grep -q '$f' '$CONF'"
 done
 check "SKILLS 에 hermes-loop 등록 (G10)" bash -c "grep -qE '^  hermes-loop$' '$CONF'"
@@ -291,6 +291,23 @@ except RuntimeError:
 ")
 check "(a) non-git → None 유지" bash -c "echo '$branch_py' | grep -q 'A_NONE'"
 check "(b) 체크아웃 실패 → RuntimeError" bash -c "echo '$branch_py' | grep -q 'B_RAISED'"
+
+echo ""
+echo "== 17. 완료 HTML 보고서 (G15) =="
+IDR=$(new_loop --condition "조건 X")
+run_loop "$IDR" "goalmet-pass" >/dev/null
+RP="$PROJ/.hermes/loops/$IDR/report.html"
+check "report.html 생성 (G15)" test -f "$RP"
+check "보고서에 종료 사유(목표 달성) 포함" grep -q "목표 달성" "$RP"
+check "보고서에 반복 기록 섹션" grep -q "반복 기록" "$RP"
+check "자체완결 — 외부 URL 없음 (CSP 안전)" bash -c "! grep -qE 'https?://' '$RP'"
+rm -f "$RP"
+rout=$(loop_cli report "$IDR")
+check "report 서브커맨드 재생성 + REPORT_HTML 출력" bash -c "echo '$rout' | grep -q 'REPORT_HTML:' && test -f '$RP'"
+# G15 마스킹: action 의 토큰이 이미 redact 되어 보고서에도 원문 미노출
+IDRK=$(new_loop)
+MOCK_ACTION_EXTRA="ghp_abcdefghijklmnopqrstuvwxyz0123456789" run_loop "$IDRK" "goalmet-pass" >/dev/null
+check "보고서에 원문 토큰 미노출 (G12→G15)" bash -c "! grep -q 'ghp_abcdef' '$PROJ/.hermes/loops/$IDRK/report.html'"
 
 echo ""
 echo "PASS=$pass FAIL=$fail"

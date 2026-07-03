@@ -50,6 +50,11 @@ description: Run a goal-based autonomous loop inside the current session. Use wh
    보고한다. 머지 여부는 사용자가 diff 검토 후 결정함을 안내한다.
    blocked/no-progress 면 무엇이 막혔고 사람이 무엇을 결정해야 하는지 명시한다.
 
+5. **완료 보고서 게시** — 루프가 종료되면 CLI 가 `.hermes/loops/<LOOP_ID>/report.html`
+   을 생성하고 `REPORT_HTML:<경로>` 를 출력한다. 그 HTML 파일을 읽어 **아티팩트로
+   게시**해 사용자가 웹에서 결과를 검토하고 머지 여부를 판단하게 한다.
+   (필요 시 `python3 scripts/hermes-loop.py report <LOOP_ID>` 로 재생성 가능.)
+
 ## 주의
 
 - 완료판정·안전캡은 CLI(결정적 코드)가 내린다 — DECISION 출력을 임의로 무시하지 않는다.

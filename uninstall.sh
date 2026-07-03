@@ -178,7 +178,7 @@ do_uninstall() {
   local scripts_dir="$project_path/scripts"
   if [[ -d "$scripts_dir" ]]; then
     local hermes_scripts
-    mapfile -t hermes_scripts < <(find "$scripts_dir" -maxdepth 1 \( -name "hermes-*.py" -o -name "hermes-cron-run.sh" -o -name "hermes-loop-run.sh" -o -name "hermes_loop.py" -o -name "hermes_loop_prompt.py" \) 2>/dev/null)
+    mapfile -t hermes_scripts < <(find "$scripts_dir" -maxdepth 1 \( -name "hermes-*.py" -o -name "hermes-cron-run.sh" -o -name "hermes-loop-run.sh" -o -name "hermes_loop.py" -o -name "hermes_loop_prompt.py" -o -name "hermes_loop_report.py" \) 2>/dev/null)
     for f in "${hermes_scripts[@]}"; do
       _rm_path file "$f" "scripts/$(basename "$f")"
     done
@@ -249,7 +249,7 @@ for path in "${TARGETS[@]}"; do
     && echo "  • .github/workflows/weekly-doc-gardening.yml"
   [[ -d "$path/.codex" ]] && echo "  • .codex/"
   [[ -d "$path/scripts/codex-hooks" ]] && echo "  • scripts/codex-hooks/"
-  hermes_py_count=$(find "$path/scripts" -maxdepth 1 \( -name "hermes-*.py" -o -name "hermes-cron-run.sh" -o -name "hermes-loop-run.sh" -o -name "hermes_loop.py" -o -name "hermes_loop_prompt.py" \) 2>/dev/null | wc -l)
+  hermes_py_count=$(find "$path/scripts" -maxdepth 1 \( -name "hermes-*.py" -o -name "hermes-cron-run.sh" -o -name "hermes-loop-run.sh" -o -name "hermes_loop.py" -o -name "hermes_loop_prompt.py" -o -name "hermes_loop_report.py" \) 2>/dev/null | wc -l)
   [[ $hermes_py_count -gt 0 ]] && echo "  • scripts/hermes-* (${hermes_py_count}개)"
   [[ -d "$path/.hermes" ]] && echo -e "  ${YELLOW}• .hermes/ (DB 포함 — 별도 확인)${RESET}"
   echo ""

@@ -40,9 +40,16 @@ def _decide(verdict, signal):
     return verdict
 
 
-def _finish(db, loop_id, status, reason):
+def _finish(db, project_dir, loop_id, status, reason):
     core.finish_loop(db, loop_id, status, reason)
     core.archive_loop(db, loop_id)
+    # 완료 HTML 보고서 생성 (G15) — best-effort, 종료를 막지 않음
+    try:
+        import hermes_loop_report as report
+        path = report.write_report(db, project_dir, loop_id)
+        print(f"REPORT_HTML:{path}")
+    except Exception as e:
+        print(f"[hermes-loop] 보고서 생성 실패: {e}", file=sys.stderr)
     print(f"DECISION:stop:{reason}")
 
 
@@ -83,14 +90,14 @@ def _drive(args):
         # git 저장소인데 격리(체크아웃)에 실패 — 격리 없이 진행하면 커밋이
         # main(또는 이전 브랜치)에 남을 위험이 있으므로 루프를 시작하지 않는다.
         print(f"[hermes-loop] {e}", file=sys.stderr)
-        _finish(db, args.loop_id, "failed", "error")  # DECISION:stop:error 출력 포함
+        _finish(db, args.project_dir, args.loop_id, "failed", "error")  # DECISION:stop:error 출력 포함
         return
     branch_label = branch or "(git 저장소 아님 — 커밋 없이 파일 수정만)"
     while True:
         loop = core.get_loop(db, args.loop_id)
         cap = core.check_caps(loop)           # 1. 안전캡 선행 체크 (G5·G6)
         if cap:
-            _finish(db, args.loop_id, "stopped", cap)
+            _finish(db, args.project_dir, args.loop_id, "stopped", cap)
             return
         goal = core.read_goal_md(loop["goal_md_path"])
         iteration = loop["iterations_used"] + 1
@@ -134,10 +141,10 @@ def _drive(args):
         core.append_progress_log(loop["goal_md_path"], iteration,
                                  report["action"], signal, verdict)
         if verdict == "goal-met":              # 8. 종료 판정
-            _finish(db, args.loop_id, "done", "goal-met")
+            _finish(db, args.project_dir, args.loop_id, "done", "goal-met")
             return
         if verdict == "blocked":
-            _finish(db, args.loop_id, "stopped", "blocked")
+            _finish(db, args.project_dir, args.loop_id, "stopped", "blocked")
             return
 
 
@@ -148,7 +155,7 @@ def cmd_step(args):
     loop = _require_running(db, args.loop_id)
     cap = core.check_caps(loop)              # 안전캡 선행 체크 (G5·G6)
     if cap:
-        _finish(db, args.loop_id, "stopped", cap)
+        _finish(db, args.project_dir, args.loop_id, "stopped", cap)
         return
     iteration = loop["iterations_used"] + 1
     verdict = _decide(args.verdict, args.signal)
@@ -160,9 +167,9 @@ def cmd_step(args):
     core.append_progress_log(loop["goal_md_path"], iteration,
                              args.action, args.signal, verdict)
     if verdict == "goal-met":
-        _finish(db, args.loop_id, "done", "goal-met")
+        _finish(db, args.project_dir, args.loop_id, "done", "goal-met")
     elif verdict == "blocked":
-        _finish(db, args.loop_id, "stopped", "blocked")
+        _finish(db, args.project_dir, args.loop_id, "stopped", "blocked")
     else:
         print("DECISION:continue")
 
@@ -207,7 +214,17 @@ def cmd_status(args):
 def cmd_stop(args):
     db = _db_path(args.project_dir)
     _require_running(db, args.loop_id)
-    _finish(db, args.loop_id, "stopped", "user-stop")
+    _finish(db, args.project_dir, args.loop_id, "stopped", "user-stop")
+
+
+def cmd_report(args):
+    db = _db_path(args.project_dir)
+    if not core.get_loop(db, args.loop_id):
+        print(f"[hermes-loop] 루프 없음: {args.loop_id}", file=sys.stderr)
+        sys.exit(1)
+    import hermes_loop_report as report
+    path = report.write_report(db, args.project_dir, args.loop_id)
+    print(f"REPORT_HTML:{path}")
 
 
 def main():
@@ -249,6 +266,9 @@ def main():
     p = sub.add_parser("stop", help="사용자 강제 중단 (finish_reason=user-stop)")
     p.add_argument("loop_id")
 
+    p = sub.add_parser("report", help="완료 HTML 보고서 재생성 (G15)")
+    p.add_argument("loop_id")
+
     args = parser.parse_args()
     args.project_dir = os.path.abspath(args.project_dir)
 
@@ -262,6 +282,8 @@ def main():
         cmd_status(args)
     elif args.cmd == "stop":
         cmd_stop(args)
+    elif args.cmd == "report":
+        cmd_report(args)
     else:
         parser.print_help()
 
