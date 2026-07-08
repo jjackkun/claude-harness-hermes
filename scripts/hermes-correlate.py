@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
-"""헤르메스 결과 상관 — 주입 원장 ↔ transcript 편집경로 대조.
+"""헤르메스 결과 상관 — 주입 원장 ↔ transcript 도구 활동 대조.
 
-Stop 훅에서 호출. 이 세션에 주입된 스킬 중, transcript 의 Edit/Write/MultiEdit
-대상 파일 경로 토큰과 스킬 키워드가 겹치면 helpful_count, 안 겹치면 noop_count 를
-증가시킨다. 처리한 원장 행은 correlated=1 로 마킹해 중복 집계를 막는다.
+Stop 훅에서 호출. 이 세션에 주입된 스킬 중, transcript 의 도구 활동
+(Edit/Write/MultiEdit·Read·Bash·Grep/Glob) 대상 토큰과 스킬 키워드가 서로 다른
+값으로 2개 이상 겹치면 helpful_count, 그 미만이면 noop_count 를 증가시킨다.
+읽기·조회·테스트형 스킬도 인정되도록 편집 외 도구까지 포함한다(설계 C2).
+처리한 원장 행은 correlated=1 로 마킹해 중복 집계를 막는다.
 
-비차단 — 항상 exit 0. 휴리스틱(키워드↔경로 겹침)이라 오탐·미탐 존재하나,
+비차단 — 항상 exit 0. 휴리스틱(키워드↔활동 겹침)이라 오탐·미탐 존재하나,
 결과는 되돌릴 수 있는 강등으로만 이어진다.
 
 사용법:
@@ -20,7 +22,20 @@ import sqlite3
 import sys
 from datetime import datetime, timezone
 
-EDIT_TOOLS = {"edit", "write", "multiedit"}
+# helpful 판정 최소 겹침 키워드 수 (설계 §4.3):
+# 단어 하나짜리 파편 키워드로는 도달 불가(≥2 필요) → 파편 배제 + 단일 우연 겹침 거짓양성 차단.
+MIN_KEYWORD_OVERLAP = int(os.environ.get("HERMES_CORRELATE_MIN_OVERLAP", "2"))
+
+# 도구별 토큰화 대상 입력 필드 — 편집뿐 아니라 조회·실행·검색 활동까지 (설계 §4.2).
+TOOL_TOKEN_FIELDS = {
+    "edit": ("file_path",),
+    "write": ("file_path",),
+    "multiedit": ("file_path",),
+    "read": ("file_path",),
+    "bash": ("command",),
+    "grep": ("pattern", "path"),
+    "glob": ("pattern", "path"),
+}
 
 
 def connect_db(db_path: str) -> sqlite3.Connection:
@@ -34,8 +49,12 @@ def _log(msg: str) -> None:
     print(f"[hermes-correlate] {msg}", file=sys.stderr)
 
 
-def edited_path_tokens(transcript_path: str) -> set:
-    """transcript JSONL 에서 편집 도구 대상 파일경로를 토큰 집합으로 모은다."""
+def session_tool_tokens(transcript_path: str) -> set:
+    """transcript JSONL 에서 세션의 모든 도구 활동 대상을 토큰 집합으로 모은다.
+
+    편집(Edit/Write) 경로뿐 아니라 Read/Bash/Grep/Glob 의 대상 파일경로·명령·패턴까지
+    포함한다 — 읽기·조회·테스트형 스킬도 효용 판정에 잡히게 하기 위함 (설계 §4.2).
+    """
     tokens = set()
     try:
         with open(transcript_path, "r", encoding="utf-8") as f:
@@ -55,12 +74,15 @@ def edited_path_tokens(transcript_path: str) -> set:
                         continue
                     if blk.get("type") != "tool_use":
                         continue
-                    if str(blk.get("name", "")).lower() not in EDIT_TOOLS:
+                    fields = TOOL_TOKEN_FIELDS.get(str(blk.get("name", "")).lower())
+                    if not fields:
                         continue
-                    fp = (blk.get("input") or {}).get("file_path", "")
-                    for tok in re.findall(r"[a-z0-9가-힣_\-]+", str(fp).lower()):
-                        if len(tok) >= 2:
-                            tokens.add(tok)
+                    inp = blk.get("input") or {}
+                    for field in fields:
+                        val = str(inp.get(field, ""))
+                        for tok in re.findall(r"[a-z0-9가-힣_\-]+", val.lower()):
+                            if len(tok) >= 2:
+                                tokens.add(tok)
     except Exception as e:
         _log(f"transcript 파싱 실패({transcript_path}): {e}")
     return tokens
@@ -69,7 +91,7 @@ def edited_path_tokens(transcript_path: str) -> set:
 def correlate(db_path: str, transcript_path: str, session_id: str) -> None:
     if not (os.path.isfile(db_path) and os.path.isfile(transcript_path) and session_id):
         return
-    tokens = edited_path_tokens(transcript_path)
+    tokens = session_tool_tokens(transcript_path)
     now = datetime.now(timezone.utc).isoformat()
     try:
         con = connect_db(db_path)
@@ -85,7 +107,7 @@ def correlate(db_path: str, transcript_path: str, session_id: str) -> None:
             kws = set()
             if kw_row and kw_row[0]:
                 kws = {k for k in kw_row[0].lower().split(",") if len(k) >= 2}
-            helped = bool(kws & tokens)
+            helped = len(kws & tokens) >= MIN_KEYWORD_OVERLAP
             if helped:
                 con.execute(
                     "UPDATE skill_index SET helpful_count = helpful_count + 1, "
