@@ -116,7 +116,7 @@ PY
 if rank_check 2>/dev/null | grep -q OK; then ok "랭킹: 관련도 우선 — 신규 고관련 스킬 콜드스타트 구제"; else nope "랭킹 관련도 우선"; fi
 
 # --- Task5: 결과 상관 ---
-# 픽스처: flatone(키워드 baseinput) 을 sess-C 에 주입했다고 원장에 심고,
+# 픽스처: flatone(키워드 baseinput·컴포넌트) 을 sess-C 에 주입했다고 원장에 심고,
 # transcript 에 BaseInput.vue 편집 이벤트를 넣는다 → helpful_count 증가 기대.
 python3 - <<PY
 import sqlite3
@@ -127,7 +127,7 @@ con.commit()
 PY
 TR="$TMP/transcript.jsonl"
 cat > "$TR" <<'JSONL'
-{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","name":"Edit","input":{"file_path":"/proj/src/components/BaseInput.vue"}}]}}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","name":"Edit","input":{"file_path":"/proj/src/컴포넌트/BaseInput.vue"}}]}}
 JSONL
 python3 "$SCRIPTS/hermes-correlate.py" --db "$DB" --transcript "$TR" --session-id "sess-C" >/dev/null 2>&1
 corr_check() {
