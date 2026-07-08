@@ -593,5 +593,58 @@ echo '{"source":"startup"}' | CLAUDE_PROJECT_DIR="$NODB" bash "$DREAM_HOOK" >/de
 check "DB 부재: 마커 미생성·안전 종료" bash -c "! test -f '$NODB/.hermes/dream-last-run'"
 
 echo ""
+echo "== 27. correlate — 도구 활동 전반 겹침 + 키워드 ≥2 가드 (C2) =="
+# 테스트용 스킬 2개 등록(INSERT OR REPLACE 로 helpful/noop 0 리셋) — 조회형(키워드 3개)·파편(키워드 1개)
+python3 - "$DB" <<'PY'
+import sqlite3, sys
+con=sqlite3.connect(sys.argv[1])
+con.execute("INSERT OR REPLACE INTO skill_index (skill_path,keywords,scope) VALUES ('/s/api-token.md','token,auth,login','local')")
+con.execute("INSERT OR REPLACE INTO skill_index (skill_path,keywords,scope) VALUES ('/s/테이블.md','테이블','local')")
+con.commit()
+PY
+inject() { # inject <session_id> <skill_path>
+python3 - "$DB" "$1" "$2" <<'PY'
+import sqlite3, sys
+con=sqlite3.connect(sys.argv[1])
+con.execute("INSERT INTO skill_injection (session_id,skill_path,correlated) VALUES (?,?,0)",(sys.argv[2],sys.argv[3]))
+con.commit()
+PY
+}
+CTR="$T/corr.jsonl"
+
+# (a) 조회형: Bash command 에 키워드 2개 이상(token,auth,login) → helpful (G1·G2)
+inject corr-a /s/api-token.md
+mktool "$CTR" "curl https://api.example/auth/token -d login=1" "ok" 0 tu-c1
+python3 "$S/hermes-correlate.py" --db "$DB" --transcript "$CTR" --session-id corr-a >/dev/null 2>&1
+check "조회형 Bash 2겹침 → helpful (편집 없이 인정)" test "$(sql "SELECT helpful_count FROM skill_index WHERE skill_path='/s/api-token.md'")" = "1"
+
+# (b) 1개만 겹침 → noop (G2 가드)
+inject corr-b /s/api-token.md
+mktool "$CTR" "curl https://api.example/data/token" "ok" 0 tu-c2
+python3 "$S/hermes-correlate.py" --db "$DB" --transcript "$CTR" --session-id corr-b >/dev/null 2>&1
+check "1겹침 → helpful 불변(=1)" test "$(sql "SELECT helpful_count FROM skill_index WHERE skill_path='/s/api-token.md'")" = "1"
+check "1겹침 → noop 증가(=1)" test "$(sql "SELECT noop_count FROM skill_index WHERE skill_path='/s/api-token.md'")" = "1"
+
+# (c) 파편(키워드 1개) → 아무리 겹쳐도 helpful 0 (G3)
+inject corr-c /s/테이블.md
+mktool "$CTR" "cat src/테이블.js 테이블 테이블" "ok" 0 tu-c3
+python3 "$S/hermes-correlate.py" --db "$DB" --transcript "$CTR" --session-id corr-c >/dev/null 2>&1
+check "파편(키워드1개) → helpful 0" test "$(sql "SELECT helpful_count FROM skill_index WHERE skill_path='/s/테이블.md'")" = "0"
+
+# (d) 편집 경로 2겹침 → 여전히 helpful (G4 회귀 방어)
+python3 - "$T/corr-edit.jsonl" <<'PY'
+import json, sys
+blk={"type":"tool_use","id":"tu-e1","name":"Edit","input":{"file_path":"src/auth/token/service.py"}}
+open(sys.argv[1],'w').write(json.dumps({"type":"assistant","message":{"role":"assistant","content":[blk]}}))
+PY
+inject corr-d /s/api-token.md
+python3 "$S/hermes-correlate.py" --db "$DB" --transcript "$T/corr-edit.jsonl" --session-id corr-d >/dev/null 2>&1
+check "편집 경로 2겹침 → helpful (기존 경로 회귀)" test "$(sql "SELECT helpful_count FROM skill_index WHERE skill_path='/s/api-token.md'")" = "2"
+
+# (e) 존재하지 않는 transcript → 예외 없이 exit 0 (G5)
+python3 "$S/hermes-correlate.py" --db "$DB" --transcript "$T/no-such.jsonl" --session-id nope >/dev/null 2>&1
+check "없는 transcript 도 exit 0 (비차단)" test "$?" = "0"
+
+echo ""
 echo "PASS=$pass FAIL=$fail"
 [[ $fail -eq 0 ]]
