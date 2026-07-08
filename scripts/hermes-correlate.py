@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
-"""헤르메스 결과 상관 — 주입 원장 ↔ transcript 편집경로 대조.
+"""헤르메스 결과 상관 — 주입 원장 ↔ transcript 도구 활동 대조.
 
-Stop 훅에서 호출. 이 세션에 주입된 스킬 중, transcript 의 Edit/Write/MultiEdit
-대상 파일 경로 토큰과 스킬 키워드가 겹치면 helpful_count, 안 겹치면 noop_count 를
-증가시킨다. 처리한 원장 행은 correlated=1 로 마킹해 중복 집계를 막는다.
+Stop 훅에서 호출. 이 세션에 주입된 스킬 중, transcript 의 도구 활동
+(Edit/Write/MultiEdit·Read·Bash·Grep/Glob) 대상 토큰과 스킬 키워드가 서로 다른
+값으로 2개 이상 겹치면 helpful_count, 그 미만이면 noop_count 를 증가시킨다.
+읽기·조회·테스트형 스킬도 인정되도록 편집 외 도구까지 포함한다(설계 C2).
+처리한 원장 행은 correlated=1 로 마킹해 중복 집계를 막는다.
 
-비차단 — 항상 exit 0. 휴리스틱(키워드↔경로 겹침)이라 오탐·미탐 존재하나,
+비차단 — 항상 exit 0. 휴리스틱(키워드↔활동 겹침)이라 오탐·미탐 존재하나,
 결과는 되돌릴 수 있는 강등으로만 이어진다.
 
 사용법:
