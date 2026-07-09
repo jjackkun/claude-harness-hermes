@@ -776,5 +776,77 @@ PATH="$T/assistbin:$PATH" CLAUDE_CALL_MARKER="$MARKER" python3 "$S/hermes-search
 check "대조군: 플래그 없으면 claude -p 호출됨" test -f "$MARKER"
 
 echo ""
+echo "== 30. assist 훅 e2e — 터미널 실패 신호 (C1) =="
+ASSIST_HOOK="$REPO_ROOT/assets/hooks/claude-posttooluse-hermes-assist.sh"
+
+# 훅 페이로드 생성기 — PostToolUse(Bash) 형식
+mkpayload() { # mkpayload <session_id> <command> <stdout> <stderr>
+python3 -c "
+import json,sys
+sid,cmd,out,err = sys.argv[1:5]
+print(json.dumps({
+  'session_id': sid, 'tool_name': 'Bash',
+  'tool_input': {'command': cmd},
+  'tool_response': {'stdout': out, 'stderr': err},
+}, ensure_ascii=False))
+" "$1" "$2" "$3" "$4"; }
+
+# 훅은 hermes-search 를 $(dirname $0)/../../scripts 에서 찾고, DB 는 $CLAUDE_PROJECT_DIR/.hermes/state.db.
+# 섹션 29 가 만든 $AP 를 프로젝트로 재사용한다 (api-token.md 스킬이 등록돼 있음).
+run_assist() { # run_assist <payload-json>
+  printf '%s' "$1" | CLAUDE_PROJECT_DIR="$AP" bash "$ASSIST_HOOK" 2>/dev/null
+}
+
+# (a) 401 신호 → 스킬 주입
+p=$(mkpayload hk-1 "curl -s https://api.example/orders" "" "HTTP/1.1 401 Unauthorized")
+hout=$(run_assist "$p")
+check "훅: 401 신호 → 스킬 주입" bash -c "printf '%s' \"\$1\" | grep -q 'api-token'" _ "$hout"
+check "훅: 원장 source='assist'" test "$(asql "SELECT COUNT(*) FROM skill_injection WHERE session_id='hk-1' AND source='assist'")" = "1"
+
+# (b) 정상 출력 → 무동작 (G2)
+p=$(mkpayload hk-2 "curl -s https://api.example/orders" "HTTP/1.1 200 OK" "")
+check "훅: 신호 없으면 stdout 공백" test -z "$(run_assist "$p")"
+check "훅: 신호 없으면 원장 불변" test "$(asql "SELECT COUNT(*) FROM skill_injection WHERE session_id='hk-2'")" = "0"
+
+# (c) 2단계 게이트 — 명령어에만 401 이 있고 출력은 정상이면 무동작
+p=$(mkpayload hk-3 "grep 401 access.log" "no matches" "")
+check "훅: command 만 매칭 → 무동작(2단계 게이트)" test -z "$(run_assist "$p")"
+check "훅: command 만 매칭 → 원장 불변" test "$(asql "SELECT COUNT(*) FROM skill_injection WHERE session_id='hk-3'")" = "0"
+
+# (d) 대소문자 구분 — 일상적인 'failed' 는 신호가 아니다
+p=$(mkpayload hk-4 "npm run build" "build failed to warm cache" "")
+check "훅: 소문자 failed 는 신호 아님" test -z "$(run_assist "$p")"
+
+# (e) Bash 가 아닌 도구는 무시
+p=$(python3 -c "
+import json
+print(json.dumps({'session_id':'hk-5','tool_name':'Read',
+ 'tool_input':{'file_path':'/x/y.py'},
+ 'tool_response':{'stdout':'401 Unauthorized','stderr':''}}))
+")
+check "훅: Bash 아닌 도구 무시" test -z "$(run_assist "$p")"
+
+# (f) 동일 세션 재발동 → once-per-session 으로 무주입
+p=$(mkpayload hk-1 "curl -s https://api.example/items" "" "HTTP/1.1 401 Unauthorized")
+check "훅: 같은 세션 동일 스킬 재주입 없음" test -z "$(run_assist "$p")"
+check "훅: 원장 여전히 1행" test "$(asql "SELECT COUNT(*) FROM skill_injection WHERE session_id='hk-1'")" = "1"
+
+# (g) HERMES_DISABLED=1 → 즉시 종료
+p=$(mkpayload hk-6 "curl -s https://api.example/orders" "" "HTTP/1.1 401 Unauthorized")
+check "훅: HERMES_DISABLED=1 무동작" test -z "$(printf '%s' "$p" | HERMES_DISABLED=1 CLAUDE_PROJECT_DIR="$AP" bash "$ASSIST_HOOK" 2>/dev/null)"
+
+# (h) 비차단 — 깨진 JSON / DB 부재 (G7)
+printf 'not-json{{{' | CLAUDE_PROJECT_DIR="$AP" bash "$ASSIST_HOOK" >/dev/null 2>&1
+check "훅: 깨진 JSON 도 exit 0" test "$?" = "0"
+NOHOME="$T/nohermes"; mkdir -p "$NOHOME"
+p=$(mkpayload hk-7 "curl x" "" "401 Unauthorized")
+printf '%s' "$p" | CLAUDE_PROJECT_DIR="$NOHOME" bash "$ASSIST_HOOK" >/dev/null 2>&1
+check "훅: DB 부재도 exit 0" test "$?" = "0"
+
+# (i) 프리셋 등록 확인
+check "프리셋: 훅 소스 배포 등록" grep -q 'claude-posttooluse-hermes-assist.sh' "$REPO_ROOT/presets/workflow/hermes.conf"
+check "프리셋: POST_TOOL_USE_HOOKS 에 Bash matcher 등록" grep -q "POST_TOOL_USE_HOOKS+=('Bash::" "$REPO_ROOT/presets/workflow/hermes.conf"
+
+echo ""
 echo "PASS=$pass FAIL=$fail"
 [[ $fail -eq 0 ]]
