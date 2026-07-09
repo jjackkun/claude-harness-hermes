@@ -37,7 +37,11 @@ _payload="$(cat /dev/stdin 2>/dev/null || true)"
 _SIGNAL_RE='\b401\b|\b403\b|[Uu]nauthorized|[Ff]orbidden|[Pp]ermission denied|command not found|Traceback \(most recent call last\)|\bFAILED\b|AssertionError'
 
 # 1단계 게이트 — 원문 grep. 미매칭이면 여기서 끝.
-printf '%s' "$_payload" | grep -Eq "$_SIGNAL_RE" || exit 0
+# 파이프(printf | grep -q) 금지: set -o pipefail 하에서 grep -q 가 조기 매칭 시
+# 즉시 종료하면 좌변 printf 가 SIGPIPE(141)로 죽고 pipefail 이 그 상태를 파이프라인
+# 종료코드로 승격시켜 `|| exit 0` 가 오작동한다(신호를 찾고도 조용히 무주입).
+# GNU grep 에서 재현되는 환경 의존 버그이므로 히어스트링으로 파이프 자체를 없앤다.
+grep -Eq "$_SIGNAL_RE" <<<"$_payload" || exit 0
 
 # 2단계 — 정밀 재검사 + 질의 조립. 성공 시 2줄 출력(session_id, query).
 _parsed="$(printf '%s' "$_payload" | HERMES_SIGNAL_RE="$_SIGNAL_RE" python3 -c '

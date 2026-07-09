@@ -814,8 +814,12 @@ check "훅: command 만 매칭 → 무동작(2단계 게이트)" test -z "$(run_
 check "훅: command 만 매칭 → 원장 불변" test "$(asql "SELECT COUNT(*) FROM skill_injection WHERE session_id='hk-3'")" = "0"
 
 # (d) 대소문자 구분 — 일상적인 'failed' 는 신호가 아니다
+# stdout 공백 단언만으로는 1단계 grep 이 실수로 -i 를 쓰는 회귀를 못 잡는다 —
+# 그 경우도 2단계 python 이 대소문자 구분으로 걸러 결과적으로 stdout 은 어차피 공백이기
+# 때문. 원장 행수 불변까지 짝지어야 (b)/(c) 수준으로 1단계의 -i 회귀를 드러낸다.
 p=$(mkpayload hk-4 "npm run build" "build failed to warm cache" "")
 check "훅: 소문자 failed 는 신호 아님" test -z "$(run_assist "$p")"
+check "훅: 소문자 failed 는 원장 불변" test "$(asql "SELECT COUNT(*) FROM skill_injection WHERE session_id='hk-4'")" = "0"
 
 # (e) Bash 가 아닌 도구는 무시
 p=$(python3 -c "
@@ -842,6 +846,31 @@ NOHOME="$T/nohermes"; mkdir -p "$NOHOME"
 p=$(mkpayload hk-7 "curl x" "" "401 Unauthorized")
 printf '%s' "$p" | CLAUDE_PROJECT_DIR="$NOHOME" bash "$ASSIST_HOOK" >/dev/null 2>&1
 check "훅: DB 부재도 exit 0" test "$?" = "0"
+
+# (j) 대용량 payload(파이프 버퍼 64KB 초과) + 앞쪽 조기 매칭 → 여전히 스킬 주입 (G-Finding1 회귀)
+# set -o pipefail 하 `printf | grep -q` 는 GNU grep 에서 신호를 앞쪽에서 찾자마자
+# 조기 종료 → printf 가 SIGPIPE(141) → pipefail 이 141 을 파이프라인 종료코드로
+# 승격시켜 `|| exit 0` 를 오작동시킨다(신호를 찾고도 무주입). 신호를 stderr 맨 앞줄에 두고
+# 그 뒤에 64KB 를 훌쩍 넘는 무신호 채움 텍스트를 붙여 재현 조건을 만든다.
+# 채움 텍스트에는 _SIGNAL_RE 후보 단어(FAILED/401/403/Unauthorized/Forbidden/
+# Permission denied/command not found/Traceback/AssertionError)를 넣지 않는다.
+# 신호 문구는 "HTTP/1.1 401 Unauthorized" 를 쓴다 — 실제 주입 여부(stdout 비어있지
+# 않음)를 단언하려면 AP 의 유일한 픽스처 스킬(api-token.md, dir-scan 매칭 키워드 '401')과
+# 실제로 맞아떨어져야 하기 때문. Traceback 신호는 이 픽스처와 매칭되는 스킬이 없어
+# "주입 안 됨"이 파이프 버그 때문인지 매칭 실패 때문인지 구분이 안 되므로 쓰지 않았다.
+p=$(python3 -c "
+import json
+filler = ('safe filler line without any signal words here\n' * 2000)  # 약 98,000 bytes > 64KB 파이프 버퍼
+err = 'HTTP/1.1 401 Unauthorized\n' + filler
+print(json.dumps({
+  'session_id': 'hk-8', 'tool_name': 'Bash',
+  'tool_input': {'command': 'curl -s https://api.example/orders'},
+  'tool_response': {'stdout': '', 'stderr': err},
+}, ensure_ascii=False))
+")
+hout=$(run_assist "$p")
+check "훅: 대용량 payload + 앞쪽 신호 → 스킬 주입" test -n "$hout"
+check "훅: 대용량 payload 원장 1행" test "$(asql "SELECT COUNT(*) FROM skill_injection WHERE session_id='hk-8' AND source='assist'")" = "1"
 
 # (i) 프리셋 등록 확인
 check "프리셋: 훅 소스 배포 등록" grep -q 'claude-posttooluse-hermes-assist.sh' "$REPO_ROOT/presets/workflow/hermes.conf"
