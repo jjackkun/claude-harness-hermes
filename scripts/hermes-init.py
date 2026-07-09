@@ -108,15 +108,22 @@ def _apply_schema(con: sqlite3.Connection, scope: str):
             cur.execute(ddl)
 
     # skill_injection — 주입 원장 (어떤 스킬을 어느 세션에 주입했나)
+    # source: 어느 트리거로 주입됐나 — 'prompt'(UserPromptSubmit) | 'assist'(PostToolUse 실패 신호).
+    # 경로별 효용을 분리 측정하기 위함 (C1 설계 §4.7).
     cur.execute("""
         CREATE TABLE IF NOT EXISTS skill_injection (
             id          INTEGER PRIMARY KEY AUTOINCREMENT,
             session_id  TEXT    NOT NULL,
             skill_path  TEXT    NOT NULL,
             injected_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            correlated  INTEGER DEFAULT 0
+            correlated  INTEGER DEFAULT 0,
+            source      TEXT    DEFAULT 'prompt'
         )
     """)
+    # 구버전 DB 마이그레이션 — 기존 행은 SQLite 가 DEFAULT 로 채운다.
+    inj_cols = [r[1] for r in cur.execute("PRAGMA table_info(skill_injection)")]
+    if "source" not in inj_cols:
+        cur.execute("ALTER TABLE skill_injection ADD COLUMN source TEXT DEFAULT 'prompt'")
 
     # messages — 에이전트 간 메시지 버스
     cur.execute("""

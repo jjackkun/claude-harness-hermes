@@ -646,5 +646,50 @@ python3 "$S/hermes-correlate.py" --db "$DB" --transcript "$T/no-such.jsonl" --se
 check "없는 transcript 도 exit 0 (비차단)" test "$?" = "0"
 
 echo ""
+echo "== 28. skill_injection.source 가산 마이그레이션 (C1) =="
+# 구 스키마(source 컬럼 없음) DB 를 만들고, hermes-init.py 재실행으로 승격되는지 본다.
+OLDP="$T/oldschema"; mkdir -p "$OLDP/.hermes"
+python3 - "$OLDP/.hermes/state.db" <<'PY'
+import sqlite3, sys
+con = sqlite3.connect(sys.argv[1])
+con.execute("""
+    CREATE TABLE skill_injection (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        session_id  TEXT    NOT NULL,
+        skill_path  TEXT    NOT NULL,
+        injected_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        correlated  INTEGER DEFAULT 0
+    )
+""")
+con.execute("INSERT INTO skill_injection (session_id, skill_path) VALUES ('old-sess','/s/legacy.md')")
+con.commit()
+PY
+oldsql() { python3 -c "
+import sqlite3,sys
+con=sqlite3.connect('$OLDP/.hermes/state.db')
+print(con.execute(sys.argv[1]).fetchone()[0])
+" "$1"; }
+
+check "구 스키마: source 컬럼 없음(사전 조건)" bash -c "! python3 -c \"
+import sqlite3
+con=sqlite3.connect('$OLDP/.hermes/state.db')
+cols={r[1] for r in con.execute('PRAGMA table_info(skill_injection)')}
+raise SystemExit(0 if 'source' in cols else 1)
+\""
+
+python3 "$S/hermes-init.py" --project "$OLDP" >/dev/null 2>&1
+check "마이그레이션 후: source 컬럼 존재" python3 -c "
+import sqlite3
+con=sqlite3.connect('$OLDP/.hermes/state.db')
+cols={r[1] for r in con.execute('PRAGMA table_info(skill_injection)')}
+raise SystemExit(0 if 'source' in cols else 1)
+"
+check "기존 행은 source='prompt' 로 승격" test "$(oldsql "SELECT source FROM skill_injection WHERE session_id='old-sess'")" = "prompt"
+
+# 멱등성 — 두 번 돌려도 깨지지 않는다
+python3 "$S/hermes-init.py" --project "$OLDP" >/dev/null 2>&1
+check "마이그레이션 멱등 (재실행 안전)" test "$(oldsql "SELECT COUNT(*) FROM skill_injection")" = "1"
+
+echo ""
 echo "PASS=$pass FAIL=$fail"
 [[ $fail -eq 0 ]]
