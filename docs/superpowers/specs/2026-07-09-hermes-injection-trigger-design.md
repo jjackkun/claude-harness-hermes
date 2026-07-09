@@ -83,19 +83,23 @@ tests/hermes-pipeline-test.sh                     # 시나리오 추가
 
 **판정 기준: 에이전트가 접근 방식을 바꿔야만 넘어갈 수 있는 실패인가.** 경고·진행 로그는 제외한다.
 
-| 부류 | 정규식(대소문자 무시) | 채택 근거 |
+**매칭은 대소문자 구분**한다. `-i` 를 쓰면 `FAILED` 가 로그에 상시 등장하는 `failed` 까지 잡아 정밀도가
+무너진다. 대소문자 변형이 실재하는 항목만 명시적으로 열거한다.
+
+| 부류 | 정규식(대소문자 구분) | 채택 근거 |
 |---|---|---|
-| 인증·인가 | `\b401\b`, `\b403\b`, `unauthorized`, `forbidden` | 해법이 코드가 아니라 지식(토큰 발급 절차)이다 — 스킬이 정확히 담는 종류 |
-| 권한 | `permission denied` | 위와 동일 |
+| 인증·인가 | `\b401\b`, `\b403\b`, `[Uu]nauthorized`, `[Ff]orbidden` | 해법이 코드가 아니라 지식(토큰 발급 절차)이다 — 스킬이 정확히 담는 종류 |
+| 권한 | `[Pp]ermission denied` | 위와 동일 |
 | 명령 부재 | `command not found` | 환경 설정 지식 |
-| 실행 실패 | `Traceback (most recent call last)` | 프로젝트 고유 함정이 결정화되어 있을 여지 |
+| 실행 실패 | `Traceback \(most recent call last\)` | 프로젝트 고유 함정이 결정화되어 있을 여지 |
 | 테스트 실패 | `\bFAILED\b`, `AssertionError` | 위와 동일 |
 
 **기각한 패턴:**
 - `error:` / `Error` — 빌드 로그에 상시 등장하고 대개 비종결적. 채택 시 훅이 사실상 상시 발동한다.
 - `No such file or directory` — 빈도는 높으나 에이전트가 즉시 자기 수정한다. 스킬이 개입할 여지가 없다.
 
-신호 집합은 훅 스크립트의 단일 상수(`_SIGNAL_RE`)로 두어 근거와 함께 주석으로 남긴다.
+신호 집합은 훅 스크립트의 단일 상수(`_SIGNAL_RE`)로 두고, bash `grep -E` 게이트와 python 정밀 재검사가
+**같은 문자열을 공유**한다(환경변수 전달). ERE 와 python `re` 문법이 이 패턴 집합에서 동일하게 해석된다.
 
 ### 4.4 상한 (매직넘버 금지 — 유도 근거)
 
@@ -111,14 +115,24 @@ tests/hermes-pipeline-test.sh                     # 시나리오 추가
 
 ```
 PostToolUse(Bash)
-  → stdin JSON: {tool_name, tool_input.command, tool_response.{stdout,stderr}}
-  → [게이트] tool_response 에 _SIGNAL_RE 매칭 없음 → exit 0 (python 미기동)
-  → 매칭된 첫 줄 + tool_input.command 를 질의로 조립
+  → stdin JSON: {session_id, tool_name, tool_input.command, tool_response.{stdout,stderr}}
+  → [1단계 게이트] 원문 payload 에 grep -E _SIGNAL_RE 미매칭 → exit 0 (python 미기동)
+  → [2단계 정밀] python 파싱: tool_name==Bash 인가, tool_response 안에서 매칭되는가
+       (1단계는 tool_input.command 의 우연 매칭도 통과시키므로 여기서 걸러낸다)
+  → 질의 = "<매칭된 줄> <command>"  ← 순서 고정
   → hermes-search.py --db --query --session-id --source assist
                      --max 1 --no-fallback --once-per-session
   → stdout 있으면 그대로 출력 (에이전트 컨텍스트로 들어감)
   → exit 0 (항상)
 ```
+
+**질의 순서는 필수 제약이다.** `search_db` 는 `keywords[:5]` 로 자른다. 명령어를 앞에 두면
+`curl -s https://api.example/orders` 만으로 5칸이 차서 정작 신호 단어(`401`, `Unauthorized`)가 잘려나간다.
+매칭된 줄을 먼저 둔다.
+
+**두 단계 게이트가 필요한 이유.** 1단계는 JSON 원문을 통째로 `grep` 하므로 빠르지만
+`grep 401 access.log` 같은 명령어 문자열에도 반응한다. 2단계에서 `tool_response` 로 범위를 좁혀 재검사한다.
+정상 경로에서는 1단계가 막아 python 이 아예 뜨지 않는다.
 
 세션 상한은 `hermes-search.py` 가 원장을 세어 강제한다(`source='assist'` 행 수 ≥ 상한이면 무동작).
 훅 쪽에서 세면 DB 접근이 이중화되므로 검색 스크립트에 일임한다.
