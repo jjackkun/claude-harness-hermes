@@ -691,5 +691,90 @@ python3 "$S/hermes-init.py" --project "$OLDP" >/dev/null 2>&1
 check "마이그레이션 멱등 (재실행 안전)" test "$(oldsql "SELECT COUNT(*) FROM skill_injection")" = "1"
 
 echo ""
+echo "== 29. hermes-search 훅 전용 플래그 (C1) =="
+# 전용 프로젝트 — 기존 섹션의 skill_index 를 오염시키지 않는다.
+AP="$T/assistproj"; mkdir -p "$AP/.hermes/skills"
+ADB="$AP/.hermes/state.db"
+python3 "$S/hermes-init.py" --project "$AP" >/dev/null 2>&1
+
+# 결정화 스킬 파일 — read_skill_snippet 이 빈 문자열을 반환하면 주입 자체가 안 되므로 본문이 필요하다.
+cat > "$AP/.hermes/skills/api-token.md" <<'MD'
+# api-token
+401 Unauthorized 응답을 받으면 토큰이 만료된 것이다.
+POST /auth/login 으로 재발급한 뒤 Authorization 헤더에 싣는다.
+MD
+python3 - "$ADB" "$AP/.hermes/skills/api-token.md" <<'PY'
+import sqlite3, sys
+con = sqlite3.connect(sys.argv[1])
+con.execute(
+    "INSERT OR REPLACE INTO skill_index (skill_path,keywords,scope) VALUES (?,?,?)",
+    (sys.argv[2], "token,auth,login", "local"),
+)
+con.commit()
+PY
+asql() { python3 -c "
+import sqlite3,sys
+con=sqlite3.connect('$ADB')
+print(con.execute(sys.argv[1]).fetchone()[0])
+" "$1"; }
+
+# (a) --source assist → 원장에 source='assist' 기록
+out=$(python3 "$S/hermes-search.py" --db "$ADB" --query "401 Unauthorized curl /auth/login" \
+  --session-id as-1 --max 1 --source assist --no-fallback --once-per-session 2>/dev/null)
+check "assist 주입: stdout 에 스킬 스니펫" bash -c "printf '%s' \"\$1\" | grep -q 'api-token'" _ "$out"
+check "assist 주입: 원장 source='assist' 1행" test "$(asql "SELECT COUNT(*) FROM skill_injection WHERE session_id='as-1' AND source='assist'")" = "1"
+
+# (b) --once-per-session → 같은 세션 재호출 시 무주입 (G4)
+out2=$(python3 "$S/hermes-search.py" --db "$ADB" --query "401 Unauthorized curl /auth/login" \
+  --session-id as-1 --max 1 --source assist --no-fallback --once-per-session 2>/dev/null)
+check "once-per-session: 재호출 stdout 공백" test -z "$out2"
+check "once-per-session: 원장 행 증가 없음" test "$(asql "SELECT COUNT(*) FROM skill_injection WHERE session_id='as-1'")" = "1"
+
+# (c) 출처 무관 — prompt 로 이미 주입된 스킬은 assist 가 재주입하지 않는다
+python3 - "$ADB" "$AP/.hermes/skills/api-token.md" <<'PY'
+import sqlite3, sys
+con = sqlite3.connect(sys.argv[1])
+con.execute("INSERT INTO skill_injection (session_id,skill_path,source) VALUES ('as-2',?,'prompt')", (sys.argv[2],))
+con.commit()
+PY
+out3=$(python3 "$S/hermes-search.py" --db "$ADB" --query "401 Unauthorized curl /auth/login" \
+  --session-id as-2 --max 1 --source assist --no-fallback --once-per-session 2>/dev/null)
+check "once-per-session: prompt 주입분도 제외(출처 무관)" test -z "$out3"
+
+# (d) 세션 상한 — 0 으로 낮추면 즉시 소진 상태
+out4=$(HERMES_ASSIST_MAX_PER_SESSION=0 python3 "$S/hermes-search.py" --db "$ADB" \
+  --query "401 Unauthorized curl /auth/login" --session-id as-3 --max 1 --source assist --no-fallback 2>/dev/null)
+check "assist 세션 상한 도달 → 무주입" test -z "$out4"
+check "assist 세션 상한 도달 → 원장 불변" test "$(asql "SELECT COUNT(*) FROM skill_injection WHERE session_id='as-3'")" = "0"
+
+# (e) 프롬프트 경로 회귀 — 상한은 assist 에만 적용된다
+out5=$(HERMES_ASSIST_MAX_PER_SESSION=0 python3 "$S/hermes-search.py" --db "$ADB" \
+  --query "401 Unauthorized curl /auth/login" --session-id as-4 --max 1 2>/dev/null)
+check "prompt 경로: assist 상한 영향 없음" bash -c "printf '%s' \"\$1\" | grep -q 'api-token'" _ "$out5"
+check "prompt 경로: 원장 source 기본값 'prompt'" test "$(asql "SELECT source FROM skill_injection WHERE session_id='as-4'")" = "prompt"
+
+# (f) --no-fallback → FTS 미스여도 claude -p 를 부르지 않는다 (G3)
+mkdir -p "$T/assistbin"
+cat > "$T/assistbin/claude" <<'EOF'
+#!/usr/bin/env bash
+touch "$CLAUDE_CALL_MARKER"
+echo ""
+EOF
+chmod +x "$T/assistbin/claude"
+MARKER="$T/claude-was-called"
+
+rm -f "$MARKER"
+PATH="$T/assistbin:$PATH" CLAUDE_CALL_MARKER="$MARKER" python3 "$S/hermes-search.py" \
+  --db "$ADB" --query "zzzz 매칭없는질의 qqqq" --session-id as-5 --max 1 \
+  --source assist --no-fallback >/dev/null 2>&1
+check "--no-fallback: claude -p 미호출" bash -c "! test -f '$MARKER'"
+
+# 대조군 — 플래그 없으면 폴백이 실제로 돈다 (플래그가 유효함을 증명)
+rm -f "$MARKER"
+PATH="$T/assistbin:$PATH" CLAUDE_CALL_MARKER="$MARKER" python3 "$S/hermes-search.py" \
+  --db "$ADB" --query "zzzz 매칭없는질의 qqqq" --session-id as-6 --max 1 >/dev/null 2>&1
+check "대조군: 플래그 없으면 claude -p 호출됨" test -f "$MARKER"
+
+echo ""
 echo "PASS=$pass FAIL=$fail"
 [[ $fail -eq 0 ]]

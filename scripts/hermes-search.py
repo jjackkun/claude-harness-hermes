@@ -40,6 +40,12 @@ def _log(msg: str) -> None:
     print(f"[hermes-search] {msg}", file=sys.stderr)
 
 
+# assist 경로 세션 상한 (설계 §4.4):
+# UserPromptSubmit 경로는 "턴당" 최대 3개(--max 3)를 주입한다.
+# assist 경로 "전체"가 프롬프트 경로 한 턴 분량을 넘지 못하게 같은 값으로 맞춘다.
+ASSIST_MAX_PER_SESSION = int(os.environ.get("HERMES_ASSIST_MAX_PER_SESSION", "3"))
+
+
 STOP_WORDS = {
     "이거", "저거", "그거", "해줘", "해", "줘", "좀", "혹시", "그냥",
     "the", "a", "an", "is", "are", "this", "that", "for", "and", "or",
@@ -52,6 +58,43 @@ def extract_keywords(query: str) -> list:
     query = query.lower()
     tokens = re.findall(r"[a-z0-9가-힣_\-]+", query)
     return [t for t in tokens if t not in STOP_WORDS and len(t) >= 2]
+
+
+def injected_paths(db_path: str, session_id: str) -> set:
+    """이 세션에서 이미 주입된 skill_path 집합.
+
+    출처 무관 — 프롬프트 경로로 들어간 스킬도 이미 세션 컨텍스트에 있으므로 재주입하지 않는다.
+    """
+    if not (os.path.isfile(db_path) and session_id):
+        return set()
+    try:
+        con = connect_db(db_path)
+        rows = con.execute(
+            "SELECT DISTINCT skill_path FROM skill_injection WHERE session_id=?",
+            (session_id,),
+        ).fetchall()
+        con.close()
+        return {r[0] for r in rows}
+    except Exception as e:
+        _log(f"주입 이력 조회 실패: {e}")
+        return set()
+
+
+def assist_quota_exhausted(db_path: str, session_id: str) -> bool:
+    """assist 경로 세션 상한 도달 여부. 조회 실패 시 False (비차단)."""
+    if not (os.path.isfile(db_path) and session_id):
+        return False
+    try:
+        con = connect_db(db_path)
+        n = con.execute(
+            "SELECT COUNT(*) FROM skill_injection WHERE session_id=? AND source='assist'",
+            (session_id,),
+        ).fetchone()[0]
+        con.close()
+        return n >= ASSIST_MAX_PER_SESSION
+    except Exception as e:
+        _log(f"assist 상한 조회 실패: {e}")
+        return False
 
 
 def search_db(db_path: str, keywords: list, max_results: int) -> list:
@@ -249,7 +292,17 @@ def main():
     parser.add_argument("--skills-dir", default="", help="추가 스킬 디렉토리")
     parser.add_argument("--max", type=int, default=3, help="최대 결과 수")
     parser.add_argument("--session-id", default="", help="주입 원장 기록용 세션 ID")
+    parser.add_argument("--no-fallback", action="store_true",
+                        help="claude -p 뉘앙스 폴백 비활성 — 훅 경로 지연 방지")
+    parser.add_argument("--once-per-session", action="store_true",
+                        help="이 세션에 이미 주입된 스킬은 제외")
+    parser.add_argument("--source", default="prompt", choices=["prompt", "assist"],
+                        help="주입 출처 — 원장 기록 및 assist 세션 상한 적용")
     args = parser.parse_args()
+
+    # assist 경로 세션 상한 — 초과 시 검색조차 하지 않는다.
+    if args.source == "assist" and assist_quota_exhausted(args.db, args.session_id):
+        sys.exit(0)
 
     keywords = extract_keywords(args.query)
 
@@ -280,13 +333,19 @@ def main():
     _dead = _tombstoned_paths(args.db)
     dir_results = [r for r in dir_results if r["path"] not in _dead]
 
+    # 이미 이 세션에 주입된 스킬 제외 (훅 경로 전용) — 빈 집합이면 필터는 무해하다.
+    _already = injected_paths(args.db, args.session_id) if args.once_per_session else set()
+    db_results = [r for r in db_results if r["path"] not in _already]
+    dir_results = [r for r in dir_results if r["path"] not in _already]
+
     # 2단계 — FTS5 결과 없으면 Haiku fallback
     haiku_results = []
-    if not db_results and not dir_results:
+    if not db_results and not dir_results and not args.no_fallback:
         skills_dirs = [hermes_skills_dir]
         if args.skills_dir:
             skills_dirs.append(args.skills_dir)
         haiku_results = haiku_fallback(args.query, skills_dirs, args.max)
+        haiku_results = [r for r in haiku_results if r["path"] not in _already]
 
     # 결과 출력 (프롬프트 주입용) — (텍스트, 경로) 쌍. 실제 주입분만 원장에 기록하기 위함(M1).
     injections = []
@@ -335,8 +394,9 @@ def main():
                         continue
                     seen.add(p)
                     con.execute(
-                        "INSERT INTO skill_injection (session_id, skill_path) VALUES (?, ?)",
-                        (args.session_id, p),
+                        "INSERT INTO skill_injection (session_id, skill_path, source) "
+                        "VALUES (?, ?, ?)",
+                        (args.session_id, p, args.source),
                     )
             con.commit()
             con.close()
