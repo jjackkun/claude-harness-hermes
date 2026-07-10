@@ -740,6 +740,7 @@ PY
 out3=$(python3 "$S/hermes-search.py" --db "$ADB" --query "401 Unauthorized curl /auth/login" \
   --session-id as-2 --max 1 --source assist --no-fallback --once-per-session 2>/dev/null)
 check "once-per-session: prompt 주입분도 제외(출처 무관)" test -z "$out3"
+check "once-per-session: 원장 행 증가 없음(prompt 1행만 유지)" test "$(asql "SELECT COUNT(*) FROM skill_injection WHERE session_id='as-2'")" = "1"
 
 # (d) 세션 상한 — 0 으로 낮추면 즉시 소진 상태
 out4=$(HERMES_ASSIST_MAX_PER_SESSION=0 python3 "$S/hermes-search.py" --db "$ADB" \
@@ -814,9 +815,13 @@ check "훅: command 만 매칭 → 무동작(2단계 게이트)" test -z "$(run_
 check "훅: command 만 매칭 → 원장 불변" test "$(asql "SELECT COUNT(*) FROM skill_injection WHERE session_id='hk-3'")" = "0"
 
 # (d) 대소문자 구분 — 일상적인 'failed' 는 신호가 아니다
-# stdout 공백 단언만으로는 1단계 grep 이 실수로 -i 를 쓰는 회귀를 못 잡는다 —
-# 그 경우도 2단계 python 이 대소문자 구분으로 걸러 결과적으로 stdout 은 어차피 공백이기
-# 때문. 원장 행수 불변까지 짝지어야 (b)/(c) 수준으로 1단계의 -i 회귀를 드러낸다.
+# 이 두 단언(stdout 공백 + 원장 불변)이 보장하는 것: 소문자 'failed' 로는 1단계·2단계
+# 중 어느 단계에서 걸러지든 결과적으로 무주입이라는 점. 1단계 grep 프리필터가 실수로
+# -i 를 쓰는 회귀는 이 단언들로는 원리적으로 잡히지 않는다 — 1단계가 -i 로 오매칭해도
+# 2단계 python 이 re.IGNORECASE 없이 \bFAILED\b 로 재검사해 걸러내므로 stdout·원장
+# 둘 다 여전히 불변이기 때문. 즉 원장 단언은 무해하고 무동작을 재확인하지만, stdout
+# 단언 대비 추가 판별력은 없다. -i 회귀를 잡으려면 파이썬 기동 여부를 드러내는 별도
+# 마커가 필요하다.
 p=$(mkpayload hk-4 "npm run build" "build failed to warm cache" "")
 check "훅: 소문자 failed 는 신호 아님" test -z "$(run_assist "$p")"
 check "훅: 소문자 failed 는 원장 불변" test "$(asql "SELECT COUNT(*) FROM skill_injection WHERE session_id='hk-4'")" = "0"

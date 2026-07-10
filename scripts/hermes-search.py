@@ -6,7 +6,8 @@ UserPromptSubmit Hook에서 호출.
 
 검색 전략 (2단계):
   1단계 — FTS5 키워드 검색 (빠름, 무료)
-  2단계 — claude -p 뉘앙스 판단 (1단계 결과 없을 때만, claude CLI 필요)
+  2단계 — claude -p 뉘앙스 판단 (1단계 결과 없을 때만, claude CLI 필요.
+           --no-fallback 지정 시 건너뜀 — 훅 경로(예: 도중 주입)에서 지연 방지 목적)
 
 검색 풀:
   1. [project]/.hermes/skills/   ← 헤르메스 자동 생성 스킬 (평면 .md 포함)
@@ -16,6 +17,11 @@ UserPromptSubmit Hook에서 호출.
 
 사용법:
   python3 hermes-search.py --db PATH --query TEXT [--skills-dir PATH] [--max N]
+    [--session-id ID] [--no-fallback] [--once-per-session] [--source {prompt,assist}]
+
+  --once-per-session  이 세션에 이미 주입된 스킬은 출처(prompt/assist) 무관하게 결과에서 제외
+  --source assist      주입 출처를 assist 로 기록. 세션당 주입 상한(ASSIST_MAX_PER_SESSION,
+                        기본 3, 환경변수 HERMES_ASSIST_MAX_PER_SESSION 로 조정)을 적용한다
 """
 
 import argparse
