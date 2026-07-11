@@ -214,6 +214,36 @@ else
   log_warn "claude CLI not found — skipping plugin install. Re-run after installing Claude Code."
 fi
 
+# ---- Serena 대시보드 자동 탭 열림 끄기 (설치 시 1회, idempotent) ----
+# Serena 는 실행될 때마다 web_dashboard_open_on_launch 기본값(true)에 따라 브라우저 탭을
+# 새로 연다. MCP 재기동마다 탭이 누적되므로 설치 시점에 false 로 고정한다.
+# 대시보드 서버 자체(web_dashboard: true)는 유지되어 수동 접속은 계속 가능하다.
+_SERENA_CFG="$TARGET_HOME/.serena/serena_config.yml"
+_SERENA_KEY="web_dashboard_open_on_launch"
+if [[ -f "$_SERENA_CFG" ]]; then
+  if grep -qE "^${_SERENA_KEY}:" "$_SERENA_CFG"; then
+    sed -i -E "s/^${_SERENA_KEY}:.*/${_SERENA_KEY}: false/" "$_SERENA_CFG"
+    log_success "  serena  → 대시보드 자동 탭 열림 비활성화 (기존 설정 수정)"
+  else
+    printf '\n%s: false\n' "$_SERENA_KEY" >> "$_SERENA_CFG"
+    log_success "  serena  → 대시보드 자동 탭 열림 비활성화 (키 추가)"
+  fi
+else
+  # 파일 부재(첫 설치) — Serena from_config_file 은 `projects` 키가 없으면 실패하므로
+  # 부분 stub 대신 최소 유효 설정을 생성한다. 나머지 필드는 Serena 가 기본값으로 머지한다.
+  mkdir -p "$(dirname "$_SERENA_CFG")"
+  cat > "$_SERENA_CFG" <<'YAML'
+# Serena 전역 설정 — harness 최소 기본값. Serena 가 첫 실행 시 나머지 필드를 기본값으로 채운다.
+projects: []
+web_dashboard_open_on_launch: false
+YAML
+  log_success "  serena  → 대시보드 자동 탭 열림 비활성화 (최소 설정 생성)"
+fi
+# root 로 실행됐다면 소유권을 타깃 유저로 복구
+if [[ $EUID -eq 0 && "$TARGET_USER" != "root" ]]; then
+  chown -R "$TARGET_USER:$TARGET_USER" "$TARGET_HOME/.serena"
+fi
+
 echo ""
 echo "Next step: set up a project with"
 echo "  $DEV_SETTING_DIR/project-claude.sh <project_path> <preset1> [preset2] ..."
