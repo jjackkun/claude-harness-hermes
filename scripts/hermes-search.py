@@ -100,6 +100,8 @@ def assist_quota_exhausted(db_path: str, session_id: str) -> bool:
         return False
     try:
         con = connect_db(db_path)
+        _ensure_injection_source_column(con)
+        con.commit()  # ALTER 를 이 경로에서도 즉시 반영 — INSERT 경로의 커밋을 기다리지 않는다.
         n = con.execute(
             "SELECT COUNT(*) FROM skill_injection WHERE session_id=? AND source='assist'",
             (session_id,),

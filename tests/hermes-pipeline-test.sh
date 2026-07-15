@@ -993,5 +993,60 @@ check "correlate → helpful_count 증가(=1)" test "$(e2esql "SELECT helpful_co
 check "원장 correlated=1 마킹" test "$(e2esql "SELECT correlated FROM skill_injection WHERE session_id='e2e-1'")" = "1"
 
 echo ""
+echo "== 33. assist 쿼터 조회 경로: 구 스키마에서도 자가수리 후 조회 (로그노이즈 제거, Part B) =="
+# assist_quota_exhausted() 가 SELECT 전에 _ensure_injection_source_column() 을 태워
+# INSERT 경로의 커밋을 기다리지 않고 스스로 컬럼을 만들었는지 — 첫 assist 호출에서 로그가 안 남는지 본다.
+Q33="$T/quota33"; mkdir -p "$Q33/.hermes/skills"
+Q33DB="$Q33/.hermes/state.db"
+python3 - "$Q33DB" <<'PY'
+import sqlite3, sys
+con = sqlite3.connect(sys.argv[1])
+# 구 스키마: source 컬럼 없음 + skill_index 최소 테이블
+con.execute("""CREATE TABLE skill_injection (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id TEXT NOT NULL, skill_path TEXT NOT NULL,
+    injected_at DATETIME DEFAULT CURRENT_TIMESTAMP, correlated INTEGER DEFAULT 0)""")
+con.execute("""CREATE TABLE skill_index (
+    id INTEGER PRIMARY KEY AUTOINCREMENT, skill_path TEXT, keywords TEXT, scope TEXT,
+    version INTEGER DEFAULT 1, created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    used_count INTEGER DEFAULT 0, last_evolved_at DATETIME, helpful_count INTEGER DEFAULT 0,
+    noop_count INTEGER DEFAULT 0, last_helpful_at DATETIME, state TEXT DEFAULT 'active', demoted_at DATETIME)""")
+con.commit()
+PY
+cat > "$Q33/.hermes/skills/api-token.md" <<'MD'
+# api-token
+401 Unauthorized 응답을 받으면 토큰이 만료된 것이다.
+POST /auth/login 으로 재발급한 뒤 Authorization 헤더에 싣는다.
+MD
+python3 - "$Q33DB" "$Q33/.hermes/skills/api-token.md" <<'PY'
+import sqlite3, sys
+con = sqlite3.connect(sys.argv[1])
+con.execute("INSERT OR REPLACE INTO skill_index (skill_path,keywords,scope) VALUES (?,?,?)",
+            (sys.argv[2], "token,auth,login", "local"))
+con.commit()
+PY
+q33sql() { python3 -c "
+import sqlite3,sys
+con=sqlite3.connect('$Q33DB')
+print(con.execute(sys.argv[1]).fetchone()[0])
+" "$1"; }
+
+# 사전조건: source 컬럼 없음
+check "33 사전조건: source 컬럼 없음" bash -c "python3 -c \"
+import sqlite3
+c=sqlite3.connect('$Q33DB')
+cols={r[1] for r in c.execute('PRAGMA table_info(skill_injection)')}
+raise SystemExit(1 if 'source' in cols else 0)\""
+
+Q33ERR="$T/q33.stderr"
+python3 "$S/hermes-search.py" --db "$Q33DB" --query "401 Unauthorized curl /auth/login" \
+  --session-id q33-1 --max 1 --source assist --no-fallback --once-per-session \
+  >/dev/null 2>"$Q33ERR"
+
+q33err="$(<"$Q33ERR")"
+check "쿼터 조회 실패 로그 없음(첫 assist 호출에서 자가수리 선행)" bash -c '[[ "$1" != *"assist 상한 조회 실패"* ]]' _ "$q33err"
+check "주입 원장 1행 기록 (source='assist') — 자가수리 후에도 정상 동작" test "$(q33sql "SELECT COUNT(*) FROM skill_injection WHERE session_id='q33-1' AND source='assist'")" = "1"
+
+echo ""
 echo "PASS=$pass FAIL=$fail"
 [[ $fail -eq 0 ]]
