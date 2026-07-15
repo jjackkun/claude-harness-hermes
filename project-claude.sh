@@ -163,6 +163,7 @@ install_harness_pre_commit    "$PROJECT_PATH"
 install_harness_docs_templates "$PROJECT_PATH"
 install_harness_lint_configs  "$PROJECT_PATH"
 install_harness_gc_workflows  "$PROJECT_PATH"
+install_memory_symlink        "$PROJECT_PATH"
 install_harness_gitignore     "$PROJECT_PATH" "claude"
 
 generate_settings_json  "$CLAUDE_DIR/settings.json"

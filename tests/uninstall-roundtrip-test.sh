@@ -16,6 +16,8 @@ REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 REGISTRY="$REPO_ROOT/.installed-projects"
 
 TMP=$(mktemp -d)
+export HOME="$TMP/fakehome"         # 실 ~/.claude/projects 절대 격리 (install_memory_symlink)
+mkdir -p "$HOME"
 PROJ="$TMP/proj"
 mkdir -p "$PROJ"
 

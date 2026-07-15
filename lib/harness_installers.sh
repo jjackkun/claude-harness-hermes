@@ -250,3 +250,35 @@ install_harness_gitignore() {
     log_info "  gitignore → .gitignore (블록 추가, ${#entries[@]}개 항목)"
   fi
 }
+
+# install_memory_symlink <project_path>
+# 네이티브 메모리(~/.claude/projects/<키>/memory)를 <project>/.claude/memory 로 링크해 버전관리.
+# 심링크 우선, NTFS 마운트면 복사 폴백(설치 실패 방지). 기존 메모리는 비파괴 이관. 멱등.
+install_memory_symlink() {
+  local project_path="$1"
+  local repo_mem="$project_path/.claude/memory"          # git 추적 실원본
+  local key native_mem
+  key="$(printf '%s' "$project_path" | sed 's/[^a-zA-Z0-9]/-/g')"
+  native_mem="$HOME/.claude/projects/$key/memory"        # Claude Code 기록 위치
+
+  mkdir -p "$repo_mem"
+
+  if [[ -L "$native_mem" ]]; then
+    # 이미 심링크 — 올바른 대상이면 멱등 종료, 아니면 교정
+    [[ "$(readlink "$native_mem")" == "$repo_mem" ]] && return 0
+    rm -f "$native_mem"
+  elif [[ -d "$native_mem" ]]; then
+    # 실디렉터리 — 기존 .md 를 repo 로 비파괴 이관(없는 것만) 후 제거
+    cp -rn "$native_mem/." "$repo_mem/" 2>/dev/null || true
+    rm -rf "$native_mem"
+  fi
+
+  mkdir -p "$(dirname "$native_mem")"
+
+  if is_windows_path "$native_mem" || is_windows_path "$repo_mem"; then
+    # NTFS 마운트: 심링크 불가 → 복사 폴백(설치는 성공). 지속 동기화는 가드 훅(Task 3)이 보완.
+    cp -r "$repo_mem" "$native_mem"
+  else
+    ln -s "$repo_mem" "$native_mem"
+  fi
+}

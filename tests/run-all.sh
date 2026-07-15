@@ -112,7 +112,8 @@ for t in \
   hermes-redact-test.sh \
   hermes-dream-test.sh \
   hermes-recall-measurement-test.sh \
-  uninstall-roundtrip-test.sh
+  uninstall-roundtrip-test.sh \
+  memory-symlink-roundtrip-test.sh
 do
   run_step "$t" bash "$TESTS_DIR/$t"
 done
