@@ -183,6 +183,30 @@ if [[ "$TARGET" == "claude" || "$TARGET" == "both" ]] && command -v claude >/dev
   unset _INSTALLED_PLUGINS _install_plugin
 fi
 
+# ---- Serena 대시보드 자동 탭 열림 끄기 (idempotent) ----
+# Serena 는 실행마다 web_dashboard_open_on_launch(기본 true)에 따라 새 브라우저 탭을 연다.
+# MCP 재기동마다 탭이 누적되므로 false 로 고정한다. 대시보드 서버 자체는 유지된다.
+_SERENA_CFG="$HOME/.serena/serena_config.yml"
+_SERENA_KEY="web_dashboard_open_on_launch"
+if [[ -f "$_SERENA_CFG" ]]; then
+  if grep -qE "^${_SERENA_KEY}:" "$_SERENA_CFG"; then
+    sed -i -E "s/^${_SERENA_KEY}:.*/${_SERENA_KEY}: false/" "$_SERENA_CFG"
+  else
+    printf '\n%s: false\n' "$_SERENA_KEY" >> "$_SERENA_CFG"
+  fi
+  echo -e "  ${GREEN}✔ Serena 대시보드 자동 탭 열림 비활성화${RESET}"
+else
+  # 파일 부재 — Serena from_config_file 은 `projects` 키가 없으면 실패하므로 최소 유효 설정 생성
+  mkdir -p "$(dirname "$_SERENA_CFG")"
+  cat > "$_SERENA_CFG" <<'YAML'
+# Serena 전역 설정 — harness 최소 기본값. Serena 가 첫 실행 시 나머지 필드를 기본값으로 채운다.
+projects: []
+web_dashboard_open_on_launch: false
+YAML
+  echo -e "  ${GREEN}✔ Serena 대시보드 자동 탭 열림 비활성화 (최소 설정 생성)${RESET}"
+fi
+unset _SERENA_CFG _SERENA_KEY
+
 if [[ "$TARGET" == "codex" || "$TARGET" == "both" ]]; then
   if ! command -v serena >/dev/null 2>&1; then
     echo -e "${YELLOW}▸ Serena 미설치 — 설치 중...${RESET}"
