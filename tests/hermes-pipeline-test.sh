@@ -947,5 +947,51 @@ raise SystemExit(0 if 'source' in cols else 1)"
 check "주입 원장 1행 기록 (source='assist')" test "$(shsql "SELECT COUNT(*) FROM skill_injection WHERE session_id='sh-1' AND source='assist'")" = "1"
 
 echo ""
+echo "== 32. B-2→B-3 사슬: 구 스키마 주입 자가수리 후 correlate 가 helpful 집계 (Part B) =="
+E2E="$T/e2e"; mkdir -p "$E2E/.hermes/skills"
+E2EDB="$E2E/.hermes/state.db"
+# 구 스키마(source 없음) + skill_index
+python3 - "$E2EDB" <<'PY'
+import sqlite3, sys
+con = sqlite3.connect(sys.argv[1])
+con.execute("""CREATE TABLE skill_injection (
+    id INTEGER PRIMARY KEY AUTOINCREMENT, session_id TEXT NOT NULL, skill_path TEXT NOT NULL,
+    injected_at DATETIME DEFAULT CURRENT_TIMESTAMP, correlated INTEGER DEFAULT 0)""")
+con.execute("""CREATE TABLE skill_index (
+    id INTEGER PRIMARY KEY AUTOINCREMENT, skill_path TEXT, keywords TEXT, scope TEXT,
+    version INTEGER DEFAULT 1, created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    used_count INTEGER DEFAULT 0, last_evolved_at DATETIME, helpful_count INTEGER DEFAULT 0,
+    noop_count INTEGER DEFAULT 0, last_helpful_at DATETIME, state TEXT DEFAULT 'active', demoted_at DATETIME)""")
+con.execute("INSERT INTO skill_index (skill_path,keywords,scope) VALUES ('/s/api-token.md','token,auth,login','local')")
+con.commit()
+PY
+cat > "$E2E/.hermes/skills/api-token.md" <<'MD'
+# api-token
+401 Unauthorized 응답을 받으면 토큰이 만료된 것이다. POST /auth/login 으로 재발급한다.
+MD
+python3 - "$E2EDB" "$E2E/.hermes/skills/api-token.md" <<'PY'
+import sqlite3, sys
+con=sqlite3.connect(sys.argv[1])
+con.execute("UPDATE skill_index SET skill_path=? WHERE keywords='token,auth,login'",(sys.argv[2],)); con.commit()
+PY
+e2esql() { python3 -c "
+import sqlite3,sys
+con=sqlite3.connect('$E2EDB')
+print(con.execute(sys.argv[1]).fetchone()[0])
+" "$1"; }
+
+# (1) 주입 — 구 스키마에서 자가수리 후 원장 기록
+python3 "$S/hermes-search.py" --db "$E2EDB" --query "401 Unauthorized curl /auth/login" \
+  --session-id e2e-1 --max 1 --source assist --no-fallback --once-per-session >/dev/null 2>&1
+check "구 스키마 주입 → 원장 1행" test "$(e2esql "SELECT COUNT(*) FROM skill_injection WHERE session_id='e2e-1'")" = "1"
+
+# (2) correlate — Bash 활동이 스킬 키워드 2겹침(token,login) → helpful
+E2ETR="$T/e2e.jsonl"
+mktool "$E2ETR" "curl https://api.example/auth/login -d token=1" "ok" 0 tu-e2e
+python3 "$S/hermes-correlate.py" --db "$E2EDB" --transcript "$E2ETR" --session-id e2e-1 >/dev/null 2>&1
+check "correlate → helpful_count 증가(=1)" test "$(e2esql "SELECT helpful_count FROM skill_index WHERE skill_path LIKE '%api-token.md'")" = "1"
+check "원장 correlated=1 마킹" test "$(e2esql "SELECT correlated FROM skill_injection WHERE session_id='e2e-1'")" = "1"
+
+echo ""
 echo "PASS=$pass FAIL=$fail"
 [[ $fail -eq 0 ]]
