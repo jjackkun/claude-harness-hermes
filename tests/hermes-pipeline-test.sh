@@ -882,6 +882,16 @@ check "프리셋: 훅 소스 배포 등록" grep -q 'claude-posttooluse-hermes-a
 check "프리셋: POST_TOOL_USE_HOOKS 에 Bash matcher 등록" grep -q "POST_TOOL_USE_HOOKS+=('Bash::" "$REPO_ROOT/presets/workflow/hermes.conf"
 
 echo ""
+echo "== 30b. assist 훅: search stderr 를 hooks.log 로 (무음 실패 표면화, Part B) =="
+AH="$REPO_ROOT/assets/hooks/claude-posttooluse-hermes-assist.sh"
+# 주의: 'hermes-search.py' 리터럴은 파일 내 _search="...hermes-search.py" 변수 대입줄에서만
+# 매치되고(호출부는 변수 $_search 를 참조할 뿐 리터럴 파일명이 없다), 그 대입줄 기준 -A4 는
+# 실제 python3 호출·리다이렉트 줄까지 닿지 않아 무관한 코드(cat /dev/stdin 2>/dev/null)를
+# 오탐한다. 앵커를 호출부 자체(`_out="$(python3 ...`)로 잡아 실제 리다이렉트 대상을 검사한다.
+check "assist 훅이 search stderr 를 /dev/null 로 버리지 않음" bash -c "! grep -E '_out=\"\\\$\\(python3' -A4 '$AH' | grep -q '2>/dev/null'"
+check "assist 훅이 search stderr 를 hooks.log 로 보냄" bash -c "grep -E '_out=\"\\\$\\(python3' -A4 '$AH' | grep -q 'hooks.log'"
+
+echo ""
 echo "== 31. hermes-search: 구 스키마 source 컬럼 자가수리 (Part B) =="
 # 구 스키마(source 없음) DB 를 만들고, search.py 주입이 스키마를 스스로 고치고 원장을 남기는지 본다.
 SHP="$T/selfheal"; mkdir -p "$SHP/.hermes/skills"
