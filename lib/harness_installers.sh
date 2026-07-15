@@ -268,8 +268,30 @@ install_memory_symlink() {
     [[ "$(readlink "$native_mem")" == "$repo_mem" ]] && return 0
     rm -f "$native_mem"
   elif [[ -d "$native_mem" ]]; then
-    # 실디렉터리 — 기존 .md 를 repo 로 비파괴 이관(없는 것만) 후 제거
-    cp -rn "$native_mem/." "$repo_mem/" 2>/dev/null || true
+    # 실디렉터리 — 기존 .md 를 repo 로 비파괴 이관 후 제거(cp 전량 성공 검증 없이는 삭제 금지)
+    local copy_failed=0 f rel dest
+    while IFS= read -r -d '' f; do
+      rel="${f#"$native_mem"/}"
+      dest="$repo_mem/$rel"
+      mkdir -p "$(dirname "$dest")"
+      if [[ -e "$dest" ]]; then
+        # 동명 충돌 — 내용이 다르면 네이티브본을 .native 로 보존(무손실), repo 본은 유지
+        if ! cmp -s "$f" "$dest"; then
+          if ! cp -p "$f" "$dest.native" 2>/dev/null; then
+            echo "install_memory_symlink: 충돌본 보존 실패 — $rel" >&2
+            copy_failed=1
+          fi
+        fi
+      elif ! cp -p "$f" "$dest" 2>/dev/null; then
+        echo "install_memory_symlink: 이관 실패 — $rel" >&2
+        copy_failed=1
+      fi
+    done < <(find "$native_mem" -type f -print0)
+
+    if [[ "$copy_failed" -ne 0 ]]; then
+      echo "install_memory_symlink: 일부 파일 이관 실패 — 네이티브 보존, 심링크 생략(재시도 필요)" >&2
+      return 1
+    fi
     rm -rf "$native_mem"
   fi
 

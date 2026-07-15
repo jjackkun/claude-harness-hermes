@@ -45,6 +45,40 @@ install_memory_symlink "$PROJ"
 assert "재실행 후에도 심링크 유지"    1 "$(islink "$NATIVE")"
 assert "재실행 후 fact-b.md 보존"     1 "$(exists "$REPO_MEM/fact-b.md")"
 
+echo "== 4. 동명 충돌 시 네이티브본 무손실 보존 (.native) =="
+PROJ2="$T/proj2"; mkdir -p "$PROJ2/.claude"
+KEY2="$(printf '%s' "$PROJ2" | sed 's/[^a-zA-Z0-9]/-/g')"
+NATIVE2="$HOME/.claude/projects/$KEY2/memory"
+REPO_MEM2="$PROJ2/.claude/memory"
+
+mkdir -p "$REPO_MEM2"
+printf 'Y (repo 기존본)\n' > "$REPO_MEM2/MEMORY.md"   # repo 에 이미 커밋된 버전
+mkdir -p "$NATIVE2"
+printf 'X (네이티브 신규 기록)\n' > "$NATIVE2/MEMORY.md"  # 내용 다른 네이티브본
+
+install_memory_symlink "$PROJ2"
+
+assert "repo MEMORY.md(Y) 그대로 유지"        1 "$(exists "$REPO_MEM2/MEMORY.md")"
+assert "repo MEMORY.md 내용은 여전히 Y"       "Y (repo 기존본)" "$(cat "$REPO_MEM2/MEMORY.md")"
+assert "네이티브본(X)이 .native 로 보존됨"     1 "$(exists "$REPO_MEM2/MEMORY.md.native")"
+assert "보존된 .native 내용이 X"              "X (네이티브 신규 기록)" "$(cat "$REPO_MEM2/MEMORY.md.native" 2>/dev/null)"
+assert "충돌 후에도 심링크 정상 전환"          1 "$(islink "$NATIVE2")"
+
+echo "== 5. 네이티브가 엉뚱한 대상을 가리키는 심링크면 repo 로 교정 =="
+PROJ3="$T/proj3"; mkdir -p "$PROJ3/.claude"
+KEY3="$(printf '%s' "$PROJ3" | sed 's/[^a-zA-Z0-9]/-/g')"
+NATIVE3="$HOME/.claude/projects/$KEY3/memory"
+REPO_MEM3="$PROJ3/.claude/memory"
+
+OTHER_DIR="$T/other-target"; mkdir -p "$OTHER_DIR"
+mkdir -p "$(dirname "$NATIVE3")"
+ln -s "$OTHER_DIR" "$NATIVE3"   # 엉뚱한 대상을 가리키는 기존 심링크
+
+install_memory_symlink "$PROJ3"
+
+assert "네이티브가 심링크로 남아있음"       1 "$(islink "$NATIVE3")"
+assert "심링크 대상이 repo .claude/memory 로 교정됨" "$REPO_MEM3" "$(readlink "$NATIVE3")"
+
 echo ""
 echo "결과: PASS=$PASS FAIL=$FAIL"
 [[ $FAIL -eq 0 ]]
