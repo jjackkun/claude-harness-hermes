@@ -46,6 +46,14 @@ def _log(msg: str) -> None:
     print(f"[hermes-search] {msg}", file=sys.stderr)
 
 
+def _ensure_injection_source_column(con) -> None:
+    """구 스키마(source 없음) DB 자가수리 — 재설치 없이 드리프트 복구 (Part B, 멱등)."""
+    cols = [r[1] for r in con.execute("PRAGMA table_info(skill_injection)")]
+    if "source" not in cols:
+        con.execute("ALTER TABLE skill_injection ADD COLUMN source TEXT DEFAULT 'prompt'")
+        _log("skill_injection.source 컬럼 자가수리 (구 스키마 마이그레이션)")
+
+
 # assist 경로 세션 상한 (설계 §4.4):
 # UserPromptSubmit 경로는 "턴당" 최대 3개(--max 3)를 주입한다.
 # assist 경로 "전체"가 프롬프트 경로 한 턴 분량을 넘지 못하게 같은 값으로 맞춘다.
@@ -394,6 +402,7 @@ def main():
                 )
             # 주입 원장 기록 — 실제 프롬프트에 주입된 스킬(injections[:max])만, 중복 제거(M1·M3).
             if args.session_id:
+                _ensure_injection_source_column(con)
                 seen = set()
                 for _inj, p in injections[:args.max]:
                     if p in seen:

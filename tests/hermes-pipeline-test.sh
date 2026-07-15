@@ -882,5 +882,60 @@ check "프리셋: 훅 소스 배포 등록" grep -q 'claude-posttooluse-hermes-a
 check "프리셋: POST_TOOL_USE_HOOKS 에 Bash matcher 등록" grep -q "POST_TOOL_USE_HOOKS+=('Bash::" "$REPO_ROOT/presets/workflow/hermes.conf"
 
 echo ""
+echo "== 31. hermes-search: 구 스키마 source 컬럼 자가수리 (Part B) =="
+# 구 스키마(source 없음) DB 를 만들고, search.py 주입이 스키마를 스스로 고치고 원장을 남기는지 본다.
+SHP="$T/selfheal"; mkdir -p "$SHP/.hermes/skills"
+SHDB="$SHP/.hermes/state.db"
+python3 - "$SHDB" <<'PY'
+import sqlite3, sys
+con = sqlite3.connect(sys.argv[1])
+# 구 스키마: source 컬럼 없음 + skill_index 최소 테이블
+con.execute("""CREATE TABLE skill_injection (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id TEXT NOT NULL, skill_path TEXT NOT NULL,
+    injected_at DATETIME DEFAULT CURRENT_TIMESTAMP, correlated INTEGER DEFAULT 0)""")
+con.execute("""CREATE TABLE skill_index (
+    id INTEGER PRIMARY KEY AUTOINCREMENT, skill_path TEXT, keywords TEXT, scope TEXT,
+    version INTEGER DEFAULT 1, created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    used_count INTEGER DEFAULT 0, last_evolved_at DATETIME, helpful_count INTEGER DEFAULT 0,
+    noop_count INTEGER DEFAULT 0, last_helpful_at DATETIME, state TEXT DEFAULT 'active', demoted_at DATETIME)""")
+con.commit()
+PY
+cat > "$SHP/.hermes/skills/api-token.md" <<'MD'
+# api-token
+401 Unauthorized 응답을 받으면 토큰이 만료된 것이다.
+POST /auth/login 으로 재발급한 뒤 Authorization 헤더에 싣는다.
+MD
+python3 - "$SHDB" "$SHP/.hermes/skills/api-token.md" <<'PY'
+import sqlite3, sys
+con = sqlite3.connect(sys.argv[1])
+con.execute("INSERT OR REPLACE INTO skill_index (skill_path,keywords,scope) VALUES (?,?,?)",
+            (sys.argv[2], "token,auth,login", "local"))
+con.commit()
+PY
+shsql() { python3 -c "
+import sqlite3,sys
+con=sqlite3.connect('$SHDB')
+print(con.execute(sys.argv[1]).fetchone()[0])
+" "$1"; }
+
+# 사전조건: source 컬럼 없음
+check "자가수리 전: source 컬럼 없음" bash -c "python3 -c \"
+import sqlite3
+c=sqlite3.connect('$SHDB')
+cols={r[1] for r in c.execute('PRAGMA table_info(skill_injection)')}
+raise SystemExit(1 if 'source' in cols else 0)\""
+
+python3 "$S/hermes-search.py" --db "$SHDB" --query "401 Unauthorized curl /auth/login" \
+  --session-id sh-1 --max 1 --source assist --no-fallback --once-per-session >/dev/null 2>&1
+
+check "자가수리 후: source 컬럼 생성됨" python3 -c "
+import sqlite3
+c=sqlite3.connect('$SHDB')
+cols={r[1] for r in c.execute('PRAGMA table_info(skill_injection)')}
+raise SystemExit(0 if 'source' in cols else 1)"
+check "주입 원장 1행 기록 (source='assist')" test "$(shsql "SELECT COUNT(*) FROM skill_injection WHERE session_id='sh-1' AND source='assist'")" = "1"
+
+echo ""
 echo "PASS=$pass FAIL=$fail"
 [[ $fail -eq 0 ]]
