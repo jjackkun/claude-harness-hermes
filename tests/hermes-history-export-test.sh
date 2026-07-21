@@ -113,6 +113,28 @@ for _ in $(seq 1 30); do
 done
 assert "재색인이 자동 실행되어 행 복원" 3 "$(python3 -c "import sqlite3;print(sqlite3.connect('$DB3').execute('SELECT COUNT(*) FROM session_history').fetchone()[0])")"
 
+echo "== 8. 이어간 세션 감지: 같은 세션이 더 긴 버전으로 pull 되면 재색인 =="
+# 섹션 7 이 PROJ3/$SID 를 3행으로 재색인해 둔 상태를 이어받는다.
+# 같은 session_id 파일에 턴 1개(seq 3) 추가 — 파일 개수는 1개 그대로(다른 PC 에서 이어간 세션 시뮬).
+f3="$(ls "$PROJ3/.hermes/history/"*"$SID".jsonl | head -1)"
+python3 - "$f3" "$SID" <<'PY'
+import json, sys
+line = json.dumps({"seq":3,"session_id":sys.argv[2],"project_id":"proj",
+                   "role":"assistant","timestamp":"2026-07-21T10:00:03.000000",
+                   "content":"이어간 답변"}, ensure_ascii=False)
+with open(sys.argv[1], "a", encoding="utf-8") as fh:
+    fh.write(line + "\n")
+PY
+assert "사전: 파일 개수 불변(1개)" 1 "$(ls "$PROJ3/.hermes/history/"*.jsonl 2>/dev/null | wc -l)"
+out8="$(echo '{"source":"startup"}' | CLAUDE_PROJECT_DIR="$PROJ3" bash "$GUARD")"
+assert "훅 stdout 무출력(컨텍스트 오염 방지)" "" "$out8"
+# 백그라운드 완료 대기(최대 15초) — 해당 세션 행이 4로 증가할 때까지 폴링
+for _ in $(seq 1 30); do
+  [[ "$(python3 -c "import sqlite3;print(sqlite3.connect('$DB3').execute(\"SELECT COUNT(*) FROM session_history WHERE session_id='$SID'\").fetchone()[0])")" == "4" ]] && break
+  sleep 0.5
+done
+assert "이어간 세션이 재색인되어 3→4 행 증가" 4 "$(python3 -c "import sqlite3;print(sqlite3.connect('$DB3').execute(\"SELECT COUNT(*) FROM session_history WHERE session_id='$SID'\").fetchone()[0])")"
+
 echo ""
 echo "결과: PASS=$PASS FAIL=$FAIL"
 [[ $FAIL -eq 0 ]]
