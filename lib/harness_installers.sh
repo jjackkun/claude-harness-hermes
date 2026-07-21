@@ -187,6 +187,8 @@ install_harness_gitignore() {
       ".claude/.review-dirty"
       ".claude/.dev-setting-manifest.json"
       ".claude/presets.lock"
+      "!.claude/memory/"
+      "!.claude/memory/**"
     ) ;;
     codex)  entries=(".codex/settings.local.json") ;;
     *) return 0 ;;
@@ -221,7 +223,7 @@ install_harness_gitignore() {
     local tmp_fix
     tmp_fix="$(mktemp)"
     awk '
-      /^\.claude\/?$/ { print ".claude/*"; print "!.claude/settings.json"; next }
+      /^\.claude\/?$/ { print ".claude/*"; print "!.claude/settings.json"; print "!.claude/memory/"; print "!.claude/memory/**"; next }
       { print }
     ' "$gitignore" > "$tmp_fix"
     mv "$tmp_fix" "$gitignore"

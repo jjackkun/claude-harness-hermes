@@ -92,6 +92,17 @@ assert "보존된 .native.1 내용이 X2"           "X2 (두 번째 네이티브
 assert "repo MEMORY.md(Y) 여전히 유지"        "Y (repo 기존본)" "$(cat "$REPO_MEM2/MEMORY.md")"
 assert "재이관 후에도 심링크 정상 전환"        1 "$(islink "$NATIVE2")"
 
+echo "== 7. gitignore: 블랭킷 .claude/ 가 있어도 .claude/memory 는 추적 =="
+# install_harness_gitignore 는 log_info 를 사용하나 이 테스트는 logging.sh 를 소스하지 않음 — 무해한 no-op 로 보강
+command -v log_info >/dev/null 2>&1 || log_info() { :; }
+GP="$T/gitproj"; mkdir -p "$GP/.claude/memory"
+( cd "$GP" && git init -q && printf '.claude/\n' > .gitignore )
+printf 'x\n' > "$GP/.claude/memory/x.md"
+install_harness_gitignore "$GP" "claude"
+# git check-ignore: 무시되면 exit 0(파일명 출력), 추적되면 exit 1
+if ( cd "$GP" && git check-ignore -q .claude/memory/x.md ); then ig=1; else ig=0; fi
+assert ".claude/memory/x.md 는 무시되지 않음(추적)" 0 "$ig"
+
 echo ""
 echo "결과: PASS=$PASS FAIL=$FAIL"
 [[ $FAIL -eq 0 ]]
