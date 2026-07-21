@@ -112,6 +112,15 @@ setsid bash -c '
     --db "$HERMES_DB_PATH" \
     >>"$HERMES_LOG" 2>&1 || true
 
+  # 6. 대화 원본 git 텍스트 export (다른 컴퓨터 이식용)
+  if [[ -n "$HERMES_SESSION_ID" ]]; then
+    timeout 30 python3 "$HERMES_SCRIPTS_DIR/hermes-export-history.py" \
+      --db "$HERMES_DB_PATH" \
+      --project "$HERMES_PROJECT_DIR" \
+      --session "$HERMES_SESSION_ID" \
+      >>"$HERMES_LOG" 2>&1 || true
+  fi
+
   # 완료 마커 — 진단 및 테스트의 완료 대기용
   echo "[hermes] hook done: session=$HERMES_SESSION_ID $(date -Iseconds)" >>"$HERMES_LOG"
 ' </dev/null >/dev/null 2>&1 &
