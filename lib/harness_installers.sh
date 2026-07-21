@@ -187,6 +187,8 @@ install_harness_gitignore() {
       ".claude/.review-dirty"
       ".claude/.dev-setting-manifest.json"
       ".claude/presets.lock"
+      "!.claude/memory/"
+      "!.claude/memory/**"
     ) ;;
     codex)  entries=(".codex/settings.local.json") ;;
     *) return 0 ;;
@@ -221,7 +223,7 @@ install_harness_gitignore() {
     local tmp_fix
     tmp_fix="$(mktemp)"
     awk '
-      /^\.claude\/?$/ { print ".claude/*"; print "!.claude/settings.json"; next }
+      /^\.claude\/?$/ { print ".claude/*"; print "!.claude/settings.json"; print "!.claude/memory/"; print "!.claude/memory/**"; next }
       { print }
     ' "$gitignore" > "$tmp_fix"
     mv "$tmp_fix" "$gitignore"
@@ -248,5 +250,68 @@ install_harness_gitignore() {
     [[ -s "$gitignore" ]] && [[ -n "$(tail -c1 "$gitignore")" ]] && printf '\n' >> "$gitignore"
     printf '\n%s\n' "$block" >> "$gitignore"
     log_info "  gitignore → .gitignore (블록 추가, ${#entries[@]}개 항목)"
+  fi
+}
+
+# install_memory_symlink <project_path>
+# 네이티브 메모리(~/.claude/projects/<키>/memory)를 <project>/.claude/memory 로 링크해 버전관리.
+# 심링크 우선, NTFS 마운트면 복사 폴백(설치 실패 방지). 기존 메모리는 비파괴 이관. 멱등.
+install_memory_symlink() {
+  local project_path="$1"
+  local repo_mem="$project_path/.claude/memory"          # git 추적 실원본
+  local key native_mem
+  key="$(printf '%s' "$project_path" | sed 's/[^a-zA-Z0-9]/-/g')"
+  native_mem="$HOME/.claude/projects/$key/memory"        # Claude Code 기록 위치
+
+  mkdir -p "$repo_mem"
+
+  if [[ -L "$native_mem" ]]; then
+    # 이미 심링크 — 올바른 대상이면 멱등 종료, 아니면 교정
+    [[ "$(readlink "$native_mem")" == "$repo_mem" ]] && return 0
+    rm -f "$native_mem"
+  elif [[ -d "$native_mem" ]]; then
+    # 실디렉터리 — 기존 .md 를 repo 로 비파괴 이관 후 제거(cp 전량 성공 검증 없이는 삭제 금지)
+    # (동기화 유지: 동일 비파괴 이관 로직이 assets/hooks/claude-sessionstart-memory-guard.sh 에도 인라인 존재)
+    local copy_failed=0 f rel dest
+    while IFS= read -r -d '' f; do
+      rel="${f#"$native_mem"/}"
+      dest="$repo_mem/$rel"
+      mkdir -p "$(dirname "$dest")"
+      if [[ -e "$dest" ]]; then
+        # 동명 충돌 — 내용이 다르면 네이티브본을 .native 로 보존(무손실), repo 본은 유지
+        if ! cmp -s "$f" "$dest"; then
+          # .native 백업 자체도 충돌-안전하게: 기존 백업을 덮어쓰지 않고 번호 부여
+          local native_dest="$dest.native" n=1
+          while [[ -e "$native_dest" ]]; do
+            cmp -s "$f" "$native_dest" && native_dest=""  # 이미 동일 내용으로 백업됨 — no-op
+            [[ -z "$native_dest" ]] && break
+            native_dest="$dest.native.$n"
+            n=$((n + 1))
+          done
+          if [[ -n "$native_dest" ]] && ! cp -p "$f" "$native_dest" 2>/dev/null; then
+            echo "install_memory_symlink: 충돌본 보존 실패 — $rel" >&2
+            copy_failed=1
+          fi
+        fi
+      elif ! cp -p "$f" "$dest" 2>/dev/null; then
+        echo "install_memory_symlink: 이관 실패 — $rel" >&2
+        copy_failed=1
+      fi
+    done < <(find "$native_mem" -type f -print0)
+
+    if [[ "$copy_failed" -ne 0 ]]; then
+      echo "install_memory_symlink: 일부 파일 이관 실패 — 네이티브 보존, 심링크 생략(재시도 필요)" >&2
+      return 1
+    fi
+    rm -rf "$native_mem"
+  fi
+
+  mkdir -p "$(dirname "$native_mem")"
+
+  if is_windows_path "$native_mem" || is_windows_path "$repo_mem"; then
+    # NTFS 마운트: 심링크 불가 → 복사 폴백(설치는 성공). 지속 동기화는 가드 훅(Task 3)이 보완.
+    cp -r "$repo_mem" "$native_mem"
+  else
+    ln -s "$repo_mem" "$native_mem"
   fi
 }

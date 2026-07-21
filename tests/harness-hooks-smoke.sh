@@ -14,6 +14,8 @@ set -uo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 TMP=$(mktemp -d)
+export HOME="$TMP/fakehome"         # 실 ~/.claude/projects 절대 격리 (install_memory_symlink)
+mkdir -p "$HOME"
 
 # 테스트 설치가 .installed-projects 레지스트리를 오염시키지 않도록 끝에서 원복
 REGISTRY="$REPO_ROOT/.installed-projects"

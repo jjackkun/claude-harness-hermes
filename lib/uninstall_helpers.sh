@@ -318,3 +318,26 @@ uninstall_codex() {
     fi
   fi
 }
+
+# ── 네이티브 메모리 심링크 복원 ──────────────────────────────────────────────
+# 언인스톨 후에도 Claude Code 메모리 보존: 우리(→<project>/.claude/memory) 심링크면
+# 실디렉터리로 복사 복원. 저장소 원본(.claude/memory, git)은 건드리지 않는다. 멱등·dry-run 존중.
+restore_memory_symlink() {
+  local project_path="$1"
+  local repo_mem="$project_path/.claude/memory"
+  local key native
+  key="$(printf '%s' "$project_path" | sed 's/[^a-zA-Z0-9]/-/g')"
+  native="$HOME/.claude/projects/$key/memory"
+
+  # 우리 저장소를 가리키는 심링크일 때만 복원(사용자 실파일/타 링크 보존)
+  [[ -L "$native" && "$(readlink "$native")" == "$repo_mem" ]] || return 0
+
+  if [[ "${DRY_RUN:-0}" -eq 1 ]]; then
+    echo -e "  ${YELLOW:-}[dry]${RESET:-} 메모리 심링크 복원: $native (심링크 → 실디렉터리)"
+    return 0
+  fi
+  rm -f "$native"
+  mkdir -p "$native"
+  [[ -d "$repo_mem" ]] && cp -rn "$repo_mem/." "$native/" 2>/dev/null || true
+  echo -e "  ${GREEN:-}✔${RESET:-} 메모리 심링크 복원: $native (실디렉터리, 내용 보존)"
+}

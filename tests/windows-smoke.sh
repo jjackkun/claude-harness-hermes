@@ -7,6 +7,10 @@ set -uo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
+FAKEHOME_TMP=$(mktemp -d)
+export HOME="$FAKEHOME_TMP/fakehome"  # 실 ~/.claude/projects 절대 격리 (install_memory_symlink)
+mkdir -p "$HOME"
+
 PASS=0; FAIL=0
 assert() {
   local desc="$1" expected="$2" actual="$3"
@@ -36,7 +40,7 @@ cleanup() {
       > "$REGISTRY.tmp$$" || true
     mv "$REGISTRY.tmp$$" "$REGISTRY"
   fi
-  rm -rf "$WIN_PROJECT" ${LINUX_PROJECT:+"$LINUX_PROJECT"}
+  rm -rf "$WIN_PROJECT" ${LINUX_PROJECT:+"$LINUX_PROJECT"} "$FAKEHOME_TMP"
 }
 trap cleanup EXIT
 git -C "$WIN_PROJECT" init -q

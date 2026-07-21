@@ -194,6 +194,9 @@ do_uninstall() {
     echo -e "  ${GREEN}✔${RESET} 삭제: scripts/ (비어있어 제거)"
   fi
 
+  # 12-2. 네이티브 메모리 심링크 → 실디렉터리 복원 (Claude Code 메모리 보존)
+  restore_memory_symlink "$project_path"
+
   # 13. .hermes/
   local hermes_dir="$project_path/.hermes"
   if [[ -d "$hermes_dir" ]]; then
@@ -253,6 +256,10 @@ for path in "${TARGETS[@]}"; do
   hermes_py_count=$(find "$path/scripts" -maxdepth 1 \( -name "hermes-*.py" -o -name "hermes_*.py" -o -name "hermes-*.sh" \) 2>/dev/null | wc -l)
   [[ $hermes_py_count -gt 0 ]] && echo "  • scripts/hermes-* (${hermes_py_count}개)"
   [[ -d "$path/.hermes" ]] && echo -e "  ${YELLOW}• .hermes/ (DB 포함 — 별도 확인)${RESET}"
+  _mkey="$(printf '%s' "$path" | sed 's/[^a-zA-Z0-9]/-/g')"
+  _mnat="$HOME/.claude/projects/$_mkey/memory"
+  [[ -L "$_mnat" && "$(readlink "$_mnat")" == "$path/.claude/memory" ]] \
+    && echo "  • 메모리 심링크 복원: ~/.claude/projects/<키>/memory (심링크 → 실디렉터리)"
   echo ""
 done
 
