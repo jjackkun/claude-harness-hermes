@@ -277,7 +277,15 @@ install_memory_symlink() {
       if [[ -e "$dest" ]]; then
         # 동명 충돌 — 내용이 다르면 네이티브본을 .native 로 보존(무손실), repo 본은 유지
         if ! cmp -s "$f" "$dest"; then
-          if ! cp -p "$f" "$dest.native" 2>/dev/null; then
+          # .native 백업 자체도 충돌-안전하게: 기존 백업을 덮어쓰지 않고 번호 부여
+          local native_dest="$dest.native" n=1
+          while [[ -e "$native_dest" ]]; do
+            cmp -s "$f" "$native_dest" && native_dest=""  # 이미 동일 내용으로 백업됨 — no-op
+            [[ -z "$native_dest" ]] && break
+            native_dest="$dest.native.$n"
+            n=$((n + 1))
+          done
+          if [[ -n "$native_dest" ]] && ! cp -p "$f" "$native_dest" 2>/dev/null; then
             echo "install_memory_symlink: 충돌본 보존 실패 — $rel" >&2
             copy_failed=1
           fi

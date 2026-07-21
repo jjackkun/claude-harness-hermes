@@ -79,6 +79,19 @@ install_memory_symlink "$PROJ3"
 assert "네이티브가 심링크로 남아있음"       1 "$(islink "$NATIVE3")"
 assert "심링크 대상이 repo .claude/memory 로 교정됨" "$REPO_MEM3" "$(readlink "$NATIVE3")"
 
+echo "== 6. 반복 이관 시 .native 백업도 충돌-안전(번호 부여) — 이전 백업 유실 방지 =="
+rm -f "$NATIVE2"                          # 심링크 제거 후 실디렉터리로 재구성
+mkdir -p "$NATIVE2"
+printf 'X2 (두 번째 네이티브 신규 기록)\n' > "$NATIVE2/MEMORY.md"  # X1, Y 와 모두 다른 내용
+
+install_memory_symlink "$PROJ2"
+
+assert "1차 백업(X1)이 그대로 보존됨"          "X (네이티브 신규 기록)" "$(cat "$REPO_MEM2/MEMORY.md.native" 2>/dev/null)"
+assert "2차 충돌본(X2)이 번호 부여로 보존됨"    1 "$(exists "$REPO_MEM2/MEMORY.md.native.1")"
+assert "보존된 .native.1 내용이 X2"           "X2 (두 번째 네이티브 신규 기록)" "$(cat "$REPO_MEM2/MEMORY.md.native.1" 2>/dev/null)"
+assert "repo MEMORY.md(Y) 여전히 유지"        "Y (repo 기존본)" "$(cat "$REPO_MEM2/MEMORY.md")"
+assert "재이관 후에도 심링크 정상 전환"        1 "$(islink "$NATIVE2")"
+
 echo ""
 echo "결과: PASS=$PASS FAIL=$FAIL"
 [[ $FAIL -eq 0 ]]
