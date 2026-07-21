@@ -113,6 +113,31 @@ assert "가드 훅 stdout 무출력(컨텍스트 오염 방지)" "" "$out"
 assert "가드가 심링크 복구"          1 "$(islink "$NATIVE")"
 assert "복구된 링크 대상 정확"       "$REPO_MEM" "$(readlink "$NATIVE")"
 
+echo "== 9. 가드 오손복구 비파괴: repo_mem 쓰기불가면 native-only 파일 유실 금지 =="
+# 리뷰 실증 재현: 실디렉터리(오손) native + repo_mem 쓰기불가 → cp 실패.
+# 하드닝 전(cp -rn 삼킴 후 무조건 rm -rf)이면 native-only 파일이 영구 소실된다.
+if [[ $EUID -ne 0 ]]; then
+  GUP="$T/guardproj"; mkdir -p "$GUP/.claude" "$GUP/.hermes"
+  KEYG="$(printf '%s' "$GUP" | sed 's/[^a-zA-Z0-9]/-/g')"
+  NATIVEG="$HOME/.claude/projects/$KEYG/memory"
+  REPO_MEMG="$GUP/.claude/memory"
+
+  mkdir -p "$REPO_MEMG"                          # Part A repo_mem 존재(게이트 통과)
+  mkdir -p "$NATIVEG"                            # 실디렉터리(오손) native
+  printf 'native-only 내용\n' > "$NATIVEG/native-only.md"   # repo 에 없는 네이티브 전용본
+  chmod 000 "$REPO_MEMG"                         # repo_mem 쓰기불가 → cp 실패 유발
+
+  outg="$(echo '{"source":"startup"}' | CLAUDE_PROJECT_DIR="$GUP" bash "$GUARD")"
+
+  assert "native-only.md 유실 안 됨(native 잔존)" 1 "$(exists "$NATIVEG/native-only.md")"
+  assert "native 가 실디렉터리로 보존(재링크 스킵)" 0 "$(islink "$NATIVEG")"
+  assert "가드 훅 stdout 무출력" "" "$outg"
+
+  chmod 755 "$REPO_MEMG"                         # 후속 안전 위해 권한 복원
+else
+  echo "  (root 실행 — chmod 무력화로 SKIP)"
+fi
+
 echo ""
 echo "결과: PASS=$PASS FAIL=$FAIL"
 [[ $FAIL -eq 0 ]]

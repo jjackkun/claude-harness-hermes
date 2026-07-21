@@ -23,7 +23,33 @@ esac
 
 # 오손 상태 복구: 실디렉터리면 내용 보존 후 재링크
 if [[ -d "$native" && ! -L "$native" ]]; then
-  cp -rn "$native/." "$repo_mem/" 2>/dev/null || true
+  # 실디렉터리(오손) — repo 로 비파괴 이관 후에만 제거(cp 전량 성공 검증 없이는 삭제 금지)
+  copy_failed=0
+  while IFS= read -r -d '' f; do
+    rel="${f#"$native"/}"
+    dest="$repo_mem/$rel"
+    mkdir -p "$(dirname "$dest")"
+    if [[ -e "$dest" ]]; then
+      if ! cmp -s "$f" "$dest"; then
+        native_dest="$dest.native" n=1
+        while [[ -e "$native_dest" ]]; do
+          cmp -s "$f" "$native_dest" && native_dest=""
+          [[ -z "$native_dest" ]] && break
+          native_dest="$dest.native.$n"
+          n=$((n + 1))
+        done
+        if [[ -n "$native_dest" ]] && ! cp -p "$f" "$native_dest" 2>/dev/null; then
+          copy_failed=1
+        fi
+      fi
+    elif ! cp -p "$f" "$dest" 2>/dev/null; then
+      copy_failed=1
+    fi
+  done < <(find "$native" -type f -print0)
+  if [[ "$copy_failed" -ne 0 ]]; then
+    printf '[memory-guard] 이관 실패 — 네이티브 보존, 재링크 생략(다음 세션 재시도)\n' >>"$log" 2>/dev/null || true
+    exit 0
+  fi
   rm -rf "$native"
 elif [[ -L "$native" ]]; then
   rm -f "$native"
