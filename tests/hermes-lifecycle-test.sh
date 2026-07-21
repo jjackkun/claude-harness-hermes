@@ -162,5 +162,131 @@ else
   nope "관측 기간 부족인데 후보 나옴 (actual='$out2')"
 fi
 
+echo "── 섹션 3: 압축 제안 — LLM 주제 클러스터링 dry-run 리포트 ──"
+
+# 격리 프로젝트 — 섹션 1~2 상태와 분리
+P3="$TMP/prop"; PDB="$P3/.hermes/state.db"; PH="$P3/.hermes/history"
+python3 "$SCRIPTS/hermes-init.py" --both "$P3" >/dev/null 2>&1
+mkdir -p "$PH" "$TMP/bin"
+
+# mock claude — 클러스터링 프롬프트를 감지해 고정 클러스터 JSON 을 stdout 으로
+cat > "$TMP/bin/claude" <<'EOF'
+#!/usr/bin/env bash
+if printf '%s' "$*" | grep -q '주제'; then
+  cat <<'JSON'
+[{"topic":"모의 주제 A","session_ids":["p-a","p-b"],"summary":"두 세션의 공통 결론 요약"}]
+JSON
+  exit 0
+fi
+echo "NONE"
+EOF
+chmod +x "$TMP/bin/claude"
+
+# 후보 픽스처: 오래됨(200일) + 미재활용 + 결정화된 세션 2개(원문 여러 줄 + DB 행)
+prop_setup() {
+PYTHONPATH="$SCRIPTS" python3 - "$PDB" "$PH" <<'PY'
+import sqlite3, sys, os, json
+from datetime import datetime, timedelta
+import hermes_reuse as r
+db, hist = sys.argv[1], sys.argv[2]
+con = sqlite3.connect(db)
+r.ensure_reuse_table(con)
+con.execute("UPDATE session_reuse SET last_reused_at=? WHERE session_id='__epoch__'",
+            ((datetime.now() - timedelta(days=200)).isoformat(),))
+now = datetime.now()
+day = (now - timedelta(days=200)).strftime("%Y-%m-%d")
+def mk(sid, lines, slots):
+    path = os.path.join(hist, "%s-%s.jsonl" % (day, sid))
+    with open(path, "w", encoding="utf-8") as f:
+        for i in range(lines):
+            row = {"seq": i, "session_id": sid, "role": "user",
+                   "content": "대화 %s-%d" % (sid, i)}
+            f.write(json.dumps(row, ensure_ascii=False) + "\n")
+            con.execute(
+                "INSERT INTO session_history (content, role, timestamp, project_id, session_id) "
+                "VALUES (?,?,?,?,?)", (row["content"], "user", day, "P3", sid))
+    if slots:
+        con.execute("INSERT OR REPLACE INTO session_summary "
+                    "(session_id, project_id, slots_json) VALUES (?,?,?)",
+                    (sid, "P3", json.dumps(slots, ensure_ascii=False)))
+    key = "pat-" + sid
+    con.execute("INSERT OR REPLACE INTO pattern_count (pattern_key, count, crystallized) "
+                "VALUES (?,3,1)", (key,))
+    con.execute("INSERT OR IGNORE INTO pattern_session (pattern_key, session_id) VALUES (?,?)",
+                (key, sid))
+mk("p-a", 5, {"decisions": ["A 를 채택"], "facts": ["B 는 느림"]})
+mk("p-b", 4, None)      # slots 없음 → history 첫 N줄 폴백 경로
+con.commit()
+print("OK")
+PY
+}
+prop_setup >/dev/null 2>&1
+
+# dry-run 불변 스냅샷 헬퍼 (원문 라인수 합 + DB session_history 행수)
+snapshot() {
+python3 - "$PDB" "$PH" <<'PY'
+import sqlite3, sys, os
+db, hist = sys.argv[1], sys.argv[2]
+total = 0
+for n in sorted(os.listdir(hist)):
+    with open(os.path.join(hist, n), encoding="utf-8") as f:
+        total += sum(1 for _ in f)
+rows = sqlite3.connect(db).execute("SELECT COUNT(*) FROM session_history").fetchone()[0]
+print("lines=%d rows=%d" % (total, rows))
+PY
+}
+
+REPORT="$P3/.hermes/lifecycle/$(date +%F)-proposal.md"
+BEFORE="$(snapshot)"
+
+PATH="$TMP/bin:$PATH" python3 "$SCRIPTS/hermes-lifecycle.py" --db "$PDB" --project "$P3" \
+  --propose --age-days 90 >/dev/null 2>&1
+
+if [[ -f "$REPORT" ]]; then ok "propose: proposal.md 생성"; else nope "proposal.md 미생성"; fi
+if grep -q "모의 주제 A" "$REPORT" 2>/dev/null; then ok "propose: 클러스터 주제 기록"; else nope "클러스터 주제 누락"; fi
+if grep -q "p-a" "$REPORT" 2>/dev/null && grep -q "p-b" "$REPORT" 2>/dev/null; then
+  ok "propose: 클러스터에 session_id 포함"
+else
+  nope "session_id 누락"
+fi
+
+AFTER="$(snapshot)"
+if [[ "$BEFORE" == "$AFTER" ]]; then
+  ok "dry-run: history 원문 라인수·DB session_history 행수 불변 ($AFTER)"
+else
+  nope "dry-run 불변 위반 (before='$BEFORE' after='$AFTER')"
+fi
+
+# (c) claude 부재 → 보류. 원문·DB 여전히 불변.
+rm -f "$REPORT"
+env PATH="/usr/bin:/bin" python3 "$SCRIPTS/hermes-lifecycle.py" --db "$PDB" --project "$P3" \
+  --propose --age-days 90 >/dev/null 2>&1
+if [[ ! -f "$REPORT" ]] || grep -q "보류" "$REPORT" 2>/dev/null; then
+  ok "claude 부재: 보류 처리(리포트 미생성 또는 보류 표기)"
+else
+  nope "claude 부재인데 보류 표기 없음"
+fi
+if [[ "$(snapshot)" == "$BEFORE" ]]; then
+  ok "claude 부재: 원문·DB 무손상"
+else
+  nope "claude 부재 경로에서 원문·DB 변경됨"
+fi
+
+# (d) 후보 0건(관측 기간 부족) → 리포트 미생성
+Z="$TMP/prop-zero"; ZDB="$Z/.hermes/state.db"
+python3 "$SCRIPTS/hermes-init.py" --both "$Z" >/dev/null 2>&1
+mkdir -p "$Z/.hermes/history"
+PYTHONPATH="$SCRIPTS" python3 -c "
+import sqlite3, sys, hermes_reuse as r
+r.ensure_reuse_table(sqlite3.connect(sys.argv[1]))
+" "$ZDB" >/dev/null 2>&1
+PATH="$TMP/bin:$PATH" python3 "$SCRIPTS/hermes-lifecycle.py" --db "$ZDB" --project "$Z" \
+  --propose --age-days 90 >/dev/null 2>&1
+if [[ ! -e "$Z/.hermes/lifecycle/$(date +%F)-proposal.md" ]]; then
+  ok "후보 0건: 리포트 미생성(조용한 종료)"
+else
+  nope "후보 0건인데 리포트 생성됨"
+fi
+
 echo "통과:$PASS 실패:$FAIL"
 [[ $FAIL -eq 0 ]]
