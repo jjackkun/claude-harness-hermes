@@ -138,6 +138,16 @@ else
   echo "  (root 실행 — chmod 무력화로 SKIP)"
 fi
 
+echo "== 10. 언인스톨 복원: 심링크→실디렉터리 (Claude Code 메모리 보존) =="
+source "$REPO_ROOT/lib/uninstall_helpers.sh"
+# 섹션 8에서 $NATIVE 는 심링크(→$REPO_MEM)로 복구된 상태. 섹션 9는 별개 프로젝트라 무영향.
+assert "사전: 네이티브가 심링크"        1 "$(islink "$NATIVE")"
+restore_memory_symlink "$PROJ"
+assert "복원 후 네이티브는 실디렉터리(심링크 아님)" 0 "$(islink "$NATIVE")"
+assert "복원 후 네이티브 디렉터리 존재"  1 "$(exists "$NATIVE")"
+assert "메모리 내용 보존(fact-a.md)"     1 "$(exists "$NATIVE/fact-a.md")"
+assert "저장소 원본은 유지"              1 "$(exists "$REPO_MEM/fact-a.md")"
+
 echo ""
 echo "결과: PASS=$PASS FAIL=$FAIL"
 [[ $FAIL -eq 0 ]]
