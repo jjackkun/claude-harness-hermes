@@ -98,6 +98,21 @@ python3 "$S/hermes-reindex.py" --db "$DB2" --project "$PROJ2" >/dev/null 2>&1
 kept="$(python3 -c "import sqlite3;print(sqlite3.connect('$DB2').execute(\"SELECT COUNT(*) FROM session_history WHERE session_id='$SID'\").fetchone()[0])")"
 assert "손상 세션은 스킵 — DB 3행 보존(순손실 없음)" 3 "$kept"
 
+echo "== 7. 재색인 자동 트리거: 텍스트가 DB보다 많으면 SessionStart 가 재색인 =="
+GUARD="$REPO_ROOT/assets/hooks/claude-sessionstart-history-reindex.sh"
+PROJ3="$T/proj3"; DB3="$PROJ3/.hermes/state.db"
+python3 "$S/hermes-init.py" --both "$PROJ3" >/dev/null 2>&1
+mkdir -p "$PROJ3/.hermes/history"
+cp "$PROJ/.hermes/history/"*.jsonl "$PROJ3/.hermes/history/"   # 텍스트만 있고 DB 는 빈 상태
+out3="$(echo '{"source":"startup"}' | CLAUDE_PROJECT_DIR="$PROJ3" bash "$GUARD")"
+assert "훅 stdout 무출력(컨텍스트 오염 방지)" "" "$out3"
+# 백그라운드 완료 대기(최대 15초) — 완료 마커 폴링
+for _ in $(seq 1 30); do
+  [[ "$(python3 -c "import sqlite3;print(sqlite3.connect('$DB3').execute('SELECT COUNT(*) FROM session_history').fetchone()[0])")" != "0" ]] && break
+  sleep 0.5
+done
+assert "재색인이 자동 실행되어 행 복원" 3 "$(python3 -c "import sqlite3;print(sqlite3.connect('$DB3').execute('SELECT COUNT(*) FROM session_history').fetchone()[0])")"
+
 echo ""
 echo "결과: PASS=$PASS FAIL=$FAIL"
 [[ $FAIL -eq 0 ]]
