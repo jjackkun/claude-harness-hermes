@@ -18,6 +18,12 @@ import sqlite3
 import sys
 from datetime import datetime
 
+try:
+    from hermes_reuse import ensure_reuse_table, mark_reused
+except ImportError:  # 헬퍼 미복사 시에도 회상 자체는 동작해야 한다
+    ensure_reuse_table = None
+    mark_reused = None
+
 SLOT_KEYS = ["decisions", "open", "prefs", "facts", "next"]
 
 
@@ -107,6 +113,11 @@ def do_inject(db_path, project_id, session_id) -> None:
         mark_injected(con, session_id)  # 직전 요약 유무와 무관하게 1회로 마킹
         if not summary:
             return
+        # 재활용 추적(Part D): 다른 세션의 요약을 주입 = 그 원본 세션을 재참조.
+        # 원본 세션에 last_reused_at 을 기록해 ② 미사용 신호를 공급한다.
+        if mark_reused is not None:
+            ensure_reuse_table(con)
+            mark_reused(con, [summary["session_id"]])
         block = format_inject(summary["slots"])
         if block:
             print(block)
