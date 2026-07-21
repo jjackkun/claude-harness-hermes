@@ -271,6 +271,7 @@ install_memory_symlink() {
     rm -f "$native_mem"
   elif [[ -d "$native_mem" ]]; then
     # 실디렉터리 — 기존 .md 를 repo 로 비파괴 이관 후 제거(cp 전량 성공 검증 없이는 삭제 금지)
+    # (동기화 유지: 동일 비파괴 이관 로직이 assets/hooks/claude-sessionstart-memory-guard.sh 에도 인라인 존재)
     local copy_failed=0 f rel dest
     while IFS= read -r -d '' f; do
       rel="${f#"$native_mem"/}"

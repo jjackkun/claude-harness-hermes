@@ -17,11 +17,17 @@ log="$project_dir/.hermes/hooks.log"
 # 이미 올바른 심링크면 종료
 if [[ -L "$native" && "$(readlink "$native")" == "$repo_mem" ]]; then exit 0; fi
 
+# NOTE(배포 게이트): NTFS 복사-폴백의 지속동기화(SessionStart→home/Stop→repo 복사)는 미구현.
+#   현재는 NTFS 감지 시 no-op 로 install 의 복사상태를 보존만 함. Windows 실기 검증 필요.
 case "$native" in
   /mnt/[a-z]/*) exit 0 ;;                             # NTFS 마운트는 심링크 스킵(복사 모드)
 esac
+case "$repo_mem" in
+  /mnt/[a-z]/*) exit 0 ;;                             # install 과 동일 기준(양쪽 검사)
+esac
 
 # 오손 상태 복구: 실디렉터리면 내용 보존 후 재링크
+# (동기화 유지: 동일 로직이 lib/harness_installers.sh::install_memory_symlink 에 원본 존재)
 if [[ -d "$native" && ! -L "$native" ]]; then
   # 실디렉터리(오손) — repo 로 비파괴 이관 후에만 제거(cp 전량 성공 검증 없이는 삭제 금지)
   copy_failed=0

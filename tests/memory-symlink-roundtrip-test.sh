@@ -148,6 +148,29 @@ assert "복원 후 네이티브 디렉터리 존재"  1 "$(exists "$NATIVE")"
 assert "메모리 내용 보존(fact-a.md)"     1 "$(exists "$NATIVE/fact-a.md")"
 assert "저장소 원본은 유지"              1 "$(exists "$REPO_MEM/fact-a.md")"
 
+echo "== 11. 설치 무결성: install_memory_symlink 실패해도 후속 지속(set -e 내성) =="
+# 정적 단언: 호출부가 실패-내성(|| ...) — IMP-1 의 실질 회귀 가드
+gc="$(grep -cE 'install_memory_symlink[^|]*\|\|' "$REPO_ROOT/project-claude.sh")"
+assert "project-claude.sh 호출부 실패내성(||)" 1 "$gc"
+# 동작 데모: return 1 이 || 로 잡히면 후속 도달 + native 보존(패턴 정당성)
+if [[ $EUID -ne 0 ]]; then
+  P11="$T/failproj"; mkdir -p "$P11/.claude/memory"
+  K11="$(printf '%s' "$P11" | sed 's/[^a-zA-Z0-9]/-/g')"
+  N11="$HOME/.claude/projects/$K11/memory"; mkdir -p "$N11"
+  printf 'only\n' > "$N11/native-only.md"
+  chmod 000 "$P11/.claude/memory"
+  seq_out="$( set -e; install_memory_symlink "$P11" || echo HANDLED; echo REACHED )"
+  chmod 755 "$P11/.claude/memory"
+  assert "return 1 이 || 로 잡혀 후속 도달" 1 "$(grep -c REACHED <<<"$seq_out")"
+  assert "실패 시 native-only 보존(유실 없음)" 1 "$(exists "$N11/native-only.md")"
+else
+  echo "  (root 실행 — chmod 무력화로 동작데모 SKIP)"
+fi
+
+echo "== 12. NTFS 판정 정합: guard 가 repo_mem 도 검사(install 과 대칭) =="
+GUARD="$REPO_ROOT/assets/hooks/claude-sessionstart-memory-guard.sh"
+assert "guard NTFS 판정 2개(native+repo_mem)" 2 "$(grep -c '/mnt/\[a-z\]/\*' "$GUARD")"
+
 echo ""
 echo "결과: PASS=$PASS FAIL=$FAIL"
 [[ $FAIL -eq 0 ]]
