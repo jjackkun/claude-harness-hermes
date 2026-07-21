@@ -59,6 +59,45 @@ printf 'x\n' > "$GP/.hermes/state.db"
 if ( cd "$GP" && git check-ignore -q .hermes/state.db ); then ig2=1; else ig2=0; fi
 assert "대조: .hermes/state.db 는 무시됨(conf 로드 증명)" 1 "$ig2"
 
+echo "== 5. 재색인: 빈 DB + JSONL → session_history 복원 =="
+PROJ2="$T/proj2"; DB2="$PROJ2/.hermes/state.db"
+python3 "$S/hermes-init.py" --both "$PROJ2" >/dev/null 2>&1
+mkdir -p "$PROJ2/.hermes/history"
+cp "$PROJ/.hermes/history/"*.jsonl "$PROJ2/.hermes/history/"
+assert "사전: 빈 DB" 0 "$(python3 -c "import sqlite3;print(sqlite3.connect('$DB2').execute('SELECT COUNT(*) FROM session_history').fetchone()[0])")"
+python3 "$S/hermes-reindex.py" --db "$DB2" --project "$PROJ2" >/dev/null 2>&1
+assert "재색인 후 3행 복원" 3 "$(python3 -c "import sqlite3;print(sqlite3.connect('$DB2').execute('SELECT COUNT(*) FROM session_history').fetchone()[0])")"
+ord2="$(python3 -c "import sqlite3;print(','.join(r[0] for r in sqlite3.connect('$DB2').execute(\"SELECT role FROM session_history WHERE session_id='$SID'\")))")"
+assert "대화 순서 복원(seq 순)" "user,assistant,user" "$ord2"
+echo "== 5b. 재색인 멱등 — 두 번 돌려도 중복 없음 =="
+python3 "$S/hermes-reindex.py" --db "$DB2" --project "$PROJ2" >/dev/null 2>&1
+assert "재실행 후에도 3행" 3 "$(python3 -c "import sqlite3;print(sqlite3.connect('$DB2').execute('SELECT COUNT(*) FROM session_history').fetchone()[0])")"
+
+echo "== 6. 역-export 보정: DB에만 있는 세션을 텍스트로 =="
+SID2="99999999-8888-7777-6666-555555555555"
+python3 - "$DB2" "$SID2" <<'PY'
+import sqlite3, sys
+con = sqlite3.connect(sys.argv[1])
+con.execute("INSERT INTO session_history (content, role, timestamp, project_id, session_id) VALUES (?,?,?,?,?)",
+            ("DB에만 있는 턴","user","2026-07-21T11:00:00.000000","proj",sys.argv[2]))
+con.commit()
+PY
+python3 "$S/hermes-reindex.py" --db "$DB2" --project "$PROJ2" --backfill >/dev/null 2>&1
+assert "역-export 로 새 파일 생성" 1 "$(ls "$PROJ2/.hermes/history/"*"$SID2".jsonl 2>/dev/null | wc -l)"
+
+echo "== 6b. 안전 가드: 손상된 JSONL 이 멀쩡한 DB 를 지우지 않는다 =="
+# $SID 세션(3행)의 텍스트를 절반 손상시킨 뒤 재색인 → DB 3행이 그대로여야 한다
+badf="$(ls "$PROJ2/.hermes/history/"*"$SID".jsonl | head -1)"
+python3 - "$badf" <<'PY'
+import sys
+lines = open(sys.argv[1], encoding="utf-8").read().splitlines()
+lines[1] = '{"seq":1,"role":"assist'          # 의도적 파손(JSON 미완결)
+open(sys.argv[1], "w", encoding="utf-8").write("\n".join(lines) + "\n")
+PY
+python3 "$S/hermes-reindex.py" --db "$DB2" --project "$PROJ2" >/dev/null 2>&1
+kept="$(python3 -c "import sqlite3;print(sqlite3.connect('$DB2').execute(\"SELECT COUNT(*) FROM session_history WHERE session_id='$SID'\").fetchone()[0])")"
+assert "손상 세션은 스킵 — DB 3행 보존(순손실 없음)" 3 "$kept"
+
 echo ""
 echo "결과: PASS=$PASS FAIL=$FAIL"
 [[ $FAIL -eq 0 ]]
