@@ -103,6 +103,16 @@ install_harness_gitignore "$GP" "claude"
 if ( cd "$GP" && git check-ignore -q .claude/memory/x.md ); then ig=1; else ig=0; fi
 assert ".claude/memory/x.md 는 무시되지 않음(추적)" 0 "$ig"
 
+echo "== 8. 자가치유 가드: 심링크가 날아가도 SessionStart 훅이 재링크 =="
+GUARD="$REPO_ROOT/assets/hooks/claude-sessionstart-memory-guard.sh"
+mkdir -p "$PROJ/.hermes"                 # .hermes 존재 게이트 통과용
+rm -f "$NATIVE"                          # 하네스가 심링크를 날린 상황 재현
+assert "사전: 네이티브 심링크 없음" 0 "$(islink "$NATIVE")"
+out="$(echo '{"source":"startup"}' | CLAUDE_PROJECT_DIR="$PROJ" bash "$GUARD")"
+assert "가드 훅 stdout 무출력(컨텍스트 오염 방지)" "" "$out"
+assert "가드가 심링크 복구"          1 "$(islink "$NATIVE")"
+assert "복구된 링크 대상 정확"       "$REPO_MEM" "$(readlink "$NATIVE")"
+
 echo ""
 echo "결과: PASS=$PASS FAIL=$FAIL"
 [[ $FAIL -eq 0 ]]
