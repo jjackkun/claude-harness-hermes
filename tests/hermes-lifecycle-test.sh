@@ -678,5 +678,230 @@ else
   nope "apply 가 커밋을 만들었다"
 fi
 
+echo "── 섹션 5: 데이터손실 가드 · 발산 감사 · 재압축 멱등 (T4 리뷰) ──"
+
+# 섹션 4 와 달리 시나리오마다 독립 git 프로젝트를 쓴다 — proposal 파일명이
+# 날짜 1개뿐이라 한 프로젝트에서 여러 제안을 돌리면 서로 덮어쓴다.
+mk_project() {   # $1=프로젝트 경로
+  python3 "$SCRIPTS/hermes-init.py" --both "$1" >/dev/null 2>&1
+  mkdir -p "$1/.hermes/history"
+  git -c init.defaultBranch=main init -q "$1" 2>/dev/null
+}
+commit_hist() {  # $1=프로젝트 경로
+  git -C "$1" add .hermes/history >/dev/null 2>&1
+  git -C "$1" -c user.email=t@t -c user.name=t commit -qm "history" >/dev/null 2>&1
+}
+fixture5() {     # $1=db $2=hist $3=sid $4=행수 → 파일 경로 출력
+  SCRIPTS="$SCRIPTS" python3 "$TMP/apply-fixture.py" "$1" "$2" "$3" "$4"
+}
+rows_of() {      # $1=db $2=sid
+python3 - "$1" "$2" <<'PY'
+import sqlite3, sys
+print(sqlite3.connect(sys.argv[1]).execute(
+    "SELECT COUNT(*) FROM session_history WHERE session_id=?", (sys.argv[2],)).fetchone()[0])
+PY
+}
+lines_of() { wc -l < "$1" 2>/dev/null | tr -d ' '; }
+
+# 섹션 5 공용 mock claude — 환각 필터가 프로젝트에 실재하는 id 만 남긴다
+mk_mock "$TMP/bin-s5" '
+cat <<JSON
+[{"topic":"섹션5 클러스터","session_ids":["f1-a","f4-a","f5-a","f5-b"],"summary":"공통 결론"}]
+JSON
+exit 0'
+propose5() {     # $1=db $2=project
+  PATH="$TMP/bin-s5:$PATH" python3 "$SCRIPTS/hermes-lifecycle.py" \
+    --db "$1" --project "$2" --propose --age-days 90 >/dev/null 2>&1
+}
+
+# ── (F1) DB 행수 > 파일 행수 드리프트 → 압축 거부 ────────────────────────────
+# Stop 훅 export 가 조용히 실패해 파일만 뒤처진 상태. 압축하면 DB 에만 있던
+# 원문이 git 어디에도 없이 영구 소실된다.
+L1="$TMP/s5-drift"; L1DB="$L1/.hermes/state.db"; L1H="$L1/.hermes/history"
+mk_project "$L1"
+F1F="$(fixture5 "$L1DB" "$L1H" f1-a 8)"
+head -n 3 "$F1F" > "$F1F.part" && mv "$F1F.part" "$F1F"   # 파일만 3행으로 뒤처짐
+commit_hist "$L1"
+
+if [[ "$(lines_of "$F1F")" == "3" && "$(rows_of "$L1DB" f1-a)" == "8" ]] &&
+   [[ -z "$(git -C "$L1" status --porcelain -- ".hermes/history/$(basename "$F1F")" 2>/dev/null)" ]]; then
+  ok "전제(F1): 파일 3행(커밋·clean) vs DB 8행 드리프트 구성"
+else
+  nope "전제(F1) 구성 실패 (file=$(lines_of "$F1F") db=$(rows_of "$L1DB" f1-a))"
+fi
+
+propose5 "$L1DB" "$L1"
+python3 "$SCRIPTS/hermes-lifecycle.py" --db "$L1DB" --project "$L1" --apply \
+  >/dev/null 2>"$TMP/s5-f1.err"
+if [[ "$(lines_of "$F1F")" == "3" && "$(rows_of "$L1DB" f1-a)" == "8" ]]; then
+  ok "(F1) DB 8행 > 파일 3행 → 압축 거부, 파일·DB 불변"
+else
+  nope "(F1) 드리프트 세션이 압축됨 — DB 원문 영구 소실 (file=$(lines_of "$F1F") db=$(rows_of "$L1DB" f1-a))"
+fi
+if grep -q "hermes-export-history.py" "$TMP/s5-f1.err" 2>/dev/null &&
+   grep -q "f1-a" "$TMP/s5-f1.err" 2>/dev/null; then
+  ok "(F1) 경고에 export 동기화 안내 포함"
+else
+  nope "(F1) export 동기화 안내 없음"
+fi
+
+# ── (F2)(F3) os.replace 실패 주입 → 발산 안내 방향 + 감사 기록 ───────────────
+# 실제 발산을 재현한다: DB 는 요약본으로 교체되고 파일은 원문 그대로 남는다.
+L2="$TMP/s5-diverge"; L2DB="$L2/.hermes/state.db"; L2H="$L2/.hermes/history"
+mk_project "$L2"
+F2F="$(fixture5 "$L2DB" "$L2H" f2-a 3)"
+commit_hist "$L2"
+
+cat > "$TMP/diverge.py" <<'PY'
+import json, os, sqlite3, sys
+sys.path.insert(0, os.environ["SCRIPTS"])
+import hermes_lifecycle_apply as A
+db, project, sid, path = sys.argv[1:5]
+real_replace = os.replace
+def boom(src, dst):                       # history 파일 교체만 실패시킨다
+    if str(dst).endswith(".jsonl"):
+        raise OSError(1, "주입된 파일 교체 실패")
+    return real_replace(src, dst)
+os.replace = boom
+con = sqlite3.connect(db)
+con.isolation_level = None
+res = A.apply_proposal(
+    con, project, {sid: path},
+    {"clusters": [{"topic": "발산 주제", "session_ids": [sid], "summary": "요약"}]},
+    "(테스트 리포트)")
+print(json.dumps(res, ensure_ascii=False))
+PY
+D_OUT="$(SCRIPTS="$SCRIPTS" python3 "$TMP/diverge.py" "$L2DB" "$L2" f2-a "$F2F" 2>"$TMP/s5-f2.err")"
+
+if [[ "$(lines_of "$F2F")" == "3" && "$(rows_of "$L2DB" f2-a)" == "1" ]]; then
+  ok "전제(F2): 실제 발산 재현 — 파일 3행(원문) vs DB 1행(요약본)"
+else
+  nope "전제(F2) 발산 미재현 (file=$(lines_of "$F2F") db=$(rows_of "$L2DB" f2-a))"
+fi
+if grep -q "hermes-reindex.py" "$TMP/s5-f2.err" 2>/dev/null &&
+   ! grep -q "hermes-export-history.py" "$TMP/s5-f2.err" 2>/dev/null; then
+  ok "(F2) 발산 안내가 reindex(파일→DB) 방향 — 원문 파일이 정본"
+else
+  nope "(F2) 발산 안내가 export(DB→파일) 방향 — 살아남은 원문을 파괴 ($(tr '\n' ' ' < "$TMP/s5-f2.err"))"
+fi
+
+diverged_check() {
+python3 - "$1" <<'PY'
+import json, sys
+try:
+    d = json.loads(sys.argv[1])
+except Exception as e:
+    print("NO(파싱실패 %s)" % e); raise SystemExit
+ok = d.get("diverged") == ["f2-a"] and "f2-a" not in (d.get("skipped") or [])
+print("YES" if ok else "NO(%s)" % json.dumps(d, ensure_ascii=False))
+PY
+}
+if [[ "$(diverged_check "$D_OUT")" == "YES" ]]; then
+  ok "(F3) 발산이 skipped 와 분리된 diverged 로 집계"
+else
+  nope "(F3) 발산이 스킵으로 위장됨 ($(diverged_check "$D_OUT"))"
+fi
+
+clog5() {
+python3 - "$1" <<'PY'
+import sqlite3, sys
+try:
+    rows = sqlite3.connect(sys.argv[1]).execute(
+        "SELECT session_ids, reason FROM compaction_log").fetchall()
+except sqlite3.OperationalError as e:
+    print("NOTABLE:%s" % e); raise SystemExit
+for sids, reason in rows:
+    print("%s|%s" % (sids, reason))
+PY
+}
+CLOG5="$(clog5 "$L2DB")"
+if grep -q "f2-a" <<<"$CLOG5" && grep -q "발산" <<<"$CLOG5"; then
+  ok "(F3) compaction_log 에 발산 사유 감사 기록"
+else
+  nope "(F3) 파괴적 부분실패가 감사에 미기록 (clog='$CLOG5')"
+fi
+
+# ── (F4) 압축 후 재-select_candidates 에서 제외 (재압축·정보 퇴화 차단) ──────
+L4="$TMP/s5-idem"; L4DB="$L4/.hermes/state.db"; L4H="$L4/.hermes/history"
+mk_project "$L4"
+F4F="$(fixture5 "$L4DB" "$L4H" f4-a 6)"
+commit_hist "$L4"
+propose5 "$L4DB" "$L4"
+python3 "$SCRIPTS/hermes-lifecycle.py" --db "$L4DB" --project "$L4" --apply \
+  >/dev/null 2>"$TMP/s5-f4.err"
+if [[ "$(lines_of "$F4F")" == "1" && "$(rows_of "$L4DB" f4-a)" == "1" ]]; then
+  ok "전제(F4): 1차 압축 성공(파일 1행 ⟺ DB 1행)"
+else
+  nope "전제(F4): 1차 압축 실패 (file=$(lines_of "$F4F") db=$(rows_of "$L4DB" f4-a))"
+fi
+CAND4="$(python3 "$SCRIPTS/hermes-lifecycle.py" --db "$L4DB" --project "$L4" --age-days 90 2>/dev/null)"
+if grep -q "f4-a" <<<"$CAND4"; then
+  nope "(F4) 압축된 세션이 여전히 후보 — 2차 압축·정보 퇴화 (cand='$CAND4')"
+else
+  ok "(F4) 압축된 세션은 후보에서 제외(2차 압축 차단)"
+fi
+# 전량 export → reindex 왕복 후에도 유지되는가 (JSONL 필드가 아니라 DB 가 정본)
+python3 "$SCRIPTS/hermes-export-history.py" --db "$L4DB" --project "$L4" >/dev/null 2>&1
+python3 "$SCRIPTS/hermes-reindex.py" --db "$L4DB" --project "$L4" >/dev/null 2>&1
+CAND4B="$(python3 "$SCRIPTS/hermes-lifecycle.py" --db "$L4DB" --project "$L4" --age-days 90 2>/dev/null)"
+if grep -q "f4-a" <<<"$CAND4B"; then
+  nope "(F4) export/reindex 왕복 후 압축 표식 소실 — 후보로 부활 (cand='$CAND4B')"
+else
+  ok "(F4) 전량 export→reindex 왕복 후에도 후보에서 제외 유지"
+fi
+
+# ── (F5) apply 시 게이트 재평가 + 리포트 소비 표시 ───────────────────────────
+L5="$TMP/s5-gate"; L5DB="$L5/.hermes/state.db"; L5H="$L5/.hermes/history"
+mk_project "$L5"
+F5A="$(fixture5 "$L5DB" "$L5H" f5-a 5)"
+F5B="$(fixture5 "$L5DB" "$L5H" f5-b 4)"
+commit_hist "$L5"
+propose5 "$L5DB" "$L5"
+L5JSON="$L5/.hermes/lifecycle/$(date +%F)-proposal.json"
+if [[ -f "$L5JSON" ]] && grep -q "f5-b" "$L5JSON"; then
+  ok "전제(F5): 제안에 f5-a·f5-b 포함"
+else
+  nope "전제(F5): 제안 생성 실패"
+fi
+# 제안 이후 f5-b 가 재활용됨 → ② 게이트 탈락
+PYTHONPATH="$SCRIPTS" python3 -c "
+import sqlite3, sys, hermes_reuse as r
+con = sqlite3.connect(sys.argv[1]); r.mark_reused(con, ['f5-b']); con.commit()
+" "$L5DB" >/dev/null 2>&1
+python3 "$SCRIPTS/hermes-lifecycle.py" --db "$L5DB" --project "$L5" --apply \
+  >/dev/null 2>"$TMP/s5-f5.err"
+if [[ "$(lines_of "$F5A")" == "1" && "$(rows_of "$L5DB" f5-a)" == "1" ]]; then
+  ok "(F5) 게이트 유지 세션(f5-a)은 정상 압축"
+else
+  nope "(F5) f5-a 압축 실패 (file=$(lines_of "$F5A") db=$(rows_of "$L5DB" f5-a))"
+fi
+if [[ "$(lines_of "$F5B")" == "4" && "$(rows_of "$L5DB" f5-b)" == "4" ]]; then
+  ok "(F5) 제안 이후 재활용된 세션(f5-b)은 apply 가 재평가해 스킵"
+else
+  nope "(F5) 낡은 리포트로 게이트 탈락 세션이 압축됨 (file=$(lines_of "$F5B") db=$(rows_of "$L5DB" f5-b))"
+fi
+if grep -q "f5-b" "$TMP/s5-f5.err" 2>/dev/null; then
+  ok "(F5) 게이트 탈락 스킵 사유 출력"
+else
+  nope "(F5) 게이트 탈락 사유 미출력"
+fi
+if grep -q "applied_at" "$L5JSON" 2>/dev/null; then
+  ok "(F5) 적용된 proposal.json 에 applied_at 기록"
+else
+  nope "(F5) applied_at 미기록 — 낡은 리포트 재적용 차단 불가"
+fi
+# 같은 리포트 재적용 → 거부. 요약본을 커밋해 git 가드를 통과시켜 놓고(= 가드가
+# 아니라 소비 표시가 막는 것임을 분리), compaction_log 행수 불변으로 확인한다.
+commit_hist "$L5"
+CLOG_BEFORE="$(clog5 "$L5DB" | wc -l | tr -d ' ')"
+python3 "$SCRIPTS/hermes-lifecycle.py" --db "$L5DB" --project "$L5" --apply \
+  >/dev/null 2>"$TMP/s5-f5b.err"
+CLOG_AFTER="$(clog5 "$L5DB" | wc -l | tr -d ' ')"
+if [[ "$CLOG_BEFORE" == "$CLOG_AFTER" ]] && grep -q "재적용" "$TMP/s5-f5b.err" 2>/dev/null; then
+  ok "(F5) 적용 완료된 proposal.json 재적용 거부"
+else
+  nope "(F5) 재적용이 다시 실행됨 (clog $CLOG_BEFORE→$CLOG_AFTER, err='$(tr '\n' ' ' < "$TMP/s5-f5b.err")')"
+fi
+
 echo "통과:$PASS 실패:$FAIL"
 [[ $FAIL -eq 0 ]]

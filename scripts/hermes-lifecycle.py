@@ -35,10 +35,9 @@ try:
 except ImportError:  # 마스킹 헬퍼 부재 — LLM 입력을 만들지 않는다(안전측)
     redact = None
 try:
-    from hermes_lifecycle_apply import RECOVERY_HINT, apply_proposal
+    from hermes_lifecycle_apply import run_apply
 except ImportError:  # 실행부 미복사 — --apply 불가(제안까지만 동작)
-    apply_proposal = None
-    RECOVERY_HINT = ""
+    run_apply = None
 
 DATE_LEN = 10          # "YYYY-MM-DD"
 SUFFIX = ".jsonl"
@@ -85,6 +84,24 @@ def _reused_ids(con) -> set:
     return {r[0] for r in rows}
 
 
+def _compacted_ids(con) -> set:
+    """이미 압축된 세션 id — 정본은 compaction_log.session_ids.
+
+    content 의 `[압축 요약]` 표식이나 JSONL 최상위 `compacted` 필드는 정본이 될 수
+    없다: 후자는 전량 export 한 번에 소멸하고(export 는 DB 5컬럼만 재작성),
+    전자는 어떤 프로덕션 코드도 읽지 않는다. compaction_log 는 DB 테이블이라
+    export/reindex 왕복에 불변이며 감사 목적으로 이미 채워진다.
+    """
+    try:
+        rows = con.execute("SELECT session_ids FROM compaction_log").fetchall()
+    except sqlite3.OperationalError:   # 테이블 부재 = 압축 이력 없음
+        return set()
+    out = set()
+    for (ids,) in rows:
+        out.update(s.strip() for s in (ids or "").split(",") if s.strip())
+    return out
+
+
 def _is_crystallized(con, session_id: str) -> bool:
     """이 세션이 기여한 패턴 중 결정화된 것이 있는가(근사 — 인과가 아니라 기여)."""
     try:
@@ -118,6 +135,7 @@ def select_candidates(con, hist_dir: str, now: datetime, age_days: int):
         return []
 
     reused = _reused_ids(con)
+    compacted = _compacted_ids(con)
     out = []
     for name in os.listdir(hist_dir):
         d, sid = parse_history_name(name)
@@ -125,6 +143,8 @@ def select_candidates(con, hist_dir: str, now: datetime, age_days: int):
             continue                     # ① 날짜 불명 — 제외
         if (now - d).days < age_days:
             continue                     # ① 아직 안 오래됨
+        if sid in compacted:
+            continue                     # 이미 압축됨 — 재압축은 정보 퇴화뿐(멱등)
         if sid in reused:
             continue                     # ② 재활용된 적 있음
         if not _is_crystallized(con, sid):
@@ -383,23 +403,24 @@ def _load_proposal(project: str, report: str):
         return None, None
 
 
-def _append_apply_note(md_path: str, result: dict):
-    """리포트 말미에 적용 결과와 복구 경로를 남긴다(커밋은 사용자 몫)."""
-    if not md_path or not os.path.isfile(md_path):
-        return
-    with open(md_path, "a", encoding="utf-8") as f:
-        f.write("\n## 적용 결과 (--apply)\n\n"
-                "- 압축: %d세션 / 클러스터 %d개 (절약 %d줄)\n"
-                "- 스킵: %s\n"
-                "- git 커밋은 하지 않았다. `git diff` 로 요약본을 확인한 뒤 직접 커밋하라.\n"
-                "- %s\n"
-                % (len(result["applied"]), result["clusters"], result["lines_saved"],
-                   ", ".join(result["skipped"]) or "(없음)", RECOVERY_HINT))
+def _apply_gate_reason(con, sid: str):
+    """apply 직전 재평가 — 탈락 사유(str) 또는 None.
+
+    ① 오래됨은 시간이 지날수록 참이 강해지므로 재평가 불필요. ②·③ 은 propose
+    이후에도 바뀔 수 있고(재활용 발생·결정화 해제), 압축 이력은 재압축을 막는다.
+    """
+    if sid in _compacted_ids(con):
+        return "이미 압축됨(compaction_log)"
+    if sid in _reused_ids(con):
+        return "재활용됨(② 미사용 게이트 탈락)"
+    if not _is_crystallized(con, sid):
+        return "미결정화(③ 게이트 탈락)"
+    return None
 
 
 def apply(con, project: str, hist_dir: str, report: str):
-    """제안 리포트를 읽어 파일·DB 를 요약본으로 동시 교체한다."""
-    if apply_proposal is None:
+    """제안 리포트를 찾아 실행부에 넘긴다. 교체·감사·소비 표시는 run_apply 담당."""
+    if run_apply is None:
         _log("hermes_lifecycle_apply 부재 — --apply 불가")
         return None
     path, data = _load_proposal(project, report)
@@ -407,12 +428,8 @@ def apply(con, project: str, hist_dir: str, report: str):
         _log("적용할 제안 리포트가 없다 — 먼저 --propose 를 실행하라")
         return None
     con.isolation_level = None            # BEGIN IMMEDIATE 명시 제어
-    result = apply_proposal(con, project, _history_paths(hist_dir), data,
-                            data.get("report") or path)
-    _append_apply_note(data.get("report") or "", result)
-    _log("압축 %d세션 / 스킵 %d세션 — git 커밋은 하지 않았다(검토 후 직접 커밋). %s"
-         % (len(result["applied"]), len(result["skipped"]), RECOVERY_HINT))
-    return result
+    return run_apply(con, project, _history_paths(hist_dir), path, data,
+                     gate_check=lambda sid: _apply_gate_reason(con, sid))
 
 
 def main() -> int:
