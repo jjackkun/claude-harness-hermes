@@ -190,6 +190,21 @@ def _apply_schema(con: sqlite3.Connection, scope: str):
         )
     """)
 
+    # compaction_log — 생애주기 압축 감사 기록 (무엇을·언제·왜 압축했는지, Part D)
+    # hermes_lifecycle_apply 가 동일 DDL 로 자가수리한다. 정본은 여기.
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS compaction_log (
+            id            INTEGER PRIMARY KEY AUTOINCREMENT,
+            run_at        DATETIME DEFAULT CURRENT_TIMESTAMP,
+            cluster_topic TEXT,
+            session_ids   TEXT,
+            lines_before  INTEGER,
+            lines_after   INTEGER,
+            report_path   TEXT,
+            reason        TEXT
+        )
+    """)
+
     # dream_log — 드리밍 실행 기록 (last_dream_at = MAX(run_at))
     cur.execute("""
         CREATE TABLE IF NOT EXISTS dream_log (

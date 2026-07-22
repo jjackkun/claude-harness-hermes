@@ -427,5 +427,256 @@ else
   nope "대조군 실패 (덤프 존재=$([[ -f $DUMP ]] && echo y || echo n), 민감문자열 잔존 가능)"
 fi
 
+echo "── 섹션 4: --apply 원문 교체 + compaction_log 감사 (무손실 가드) ──"
+
+# 실제 git 저장소에서 검증한다 — HEAD blob 실재 가드가 이 섹션의 핵심이라
+# git 상태를 흉내내면 의미가 없다.
+AP="$TMP/apply"; ADB="$AP/.hermes/state.db"; AH="$AP/.hermes/history"
+python3 "$SCRIPTS/hermes-init.py" --both "$AP" >/dev/null 2>&1
+mkdir -p "$AH"
+git -c init.defaultBranch=main init -q "$AP" 2>/dev/null
+
+# 픽스처 생성기: 오래됨(200일)+미재활용+결정화 세션 1건 (파일 N줄 ⟺ DB N행)
+cat > "$TMP/apply-fixture.py" <<'PY'
+import sqlite3, sys, os, json
+from datetime import datetime, timedelta
+sys.path.insert(0, os.environ["SCRIPTS"])
+import hermes_reuse as r
+db, hist, sid, n = sys.argv[1], sys.argv[2], sys.argv[3], int(sys.argv[4])
+con = sqlite3.connect(db)
+r.ensure_reuse_table(con)
+con.execute("UPDATE session_reuse SET last_reused_at=? WHERE session_id='__epoch__'",
+            ((datetime.now() - timedelta(days=200)).isoformat(),))
+day = (datetime.now() - timedelta(days=200)).strftime("%Y-%m-%d")
+ts = day + "T10:00:00.000000"
+path = os.path.join(hist, "%s-%s.jsonl" % (day, sid))
+with open(path, "w", encoding="utf-8") as f:
+    for i in range(n):
+        row = {"seq": i, "session_id": sid, "project_id": "PA", "role": "user",
+               "timestamp": ts, "content": "대화 %s-%d" % (sid, i)}
+        f.write(json.dumps(row, ensure_ascii=False) + "\n")
+        con.execute("INSERT INTO session_history (content, role, timestamp, project_id, session_id) "
+                    "VALUES (?,?,?,?,?)", (row["content"], "user", ts, "PA", sid))
+con.execute("INSERT OR REPLACE INTO session_summary (session_id, project_id, slots_json) "
+            "VALUES (?,?,?)", (sid, "PA", json.dumps({"decisions": ["%s 결정" % sid]},
+                                                     ensure_ascii=False)))
+key = "pat-" + sid
+con.execute("INSERT OR REPLACE INTO pattern_count (pattern_key, count, crystallized) "
+            "VALUES (?,3,1)", (key,))
+con.execute("INSERT OR IGNORE INTO pattern_session (pattern_key, session_id) VALUES (?,?)",
+            (key, sid))
+con.commit()
+print(path)
+PY
+
+mkfix() { SCRIPTS="$SCRIPTS" python3 "$TMP/apply-fixture.py" "$ADB" "$AH" "$1" "$2"; }
+fline()  { wc -l < "$1" 2>/dev/null | tr -d ' '; }
+dbrows() {
+python3 - "$ADB" "$1" <<'PY'
+import sqlite3, sys
+print(sqlite3.connect(sys.argv[1]).execute(
+    "SELECT COUNT(*) FROM session_history WHERE session_id=?", (sys.argv[2],)).fetchone()[0])
+PY
+}
+is_compacted() {   # 요약본 JSONL 1줄인가 (compacted:true + orig_lines)
+python3 - "$1" <<'PY'
+import json, sys
+try:
+    lines = [l for l in open(sys.argv[1], encoding="utf-8") if l.strip()]
+    o = json.loads(lines[0])
+    print("YES" if len(lines) == 1 and o.get("compacted") is True
+          and o.get("orig_lines") and o.get("role") == "system" else "NO")
+except Exception as e:
+    print("NO(%s)" % e)
+PY
+}
+
+FA="$(mkfix c-a 5)"; FB="$(mkfix c-b 4)"; FE="$(mkfix c-e 3)"
+git -C "$AP" add .hermes/history >/dev/null 2>&1
+git -C "$AP" -c user.email=t@t -c user.name=t commit -qm "history" >/dev/null 2>&1
+
+# (d2) 픽스처: gitignore 된 history 파일 — `git status --porcelain` 은 **완전히 조용**
+#      하지만 HEAD blob 은 없다. clean 만 보는 가드가 실제로 뚫리는 유일한 경로이며,
+#      원문이 git 어디에도 없어 덮어쓰면 영구 소실된다.
+printf '.hermes/history/*-c-g.jsonl\n' > "$AP/.gitignore"
+git -C "$AP" add .gitignore >/dev/null 2>&1
+git -C "$AP" -c user.email=t@t -c user.name=t commit -qm "ignore" >/dev/null 2>&1
+FG="$(mkfix c-g 2)"
+RELG=".hermes/history/$(basename "$FG")"
+COMMIT="$(git -C "$AP" rev-parse HEAD 2>/dev/null)"
+
+# (d) 픽스처: 커밋 0회 — git add 만 된 파일(HEAD blob 없음, 그러나 naive clean)
+FD="$(mkfix c-d 2)"
+git -C "$AP" add "$FD" >/dev/null 2>&1
+RELD=".hermes/history/$(basename "$FD")"
+RELA=".hermes/history/$(basename "$FA")"
+# (e) 픽스처: 커밋 후 워킹트리 수정(dirty)
+printf '%s\n' '{"seq":9,"session_id":"c-e","project_id":"PA","role":"user","content":"dirty"}' >> "$FE"
+
+# 전제 확인 — (d) 는 "HEAD blob 없음 + 미추적변경 없음(naive clean)" 이어야 의미가 있다
+if ! git -C "$AP" cat-file -e "HEAD:$RELD" 2>/dev/null; then
+  ok "전제(d): 커밋 0회 파일은 HEAD blob 부재"
+else
+  nope "전제(d) 실패 — HEAD 에 blob 이 있음"
+fi
+if git -C "$AP" diff --quiet -- "$RELD" 2>/dev/null; then
+  ok "전제(d): 그럼에도 naive clean(diff 없음) — 가드가 clean 만 보면 뚫린다"
+else
+  nope "전제(d): naive clean 이 아님"
+fi
+if ! git -C "$AP" cat-file -e "HEAD:$RELG" 2>/dev/null &&
+   [[ -z "$(git -C "$AP" status --porcelain -- "$RELG" 2>/dev/null)" ]]; then
+  ok "전제(d2): gitignore 파일은 HEAD blob 부재 + status 완전 clean"
+else
+  nope "전제(d2): 시나리오 구성 실패"
+fi
+
+# 제안 생성(mock claude) — apply 는 이 리포트를 읽는다
+mk_mock "$TMP/bin-apply" '
+cat <<JSON
+[{"topic":"압축 대상 A","session_ids":["c-a","c-b"],"summary":"두 세션의 공통 결론"},
+ {"topic":"가드 대상 B","session_ids":["c-d","c-e","c-g"],"summary":"가드에 걸려 스킵돼야 한다"}]
+JSON
+exit 0'
+PATH="$TMP/bin-apply:$PATH" python3 "$SCRIPTS/hermes-lifecycle.py" --db "$ADB" --project "$AP" \
+  --propose --age-days 90 >/dev/null 2>&1
+AREPORT="$AP/.hermes/lifecycle/$(date +%F)-proposal.md"
+AJSON="$AP/.hermes/lifecycle/$(date +%F)-proposal.json"
+if [[ -f "$AJSON" ]]; then ok "propose: 기계가독 proposal.json 동반 생성"; else nope "proposal.json 미생성"; fi
+
+# ── --apply 실행 (LLM 불필요 — PATH 모킹 없이) ────────────────────────────
+python3 "$SCRIPTS/hermes-lifecycle.py" --db "$ADB" --project "$AP" --apply \
+  >"$TMP/apply.out" 2>"$TMP/apply.err"
+rc_apply=$?
+if [[ $rc_apply -eq 0 ]]; then ok "apply: exit 0"; else nope "apply exit=$rc_apply"; fi
+
+# (a) 파일·DB 동시 교체 — 양쪽 1행
+if [[ "$(fline "$FA")" == "1" && "$(dbrows c-a)" == "1" ]]; then
+  ok "(a) c-a: 파일 1행 ⟺ DB 1행 동시 교체"
+else
+  nope "(a) c-a 동시교체 실패 (file=$(fline "$FA") db=$(dbrows c-a))"
+fi
+if [[ "$(fline "$FB")" == "1" && "$(dbrows c-b)" == "1" ]]; then
+  ok "(a) c-b: 파일 1행 ⟺ DB 1행 동시 교체"
+else
+  nope "(a) c-b 동시교체 실패 (file=$(fline "$FB") db=$(dbrows c-b))"
+fi
+if [[ "$(is_compacted "$FA")" == "YES" ]]; then
+  ok "(a) 요약본 포맷: 유효 JSONL 1줄 + compacted/orig_lines"
+else
+  nope "(a) 요약본 포맷 위반 ($(is_compacted "$FA"))"
+fi
+
+# (b) compaction_log 감사 기록
+clog() {
+python3 - "$ADB" <<'PY'
+import sqlite3, sys
+try:
+    rows = sqlite3.connect(sys.argv[1]).execute(
+        "SELECT cluster_topic, session_ids, lines_before, lines_after, report_path "
+        "FROM compaction_log").fetchall()
+except sqlite3.OperationalError as e:
+    print("NOTABLE:%s" % e); raise SystemExit
+print(len(rows))
+for r in rows:
+    print("|".join(str(x) for x in r))
+PY
+}
+CLOG="$(clog)"
+if printf '%s' "$CLOG" | grep -q "압축 대상 A"; then
+  ok "(b) compaction_log: 클러스터 주제 기록"
+else
+  nope "(b) compaction_log 미기록 ($CLOG)"
+fi
+if printf '%s' "$CLOG" | grep -q "c-a" && printf '%s' "$CLOG" | grep -q "9|2"; then
+  ok "(b) compaction_log: session_ids + lines_before 9 → lines_after 2"
+else
+  nope "(b) compaction_log 수치 불일치 ($CLOG)"
+fi
+
+# (d) HEAD blob 없는 파일 — clean 이어도 거부
+if [[ "$(fline "$FD")" == "2" && "$(dbrows c-d)" == "2" ]]; then
+  ok "(d) HEAD blob 부재(커밋 0회) 세션은 apply 거부 — 파일·DB 원문 보존"
+else
+  nope "(d) 커밋 0회 파일이 압축됨 (file=$(fline "$FD") db=$(dbrows c-d))"
+fi
+if grep -q "c-d" "$TMP/apply.err" 2>/dev/null; then
+  ok "(d) 스킵 경고 출력"
+else
+  nope "(d) 스킵 경고 없음"
+fi
+
+# (d2) ★HEAD blob 가드 단독 검증 — status 는 clean 이므로 clean 가드로는 못 막는다
+if [[ "$(fline "$FG")" == "2" && "$(dbrows c-g)" == "2" ]]; then
+  ok "(d2) gitignore 된(clean·HEAD blob 부재) 세션도 apply 거부 — 원문 보존"
+else
+  nope "(d2) 원문이 git 에 없는 파일을 압축함 — 영구 소실 (file=$(fline "$FG") db=$(dbrows c-g))"
+fi
+
+# (e) dirty 파일 거부
+if [[ "$(fline "$FE")" == "4" && "$(dbrows c-e)" == "3" ]]; then
+  ok "(e) dirty 세션은 apply 거부 — 파일·DB 불변"
+else
+  nope "(e) dirty 파일이 압축됨 (file=$(fline "$FE") db=$(dbrows c-e))"
+fi
+
+# 하드 삭제 없음 — 원문 blob 이 git 에 상존
+if git -C "$AP" cat-file -e "HEAD:$RELA" 2>/dev/null &&
+   [[ "$(git -C "$AP" show "HEAD:$RELA" 2>/dev/null | wc -l | tr -d ' ')" == "5" ]]; then
+  ok "하드 삭제 없음: 원문 5줄이 HEAD blob 에 상존"
+else
+  nope "원문 blob 소실"
+fi
+
+# 복구 경로 안내 (리포트 또는 stderr) — git 복원 + reindex --force
+if grep -q "git checkout" "$TMP/apply.err" "$AREPORT" 2>/dev/null &&
+   grep -q "hermes-reindex.py" "$TMP/apply.err" "$AREPORT" 2>/dev/null &&
+   grep -q -- "--force" "$TMP/apply.err" "$AREPORT" 2>/dev/null; then
+  ok "복구 경로 안내(git checkout → reindex --force) 명시"
+else
+  nope "복구 경로 안내 없음"
+fi
+
+# (f) ★전량 backfill export 후에도 요약본 유지 (DB 가 요약본이므로 되돌아가지 않는다)
+#     export 는 DB 컬럼만 재작성하므로 JSON 최상위 compacted/orig_lines 필드는
+#     살아남지 못한다 — 압축 표식은 content 안에 있어야 export 를 견딘다.
+python3 "$SCRIPTS/hermes-export-history.py" --db "$ADB" --project "$AP" >/dev/null 2>&1
+if [[ -f "$FA" && "$(fline "$FA")" == "1" ]] && grep -q "압축 요약" "$FA" &&
+   ! grep -q "대화 c-a-0" "$FA"; then
+  ok "(f) 전량 backfill export 후에도 요약본 유지(파일명·1행·요약 content)"
+else
+  nope "(f) 전량 export 가 요약본을 원문으로 되돌림 (file=$(fline "$FA"))"
+fi
+
+# (g) reindex(--force 없이) — 행수 1=1 이라 감소 가드 미발동
+python3 "$SCRIPTS/hermes-reindex.py" --db "$ADB" --project "$AP" \
+  >/dev/null 2>"$TMP/reindex.err"
+if [[ "$(fline "$FA")" == "1" && "$(dbrows c-a)" == "1" ]]; then
+  ok "(g) reindex(no --force): 요약본 유지, 행수 1=1"
+else
+  nope "(g) reindex 후 불일치 (file=$(fline "$FA") db=$(dbrows c-a))"
+fi
+if grep -q "재색인 거부" "$TMP/reindex.err" 2>/dev/null; then
+  nope "(g) 행수 감소 가드가 발동함 — 파일·DB 발산"
+else
+  ok "(g) 행수 감소 가드 미발동(압축·export·reindex 3자 정합)"
+fi
+
+# (c) 원문 복구: git blob → 파일 → reindex --force → DB 원문 N행 복원
+git -C "$AP" show "$COMMIT:$RELA" > "$FA" 2>/dev/null
+python3 "$SCRIPTS/hermes-reindex.py" --db "$ADB" --project "$AP" --force >/dev/null 2>&1
+if [[ "$(fline "$FA")" == "5" && "$(dbrows c-a)" == "5" ]]; then
+  ok "(c) 원문 복구: git blob 복원 + reindex --force 로 DB 5행 복원"
+else
+  nope "(c) 원문 복구 실패 (file=$(fline "$FA") db=$(dbrows c-a))"
+fi
+
+# apply 는 커밋하지 않는다 — 압축 후에도 HEAD 는 그대로
+if [[ "$(git -C "$AP" rev-parse HEAD 2>/dev/null)" == "$COMMIT" ]]; then
+  ok "apply 는 git 커밋을 하지 않는다(HEAD 불변)"
+else
+  nope "apply 가 커밋을 만들었다"
+fi
+
 echo "통과:$PASS 실패:$FAIL"
 [[ $FAIL -eq 0 ]]

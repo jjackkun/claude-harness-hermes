@@ -8,8 +8,11 @@
 
 순수 나이 기반 압축은 금지(스펙) — ②·③ 이 실질 게이트다.
 기본 모드는 **판정만** 한다. `--propose` 는 후보를 LLM 으로 주제 클러스터링해
-제안 리포트(.hermes/lifecycle/<날짜>-proposal.md)만 쓴다 — history 원문·DB 는
-절대 건드리지 않는다(실제 압축은 --apply 소관).
+제안 리포트(.hermes/lifecycle/<날짜>-proposal.md + 기계가독 .json)만 쓴다 —
+history 원문·DB 는 절대 건드리지 않는다.
+`--apply` 는 사용자가 리포트를 확인한 뒤에만 쓰는 모드로, 제안 클러스터의
+history 파일과 DB session_history 를 요약본으로 동시 교체하고 compaction_log 에
+감사 기록을 남긴다(무손실 가드·복구 경로는 hermes_lifecycle_apply 참조).
 """
 
 import argparse
@@ -31,6 +34,11 @@ try:
     from hermes_redact import redact
 except ImportError:  # 마스킹 헬퍼 부재 — LLM 입력을 만들지 않는다(안전측)
     redact = None
+try:
+    from hermes_lifecycle_apply import RECOVERY_HINT, apply_proposal
+except ImportError:  # 실행부 미복사 — --apply 불가(제안까지만 동작)
+    apply_proposal = None
+    RECOVERY_HINT = ""
 
 DATE_LEN = 10          # "YYYY-MM-DD"
 SUFFIX = ".jsonl"
@@ -285,6 +293,11 @@ def _cluster_chunk(evidence: str, valid_ids: set):
     return None
 
 
+def json_path(md_path: str) -> str:
+    """<날짜>-proposal.md 와 짝인 <날짜>-proposal.json 경로."""
+    return md_path[:-3] + ".json" if md_path.endswith(".md") else md_path + ".json"
+
+
 def write_proposal(project: str, date: str, clusters, held, paths) -> str:
     """제안 리포트만 쓴다. history 원문·DB 는 건드리지 않는다(dry-run)."""
     out_dir = os.path.join(project, ".hermes", "lifecycle")
@@ -312,6 +325,11 @@ def write_proposal(project: str, date: str, clusters, held, paths) -> str:
                   "- %s" % ", ".join(held), ""]
     with open(path, "w", encoding="utf-8") as f:
         f.write("\n".join(lines))
+    # 기계가독 사본 — --apply 는 md 파싱 대신 이 JSON 을 읽는다(파싱 취약성 제거).
+    # dry-run 계약은 그대로다: 리포트 파일만 쓰고 history 원문·DB 는 불변.
+    with open(json_path(path), "w", encoding="utf-8") as f:
+        json.dump({"date": date, "report": path, "clusters": clusters, "held": held},
+                  f, ensure_ascii=False, indent=2)
     return path
 
 
@@ -338,12 +356,74 @@ def propose(con, project: str, hist_dir: str, now: datetime, age_days: int):
     return write_proposal(project, now.strftime("%Y-%m-%d"), clusters, held, paths)
 
 
+# ───────────────── 압축 적용(--apply) — 사용자가 리포트 확인 후 ─────────────────
+
+
+def _load_proposal(project: str, report: str):
+    """적용할 제안을 (json 경로, 데이터)로 반환. 없으면 (None, None).
+
+    --report 는 md/json 어느 쪽을 줘도 되고, 미지정이면 가장 최근 proposal.json.
+    """
+    lc_dir = os.path.join(project, ".hermes", "lifecycle")
+    if report:
+        path = json_path(report) if report.endswith(".md") else report
+    else:
+        try:
+            cands = sorted(n for n in os.listdir(lc_dir) if n.endswith("-proposal.json"))
+        except OSError:
+            cands = []
+        if not cands:
+            return None, None
+        path = os.path.join(lc_dir, cands[-1])
+    try:
+        with open(path, encoding="utf-8") as f:
+            return path, json.load(f)
+    except (OSError, json.JSONDecodeError) as e:
+        _log("제안 리포트 읽기 실패: %s (%s)" % (path, e))
+        return None, None
+
+
+def _append_apply_note(md_path: str, result: dict):
+    """리포트 말미에 적용 결과와 복구 경로를 남긴다(커밋은 사용자 몫)."""
+    if not md_path or not os.path.isfile(md_path):
+        return
+    with open(md_path, "a", encoding="utf-8") as f:
+        f.write("\n## 적용 결과 (--apply)\n\n"
+                "- 압축: %d세션 / 클러스터 %d개 (절약 %d줄)\n"
+                "- 스킵: %s\n"
+                "- git 커밋은 하지 않았다. `git diff` 로 요약본을 확인한 뒤 직접 커밋하라.\n"
+                "- %s\n"
+                % (len(result["applied"]), result["clusters"], result["lines_saved"],
+                   ", ".join(result["skipped"]) or "(없음)", RECOVERY_HINT))
+
+
+def apply(con, project: str, hist_dir: str, report: str):
+    """제안 리포트를 읽어 파일·DB 를 요약본으로 동시 교체한다."""
+    if apply_proposal is None:
+        _log("hermes_lifecycle_apply 부재 — --apply 불가")
+        return None
+    path, data = _load_proposal(project, report)
+    if not data:
+        _log("적용할 제안 리포트가 없다 — 먼저 --propose 를 실행하라")
+        return None
+    con.isolation_level = None            # BEGIN IMMEDIATE 명시 제어
+    result = apply_proposal(con, project, _history_paths(hist_dir), data,
+                            data.get("report") or path)
+    _append_apply_note(data.get("report") or "", result)
+    _log("압축 %d세션 / 스킵 %d세션 — git 커밋은 하지 않았다(검토 후 직접 커밋). %s"
+         % (len(result["applied"]), len(result["skipped"]), RECOVERY_HINT))
+    return result
+
+
 def main() -> int:
     p = argparse.ArgumentParser(description="헤르메스 생애주기 린트 — 압축 후보 판정")
     p.add_argument("--db", required=True)
     p.add_argument("--project", required=True)
     p.add_argument("--propose", action="store_true",
                    help="후보를 주제 클러스터링해 제안 리포트만 생성(dry-run)")
+    p.add_argument("--apply", action="store_true",
+                   help="제안 리포트를 적용해 history 파일·DB 를 요약본으로 동시 교체")
+    p.add_argument("--report", help="적용할 제안 리포트 경로(미지정 시 최신)")
     p.add_argument("--age-days", type=int,
                    default=int(os.environ.get("HERMES_LIFECYCLE_AGE_DAYS", "90")))
     args = p.parse_args()
@@ -353,7 +433,9 @@ def main() -> int:
     hist_dir = os.path.join(args.project, ".hermes", "history")
     con = connect_db(args.db)
     try:
-        if args.propose:
+        if args.apply:
+            apply(con, args.project, hist_dir, args.report)
+        elif args.propose:
             report = propose(con, args.project, hist_dir, datetime.now(), args.age_days)
             if report:
                 print("[hermes-lifecycle] 압축 제안 → %s" % report)
