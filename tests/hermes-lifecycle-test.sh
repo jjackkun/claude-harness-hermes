@@ -903,5 +903,125 @@ else
   nope "(F5) 재적용이 다시 실행됨 (clog $CLOG_BEFORE→$CLOG_AFTER, err='$(tr '\n' ' ' < "$TMP/s5-f5b.err")')"
 fi
 
+echo "── 섹션 6: SessionStart throttle 훅 — 3~6개월 자동 dry-run 제안 ──"
+
+# 격리 프로젝트 — 섹션 1~5 상태와 분리
+H6="$TMP/hook"; H6DB="$H6/.hermes/state.db"; H6H="$H6/.hermes/history"
+H6BIN="$TMP/bin-hook"
+HOOK="$ROOT/assets/hooks/claude-sessionstart-lifecycle-lint.sh"
+python3 "$SCRIPTS/hermes-init.py" --both "$H6" >/dev/null 2>&1
+mkdir -p "$H6H" "$H6BIN"
+
+# mock claude — 클러스터링 프롬프트에 고정 클러스터 JSON 반환(실 LLM 호출 0회)
+cat > "$H6BIN/claude" <<'EOF'
+#!/usr/bin/env bash
+if printf '%s' "$*" | grep -q '주제'; then
+  cat <<'JSON'
+[{"topic":"모의 훅 주제","session_ids":["h-a","h-b"],"summary":"두 세션의 공통 결론"}]
+JSON
+  exit 0
+fi
+echo "NONE"
+EOF
+chmod +x "$H6BIN/claude"
+
+# 후보 픽스처: 오래됨(200일) + 미재활용 + 결정화 세션 2개(원문 여러 줄 + DB 행)
+PYTHONPATH="$SCRIPTS" python3 - "$H6DB" "$H6H" <<'PY' >/dev/null 2>&1
+import sqlite3, sys, os, json
+from datetime import datetime, timedelta
+import hermes_reuse as r
+db, hist = sys.argv[1], sys.argv[2]
+con = sqlite3.connect(db)
+r.ensure_reuse_table(con)
+con.execute("UPDATE session_reuse SET last_reused_at=? WHERE session_id='__epoch__'",
+            ((datetime.now() - timedelta(days=200)).isoformat(),))
+day = (datetime.now() - timedelta(days=200)).strftime("%Y-%m-%d")
+def mk(sid, lines, slots):
+    with open(os.path.join(hist, "%s-%s.jsonl" % (day, sid)), "w", encoding="utf-8") as f:
+        for i in range(lines):
+            row = {"seq": i, "session_id": sid, "role": "user", "content": "대화 %s-%d" % (sid, i)}
+            f.write(json.dumps(row, ensure_ascii=False) + "\n")
+            con.execute("INSERT INTO session_history (content, role, timestamp, project_id, session_id) "
+                        "VALUES (?,?,?,?,?)", (row["content"], "user", day, "H6", sid))
+    if slots:
+        con.execute("INSERT OR REPLACE INTO session_summary (session_id, project_id, slots_json) "
+                    "VALUES (?,?,?)", (sid, "H6", json.dumps(slots, ensure_ascii=False)))
+    key = "pat-" + sid
+    con.execute("INSERT OR REPLACE INTO pattern_count (pattern_key, count, crystallized) VALUES (?,3,1)", (key,))
+    con.execute("INSERT OR IGNORE INTO pattern_session (pattern_key, session_id) VALUES (?,?)", (key, sid))
+mk("h-a", 5, {"decisions": ["A 채택"], "facts": ["B 느림"]})
+mk("h-b", 4, None)
+con.commit()
+PY
+
+MARKER="$H6/.hermes/.lifecycle-lint-marker"
+H6REPORT="$H6/.hermes/lifecycle/$(date +%F)-proposal.md"
+
+# 훅 실행 헬퍼 — startup source 주입, claude mock PATH, 워크트리 아닌 실경로
+run_hook() {
+  printf '%s' '{"source":"startup"}' | \
+    env CLAUDE_PROJECT_DIR="$H6" PATH="$H6BIN:$PATH" bash "$HOOK" 2>/dev/null
+}
+
+# 불변 스냅샷: history 원문 라인수 합 + DB session_history 행수 + compaction_log 행수
+snap6() {
+python3 - "$H6DB" "$H6H" <<'PY'
+import sqlite3, sys, os
+db, hist = sys.argv[1], sys.argv[2]
+total = 0
+for n in sorted(os.listdir(hist)):
+    with open(os.path.join(hist, n), encoding="utf-8") as f:
+        total += sum(1 for _ in f)
+con = sqlite3.connect(db)
+rows = con.execute("SELECT COUNT(*) FROM session_history").fetchone()[0]
+try:
+    clog = con.execute("SELECT COUNT(*) FROM compaction_log").fetchone()[0]
+except Exception:
+    clog = 0
+print("lines=%d rows=%d clog=%d" % (total, rows, clog))
+PY
+}
+
+BEFORE6="$(snap6)"
+
+# (a) throttle 안 지남(마커 방금) → 스킵. propose 미실행·리포트 미생성·stdout 무출력.
+mkdir -p "$H6/.hermes"; touch "$MARKER"
+rm -rf "$H6/.hermes/lifecycle"
+out_a="$(run_hook)"
+sleep 1   # 혹시 백그라운드가 떴다면 리포트가 생길 시간을 준다(스킵이면 안 생겨야 함)
+if [[ -z "$out_a" ]]; then ok "(a) throttle 스킵: stdout 무출력"; else nope "(a) stdout 오염 ('$out_a')"; fi
+if [[ ! -e "$H6REPORT" ]]; then ok "(a) throttle 스킵: propose 미실행(리포트 미생성)"; else nope "(a) throttle 내인데 리포트 생성됨"; fi
+
+# (b) throttle 지남(마커 없음) + 후보 있음 → propose 백그라운드 → 폴링(≤15s) → 리포트 생성.
+rm -f "$MARKER"; rm -rf "$H6/.hermes/lifecycle"
+out_b="$(run_hook)"
+if [[ -z "$out_b" ]]; then ok "(b) 실행 경로: stdout 무출력"; else nope "(b) stdout 오염 ('$out_b')"; fi
+for _ in $(seq 1 30); do [[ -f "$H6REPORT" ]] && break; sleep 0.5; done
+if [[ -f "$H6REPORT" ]] && grep -q "모의 훅 주제" "$H6REPORT" 2>/dev/null; then
+  ok "(b) throttle 경과: propose 백그라운드 실행 → proposal 리포트 생성"
+else
+  nope "(b) 리포트 미생성/주제 누락 (report exists: $([[ -f "$H6REPORT" ]] && echo yes || echo no))"
+fi
+
+# (c) --apply 자동 미실행: 훅 실행 후에도 history 원문·DB session_history 불변(자동 압축 없음).
+AFTER6="$(snap6)"
+if [[ "$BEFORE6" == "$AFTER6" ]]; then
+  ok "(c) --apply 자동 미실행: history 원문·DB·compaction_log 불변 ($AFTER6)"
+else
+  nope "(c) 자동 압축 발생 (before='$BEFORE6' after='$AFTER6')"
+fi
+
+# (d) 마커 선-touch 로 throttle 갱신 → 재실행 즉시 스킵(리포트 재생성 안 됨).
+if [[ -f "$MARKER" ]]; then ok "(d) 실행 시 마커 선-touch 생성"; else nope "(d) 마커 미생성 — 이중기동 방지 불가"; fi
+rm -rf "$H6/.hermes/lifecycle"
+out_d="$(run_hook)"
+sleep 1
+if [[ ! -e "$H6REPORT" ]]; then
+  ok "(d) 마커 선-touch 로 throttle 갱신 → 재실행 즉시 스킵"
+else
+  nope "(d) 재실행이 스킵되지 않음(리포트 재생성됨) — 마커 선-touch 미동작"
+fi
+if [[ -z "$out_d" ]]; then ok "(d) 재실행 스킵: stdout 무출력"; else nope "(d) stdout 오염 ('$out_d')"; fi
+
 echo "통과:$PASS 실패:$FAIL"
 [[ $FAIL -eq 0 ]]
