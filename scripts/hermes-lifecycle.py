@@ -178,6 +178,17 @@ def _fallback_evidence(path: str) -> str:
     return "\n".join(lines)
 
 
+_REDACT_WARNED = False
+
+
+def _warn_no_redact():
+    """마스킹 헬퍼 부재 경고 — 프로세스당 1회만(세션마다 반복되면 노이즈)."""
+    global _REDACT_WARNED
+    if not _REDACT_WARNED:
+        _REDACT_WARNED = True
+        _log("hermes_redact 부재 — LLM 입력을 만들지 않는다(원문 유출 방지)")
+
+
 def _session_evidence(con, sid: str, path: str) -> str:
     """세션 1건의 LLM 입력 텍스트. session_summary.slots_json 우선, 없으면 원문 폴백.
     부피·비용 때문에 원문 JSONL 전체는 절대 넣지 않는다. 마스킹은 안전 경계로 재적용."""
@@ -200,7 +211,10 @@ def _session_evidence(con, sid: str, path: str) -> str:
     if not body.strip():
         return ""
     text = "[session %s]\n%s" % (sid, body)
-    return redact(text) if redact else text
+    if redact is None:      # 마스킹 부재 = LLM 입력 없음 (import 부 주석의 안전측 선언)
+        _warn_no_redact()
+        return ""
+    return redact(text)
 
 
 def _chunk_sessions(items, budget):

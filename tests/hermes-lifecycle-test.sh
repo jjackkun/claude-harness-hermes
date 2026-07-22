@@ -288,5 +288,144 @@ else
   nope "후보 0건인데 리포트 생성됨"
 fi
 
+# ── 회귀 가드: 환각 필터 / 잘못된 JSON / rc≠0 ─────────────────────────────
+# 프롬프트를 받아 지정한 방식으로 응답하는 mock claude 를 각각 별도 bin 에 만든다.
+mk_mock() {   # $1=bin 디렉터리, $2=본문 스크립트
+  mkdir -p "$1"
+  { echo '#!/usr/bin/env bash'; printf '%s\n' "$2"; } > "$1/claude"
+  chmod +x "$1/claude"
+}
+
+# (a) 환각 필터: 이번 청크에 없는 session_id 를 섞어 반환 → 리포트에 미포함
+mk_mock "$TMP/bin-halluc" '
+cat <<JSON
+[{"topic":"환각 혼합","session_ids":["p-a","p-ghost-9999"],"summary":"가짜 id 혼입"}]
+JSON
+exit 0'
+rm -f "$REPORT"
+PATH="$TMP/bin-halluc:$PATH" python3 "$SCRIPTS/hermes-lifecycle.py" --db "$PDB" --project "$P3" \
+  --propose --age-days 90 >/dev/null 2>&1
+if [[ -f "$REPORT" ]] && grep -q "p-a" "$REPORT" && ! grep -q "p-ghost-9999" "$REPORT"; then
+  ok "환각 필터: 존재하지 않는 session_id 는 리포트에서 제거"
+else
+  nope "환각 필터 실패 (리포트에 p-ghost-9999 잔존 또는 리포트 없음)"
+fi
+if [[ "$(snapshot)" == "$BEFORE" ]]; then ok "환각 필터 경로: 원문·DB 불변"; else nope "환각 필터 경로 원문·DB 변경됨"; fi
+
+# (b) 잘못된 JSON → 해당 청크 보류, 크래시 없음, 원문·DB 불변
+mk_mock "$TMP/bin-badjson" '
+echo "{이건 JSON 이 아니다 ["
+exit 0'
+rm -f "$REPORT"
+PATH="$TMP/bin-badjson:$PATH" python3 "$SCRIPTS/hermes-lifecycle.py" --db "$PDB" --project "$P3" \
+  --propose --age-days 90 >/dev/null 2>&1
+rc_badjson=$?
+if [[ $rc_badjson -eq 0 ]]; then ok "잘못된 JSON: 크래시 없음(exit 0)"; else nope "잘못된 JSON exit=$rc_badjson"; fi
+if [[ -f "$REPORT" ]] && grep -q "보류" "$REPORT"; then
+  ok "잘못된 JSON: 해당 청크 보류 표기"
+else
+  nope "잘못된 JSON 인데 보류 표기 없음"
+fi
+if [[ "$(snapshot)" == "$BEFORE" ]]; then ok "잘못된 JSON: 원문·DB 불변"; else nope "잘못된 JSON 경로 원문·DB 변경됨"; fi
+
+# (c) 비정상 종료(rc≠0) → 보류, 크래시 없음, 원문·DB 불변
+mk_mock "$TMP/bin-rc" '
+echo "boom" >&2
+exit 3'
+rm -f "$REPORT"
+PATH="$TMP/bin-rc:$PATH" python3 "$SCRIPTS/hermes-lifecycle.py" --db "$PDB" --project "$P3" \
+  --propose --age-days 90 >/dev/null 2>&1
+rc_fail=$?
+if [[ $rc_fail -eq 0 ]]; then ok "claude rc≠0: 크래시 없음(exit 0)"; else nope "claude rc≠0 에서 exit=$rc_fail"; fi
+if [[ -f "$REPORT" ]] && grep -q "보류" "$REPORT"; then
+  ok "claude rc≠0: 보류 표기"
+else
+  nope "claude rc≠0 인데 보류 표기 없음"
+fi
+if [[ "$(snapshot)" == "$BEFORE" ]]; then ok "claude rc≠0: 원문·DB 불변"; else nope "claude rc≠0 경로 원문·DB 변경됨"; fi
+
+# (d) [Critical 회귀 가드] hermes_redact 부재 → LLM 입력 자체를 만들지 않는다.
+#     scripts 사본에서 hermes_redact.py 만 제외하고, mock claude 가 받은 프롬프트를
+#     파일로 덤프하게 해 민감 문자열이 실리지 않음을 단언한다.
+S4="$TMP/scripts-noredact"
+cp -r "$SCRIPTS" "$S4"
+rm -f "$S4/hermes_redact.py"
+rm -rf "$S4/__pycache__"
+
+P4="$TMP/prop-secret"; P4DB="$P4/.hermes/state.db"; P4H="$P4/.hermes/history"
+python3 "$SCRIPTS/hermes-init.py" --both "$P4" >/dev/null 2>&1
+mkdir -p "$P4H"
+SECRET_MAIL="secret@example.com"
+SECRET_PW="password=hunter2SECRET"
+
+PYTHONPATH="$SCRIPTS" python3 - "$P4DB" "$P4H" "$SECRET_MAIL" "$SECRET_PW" <<'PY' >/dev/null 2>&1
+import sqlite3, sys, os, json
+from datetime import datetime, timedelta
+import hermes_reuse as r
+db, hist, mail, pw = sys.argv[1:5]
+con = sqlite3.connect(db)
+r.ensure_reuse_table(con)
+con.execute("UPDATE session_reuse SET last_reused_at=? WHERE session_id='__epoch__'",
+            ((datetime.now() - timedelta(days=200)).isoformat(),))
+day = (datetime.now() - timedelta(days=200)).strftime("%Y-%m-%d")
+def mk(sid, slots, content):
+    with open(os.path.join(hist, "%s-%s.jsonl" % (day, sid)), "w", encoding="utf-8") as f:
+        f.write(json.dumps({"seq": 0, "session_id": sid, "role": "user",
+                            "content": content}, ensure_ascii=False) + "\n")
+    if slots:
+        con.execute("INSERT OR REPLACE INTO session_summary "
+                    "(session_id, project_id, slots_json) VALUES (?,?,?)",
+                    (sid, "P4", json.dumps(slots, ensure_ascii=False)))
+    key = "pat-" + sid
+    con.execute("INSERT OR REPLACE INTO pattern_count (pattern_key, count, crystallized) "
+                "VALUES (?,3,1)", (key,))
+    con.execute("INSERT OR IGNORE INTO pattern_session (pattern_key, session_id) VALUES (?,?)",
+                (key, sid))
+mk("p-s1", {"facts": ["연락처는 %s" % mail]}, "무해한 본문")   # slots 경로
+mk("p-s2", None, "접속정보 %s" % pw)                           # 폴백(원문) 경로
+con.commit()
+PY
+
+DUMP="$TMP/prompt-dump.txt"
+mkdir -p "$TMP/bin-dump"
+cat > "$TMP/bin-dump/claude" <<EOF
+#!/usr/bin/env bash
+printf '%s' "\$*" >> "$DUMP"
+echo "[]"
+exit 0
+EOF
+chmod +x "$TMP/bin-dump/claude"
+
+rm -f "$DUMP"
+PATH="$TMP/bin-dump:$PATH" python3 "$S4/hermes-lifecycle.py" --db "$P4DB" --project "$P4" \
+  --propose --age-days 90 >/dev/null 2>&1
+rc_nored=$?
+if [[ $rc_nored -eq 0 ]]; then ok "redact 부재: 크래시 없음(exit 0)"; else nope "redact 부재 exit=$rc_nored"; fi
+if [[ ! -f "$DUMP" ]]; then
+  ok "redact 부재: LLM 호출 자체 없음(프롬프트 덤프 미생성)"
+else
+  nope "redact 부재인데 LLM 호출됨(덤프 생성: $(wc -c <"$DUMP") bytes)"
+fi
+if [[ ! -f "$DUMP" ]] || { ! grep -qF "$SECRET_MAIL" "$DUMP" && ! grep -qF "$SECRET_PW" "$DUMP"; }; then
+  ok "redact 부재: 민감 원문이 LLM 프롬프트에 실리지 않음"
+else
+  nope "redact 부재에서 민감 원문 유출 — 프롬프트 덤프에 존재"
+fi
+if [[ ! -e "$P4/.hermes/lifecycle/$(date +%F)-proposal.md" ]]; then
+  ok "redact 부재: 청크 없음 → 리포트 미생성"
+else
+  nope "redact 부재인데 리포트 생성됨"
+fi
+
+# 대조군: redact 존재(정본 scripts) → 마스킹된 프롬프트가 실제로 만들어진다
+rm -f "$DUMP"
+PATH="$TMP/bin-dump:$PATH" python3 "$SCRIPTS/hermes-lifecycle.py" --db "$P4DB" --project "$P4" \
+  --propose --age-days 90 >/dev/null 2>&1
+if [[ -f "$DUMP" ]] && ! grep -qF "$SECRET_MAIL" "$DUMP" && ! grep -qF "$SECRET_PW" "$DUMP"; then
+  ok "대조군(redact 존재): 프롬프트 생성되되 민감 원문은 마스킹됨"
+else
+  nope "대조군 실패 (덤프 존재=$([[ -f $DUMP ]] && echo y || echo n), 민감문자열 잔존 가능)"
+fi
+
 echo "통과:$PASS 실패:$FAIL"
 [[ $FAIL -eq 0 ]]
