@@ -87,10 +87,13 @@ def _reused_ids(con) -> set:
 def _compacted_ids(con) -> set:
     """이미 압축된 세션 id — 정본은 compaction_log.session_ids.
 
-    content 의 `[압축 요약]` 표식이나 JSONL 최상위 `compacted` 필드는 정본이 될 수
-    없다: 후자는 전량 export 한 번에 소멸하고(export 는 DB 5컬럼만 재작성),
-    전자는 어떤 프로덕션 코드도 읽지 않는다. compaction_log 는 DB 테이블이라
-    export/reindex 왕복에 불변이며 감사 목적으로 이미 채워진다.
+    compaction_log 는 DB 테이블이라 이 기계 안에서는 export/reindex 왕복에
+    불변이지만, 이식 대상이 아니다(export 는 session_history 5컬럼만 옮긴다).
+    신규 기계·DB 리빌드 후에는 사라진다.
+
+    그래도 재압축이 일어나지 않는 이유는 대칭성이다: 같은 리빌드에서
+    pattern_session/pattern_count 도 함께 사라져 게이트 ③(결정화)이 닫힌다.
+    즉 "압축 이력을 아는 기계"와 "결정화를 아는 기계"가 항상 같다.
     """
     try:
         rows = con.execute("SELECT session_ids FROM compaction_log").fetchall()

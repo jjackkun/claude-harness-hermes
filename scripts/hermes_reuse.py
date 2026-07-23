@@ -67,9 +67,17 @@ def mark_reused(con: sqlite3.Connection, session_ids) -> None:
 
 
 def get_tracking_epoch(con: sqlite3.Connection):
-    """tracking_epoch 마커 시각(str)을 반환한다. 없으면 None (→ 압축 후보 0)."""
-    row = con.execute(
-        "SELECT last_reused_at FROM session_reuse WHERE session_id=?",
-        (EPOCH_MARKER,),
-    ).fetchone()
+    """tracking_epoch 마커 시각(str)을 반환한다. 없으면 None (→ 압축 후보 0).
+
+    테이블 부재(추적 미도입 DB)도 None — 형제 판정 함수(_reused_ids·_compacted_ids)와
+    동일하게 조용히 물러난다. 예외가 새면 lint 훅이 propose 전에 이미 찍은
+    throttle 마커 때문에 다음 90일을 통째로 태운다.
+    """
+    try:
+        row = con.execute(
+            "SELECT last_reused_at FROM session_reuse WHERE session_id=?",
+            (EPOCH_MARKER,),
+        ).fetchone()
+    except sqlite3.OperationalError:   # 테이블 부재 = 추적 미도입
+        return None
     return row[0] if row else None

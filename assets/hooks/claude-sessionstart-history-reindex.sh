@@ -58,6 +58,8 @@ text_count=${#hist_files[@]}
 
 # [게이트 5] 재색인 필요 판정 — 세션 수 증가 OR 총 라인 수 증가(같은 세션의 더 긴 버전 pull 감지).
 #   파이썬 1회(파이프 없음: ugrep/SIGPIPE 회피). DB 조회 실패 시 보수적으로 "불필요"(2**31).
+#   need=2 는 발산(텍스트 < DB) — 타 기계가 압축한 요약본을 pull 한 상태가 대표 사례다.
+#   증가가 없어 need=0 이지만 "동기화됨"이 아니므로 in-sync 와 분리해 기록한다.
 gate="$(python3 -c "
 import sqlite3, sys, glob, os
 files = glob.glob(os.path.join(sys.argv[1], '*.jsonl'))
@@ -67,16 +69,30 @@ for f in files:
         with open(f, encoding='utf-8') as fh: tl += sum(1 for _ in fh)
     except Exception: pass
 ts = len(files)
+db_ok = True
 try:
     con = sqlite3.connect(sys.argv[2])
     ds = con.execute('SELECT COUNT(DISTINCT session_id) FROM session_history').fetchone()[0]
     dr = con.execute('SELECT COUNT(*) FROM session_history').fetchone()[0]
 except Exception:
     ds = dr = 2**31
-need = 1 if (ts > ds or tl > dr) else 0
+    db_ok = False
+if ts > ds or tl > dr:
+    need = 1
+elif db_ok and (ts < ds or tl < dr):
+    need = 2
+else:
+    need = 0
 print(f'{need} ts={ts} ds={ds} tl={tl} dr={dr}')
 " "$hist_dir" "$db_path" 2>/dev/null || echo '0 error')"
 need="${gate%% *}"
+if [[ "$need" == "2" ]]; then
+  # 자동 복구하지 않는다 — 훅이 --force 를 붙이면 "손상된 텍스트가 DB 를 파괴하지
+  # 못하게" 막는 재색인 행수감소 가드가 통째로 무력화된다. 로그 안내까지만.
+  # 방향 주의: 이 상태에서 전량 export(DB→파일)는 압축을 되돌리므로 쓰지 않는다.
+  _log "action=skip:diverged $gate — 텍스트가 DB 보다 적다(타 기계가 압축한 요약본을 pull 한 상태일 수 있다). 압축을 수용하려면 수동으로: python3 <harness>/scripts/hermes-reindex.py --db '$db_path' --project '$project_dir' --force"
+  exit 0
+fi
 if [[ "$need" != "1" ]]; then
   _log "action=skip:in-sync $gate"
   exit 0

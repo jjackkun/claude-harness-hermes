@@ -638,9 +638,9 @@ else
 fi
 
 # (f) ★전량 backfill export 후에도 요약본 유지 (DB 가 요약본이므로 되돌아가지 않는다)
-#     export 는 DB 컬럼만 재작성하므로 JSON 최상위 compacted/orig_lines 필드는
-#     살아남지 못한다 — 압축 표식은 content 안에 있어야 export 를 견딘다.
-python3 "$SCRIPTS/hermes-export-history.py" --db "$ADB" --project "$AP" >/dev/null 2>&1
+#     export 는 DB 5컬럼을 재작성하므로 요약 content 는 그대로 살아남는다.
+#     (JSON 최상위 compacted/orig_lines 는 export 가 명시적으로 물려준다 — 섹션 7 G5)
+python3 "$SCRIPTS/hermes-export-history.py" --db "$ADB" --project "$AP" --all >/dev/null 2>&1
 if [[ -f "$FA" && "$(fline "$FA")" == "1" ]] && grep -q "압축 요약" "$FA" &&
    ! grep -q "대화 c-a-0" "$FA"; then
   ok "(f) 전량 backfill export 후에도 요약본 유지(파일명·1행·요약 content)"
@@ -841,7 +841,7 @@ else
   ok "(F4) 압축된 세션은 후보에서 제외(2차 압축 차단)"
 fi
 # 전량 export → reindex 왕복 후에도 유지되는가 (JSONL 필드가 아니라 DB 가 정본)
-python3 "$SCRIPTS/hermes-export-history.py" --db "$L4DB" --project "$L4" >/dev/null 2>&1
+python3 "$SCRIPTS/hermes-export-history.py" --db "$L4DB" --project "$L4" --all >/dev/null 2>&1
 python3 "$SCRIPTS/hermes-reindex.py" --db "$L4DB" --project "$L4" >/dev/null 2>&1
 CAND4B="$(python3 "$SCRIPTS/hermes-lifecycle.py" --db "$L4DB" --project "$L4" --age-days 90 2>/dev/null)"
 if grep -q "f4-a" <<<"$CAND4B"; then
@@ -1022,6 +1022,159 @@ else
   nope "(d) 재실행이 스킵되지 않음(리포트 재생성됨) — 마커 선-touch 미동작"
 fi
 if [[ -z "$out_d" ]]; then ok "(d) 재실행 스킵: stdout 무출력"; else nope "(d) stdout 오염 ('$out_d')"; fi
+
+echo "── 섹션 7: 압축의 기계-로컬성 방어 (다기계 발산·전량 export 되돌림) ──"
+
+# 압축은 기계-로컬이다: 기계 A 가 압축·push 해도 기계 B 의 DB 는 원문 그대로다.
+# 그 발산 상태에서 (1) 재색인 훅이 "in-sync" 로 오기록하면 침묵 고착되고,
+# (2) 전량 export 1회로 압축이 fleet 전체에서 되돌아간다.
+
+RHOOK="$ROOT/assets/hooks/claude-sessionstart-history-reindex.sh"
+total_rows() {   # $1=db → session_history 전체 행수
+python3 - "$1" <<'PY'
+import sqlite3, sys
+print(sqlite3.connect(sys.argv[1]).execute("SELECT COUNT(*) FROM session_history").fetchone()[0])
+PY
+}
+
+# ── 기계 A: 후보 2세션을 압축(파일 1행 ⟺ DB 1행)한 뒤 커밋 ──────────────────
+MA="$TMP/m-a"; MADB="$MA/.hermes/state.db"; MAH="$MA/.hermes/history"
+mk_project "$MA"
+FGA="$(fixture5 "$MADB" "$MAH" g-a 5)"
+FGB="$(fixture5 "$MADB" "$MAH" g-b 5)"
+commit_hist "$MA"
+mk_mock "$TMP/bin-s7" '
+cat <<JSON
+[{"topic":"기계A 압축","session_ids":["g-a","g-b"],"summary":"두 세션의 공통 결론"}]
+JSON
+exit 0'
+PATH="$TMP/bin-s7:$PATH" python3 "$SCRIPTS/hermes-lifecycle.py" \
+  --db "$MADB" --project "$MA" --propose --age-days 90 >/dev/null 2>&1
+python3 "$SCRIPTS/hermes-lifecycle.py" --db "$MADB" --project "$MA" --apply \
+  >/dev/null 2>"$TMP/s7-apply.err"
+if [[ "$(lines_of "$FGA")" == "1" && "$(rows_of "$MADB" g-a)" == "1" &&
+      "$(lines_of "$FGB")" == "1" && "$(rows_of "$MADB" g-b)" == "1" ]]; then
+  ok "전제(G) 기계A: 2세션 압축 완료(파일 1행 ⟺ DB 1행)"
+else
+  nope "전제(G) 기계A 압축 실패 (a=$(lines_of "$FGA")/$(rows_of "$MADB" g-a) b=$(lines_of "$FGB")/$(rows_of "$MADB" g-b))"
+fi
+commit_hist "$MA"
+
+# ── 기계 B: 압축 전 상태(원문 5행씩)로 DB 구성 → pull 로 압축본 파일만 도착 ──
+MB="$TMP/m-b"; MBDB="$MB/.hermes/state.db"; MBH="$MB/.hermes/history"
+mk_project "$MB"
+FGBA="$(fixture5 "$MBDB" "$MBH" g-a 5)"
+fixture5 "$MBDB" "$MBH" g-b 5 >/dev/null
+commit_hist "$MB"
+cp "$MAH"/*.jsonl "$MBH"/                      # pull 시뮬 — 압축본이 원문 파일 대체
+if [[ "$(lines_of "$FGBA")" == "1" && "$(total_rows "$MBDB")" == "10" ]]; then
+  ok "전제(G1) 기계B: pull 후 발산 — 파일 1행씩(총 2행) vs DB 10행"
+else
+  nope "전제(G1) 발산 미재현 (file=$(lines_of "$FGBA") dbtotal=$(total_rows "$MBDB"))"
+fi
+
+# ── (G1) 재색인 훅이 발산을 skip:diverged 로 분리 분류 + --force 안내 ────────
+RLOG="$MB/.hermes/hooks.log"; rm -f "$RLOG"
+out_g1="$(printf '%s' '{"source":"startup"}' | \
+  env CLAUDE_PROJECT_DIR="$MB" bash "$RHOOK" 2>/dev/null)"
+sleep 1
+if [[ -z "$out_g1" ]]; then ok "(G1) 훅 stdout 무출력"; else nope "(G1) stdout 오염 ('$out_g1')"; fi
+if grep -q "skip:diverged" "$RLOG" 2>/dev/null; then
+  ok "(G1) 발산을 skip:diverged 로 분리 분류"
+else
+  nope "(G1) 발산이 in-sync 로 오기록됨 — 침묵 고착 (log='$(tr '\n' ' ' < "$RLOG" 2>/dev/null)')"
+fi
+if grep -q "skip:in-sync" "$RLOG" 2>/dev/null; then
+  nope "(G1) 발산인데 in-sync 도 기록됨"
+else
+  ok "(G1) in-sync 오기록 없음"
+fi
+if grep -q -- "--force" "$RLOG" 2>/dev/null && grep -q "hermes-reindex" "$RLOG" 2>/dev/null; then
+  ok "(G1) 해결 안내가 reindex --force(파일→DB) 방향"
+else
+  nope "(G1) --force 해결 안내 없음 (log='$(tr '\n' ' ' < "$RLOG" 2>/dev/null)')"
+fi
+if grep -q "hermes-export-history" "$RLOG" 2>/dev/null; then
+  nope "(G1) 안내에 export(DB→파일) 방향 포함 — 압축을 되돌리는 방향"
+else
+  ok "(G1) 안내에 export(DB→파일) 방향 없음"
+fi
+if [[ "$(total_rows "$MBDB")" == "10" && "$(lines_of "$FGBA")" == "1" ]]; then
+  ok "(G1) 자동 복구 없음 — 훅은 로그 안내까지만(DB·파일 불변)"
+else
+  nope "(G1) 훅이 자동으로 DB/파일을 바꿈 (dbtotal=$(total_rows "$MBDB") file=$(lines_of "$FGBA"))"
+fi
+
+# ── (G2) 전량 export 는 --all 명시 동의 필요 (F2a) ───────────────────────────
+python3 "$SCRIPTS/hermes-export-history.py" --db "$MBDB" --project "$MB" \
+  >/dev/null 2>"$TMP/s7-noall.err"
+rc_noall=$?
+if [[ $rc_noall -ne 0 ]]; then
+  ok "(G2) --session/--all 없는 전량 export 는 비-0 종료"
+else
+  nope "(G2) 무플래그 전량 export 가 그대로 실행됨(exit $rc_noall)"
+fi
+if grep -q -- "--all" "$TMP/s7-noall.err" 2>/dev/null; then
+  ok "(G2) stderr 에 --all 사용법 안내"
+else
+  nope "(G2) --all 안내 없음 ('$(tr '\n' ' ' < "$TMP/s7-noall.err")')"
+fi
+if [[ "$(lines_of "$FGBA")" == "1" ]]; then
+  ok "(G2) 거부된 전량 export 는 파일을 건드리지 않음"
+else
+  nope "(G2) 거부됐는데 파일이 바뀜 (file=$(lines_of "$FGBA"))"
+fi
+
+# ── (G3) 발산 기계에서 --all 전량 export → 압축본 덮어쓰기 거부 (F2b) ────────
+python3 "$SCRIPTS/hermes-export-history.py" --db "$MBDB" --project "$MB" --all \
+  >/dev/null 2>"$TMP/s7-all.err"
+if [[ "$(lines_of "$FGBA")" == "1" ]] && [[ "$(is_compacted "$FGBA")" == "YES" ]]; then
+  ok "(G3) 발산 기계의 전량 export 가 압축본을 원문으로 되돌리지 않음"
+else
+  nope "(G3) 전량 export 1회로 압축이 원문으로 복귀 (file=$(lines_of "$FGBA") compacted=$(is_compacted "$FGBA"))"
+fi
+if grep -q "g-a" "$TMP/s7-all.err" 2>/dev/null && grep -q -- "--force" "$TMP/s7-all.err" 2>/dev/null; then
+  ok "(G3) 스킵 경고에 세션 id + reindex --force 안내"
+else
+  nope "(G3) 스킵 경고 없음 ('$(tr '\n' ' ' < "$TMP/s7-all.err")')"
+fi
+
+# ── (G4) 대조: 압축 직후 정상 기계(파일1행/DB1행)는 --all 전량 export 정상 통과 ──
+#      이 단언이 없으면 가드가 모든 압축본을 과잉 차단해도 (G3) 이 통과한다.
+python3 "$SCRIPTS/hermes-export-history.py" --db "$MADB" --project "$MA" --all \
+  >"$TMP/s7-a-all.out" 2>"$TMP/s7-a-all.err"
+if grep -q "2 sessions" "$TMP/s7-a-all.out" 2>/dev/null &&
+   ! grep -q "거부" "$TMP/s7-a-all.err" 2>/dev/null; then
+  ok "(G4) 대조: 파일1행 ⟺ DB1행 정상 기계는 전량 export 통과(과잉 차단 없음)"
+else
+  nope "(G4) 가드가 정상 압축본까지 차단 (out='$(tr '\n' ' ' < "$TMP/s7-a-all.out")' err='$(tr '\n' ' ' < "$TMP/s7-a-all.err")')"
+fi
+
+# ── (G5) 왕복 내구성: 전량 export 후에도 compacted 마커 생존 (F2c) ───────────
+if [[ "$(is_compacted "$FGA")" == "YES" ]]; then
+  ok "(G5) 전량 export 왕복 후에도 compacted/orig_lines 마커 보존"
+else
+  nope "(G5) 전량 export 가 compacted 마커를 소실시킴 — 다음 기계에서 (G3) 가드 무력화 ($(is_compacted "$FGA"))"
+fi
+
+# ── (G6) get_tracking_epoch: session_reuse 부재 DB 에서 조용히 None (F3) ─────
+epoch_guard() {
+PYTHONPATH="$SCRIPTS" python3 - "$TMP/s7-noreuse.db" <<'PY'
+import sqlite3, sys
+import hermes_reuse as r
+con = sqlite3.connect(sys.argv[1])
+try:
+    v = r.get_tracking_epoch(con)
+except Exception as e:
+    print("RAISE:%s" % type(e).__name__); raise SystemExit
+print("NONE" if v is None else "VAL")
+PY
+}
+if [[ "$(epoch_guard 2>/dev/null)" == "NONE" ]]; then
+  ok "(G6) session_reuse 부재 DB 에서 get_tracking_epoch 는 None 반환(예외 없음)"
+else
+  nope "(G6) get_tracking_epoch 가 OperationalError 를 누출 ($(epoch_guard 2>&1 | tr '\n' ' '))"
+fi
 
 echo "통과:$PASS 실패:$FAIL"
 [[ $FAIL -eq 0 ]]

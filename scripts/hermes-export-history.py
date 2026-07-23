@@ -5,8 +5,14 @@ Stop 훅에서 매 턴 호출된다. SQLite 에 갇힌 핑퐁을 .hermes/history
 전량 재작성해 다른 컴퓨터로 이식 가능하게 만든다.
 
 사용법:
-  python3 hermes-export-history.py --db PATH --project PATH [--session ID]
-  (--session 미지정 시 DB 의 모든 세션을 export — 초기 백필용)
+  python3 hermes-export-history.py --db PATH --project PATH --session ID
+  python3 hermes-export-history.py --db PATH --project PATH --all   # 초기 백필용
+
+★전량 모드(--all)가 명시 동의를 요구하는 이유: 전량 export 는 DB→파일 전량
+재작성이다. 다른 기계가 압축(Part D)한 요약본을 pull 한 상태에서 무심코 돌리면
+로컬 DB 의 원문이 요약본 파일을 덮어써 fleet 전체의 압축이 되돌아간다.
+그래서 (1) --all 명시 동의, (2) export_session 의 압축본 덮어쓰기 거부 가드,
+(3) compacted 마커 보존 — 세 겹으로 막는다.
 """
 
 import argparse
@@ -38,8 +44,43 @@ def _date_prefix(timestamp: str) -> str:
     return UNKNOWN_DATE
 
 
+COMPACT_KEYS = ("compacted", "orig_lines")
+
+DIVERGED_HINT = (
+    "이 기계는 파일·DB 발산 상태다(다른 기계의 압축본을 pull 했고 로컬 DB 는 원문). "
+    "압축을 수용하려면: python3 scripts/hermes-reindex.py "
+    "--db <state.db> --project <프로젝트> --force"
+)
+
+
+def _compacted_record(hist_dir: str, session_id: str):
+    """이 세션의 기존 파일이 '정확히 1행 + compacted:true' 압축본이면 그 레코드.
+
+    아니면 None. 압축본 여부는 Part D `--apply` 가 남긴 최상위 마커로 판정한다.
+    """
+    for path in sorted(glob.glob(os.path.join(hist_dir, "*-%s.jsonl" % session_id))):
+        try:
+            with open(path, encoding="utf-8") as f:
+                lines = [l for l in f if l.strip()]
+        except OSError:
+            continue
+        if len(lines) != 1:
+            continue
+        try:
+            obj = json.loads(lines[0])
+        except json.JSONDecodeError:
+            continue
+        if isinstance(obj, dict) and obj.get("compacted") is True:
+            return obj
+    return None
+
+
 def export_session(con: sqlite3.Connection, hist_dir: str, session_id: str) -> int:
-    """한 세션을 JSONL 로 전량 재작성한다. 반환값은 기록한 라인 수."""
+    """한 세션을 JSONL 로 전량 재작성한다. 반환값은 기록한 라인 수.
+
+    압축본(1행) 위에 DB 원문(N행)을 덮어쓰려는 시도는 세션 단위로 스킵한다 —
+    그 덮어쓰기가 fleet 전체의 압축을 되돌리는 유일한 경로다(전체 실패는 아니다).
+    """
     # ORDER BY 없음 — FTS5 에는 순서 복원용 안정 키가 없으므로
     # 삽입 순서(=원본 대화 순서)인 SELECT 결과 순서에 seq 를 부여한다.
     rows = con.execute(
@@ -49,6 +90,17 @@ def export_session(con: sqlite3.Connection, hist_dir: str, session_id: str) -> i
     ).fetchall()
     if not rows:
         return 0
+
+    compacted = _compacted_record(hist_dir, session_id)
+    if compacted is not None and len(rows) > 1:
+        print("[hermes] %s: 압축본(파일 1행) 덮어쓰기 거부 — DB %d행. %s"
+              % (session_id, len(rows), DIVERGED_HINT), file=sys.stderr)
+        return 0
+    # 압축 직후(파일 1행 ⟺ DB 1행)는 정상 export 한다. 다만 compacted/orig_lines 는
+    # session_history 5컬럼에 없어 재작성에 소실되므로 명시적으로 물려준다 —
+    # 이 마커가 사라지면 다음 기계에서 위의 덮어쓰기 거부 가드가 무력해진다.
+    carry = {k: compacted[k] for k in COMPACT_KEYS
+             if compacted is not None and k in compacted}
 
     # 세션이 자정을 넘기면 날짜 접두가 바뀌므로, 같은 세션의 기존 파일을
     # 모두 지운 뒤 새로 쓴다 — 세션당 파일 정확히 1개 보장.
@@ -65,6 +117,7 @@ def export_session(con: sqlite3.Connection, hist_dir: str, session_id: str) -> i
                 "role": role,
                 "timestamp": timestamp,
                 "content": content,
+                **carry,
             }, ensure_ascii=False) + "\n")
     return len(rows)
 
@@ -99,8 +152,17 @@ def main():
     parser = argparse.ArgumentParser(description="헤르메스 대화 원본 텍스트 export")
     parser.add_argument("--db", required=True, help="state.db 경로")
     parser.add_argument("--project", required=True, help="프로젝트 루트 경로")
-    parser.add_argument("--session", help="세션 ID (미지정 시 전 세션)")
+    parser.add_argument("--session", help="세션 ID")
+    parser.add_argument("--all", action="store_true",
+                        help="전 세션 전량 export(DB→파일 전량 재작성) — 초기 백필용")
     args = parser.parse_args()
+
+    if not args.session and not args.all:
+        print("[hermes] 전량 export 는 DB→파일 전량 재작성이라 다른 기계에서 압축된 "
+              "요약본을 원문으로 되돌릴 수 있다. 대상을 명시하라:\n"
+              "  특정 세션만: --session <ID>\n"
+              "  전량이 맞다면(초기 백필): --all", file=sys.stderr)
+        sys.exit(2)
 
     # 훅 파이프라인을 막지 않도록 예외는 stderr 로만 알리고 항상 exit 0.
     try:

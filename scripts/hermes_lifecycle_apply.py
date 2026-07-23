@@ -22,6 +22,16 @@ DB 가 원문이면 요약본 파일을 원문으로 되돌린다. 또 `hermes-r
 
 ★복구 경로: `--apply` 후 DB 에는 원문이 남지 않는다(git 은 파일만 보존).
   복구는 "git 히스토리의 압축 전 파일 → `hermes-reindex.py --force` 재색인" 뿐이다.
+
+★알려진 한계 — 압축은 기계-로컬이다:
+  (a) 전파 없음. 압축본을 push 해도 다른 기계는 pull 후에도 DB 에 원문을 유지한다.
+      그 기계의 `hermes-reindex.py` 는 행수감소 가드에 걸려 --force 없이는 거부하고,
+      SessionStart 재색인 훅도 자동 복구를 하지 않는다(`skip:diverged` 로그만).
+      수용하려면 각 기계에서 수동으로 `hermes-reindex.py --force`(파일→DB).
+  (b) 역방향 위험. 그 발산 상태의 기계에서 전량 export(DB→파일)를 1회 돌리면
+      로컬 DB 원문이 요약본 파일을 덮어써 fleet 전체의 압축이 되돌아간다.
+      그래서 `hermes-export-history.py` 는 전량 모드에 `--all` 명시 동의를 요구하고,
+      압축본(1행) 위에 DB 원문(N행)을 쓰려는 세션은 스킵한다.
 """
 
 import json
