@@ -115,7 +115,8 @@ for t in \
   uninstall-roundtrip-test.sh \
   memory-symlink-roundtrip-test.sh \
   hermes-history-export-test.sh \
-  hermes-lifecycle-test.sh
+  hermes-lifecycle-test.sh \
+  hermes-lifecycle-portability-test.sh
 do
   run_step "$t" bash "$TESTS_DIR/$t"
 done

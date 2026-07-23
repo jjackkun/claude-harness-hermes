@@ -94,6 +94,16 @@ def _compacted_ids(con) -> set:
     그래도 재압축이 일어나지 않는 이유는 대칭성이다: 같은 리빌드에서
     pattern_session/pattern_count 도 함께 사라져 게이트 ③(결정화)이 닫힌다.
     즉 "압축 이력을 아는 기계"와 "결정화를 아는 기계"가 항상 같다.
+
+    ★항목을 지우지 않는다(의도된 보수성, Minor 이월): 압축된 세션을 --resume 하면
+    save-session 이 DB 를 원문으로 되돌리고 export 가 압축을 해제한다. 그래도 이
+    sid 는 compaction_log 에 남으므로 **다시는 재압축 후보로 올라오지 않는다**.
+    지우지 않는 이유는 재색인 훅(claude-sessionstart-history-reindex.sh 게이트 5)이
+    이 원장으로 `self-clobbered`(이 기계가 압축한 것을 재개해 되돌림)와
+    `compacted`(타 기계 압축본 pull)를 가르기 때문이다. 후자에만 --force 안내가
+    나가야 하며, 오분류하면 재개 후 나눈 신규 대화가 영구 소실된다.
+    "재압축 기회 상실"은 보수적 실패이고 "신규 대화 소실"은 데이터손실이므로
+    전자를 택한다.
     """
     try:
         rows = con.execute("SELECT session_ids FROM compaction_log").fetchall()
