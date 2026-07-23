@@ -5,7 +5,7 @@
 DB `session_history` 를 **같은 요약본으로 동시 교체**한다.
 
 ★DB 동시교체가 필수인 이유(D5): 배포단계 전량 backfill export
-(`hermes-export-history.py` --session 미지정)는 DB→파일 전량 재작성이라
+(`hermes-export-history.py --all`)는 DB→파일 전량 재작성이라
 DB 가 원문이면 요약본 파일을 원문으로 되돌린다. 또 `hermes-reindex.py` 의
 행수 감소 가드는 "DB N행 > 파일 1행" 이면 교체를 거부한다. 파일 1행 ⟺ DB 1행
 이어야 압축·export·reindex 3자가 정합한다.

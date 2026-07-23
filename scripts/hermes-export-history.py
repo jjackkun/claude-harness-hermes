@@ -57,6 +57,9 @@ def _compacted_record(hist_dir: str, session_id: str):
     """이 세션의 기존 파일이 '정확히 1행 + compacted:true' 압축본이면 그 레코드.
 
     아니면 None. 압축본 여부는 Part D `--apply` 가 남긴 최상위 마커로 판정한다.
+    (동일 기준이 assets/hooks/claude-sessionstart-history-reindex.sh 게이트 5 에도
+     중복 구현돼 있다 — 훅은 하네스와 독립 실행이라 import 할 수 없다. 한쪽을
+     바꾸면 다른 쪽도 바꿀 것.)
     """
     for path in sorted(glob.glob(os.path.join(hist_dir, "*-%s.jsonl" % session_id))):
         try:
@@ -80,6 +83,14 @@ def export_session(con: sqlite3.Connection, hist_dir: str, session_id: str) -> i
 
     압축본(1행) 위에 DB 원문(N행)을 덮어쓰려는 시도는 세션 단위로 스킵한다 —
     그 덮어쓰기가 fleet 전체의 압축을 되돌리는 유일한 경로다(전체 실패는 아니다).
+
+    ★"발산"과 "압축 세션 재개"는 **파일의 요약이 DB 안에 실재하는가** 하나로 가른다:
+      - 요약이 DB 에 있다 → 이 기계가 압축한 세션이다. 행이 늘었다면 `--resume` 으로
+        이어간 신규 대화이므로 정상 export 한다(스킵하면 새 대화가 영영 git 밖에 갇힌다).
+        파일은 여러 행이 되므로 compacted 마커는 자연히 사라지는 게 맞다.
+      - 요약이 DB 에 없다 → 타 기계의 압축본을 pull 한 발산이다. 스킵 + 경고.
+      같은 술어가 마커 물려주기(carry)에도 쓰인다 — DB 1행이 그 요약 자신일 때만
+      마커를 잇는다. 원문 1행에 마커를 붙이면 다음 기계에서 이 가드가 오작동한다.
     """
     # ORDER BY 없음 — FTS5 에는 순서 복원용 안정 키가 없으므로
     # 삽입 순서(=원본 대화 순서)인 SELECT 결과 순서에 seq 를 부여한다.
@@ -92,15 +103,20 @@ def export_session(con: sqlite3.Connection, hist_dir: str, session_id: str) -> i
         return 0
 
     compacted = _compacted_record(hist_dir, session_id)
-    if compacted is not None and len(rows) > 1:
+    # 파일의 요약이 DB 행 중에 실재하는가 — 재개(있음)와 발산(없음)을 가르는 술어.
+    summary_in_db = compacted is not None and any(
+        r[0] == compacted.get("content") for r in rows)
+    if compacted is not None and len(rows) > 1 and not summary_in_db:
         print("[hermes] %s: 압축본(파일 1행) 덮어쓰기 거부 — DB %d행. %s"
               % (session_id, len(rows), DIVERGED_HINT), file=sys.stderr)
         return 0
-    # 압축 직후(파일 1행 ⟺ DB 1행)는 정상 export 한다. 다만 compacted/orig_lines 는
-    # session_history 5컬럼에 없어 재작성에 소실되므로 명시적으로 물려준다 —
-    # 이 마커가 사라지면 다음 기계에서 위의 덮어쓰기 거부 가드가 무력해진다.
+    # 압축 직후(파일 1행 ⟺ DB 1행 = 그 요약)는 정상 export 한다. 다만 compacted/
+    # orig_lines 는 session_history 5컬럼에 없어 재작성에 소실되므로 명시적으로
+    # 물려준다 — 이 마커가 사라지면 다음 기계에서 덮어쓰기 거부 가드가 무력해진다.
+    # DB 1행이 요약 자신일 때만 잇는다. 원문 1행에 붙이면 거짓 마커가 된다.
     carry = {k: compacted[k] for k in COMPACT_KEYS
-             if compacted is not None and k in compacted}
+             if compacted is not None and summary_in_db and len(rows) == 1
+             and k in compacted}
 
     # 세션이 자정을 넘기면 날짜 접두가 바뀌므로, 같은 세션의 기존 파일을
     # 모두 지운 뒤 새로 쓴다 — 세션당 파일 정확히 1개 보장.

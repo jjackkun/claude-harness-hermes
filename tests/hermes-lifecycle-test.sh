@@ -1089,6 +1089,16 @@ if grep -q "skip:in-sync" "$RLOG" 2>/dev/null; then
 else
   ok "(G1) in-sync 오기록 없음"
 fi
+if grep -q "skip:diverged:compacted" "$RLOG" 2>/dev/null; then
+  ok "(G1) 발산 사유를 compacted 로 세분 분류"
+else
+  nope "(G1) 압축 발산인데 하위 사유 미분류 (log='$(tr '\n' ' ' < "$RLOG" 2>/dev/null)')"
+fi
+if grep -q "전역" "$RLOG" 2>/dev/null; then
+  ok "(G1) --force 안내에 '전역이라 다른 세션도 덮어쓴다' 경고 동반"
+else
+  nope "(G1) --force 전역 경고 없음 (log='$(tr '\n' ' ' < "$RLOG" 2>/dev/null)')"
+fi
 if grep -q -- "--force" "$RLOG" 2>/dev/null && grep -q "hermes-reindex" "$RLOG" 2>/dev/null; then
   ok "(G1) 해결 안내가 reindex --force(파일→DB) 방향"
 else
@@ -1174,6 +1184,225 @@ if [[ "$(epoch_guard 2>/dev/null)" == "NONE" ]]; then
   ok "(G6) session_reuse 부재 DB 에서 get_tracking_epoch 는 None 반환(예외 없음)"
 else
   nope "(G6) get_tracking_epoch 가 OperationalError 를 누출 ($(epoch_guard 2>&1 | tr '\n' ' '))"
+fi
+
+# ── 섹션 7 후반 공용 헬퍼: 압축본 파일 쓰기 · DB 행 조작 ─────────────────────
+write_compacted() {   # $1=파일경로 $2=sid $3=orig_lines → 요약 content 를 stdout 으로
+python3 - "$1" "$2" "$3" <<'PY'
+import json, sys
+path, sid, orig = sys.argv[1], sys.argv[2], int(sys.argv[3])
+content = "[압축 요약] 테스트 주제\n공통 결론\n(원문 %d줄 — git 히스토리에서 복구)" % orig
+rec = {"seq": 0, "session_id": sid, "project_id": "PA", "role": "system",
+       "timestamp": "2026-01-01T10:00:00.000000", "content": content,
+       "compacted": True, "orig_lines": orig}
+with open(path, "w", encoding="utf-8") as f:
+    f.write(json.dumps(rec, ensure_ascii=False) + "\n")
+sys.stdout.write(content)
+PY
+}
+db_replace_with_summary() {   # $1=db $2=sid $3=요약 content — DB 세션 행을 요약 1행으로
+python3 - "$1" "$2" "$3" <<'PY'
+import sqlite3, sys
+con = sqlite3.connect(sys.argv[1])
+con.execute("DELETE FROM session_history WHERE session_id=?", (sys.argv[2],))
+con.execute("INSERT INTO session_history (content, role, timestamp, project_id, session_id) "
+            "VALUES (?,?,?,?,?)",
+            (sys.argv[3], "system", "2026-01-01T10:00:00.000000", "PA", sys.argv[2]))
+con.commit()
+PY
+}
+db_append_rows() {   # $1=db $2=sid $3=행수 — 재개 대화 n행 추가
+python3 - "$1" "$2" "$3" <<'PY'
+import sqlite3, sys
+con = sqlite3.connect(sys.argv[1])
+for i in range(int(sys.argv[3])):
+    con.execute("INSERT INTO session_history (content, role, timestamp, project_id, session_id) "
+                "VALUES (?,?,?,?,?)",
+                ("재개 대화 %d" % i, "user", "2026-01-02T10:00:00.000000", "PA", sys.argv[2]))
+con.commit()
+PY
+}
+run_hook() {   # $1=프로젝트 → 훅 1회 실행, stdout 을 stdout 으로
+  printf '%s' '{"source":"startup"}' > "$TMP/hook-in.json"
+  env CLAUDE_PROJECT_DIR="$1" bash "$RHOOK" < "$TMP/hook-in.json" 2>/dev/null
+}
+
+# ── (G7) 뒤처짐 발산: 압축과 무관 — --force 를 절대 안내하면 안 된다 (F5) ────
+# Stop 훅 export 실패로 파일만 뒤처진 상태(§5 (F1) 이 데이터손실로 규정한 그 상태).
+# 여기서 --force(파일→DB)를 따르면 DB 원문 5행이 영구 소실된다.
+ML="$TMP/m-lag"; MLDB="$ML/.hermes/state.db"; MLH="$ML/.hermes/history"
+mk_project "$ML"
+FLAG="$(fixture5 "$MLDB" "$MLH" lag-a 8)"
+head -n 3 "$FLAG" > "$FLAG.part" && mv "$FLAG.part" "$FLAG"
+commit_hist "$ML"
+LLOG="$ML/.hermes/hooks.log"; rm -f "$LLOG"
+out_g7="$(run_hook "$ML")"
+if [[ -z "$out_g7" ]]; then ok "(G7) 훅 stdout 무출력"; else nope "(G7) stdout 오염 ('$out_g7')"; fi
+if grep -q "skip:diverged:lagging" "$LLOG" 2>/dev/null; then
+  ok "(G7) 뒤처짐 발산을 skip:diverged:lagging 으로 분류"
+else
+  nope "(G7) 뒤처짐 발산 미분류 (log='$(tr '\n' ' ' < "$LLOG" 2>/dev/null)')"
+fi
+if grep -q -- "--force" "$LLOG" 2>/dev/null; then
+  nope "(G7) 뒤처짐 발산에 --force 안내 — 따르면 DB 원문 5행 영구 소실"
+else
+  ok "(G7) 뒤처짐 발산에 --force 안내 없음"
+fi
+if grep -q "hermes-export-history" "$LLOG" 2>/dev/null &&
+   grep -q -- "--session lag-a" "$LLOG" 2>/dev/null; then
+  ok "(G7) 안내가 세션 단위 export(--session lag-a) 방향"
+else
+  nope "(G7) 세션 단위 export 안내 없음 (log='$(tr '\n' ' ' < "$LLOG" 2>/dev/null)')"
+fi
+
+# ── (G8) 혼재: 압축본 + 뒤처짐 동거 → --force 권유 금지 (F5) ─────────────────
+# --force 는 세션 단위가 아니라 전역이라 압축 수용과 동시에 무관한 뒤처짐 세션을 파괴한다.
+MX="$TMP/m-mixed"; MXDB="$MX/.hermes/state.db"; MXH="$MX/.hermes/history"
+mk_project "$MX"
+FXC="$(fixture5 "$MXDB" "$MXH" mix-comp 10)"
+FXL="$(fixture5 "$MXDB" "$MXH" mix-lag 8)"
+write_compacted "$FXC" mix-comp 10 >/dev/null
+head -n 3 "$FXL" > "$FXL.part" && mv "$FXL.part" "$FXL"
+commit_hist "$MX"
+XLOG="$MX/.hermes/hooks.log"; rm -f "$XLOG"
+run_hook "$MX" >/dev/null
+if grep -q "skip:diverged:mixed" "$XLOG" 2>/dev/null; then
+  ok "(G8) 혼재 발산을 skip:diverged:mixed 로 분류"
+else
+  nope "(G8) 혼재 미분류 (log='$(tr '\n' ' ' < "$XLOG" 2>/dev/null)')"
+fi
+if grep -q -- "--force" "$XLOG" 2>/dev/null; then
+  nope "(G8) 혼재인데 --force 권유 — 무관한 뒤처짐 세션 5행이 경고 없이 소실"
+else
+  ok "(G8) 혼재에 --force 권유 없음"
+fi
+if grep -q -- "--session mix-lag" "$XLOG" 2>/dev/null; then
+  ok "(G8) 뒤처진 세션을 먼저 --session 동기화하라고 안내"
+else
+  nope "(G8) 선-동기화 대상 세션 안내 없음 (log='$(tr '\n' ' ' < "$XLOG" 2>/dev/null)')"
+fi
+
+# ── (G9) ts<ds 양성: DB 에만 있는 세션 → --backfill 방향 (F5) ────────────────
+MD="$TMP/m-dbonly"; MDDB="$MD/.hermes/state.db"; MDH="$MD/.hermes/history"
+mk_project "$MD"
+fixture5 "$MDDB" "$MDH" db-keep 3 >/dev/null
+FDO="$(fixture5 "$MDDB" "$MDH" db-only 4)"
+rm -f "$FDO"                                   # DB 에만 남은 세션(파일 없음)
+commit_hist "$MD"
+DLOG="$MD/.hermes/hooks.log"; rm -f "$DLOG"
+run_hook "$MD" >/dev/null
+if grep -q "skip:diverged:db-only" "$DLOG" 2>/dev/null; then
+  ok "(G9) 파일 없는 DB 전용 세션을 skip:diverged:db-only 로 분류"
+else
+  nope "(G9) db-only 미분류 (log='$(tr '\n' ' ' < "$DLOG" 2>/dev/null)')"
+fi
+if grep -q -- "--backfill" "$DLOG" 2>/dev/null && ! grep -q -- "--force" "$DLOG" 2>/dev/null; then
+  ok "(G9) 양성 케이스는 --backfill 안내(파괴적 --force 없음)"
+else
+  nope "(G9) --backfill 안내 없음/--force 오안내 (log='$(tr '\n' ' ' < "$DLOG" 2>/dev/null)')"
+fi
+
+# ── (G10) db_ok 방어: DB 조회 실패는 거짓 발산을 만들면 안 된다 (F8) ─────────
+# 폴백 2**31 이 db_ok 로 게이팅되지 않으면 모든 정상 프로젝트가 발산으로 오분류된다.
+MK="$TMP/m-brokendb"; MKDB="$MK/.hermes/state.db"; MKH="$MK/.hermes/history"
+mk_project "$MK"
+fixture5 "$MKDB" "$MKH" ok-a 3 >/dev/null
+commit_hist "$MK"
+printf 'NOT-A-SQLITE-FILE\n' > "$MKDB"          # 비-SQLite 바이트로 덮어씀
+KLOG="$MK/.hermes/hooks.log"; rm -f "$KLOG"
+run_hook "$MK" >/dev/null
+if grep -q "skip:in-sync" "$KLOG" 2>/dev/null && ! grep -q "skip:diverged" "$KLOG" 2>/dev/null; then
+  ok "(G10) 손상 DB → 보수적 skip:in-sync (거짓 발산 없음)"
+else
+  nope "(G10) 손상 DB 가 거짓 발산/오분류 (log='$(tr '\n' ' ' < "$KLOG" 2>/dev/null)')"
+fi
+if [[ "$(id -u)" != "0" ]]; then
+  MP="$TMP/m-permdb"; MPDB="$MP/.hermes/state.db"; MPH="$MP/.hermes/history"
+  mk_project "$MP"
+  fixture5 "$MPDB" "$MPH" ok-b 3 >/dev/null
+  commit_hist "$MP"
+  chmod 000 "$MPDB"
+  PLOG="$MP/.hermes/hooks.log"; rm -f "$PLOG"
+  run_hook "$MP" >/dev/null
+  if grep -q "skip:in-sync" "$PLOG" 2>/dev/null && ! grep -q "skip:diverged" "$PLOG" 2>/dev/null; then
+    ok "(G10) 권한 000 DB → 보수적 skip:in-sync (거짓 발산 없음)"
+  else
+    nope "(G10) 권한 000 DB 가 거짓 발산/오분류 (log='$(tr '\n' ' ' < "$PLOG" 2>/dev/null)')"
+  fi
+  chmod 644 "$MPDB"
+else
+  ok "(G10) 권한 000 케이스 건너뜀(root 실행 — chmod 무력)"
+fi
+
+# ── (G11) 압축 세션 재개 → --session export 가 정상 통과해야 한다 (F6) ───────
+# DB = 요약 1행 + 신규 2행. 이걸 스킵하면 새 대화가 영영 git 에 안 나간다.
+MR="$TMP/m-resume"; MRDB="$MR/.hermes/state.db"; MRH="$MR/.hermes/history"
+mk_project "$MR"
+FRS="$(fixture5 "$MRDB" "$MRH" res-a 5)"
+RSUM="$(write_compacted "$FRS" res-a 5)"
+db_replace_with_summary "$MRDB" res-a "$RSUM"
+db_append_rows "$MRDB" res-a 2
+if [[ "$(lines_of "$FRS")" == "1" && "$(rows_of "$MRDB" res-a)" == "3" ]]; then
+  ok "전제(G11) 재개 상태: 파일 1행(압축본) vs DB 3행(요약1+신규2)"
+else
+  nope "전제(G11) 구성 실패 (file=$(lines_of "$FRS") db=$(rows_of "$MRDB" res-a))"
+fi
+python3 "$SCRIPTS/hermes-export-history.py" --db "$MRDB" --project "$MR" \
+  --session res-a >/dev/null 2>"$TMP/s7-resume.err"
+FRS2="$(printf '%s' "$MRH"/*res-a.jsonl)"
+if [[ "$(lines_of "$FRS2")" == "3" ]]; then
+  ok "(G11) 재개 세션이 정상 export — 신규 대화가 파일에 반영(3행)"
+else
+  nope "(G11) 재개인데 가드가 스킵 — 신규 대화가 영구히 git 밖에 갇힘 (file=$(lines_of "$FRS2") err='$(tr '\n' ' ' < "$TMP/s7-resume.err")')"
+fi
+if grep -q "거부" "$TMP/s7-resume.err" 2>/dev/null; then
+  nope "(G11) 재개인데 '덮어쓰기 거부' 경고 — 사실과 다른 진단"
+else
+  ok "(G11) 재개에는 거부 경고 없음"
+fi
+if grep -q "재개 대화" "$FRS2" 2>/dev/null; then
+  ok "(G11) export 된 파일에 신규 대화 내용 실재"
+else
+  nope "(G11) 신규 대화가 파일에 없음"
+fi
+
+# ── (G12) 발산(DB 원문 N행) → --session 경로도 스킵 + 경고 (F6 반대 방향) ────
+MV="$TMP/m-div-sess"; MVDB="$MV/.hermes/state.db"; MVH="$MV/.hermes/history"
+mk_project "$MV"
+FDV="$(fixture5 "$MVDB" "$MVH" div-a 6)"
+write_compacted "$FDV" div-a 6 >/dev/null       # 파일만 압축본, DB 는 원문 6행
+commit_hist "$MV"
+python3 "$SCRIPTS/hermes-export-history.py" --db "$MVDB" --project "$MV" \
+  --session div-a >/dev/null 2>"$TMP/s7-divsess.err"
+if [[ "$(lines_of "$FDV")" == "1" ]] && [[ "$(is_compacted "$FDV")" == "YES" ]]; then
+  ok "(G12) 발산 세션의 --session export 도 압축본을 되돌리지 않음"
+else
+  nope "(G12) --session export 가 압축을 원문으로 복귀 (file=$(lines_of "$FDV") compacted=$(is_compacted "$FDV"))"
+fi
+if grep -q "div-a" "$TMP/s7-divsess.err" 2>/dev/null; then
+  ok "(G12) 발산 스킵 경고에 세션 id 포함"
+else
+  nope "(G12) 발산 스킵 경고 없음 ('$(tr '\n' ' ' < "$TMP/s7-divsess.err")')"
+fi
+
+# ── (G13) carry 위조 금지: DB 1행이 원문이면 compacted 마커를 붙이지 않는다 (F7) ──
+MF="$TMP/m-forge"; MFDB="$MF/.hermes/state.db"; MFH="$MF/.hermes/history"
+mk_project "$MF"
+FFG="$(fixture5 "$MFDB" "$MFH" forge-a 1)"      # DB 1행 = 원문
+write_compacted "$FFG" forge-a 1 >/dev/null     # 파일만 압축본(다른 기계 산물)
+commit_hist "$MF"
+python3 "$SCRIPTS/hermes-export-history.py" --db "$MFDB" --project "$MF" --all \
+  >/dev/null 2>"$TMP/s7-forge.err"
+FFG2="$(printf '%s' "$MFH"/*forge-a.jsonl)"
+if grep -q "compacted" "$FFG2" 2>/dev/null; then
+  nope "(G13) 원문 1행에 compacted 마커 위조 — 다음 기계 가드가 정상 export 를 거부하게 된다"
+else
+  ok "(G13) 원문 1행에는 compacted 마커를 붙이지 않음"
+fi
+if grep -q "대화 forge-a" "$FFG2" 2>/dev/null; then
+  ok "(G13) 대조: DB 원문 1행이 그대로 export 됨"
+else
+  nope "(G13) DB 원문 1행이 export 되지 않음 (file='$(tr '\n' ' ' < "$FFG2" 2>/dev/null)')"
 fi
 
 echo "통과:$PASS 실패:$FAIL"
