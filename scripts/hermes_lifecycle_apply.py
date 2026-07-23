@@ -28,6 +28,10 @@ DB 가 원문이면 요약본 파일을 원문으로 되돌린다. 또 `hermes-r
       그 기계의 `hermes-reindex.py` 는 행수감소 가드에 걸려 --force 없이는 거부하고,
       SessionStart 재색인 훅도 자동 복구를 하지 않는다(`skip:diverged` 로그만).
       수용하려면 각 기계에서 수동으로 `hermes-reindex.py --force`(파일→DB).
+      ★`--force` 는 세션 단위가 아니라 **전역**이다. 그 기계에 export 가 밀려
+      파일이 DB 보다 뒤처진 다른 세션이 있으면 그 원문까지 함께 덮어쓴다.
+      먼저 `hermes-export-history.py --session <sid>` 로 뒤처진 세션을 맞춘 뒤
+      실행할 것(SessionStart 재색인 훅이 `skip:diverged:*` 로 사유를 구분해 준다).
   (b) 역방향 위험. 그 발산 상태의 기계에서 전량 export(DB→파일)를 1회 돌리면
       로컬 DB 원문이 요약본 파일을 덮어써 fleet 전체의 압축이 되돌아간다.
       그래서 `hermes-export-history.py` 는 전량 모드에 `--all` 명시 동의를 요구하고,

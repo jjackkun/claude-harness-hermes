@@ -1385,7 +1385,9 @@ else
   nope "(G12) 발산 스킵 경고 없음 ('$(tr '\n' ' ' < "$TMP/s7-divsess.err")')"
 fi
 
-# ── (G13) carry 위조 금지: DB 1행이 원문이면 compacted 마커를 붙이지 않는다 (F7) ──
+# ── (G13) 1행 발산도 되돌리지 않는다 — 행수 임계 없이 술어 하나로 판정 (F7) ──
+#   DB 1행이 그 요약 자신이 아니라 원문이면, 행수가 1이라는 이유로 통과시키면
+#   압축이 조용히 원문으로 복귀한다(그리고 그 원문 행에 마커가 위조된다).
 MF="$TMP/m-forge"; MFDB="$MF/.hermes/state.db"; MFH="$MF/.hermes/history"
 mk_project "$MF"
 FFG="$(fixture5 "$MFDB" "$MFH" forge-a 1)"      # DB 1행 = 원문
@@ -1394,15 +1396,20 @@ commit_hist "$MF"
 python3 "$SCRIPTS/hermes-export-history.py" --db "$MFDB" --project "$MF" --all \
   >/dev/null 2>"$TMP/s7-forge.err"
 FFG2="$(printf '%s' "$MFH"/*forge-a.jsonl)"
-if grep -q "compacted" "$FFG2" 2>/dev/null; then
-  nope "(G13) 원문 1행에 compacted 마커 위조 — 다음 기계 가드가 정상 export 를 거부하게 된다"
+if [[ "$(lines_of "$FFG2")" == "1" ]] && [[ "$(is_compacted "$FFG2")" == "YES" ]]; then
+  ok "(G13) DB 1행이 원문이어도 압축본을 되돌리지 않음(행수 임계 없음)"
 else
-  ok "(G13) 원문 1행에는 compacted 마커를 붙이지 않음"
+  nope "(G13) 1행 발산에서 압축이 원문으로 복귀 (file=$(lines_of "$FFG2") compacted=$(is_compacted "$FFG2"))"
 fi
 if grep -q "대화 forge-a" "$FFG2" 2>/dev/null; then
-  ok "(G13) 대조: DB 원문 1행이 그대로 export 됨"
+  nope "(G13) DB 원문이 압축본을 덮어씀 — 커밋 시 fleet 전체 압축 원복"
 else
-  nope "(G13) DB 원문 1행이 export 되지 않음 (file='$(tr '\n' ' ' < "$FFG2" 2>/dev/null)')"
+  ok "(G13) DB 원문이 파일에 기록되지 않음"
+fi
+if grep -q "forge-a" "$TMP/s7-forge.err" 2>/dev/null; then
+  ok "(G13) 1행 발산 스킵 경고에 세션 id 포함"
+else
+  nope "(G13) 1행 발산 스킵 경고 없음 ('$(tr '\n' ' ' < "$TMP/s7-forge.err")')"
 fi
 
 echo "통과:$PASS 실패:$FAIL"

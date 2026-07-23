@@ -89,6 +89,8 @@ def export_session(con: sqlite3.Connection, hist_dir: str, session_id: str) -> i
         이어간 신규 대화이므로 정상 export 한다(스킵하면 새 대화가 영영 git 밖에 갇힌다).
         파일은 여러 행이 되므로 compacted 마커는 자연히 사라지는 게 맞다.
       - 요약이 DB 에 없다 → 타 기계의 압축본을 pull 한 발산이다. 스킵 + 경고.
+        DB 행수는 보지 않는다 — 1메시지 세션도 압축 대상이 될 수 있어, "1행뿐이면
+        안전"이라는 임계는 그 1행이 원문일 때 압축을 되돌린다.
       같은 술어가 마커 물려주기(carry)에도 쓰인다 — DB 1행이 그 요약 자신일 때만
       마커를 잇는다. 원문 1행에 마커를 붙이면 다음 기계에서 이 가드가 오작동한다.
     """
@@ -106,14 +108,17 @@ def export_session(con: sqlite3.Connection, hist_dir: str, session_id: str) -> i
     # 파일의 요약이 DB 행 중에 실재하는가 — 재개(있음)와 발산(없음)을 가르는 술어.
     summary_in_db = compacted is not None and any(
         r[0] == compacted.get("content") for r in rows)
-    if compacted is not None and len(rows) > 1 and not summary_in_db:
+    # 행수 임계를 두지 않는다. "DB 1행뿐이면 안전"이 아니라, 그 1행이 원문이면
+    # 압축이 조용히 원문으로 복귀한다(1메시지 세션도 압축 대상이 될 수 있다).
+    if compacted is not None and not summary_in_db:
         print("[hermes] %s: 압축본(파일 1행) 덮어쓰기 거부 — DB %d행. %s"
               % (session_id, len(rows), DIVERGED_HINT), file=sys.stderr)
         return 0
     # 압축 직후(파일 1행 ⟺ DB 1행 = 그 요약)는 정상 export 한다. 다만 compacted/
     # orig_lines 는 session_history 5컬럼에 없어 재작성에 소실되므로 명시적으로
     # 물려준다 — 이 마커가 사라지면 다음 기계에서 덮어쓰기 거부 가드가 무력해진다.
-    # DB 1행이 요약 자신일 때만 잇는다. 원문 1행에 붙이면 거짓 마커가 된다.
+    # DB 1행이 요약 자신일 때만 잇는다. (summary_in_db 는 위 가드를 통과한 시점에
+    # 이미 참이지만, 조건을 명시해 두 곳의 의도를 따로 읽을 수 있게 남긴다.)
     carry = {k: compacted[k] for k in COMPACT_KEYS
              if compacted is not None and summary_in_db and len(rows) == 1
              and k in compacted}
