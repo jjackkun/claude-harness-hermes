@@ -117,7 +117,8 @@ for t in \
   hermes-history-export-test.sh \
   hermes-lifecycle-test.sh \
   hermes-lifecycle-portability-test.sh \
-  hermes-mesh-consume-test.sh
+  hermes-mesh-consume-test.sh \
+  hermes-mesh-gate-test.sh
 do
   run_step "$t" bash "$TESTS_DIR/$t"
 done
