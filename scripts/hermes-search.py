@@ -1,23 +1,24 @@
 #!/usr/bin/env python3
-"""헤르메스 FTS5 스킬 검색 스크립트.
+"""헤르메스 스킬 검색 스크립트.
 
 UserPromptSubmit Hook에서 호출.
 사용자 입력에서 키워드를 추출하고 관련 스킬을 검색해 반환한다.
 
 검색 전략 (2단계):
-  1단계 — FTS5 키워드 검색 (빠름, 무료)
+  1단계 — skill_index 전수 스캔 + 부분 문자열 매칭 (빠름, 무료. FTS5 미사용)
   2단계 — claude -p 뉘앙스 판단 (1단계 결과 없을 때만, claude CLI 필요.
            --no-fallback 지정 시 건너뜀 — 훅 경로(예: 도중 주입)에서 지연 방지 목적)
 
 검색 풀:
   1. [project]/.hermes/skills/   ← 헤르메스 자동 생성 스킬 (평면 .md 포함)
   2. [project]/.claude/skills/   ← 하네스 설치 스킬 (skill_index 등록된 것)
+  3. ~/.hermes/mesh/skills/      ← 그물망(전역 2차 소스) — 사용자의 다른 컴퓨터에서 축적된 지식
 
 주의: stdout 은 프롬프트에 주입되므로 진단 로그는 전부 stderr 로만 출력한다.
 
 사용법:
-  python3 hermes-search.py --db PATH --query TEXT [--skills-dir PATH] [--max N]
-    [--session-id ID] [--no-fallback] [--once-per-session] [--source {prompt,assist}]
+  python3 hermes-search.py --db PATH --query TEXT [--skills-dir PATH] [--global-skills-dir PATH]
+    [--max N] [--session-id ID] [--no-fallback] [--once-per-session] [--source {prompt,assist}]
 
   --once-per-session  이 세션에 이미 주입된 스킬은 출처(prompt/assist) 무관하게 결과에서 제외
   --source assist      주입 출처를 assist 로 기록. 세션당 주입 상한(ASSIST_MAX_PER_SESSION,
@@ -58,6 +59,11 @@ def _ensure_injection_source_column(con) -> None:
 # UserPromptSubmit 경로는 "턴당" 최대 3개(--max 3)를 주입한다.
 # assist 경로 "전체"가 프롬프트 경로 한 턴 분량을 넘지 못하게 같은 값으로 맞춘다.
 ASSIST_MAX_PER_SESSION = int(os.environ.get("HERMES_ASSIST_MAX_PER_SESSION", "3"))
+
+# 그물망 최소 보장 슬롯 수 (설계 §Part C — 그물망은 "큐레이트된 소량"):
+# db/dir 결과가 --max 를 다 채워도 그물망 결과가 존재하면 최소 1자리는 반드시 배정한다.
+# 로컬 결과를 전부 밀어내는 상한이 아니라, 그물망이 완전히 굶주리지 않게 하는 하한선이다.
+MESH_MIN_RESERVED_SLOTS = 1
 
 
 STOP_WORDS = {
@@ -301,11 +307,49 @@ def read_skill_snippet(skill_path: str, max_lines: int = 10) -> str:
         return ""
 
 
+def _select_injections(deduped: list, max_n: int) -> list:
+    """중복 제거된 (텍스트, 경로, 그물망여부) 후보에서 max_n 개를 뽑는다.
+
+    그물망 결과가 있으면 MESH_MIN_RESERVED_SLOTS 만큼 자리를 보장받아
+    로컬(db/dir) 결과에 밀려 전량 굶주리지 않는다.
+    단, max_n == 1 인 경우는 예외: 로컬 결과가 하나라도 있으면 그물망이 그
+    유일한 자리를 차지하지 않는다 — 예약은 하한선이지 로컬보다 우선하는 게 아니다.
+    """
+    if max_n <= 0:
+        return []
+
+    local = [e for e in deduped if not e[2]]
+    mesh = [e for e in deduped if e[2]]
+
+    if not mesh:
+        return local[:max_n]
+
+    if max_n == 1:
+        return local[:1] if local else mesh[:1]
+
+    reserve = min(MESH_MIN_RESERVED_SLOTS, len(mesh))
+    local_budget = max_n - reserve
+    selected = local[:local_budget] + mesh[:reserve]
+
+    # 로컬/예약분이 max_n 에 못 미치면(로컬이 적을 때) 남는 슬롯을 그물망으로 채운다 — 할당량 낭비 방지.
+    # local[local_budget:] 은 항상 비어 있다 — 이 backfill 은 len(local) < local_budget 일 때만
+    # 실행되므로 로컬 잔여분이 존재할 수 없다.
+    if len(selected) < max_n:
+        for entry in mesh[reserve:]:
+            selected.append(entry)
+            if len(selected) == max_n:
+                break
+
+    return selected
+
+
 def main():
     parser = argparse.ArgumentParser(description="헤르메스 FTS5 스킬 검색")
     parser.add_argument("--db", required=True, help="state.db 경로")
     parser.add_argument("--query", required=True, help="사용자 입력 텍스트")
     parser.add_argument("--skills-dir", default="", help="추가 스킬 디렉토리")
+    parser.add_argument("--global-skills-dir", default="",
+                        help="그물망 스킬 디렉토리(~/.hermes/mesh/skills) — 전역 2차 소스")
     parser.add_argument("--max", type=int, default=3, help="최대 결과 수")
     parser.add_argument("--session-id", default="", help="주입 원장 기록용 세션 ID")
     parser.add_argument("--no-fallback", action="store_true",
@@ -322,7 +366,7 @@ def main():
 
     keywords = extract_keywords(args.query)
 
-    # 1단계 — FTS5 키워드 검색
+    # 1단계 — skill_index 전수 스캔 + 부분 문자열 매칭 (FTS5 미사용)
     db_results = search_db(args.db, keywords, args.max)
 
     hermes_skills_dir = os.path.join(os.path.dirname(args.db), "skills")
@@ -330,6 +374,11 @@ def main():
 
     if args.skills_dir and os.path.isdir(args.skills_dir):
         dir_results += search_skills_dir(args.skills_dir, keywords, args.max)
+
+    # 그물망(전역 2차 소스) 결과는 별도로 추적한다 — 출력 라벨과 할당량 예약(finding 1/4)에 필요.
+    mesh_results = []
+    if args.global_skills_dir and os.path.isdir(args.global_skills_dir):
+        mesh_results = search_skills_dir(args.global_skills_dir, keywords, args.max)
 
     # 톰브스톤 스킬은 평면 dir-scan 결과에서도 제외
     def _tombstoned_paths(db):
@@ -348,68 +397,95 @@ def main():
 
     _dead = _tombstoned_paths(args.db)
     dir_results = [r for r in dir_results if r["path"] not in _dead]
+    mesh_results = [r for r in mesh_results if r["path"] not in _dead]
 
     # 이미 이 세션에 주입된 스킬 제외 (훅 경로 전용) — 빈 집합이면 필터는 무해하다.
     _already = injected_paths(args.db, args.session_id) if args.once_per_session else set()
     db_results = [r for r in db_results if r["path"] not in _already]
     dir_results = [r for r in dir_results if r["path"] not in _already]
+    mesh_results = [r for r in mesh_results if r["path"] not in _already]
 
     # 2단계 — FTS5 결과 없으면 Haiku fallback
     haiku_results = []
-    if not db_results and not dir_results and not args.no_fallback:
+    if not db_results and not dir_results and not mesh_results and not args.no_fallback:
         skills_dirs = [hermes_skills_dir]
         if args.skills_dir:
             skills_dirs.append(args.skills_dir)
+        if args.global_skills_dir:
+            skills_dirs.append(args.global_skills_dir)
         haiku_results = haiku_fallback(args.query, skills_dirs, args.max)
         haiku_results = [r for r in haiku_results if r["path"] not in _already]
 
-    # 결과 출력 (프롬프트 주입용) — (텍스트, 경로) 쌍. 실제 주입분만 원장에 기록하기 위함(M1).
-    injections = []
+    # 결과 후보 (프롬프트 주입용) — (텍스트, 경로, 그물망여부) 3-튜플.
+    # 순서: db → 로컬 dir-scan → 그물망 → haiku. db가 dir-scan 쌍둥이보다 먼저 오므로
+    # 뒤의 중복 제거 단계에서 db 항목이 우선(선점) 살아남는다.
+    candidates = []
 
     for r in db_results:
         snippet = read_skill_snippet(r["path"])
         if snippet:
-            injections.append((f"[헤르메스 규칙 — {os.path.basename(r['path'])}]\n{snippet}", r["path"]))
+            candidates.append((f"[헤르메스 규칙 — {os.path.basename(r['path'])}]\n{snippet}", r["path"], False))
 
     for r in dir_results:
         snippet = read_skill_snippet(r["path"])
         if snippet:
             name = r.get("name", os.path.basename(r["path"]))
-            injections.append((f"[헤르메스 규칙 — {name}]\n{snippet}", r["path"]))
+            candidates.append((f"[헤르메스 규칙 — {name}]\n{snippet}", r["path"], False))
+
+    for r in mesh_results:
+        snippet = read_skill_snippet(r["path"])
+        if snippet:
+            name = r.get("name", os.path.basename(r["path"]))
+            # 그물망 출처는 라벨로 구분한다 — Phase 2 PII/비밀 승격 게이트 이전이라
+            # 출처 불명확 시 검증되지 않은 내용이 프롬프트에 섞여 들어간 것처럼 보일 수 있다.
+            candidates.append((f"[헤르메스 규칙(그물망) — {name}]\n{snippet}", r["path"], True))
 
     for r in haiku_results:
         snippet = read_skill_snippet(r["path"])
         if snippet:
-            injections.append((f"[헤르메스 규칙(뉘앙스/claude-p) — {r['name']}]\n{snippet}", r["path"]))
+            candidates.append((f"[헤르메스 규칙(뉘앙스/claude-p) — {r['name']}]\n{snippet}", r["path"], False))
+
+    # 경로 기준 중복 제거 — 같은 스킬이 search_db 와 search_skills_dir 양쪽에서
+    # 매칭돼도(동일 파일을 skill_index 와 dir-scan 이 이중 스캔) 한 자리만 차지하고 한 번만 출력한다.
+    # 최초 등장(db 우선) 순서를 보존한다.
+    deduped = []
+    _seen_paths = set()
+    for entry in candidates:
+        path = entry[1]
+        if path in _seen_paths:
+            continue
+        _seen_paths.add(path)
+        deduped.append(entry)
+
+    injections = _select_injections(deduped, args.max)
 
     if not injections:
         sys.exit(0)
 
     print("\n--- [Hermes 관련 규칙] ---")
-    for inj, _path in injections[:args.max]:
+    for inj, _path, _is_mesh in injections:
         print(inj)
         print()
     print("---")
 
-    # 주입 기록 — used_count(인덱스 매칭분)는 세션ID 무관하게 항상,
-    # 원장(skill_injection)은 세션ID 가 있을 때만 기록한다.
+    # 주입 기록 — used_count(인덱스 매칭분)·원장(skill_injection) 모두 실제로 출력된
+    # injections 와 일치시킨다(dedup·할당량 예약 이후 상태). 세션ID 는 원장 기록에만 필요.
     if os.path.isfile(args.db):
         try:
             con = connect_db(args.db)
-            # 인덱스 매칭분 used_count 증가 (하위호환 — 세션ID 무관)
+            printed_paths = {p for _inj, p, _is_mesh in injections}
+            # 인덱스 매칭분 used_count 증가 — 실제로 출력된 db 매칭 스킬만(하위호환 — 세션ID 무관)
             for r in db_results:
+                if r["path"] not in printed_paths:
+                    continue
                 con.execute(
                     "UPDATE skill_index SET used_count = used_count + 1 WHERE skill_path=?",
                     (r["path"],),
                 )
-            # 주입 원장 기록 — 실제 프롬프트에 주입된 스킬(injections[:max])만, 중복 제거(M1·M3).
+            # 주입 원장 기록 — 실제 프롬프트에 주입된 스킬(injections)만. deduped 결과라 재중복 제거 불필요.
             if args.session_id:
                 _ensure_injection_source_column(con)
-                seen = set()
-                for _inj, p in injections[:args.max]:
-                    if p in seen:
-                        continue
-                    seen.add(p)
+                for _inj, p, _is_mesh in injections:
                     con.execute(
                         "INSERT INTO skill_injection (session_id, skill_path, source) "
                         "VALUES (?, ?, ?)",

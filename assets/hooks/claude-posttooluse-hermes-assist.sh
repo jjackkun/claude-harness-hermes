@@ -80,7 +80,7 @@ _query="$(printf '%s\n' "$_parsed" | sed -n '2p')"
 
 _out="$(python3 "$_search" \
   --db "$_db" --query "$_query" --session-id "$_sid" \
-  --skills-dir "$PWD/.claude/skills" --max 1 \
+  --skills-dir "$PWD/.claude/skills" --global-skills-dir "$HOME/.hermes/mesh/skills" --max 1 \
   --source assist --no-fallback --once-per-session 2>>"$PWD/.hermes/hooks.log" || true)"
 
 [[ -n "$_out" ]] && printf '%s\n' "$_out"

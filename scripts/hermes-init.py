@@ -28,6 +28,7 @@ def connect_db(db_path: str) -> sqlite3.Connection:
 def init_global_db():
     os.makedirs(GLOBAL_DB_DIR, exist_ok=True)
     os.makedirs(os.path.join(GLOBAL_DB_DIR, "skills"), exist_ok=True)
+    os.makedirs(os.path.join(GLOBAL_DB_DIR, "mesh", "skills"), exist_ok=True)
     con = connect_db(GLOBAL_DB_PATH)
     _apply_schema(con, scope="global")
     con.close()
