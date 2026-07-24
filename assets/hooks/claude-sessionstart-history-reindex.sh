@@ -58,25 +58,116 @@ text_count=${#hist_files[@]}
 
 # [게이트 5] 재색인 필요 판정 — 세션 수 증가 OR 총 라인 수 증가(같은 세션의 더 긴 버전 pull 감지).
 #   파이썬 1회(파이프 없음: ugrep/SIGPIPE 회피). DB 조회 실패 시 보수적으로 "불필요"(2**31).
+#   need=2 는 발산(텍스트 < DB). 발산은 사유가 갈리고 **해결 방향이 정반대**라 하위 분류한다:
+#     compacted      — 발산 파일이 **타 기계**의 압축 산물. reindex --force(파일→DB)로 수용.
+#     self-clobbered — 발산 파일이 **이 기계**가 압축한 것(로컬 compaction_log 에 존재)인데
+#                      DB 는 원문이다 = 그 세션을 재개해 save-session 이 DB 를 되돌렸고
+#                      Stop 훅 export 가 실패·타임아웃했다. 압축 해제가 정답이며
+#                      --force 를 쓰면 재개 후 나눈 신규 대화가 삭제된다(파일·git 에 없음).
+#     lagging        — 압축 마커 없는 세션의 파일이 DB 보다 뒤처짐(Stop 훅 export 실패).
+#                      여기에 --force 를 쓰면 DB 원문이 영구 소실된다. 해결은 세션 단위 export.
+#     mixed          — 압축본과 --session 이 필요한 세션이 동거. --force 는 전역이라
+#                      뒤처진 세션까지 파괴하므로 권하지 않는다.
+#     db-only        — 파일이 아예 없는 세션(양성). reindex --backfill 로 보정.
+#   증가가 없어 need=0 이지만 "동기화됨"이 아니므로 in-sync 와 분리해 기록한다.
 gate="$(python3 -c "
-import sqlite3, sys, glob, os
+import sqlite3, sys, glob, os, json
 files = glob.glob(os.path.join(sys.argv[1], '*.jsonl'))
 tl = 0
+fmeta = {}
 for f in files:
+    lines = []
     try:
-        with open(f, encoding='utf-8') as fh: tl += sum(1 for _ in fh)
+        with open(f, encoding='utf-8') as fh: lines = fh.readlines()
     except Exception: pass
+    tl += len(lines)
+    body = [l for l in lines if l.strip()]
+    sid, comp = None, False
+    if body:
+        try:
+            obj = json.loads(body[0])
+            if isinstance(obj, dict):
+                sid = obj.get('session_id')
+                # 압축본 판정 — scripts/hermes-export-history.py _compacted_record() 와 동일 기준
+                # (훅은 하네스와 독립 실행이라 중복 구현한다. 한쪽을 바꾸면 다른 쪽도 바꿀 것)
+                comp = len(body) == 1 and obj.get('compacted') is True
+        except Exception: pass
+    if sid:
+        n, c = fmeta.get(sid, (0, False))
+        fmeta[sid] = (n + len(body), c or comp)
 ts = len(files)
+db_ok = True
+counts = {}
 try:
     con = sqlite3.connect(sys.argv[2])
     ds = con.execute('SELECT COUNT(DISTINCT session_id) FROM session_history').fetchone()[0]
     dr = con.execute('SELECT COUNT(*) FROM session_history').fetchone()[0]
+    counts = dict(con.execute('SELECT session_id, COUNT(*) FROM session_history GROUP BY session_id'))
 except Exception:
     ds = dr = 2**31
-need = 1 if (ts > ds or tl > dr) else 0
-print(f'{need} ts={ts} ds={ds} tl={tl} dr={dr}')
-" "$hist_dir" "$db_path" 2>/dev/null || echo '0 error')"
+    db_ok = False
+# 로컬 compaction_log = '이 기계가 압축한 세션'. state.db 는 gitignore 라 이식되지
+# 않으므로 여기 있는 sid 는 반드시 이 기계의 --apply 산물이다. 테이블 부재(구스키마)
+# 는 빈 집합 = 전부 타 기계 압축본으로 보는 보수적 폴백.
+clog = set()
+try:
+    for (s,) in con.execute('SELECT session_ids FROM compaction_log'):
+        clog.update(x.strip() for x in (s or '').split(',') if x.strip())
+except Exception: pass
+reason, sids = 'none', ''
+if ts > ds or tl > dr:
+    need = 1
+elif db_ok and (ts < ds or tl < dr):
+    need = 2
+    lag = sorted(s for s, (n, c) in fmeta.items() if not c and n < counts.get(s, 0))
+    cc = sorted(s for s, (n, c) in fmeta.items() if c and counts.get(s, 0) > n)
+    selfc = [s for s in cc if s in clog]
+    comp = [s for s in cc if s not in clog]
+    if comp and (lag or selfc):
+        reason = 'mixed'
+    elif comp:
+        reason = 'compacted'
+    elif selfc:
+        reason = 'self-clobbered'
+    elif lag:
+        reason = 'lagging'
+    else:
+        reason = 'db-only'
+    sids = ','.join((lag + selfc) or comp)
+else:
+    need = 0
+print('%d reason=%s ts=%d ds=%d tl=%d dr=%d sids=%s' % (need, reason, ts, ds, tl, dr, sids or '-'))
+" "$hist_dir" "$db_path" 2>/dev/null || echo '0 reason=error')"
 need="${gate%% *}"
+if [[ "$need" == "2" ]]; then
+  # 자동 복구하지 않는다 — 훅이 --force 를 붙이면 "손상된 텍스트가 DB 를 파괴하지
+  # 못하게" 막는 재색인 행수감소 가드가 통째로 무력화된다. 로그 안내까지만.
+  reason="${gate#* reason=}"; reason="${reason%% *}"
+  sids="${gate#* sids=}"; sids="${sids%% *}"
+  first_sid="${sids%%,*}"    # --session 은 세션 1개씩 — 여러 개면 대표 1개를 예시로 보인다
+  case "$reason" in
+    compacted)
+      # 방향 주의: 이 상태에서 전량 export(DB→파일)는 압축을 되돌리므로 쓰지 않는다.
+      _log "action=skip:diverged:compacted $gate — 발산 파일이 전부 압축본이다(타 기계가 압축한 요약본을 pull 한 상태). 압축을 수용하려면 수동으로: python3 <harness>/scripts/hermes-reindex.py --db '$db_path' --project '$project_dir' --force ⚠ 주의: --force 는 세션 단위가 아니라 전역이다. 파일이 DB 보다 뒤처진 다른 세션이 있으면 그 원문까지 파일 기준으로 덮어써 소실된다. 실행 전 .hermes/history 의 git 상태를 확인하라."
+      ;;
+    self-clobbered)
+      # 이 기계가 압축한 세션을 재개해 DB 가 원문으로 돌아온 상태. 압축 해제가 정답이다.
+      # --force 를 해결책으로 제시하지 않는다 — 재개 후 나눈 신규 대화가 파일·git 어디에도
+      # 없이 DB 에만 있어, 파일→DB 방향 재색인은 그것을 삭제한다.
+      _log "action=skip:diverged:self-clobbered $gate — 이 기계가 압축한 세션을 재개해 DB 가 원문으로 되돌아왔다(Stop 훅 export 실패·타임아웃). 재개했다는 것은 그 세션을 다시 쓴다는 뜻이므로 압축이 해제되는 것이 맞다. 파일을 DB 에 맞춰라: python3 <harness>/scripts/hermes-export-history.py --db '$db_path' --project '$project_dir' --session $first_sid (대상 세션: $sids — 세션마다 1회씩). ⚠ 이 상태에서 파일→DB 방향 강제 재색인(--force)은 재개 후 나눈 신규 대화를 DB 에서 삭제한다. 그 대화는 파일에도 git 에도 없으므로 영구 소실이다 — 쓰지 마라."
+      ;;
+    lagging)
+      _log "action=skip:diverged:lagging $gate — 압축과 무관한 발산이다. 파일이 DB 보다 뒤처졌다(Stop 훅 export 실패 가능). DB 원문이 정본이므로 해당 세션을 파일로 내보낸 뒤 커밋하라: python3 <harness>/scripts/hermes-export-history.py --db '$db_path' --project '$project_dir' --session $first_sid (대상 세션: $sids — 세션마다 1회씩)"
+      ;;
+    mixed)
+      _log "action=skip:diverged:mixed $gate — 압축본과 뒤처진 세션이 섞여 있다. 뒤처진 세션을 먼저 세션 단위로 동기화·커밋하라: python3 <harness>/scripts/hermes-export-history.py --db '$db_path' --project '$project_dir' --session $first_sid (대상 세션: $sids — 세션마다 1회씩). 그 뒤에 압축 수용 여부를 판단하라 — 지금 전역 재색인을 돌리면 뒤처진 세션의 DB 원문이 소실된다."
+      ;;
+    *)
+      _log "action=skip:diverged:db-only $gate — DB 에만 있고 파일이 없는 세션이 있다(양성). 파일로 보정하려면: python3 <harness>/scripts/hermes-reindex.py --db '$db_path' --project '$project_dir' --backfill"
+      ;;
+  esac
+  exit 0
+fi
 if [[ "$need" != "1" ]]; then
   _log "action=skip:in-sync $gate"
   exit 0
