@@ -37,6 +37,14 @@ else
   ok "global dir 미지정 시 그물망 스킬 비노출(격리 OK)"
 fi
 
+# init --global 이 그물망 골격 디렉토리를 만드는지 (HOME 격리)
+HOME="$TMP/fakehome" python3 "$SCRIPTS/hermes-init.py" --global >/dev/null 2>&1 || true
+if [[ -d "$TMP/fakehome/.hermes/mesh/skills" ]]; then
+  ok "init --global 이 ~/.hermes/mesh/skills 생성"
+else
+  nope "init --global 이 그물망 골격 디렉토리 미생성"
+fi
+
 echo ""
 echo "  결과: $PASS 통과 / $FAIL 실패"
 [[ $FAIL -eq 0 ]]
