@@ -44,6 +44,58 @@ while IFS= read -r line; do
   esac
 done <<<"$OUT"
 
+
+# --- stage2 일반성 분류 (mock claude) ---
+MOCKDIR="$(mktemp -d)"
+trap 'rm -rf "$MOCKDIR"' EXIT
+make_mock() {  # $1 = 출력할 판정(GENERAL/SPECIFIC)
+  cat > "$MOCKDIR/claude" <<EOF
+#!/usr/bin/env bash
+echo "$1"
+EOF
+  chmod +x "$MOCKDIR/claude"
+}
+
+run_stage2() {  # $1 = PATH, $2 = HERMES_DISABLED 값(빈 문자열이면 unset)
+  local extra_path="$1" disabled="$2"
+  if [[ -n "$disabled" ]]; then
+    HERMES_DISABLED="$disabled" PATH="$extra_path:$PATH" PYTHONPATH="$SCRIPTS" python3 - <<'PY'
+import hermes_mesh_gate as g
+print("TRUE" if g.stage2_is_general("일반 지식 본문") else "FALSE")
+PY
+  else
+    env -u HERMES_DISABLED PATH="$extra_path:$PATH" PYTHONPATH="$SCRIPTS" python3 - <<'PY'
+import hermes_mesh_gate as g
+print("TRUE" if g.stage2_is_general("일반 지식 본문") else "FALSE")
+PY
+  fi
+}
+
+make_mock "GENERAL"
+[[ "$(run_stage2 "$MOCKDIR" "")" == "TRUE" ]] \
+  && ok "stage2: claude GENERAL → 통과" || nope "stage2: GENERAL 인데 탈락"
+
+make_mock "SPECIFIC"
+[[ "$(run_stage2 "$MOCKDIR" "")" == "FALSE" ]] \
+  && ok "stage2: claude SPECIFIC → 탈락" || nope "stage2: SPECIFIC 인데 통과"
+
+make_mock "GENERAL"
+[[ "$(run_stage2 "$MOCKDIR" "1")" == "FALSE" ]] \
+  && ok "stage2: HERMES_DISABLED=1 → claude 안 부르고 탈락" || nope "stage2: DISABLED 인데 통과"
+
+# claude 부재 → 탈락. PATH 를 좁히면 python3 자체를 못 찾으므로,
+# shutil.which("claude") 만 None 을 돌려주도록 monkeypatch 한다(python3 는 정상 실행).
+NO_CLAUDE="$(env -u HERMES_DISABLED PYTHONPATH="$SCRIPTS" python3 - <<'PY'
+import shutil
+_orig = shutil.which
+shutil.which = lambda name, *a, **k: None if name == "claude" else _orig(name, *a, **k)
+import hermes_mesh_gate as g
+print("TRUE" if g.stage2_is_general("일반 지식 본문") else "FALSE")
+PY
+)"
+[[ "$NO_CLAUDE" == "FALSE" ]] \
+  && ok "stage2: claude 부재 → 탈락" || nope "stage2: claude 없는데 통과"
+
 echo ""
 echo "  결과: $PASS 통과 / $FAIL 실패"
 [[ $FAIL -eq 0 ]]

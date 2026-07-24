@@ -54,3 +54,38 @@ def stage1_reject(text):
         if pattern.search(text):
             return True, reason
     return False, "clean"
+
+
+# 프롬프트에 실을 본문 상한 — 결정화 스킬은 짧지만(관측 최대 ~130자) 방어적
+# 상한을 둔다. 판정에는 앞부분으로 충분하고, 과금·지연을 억제한다.
+_MAX_PROMPT_BODY = 4000
+_GATE_MODEL = "claude-haiku-4-5-20251001"
+_PROMPT_TMPL = (
+    "다음은 코딩 세션에서 결정화된 스킬 문서다. 이 지식이 특정 개인이나 특정 "
+    "프로젝트에만 종속되는지, 아니면 프로젝트를 초월해 재사용 가능한 일반 지식인지 "
+    "판정하라. 답은 GENERAL 또는 SPECIFIC 한 단어로만 출력하라.\n\n"
+    "--- 스킬 ---\n{body}\n--- 끝 ---"
+)
+
+
+def stage2_is_general(text, *, timeout=120):
+    """claude 로 일반성을 판정한다. GENERAL 이면 True, 그 외 전부 False(fail-closed).
+
+    사용자 전역 opt-out(HERMES_DISABLED)·claude 부재·오류·타임아웃 → 모두 탈락.
+    """
+    if os.environ.get("HERMES_DISABLED"):
+        return False
+    if not shutil.which("claude"):
+        return False
+    prompt = _PROMPT_TMPL.format(body=(text or "")[:_MAX_PROMPT_BODY])
+    try:
+        result = subprocess.run(
+            ["claude", "-p", prompt, "--model", _GATE_MODEL],
+            capture_output=True, text=True, timeout=timeout,
+            env={**os.environ, "HERMES_DISABLED": "1"},
+        )
+    except (subprocess.TimeoutExpired, OSError):
+        return False
+    if result.returncode != 0:
+        return False
+    return result.stdout.strip().upper().startswith("GENERAL")
