@@ -72,7 +72,8 @@ except Exception:
     if [[ -n "$_query" ]]; then
       _hermes_out=$(python3 "$_hermes_search" \
         --db "$_hermes_db" --query "$_query" --session-id "$_sid" \
-        --skills-dir "$PWD/.claude/skills" --max 3 2>/dev/null || true)
+        --skills-dir "$PWD/.claude/skills" \
+        --global-skills-dir "$HOME/.hermes/mesh/skills" --max 3 2>/dev/null || true)
       [[ -n "$_hermes_out" ]] && printf '%s\n' "$_hermes_out"
     fi
   fi

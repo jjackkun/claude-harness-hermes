@@ -45,6 +45,14 @@ else
   nope "init --global 이 그물망 골격 디렉토리 미생성"
 fi
 
+# 주입 훅이 --global-skills-dir 를 전달하는지 (정적 확인)
+HOOK="$ROOT/assets/hooks/claude-userpromptsubmit-reminders.sh"
+if grep -q -- "--global-skills-dir" "$HOOK"; then
+  ok "주입 훅이 --global-skills-dir 전달"
+else
+  nope "주입 훅이 --global-skills-dir 미전달"
+fi
+
 echo ""
 echo "  결과: $PASS 통과 / $FAIL 실패"
 [[ $FAIL -eq 0 ]]
