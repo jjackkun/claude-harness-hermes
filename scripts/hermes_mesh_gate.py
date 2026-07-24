@@ -48,7 +48,7 @@ def stage1_reject(text):
 
     빈 입력·비문자열은 보수적으로 탈락(승격할 게 없음).
     """
-    if not text or not isinstance(text, str):
+    if not isinstance(text, str) or not text.strip():
         return True, "empty"
     for pattern, reason in _IDENTITY_RULES:
         if pattern.search(text):

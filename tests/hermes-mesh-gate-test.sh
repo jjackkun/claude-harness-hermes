@@ -27,8 +27,10 @@ expect("abs-path-home", "/home/jjackkun/PROJECT/zeroday 에서 빌드한다", Tr
 expect("abs-path-win", "C:\\Users\\hong\\project 경로를 연다", True)
 expect("email", "문의는 hong@example.com 으로", True)
 expect("phone", "연락처 010-1234-5678", True)
+expect("rrn-dashed", "주민등록번호 900101-1234567 확인", True)
 expect("empty", "", True)
 expect("none", None, True)
+expect("whitespace-only", "   \n\t  ", True)
 
 # 통과해야 함 (일반 지식 — 신원/맥락 마커 없음)
 expect("general-1", "GraphQL relay 커서 규약으로 페이지네이션을 구현한다", False)
@@ -95,6 +97,31 @@ PY
 )"
 [[ "$NO_CLAUDE" == "FALSE" ]] \
   && ok "stage2: claude 부재 → 탈락" || nope "stage2: claude 없는데 통과"
+
+# 비정상 종료(returncode != 0) → 탈락. stdout 에 GENERAL 이 찍혀도 신뢰 금지.
+cat > "$MOCKDIR/claude" <<'EOF'
+#!/usr/bin/env bash
+echo "GENERAL"
+exit 1
+EOF
+chmod +x "$MOCKDIR/claude"
+[[ "$(run_stage2 "$MOCKDIR" "")" == "FALSE" ]] \
+  && ok "stage2: returncode!=0 (stdout=GENERAL) → 탈락" || nope "stage2: returncode!=0 인데 통과"
+
+# 타임아웃 → 탈락.
+cat > "$MOCKDIR/claude" <<'EOF'
+#!/usr/bin/env bash
+sleep 3
+echo "GENERAL"
+EOF
+chmod +x "$MOCKDIR/claude"
+TIMEOUT_RESULT="$(env -u HERMES_DISABLED PATH="$MOCKDIR:$PATH" PYTHONPATH="$SCRIPTS" python3 - <<'PY'
+import hermes_mesh_gate as g
+print("TRUE" if g.stage2_is_general("일반 지식 본문", timeout=1) else "FALSE")
+PY
+)"
+[[ "$TIMEOUT_RESULT" == "FALSE" ]] \
+  && ok "stage2: 타임아웃 → 탈락" || nope "stage2: 타임아웃인데 통과"
 
 
 # --- mesh_gate 오케스트레이션 (mock claude GENERAL 사용) ---
