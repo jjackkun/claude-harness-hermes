@@ -89,3 +89,17 @@ def stage2_is_general(text, *, timeout=120):
     if result.returncode != 0:
         return False
     return result.stdout.strip().upper().startswith("GENERAL")
+
+
+def mesh_gate(text, *, timeout=120):
+    """스킬 본문의 승격 여부를 판정한다. (passed, reason, scrubbed) 반환.
+
+    통과분만 scrubbed(redact 적용본)를 돌려준다 — 토큰류 자격증명을 최종 마스킹.
+    허용리스트: stage1 통과 AND stage2 GENERAL 일 때만 승격.
+    """
+    rejected, reason = stage1_reject(text)
+    if rejected:
+        return False, reason, None
+    if not stage2_is_general(text, timeout=timeout):
+        return False, "not-general", None
+    return True, "general", redact(text)

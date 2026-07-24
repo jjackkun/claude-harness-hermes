@@ -96,6 +96,40 @@ PY
 [[ "$NO_CLAUDE" == "FALSE" ]] \
   && ok "stage2: claude 부재 → 탈락" || nope "stage2: claude 없는데 통과"
 
+
+# --- mesh_gate 오케스트레이션 (mock claude GENERAL 사용) ---
+make_mock "GENERAL"
+run_gate() {  # stdin=본문, 결과 "passed|reason|scrubbed_contains_redacted"
+  PATH="$MOCKDIR:$PATH" PYTHONPATH="$SCRIPTS" python3 - "$1" <<'PY'
+import sys, hermes_mesh_gate as g
+passed, reason, scrubbed = g.mesh_gate(sys.argv[1])
+has_red = "[REDACTED" in (scrubbed or "")
+print(f"{passed}|{reason}|{has_red}|{scrubbed if scrubbed else ''}")
+PY
+}
+
+# 일반 지식 + mock GENERAL → 통과, scrubbed 반환
+R="$(run_gate "GraphQL relay 커서 페이지네이션 규약을 따른다")"
+[[ "$R" == True\|general\|* ]] \
+  && ok "mesh_gate: 일반+GENERAL → 통과" || nope "mesh_gate: 통과 실패 ($R)"
+
+# stage1 신원 마커 → claude 판정과 무관하게 탈락
+R="$(run_gate "장정훈 차장이 이 모듈을 담당한다")"
+[[ "$R" == False\|korean-title\|* ]] \
+  && ok "mesh_gate: 신원 마커 → 탈락(stage2 이전)" || nope "mesh_gate: 신원 탈락 실패 ($R)"
+
+# 통과 본문에 낀 토큰은 최종 스크럽에서 마스킹된다
+R="$(run_gate "일반 설정법: export TOKEN=ghp_$(printf 'a%.0s' {1..36})")"
+FIRST="${R%%|*}"
+[[ "$FIRST" == "True" && "$R" == *"|True|"* ]] \
+  && ok "mesh_gate: 통과분 토큰이 스크럽에서 마스킹됨" || nope "mesh_gate: 스크럽 미적용 ($R)"
+
+# stage2 SPECIFIC → 탈락(not-general)
+make_mock "SPECIFIC"
+R="$(run_gate "GraphQL relay 커서 페이지네이션 규약을 따른다")"
+[[ "$R" == False\|not-general\|* ]] \
+  && ok "mesh_gate: SPECIFIC → not-general 탈락" || nope "mesh_gate: not-general 실패 ($R)"
+
 echo ""
 echo "  결과: $PASS 통과 / $FAIL 실패"
 [[ $FAIL -eq 0 ]]
