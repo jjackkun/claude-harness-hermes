@@ -116,7 +116,8 @@ for t in \
   memory-symlink-roundtrip-test.sh \
   hermes-history-export-test.sh \
   hermes-lifecycle-test.sh \
-  hermes-lifecycle-portability-test.sh
+  hermes-lifecycle-portability-test.sh \
+  hermes-mesh-consume-test.sh
 do
   run_step "$t" bash "$TESTS_DIR/$t"
 done
