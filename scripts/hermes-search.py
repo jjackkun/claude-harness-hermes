@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""헤르메스 FTS5 스킬 검색 스크립트.
+"""헤르메스 스킬 검색 스크립트.
 
 UserPromptSubmit Hook에서 호출.
 사용자 입력에서 키워드를 추출하고 관련 스킬을 검색해 반환한다.
 
 검색 전략 (2단계):
-  1단계 — FTS5 키워드 검색 (빠름, 무료)
+  1단계 — skill_index 전수 스캔 + 부분 문자열 매칭 (빠름, 무료. FTS5 미사용)
   2단계 — claude -p 뉘앙스 판단 (1단계 결과 없을 때만, claude CLI 필요.
            --no-fallback 지정 시 건너뜀 — 훅 경로(예: 도중 주입)에서 지연 방지 목적)
 
@@ -332,13 +332,11 @@ def _select_injections(deduped: list, max_n: int) -> list:
     selected = local[:local_budget] + mesh[:reserve]
 
     # 로컬/예약분이 max_n 에 못 미치면(로컬이 적을 때) 남는 슬롯을 그물망으로 채운다 — 할당량 낭비 방지.
+    # local[local_budget:] 은 항상 비어 있다 — 이 backfill 은 len(local) < local_budget 일 때만
+    # 실행되므로 로컬 잔여분이 존재할 수 없다.
     if len(selected) < max_n:
-        picked_paths = {p for _, p, _ in selected}
-        for entry in local[local_budget:] + mesh[reserve:]:
-            if entry[1] in picked_paths:
-                continue
+        for entry in mesh[reserve:]:
             selected.append(entry)
-            picked_paths.add(entry[1])
             if len(selected) == max_n:
                 break
 
@@ -368,7 +366,7 @@ def main():
 
     keywords = extract_keywords(args.query)
 
-    # 1단계 — FTS5 키워드 검색
+    # 1단계 — skill_index 전수 스캔 + 부분 문자열 매칭 (FTS5 미사용)
     db_results = search_db(args.db, keywords, args.max)
 
     hermes_skills_dir = os.path.join(os.path.dirname(args.db), "skills")

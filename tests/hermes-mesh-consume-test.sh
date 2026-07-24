@@ -89,9 +89,10 @@ con.execute(
 con.commit()
 PY
 
+SESS1="mesh-consume-test-session-1"
 OUT3="$(python3 "$SCRIPTS/hermes-search.py" \
   --db "$PDB" --query "relay 커서 페이지네이션 구현" \
-  --global-skills-dir "$MESH" --no-fallback --max 3 2>/dev/null || true)"
+  --global-skills-dir "$MESH" --no-fallback --max 3 --session-id "$SESS1" 2>/dev/null || true)"
 
 if grep -q "relay-pagination" <<<"$OUT3"; then
   ok "현실적 조건: 로컬 skill_index 매칭이 있어도 그물망 스킬이 노출됨(할당량 미굶주림)"
@@ -99,11 +100,112 @@ else
   nope "현실적 조건: 그물망 스킬이 할당량에서 밀려남(Finding 1 재현)"
 fi
 
-DUP_COUNT="$(grep -c "헤르메스 규칙.*pagination-guide.md" <<<"$OUT3" || true)"
-if [[ "$DUP_COUNT" -le 1 ]]; then
-  ok "동일 스킬이 중복 출력되지 않음(db-scan/dir-scan 중복 제거)"
+# Finding E — 그물망 예약 슬롯이 생겼다고 로컬 스킬이 굶주리지 않았는지도 확인한다.
+if grep -q "pagination-guide" <<<"$OUT3"; then
+  ok "현실적 조건: 로컬 스킬(pagination-guide)도 함께 노출됨(로컬 굶주림 없음)"
 else
-  nope "동일 스킬이 중복 출력됨(중복 제거 실패, count=$DUP_COUNT)"
+  nope "현실적 조건: 로컬 스킬(pagination-guide)이 노출되지 않음(로컬 굶주림)"
+fi
+
+# 동일 스킬의 중복 출력 검사 — 라벨이 아니라 스킬별 고유 본문 줄로 카운트한다.
+# (라벨 패턴은 dir-scan 라벨에 .md 접미사가 없어 절대 매칭되지 않는 검증 무효 문제가 있었다.)
+for _line in "cursor 기반으로 다음 페이지를 조회한다." "페이지네이션 cursor 값은 opaque 하게 다룬다."; do
+  _n="$(grep -cF "$_line" <<<"$OUT3" || true)"
+  if [[ "$_n" -le 1 ]]; then
+    ok "동일 스킬 중복 출력 없음: ${_line:0:12}… (count=$_n)"
+  else
+    nope "동일 스킬 중복 출력됨: ${_line:0:12}… (count=$_n)"
+  fi
+done
+
+# Finding D — 실제로 프롬프트에 찍힌 스킬 개수와 skill_injection 원장 행 수,
+# used_count 증가분이 서로 일치하는지 검증한다(할당량 예약/중복제거 이후 상태 기준).
+PRINTED_COUNT="$(python3 - "$OUT3" <<'PY'
+import sys
+out = sys.argv[1]
+print(out.count("[헤르메스 규칙"))
+PY
+)"
+LEDGER_COUNT="$(python3 - "$PDB" "$SESS1" <<'PY'
+import sqlite3, sys
+con = sqlite3.connect(sys.argv[1])
+n = con.execute(
+    "SELECT COUNT(*) FROM skill_injection WHERE session_id=?", (sys.argv[2],)
+).fetchone()[0]
+con.close()
+print(n)
+PY
+)"
+if [[ "$LEDGER_COUNT" == "$PRINTED_COUNT" ]]; then
+  ok "원장(skill_injection) 행 수가 실제 출력 스킬 수와 일치함(printed=$PRINTED_COUNT, ledger=$LEDGER_COUNT)"
+else
+  nope "원장 행 수가 출력 스킬 수와 불일치(printed=$PRINTED_COUNT, ledger=$LEDGER_COUNT)"
+fi
+
+# max=1 로 강제 절단하여, 절단으로 탈락한 스킬은 used_count 가 오르지 않는지 확인한다.
+USED_BEFORE_PAG="$(python3 - "$PDB" "$PROJ/.hermes/skills/pagination-guide.md" <<'PY'
+import sqlite3, sys
+con = sqlite3.connect(sys.argv[1])
+print(con.execute("SELECT used_count FROM skill_index WHERE skill_path=?", (sys.argv[2],)).fetchone()[0])
+con.close()
+PY
+)"
+USED_BEFORE_CUR="$(python3 - "$PDB" "$PROJ/.hermes/skills/cursor-guide.md" <<'PY'
+import sqlite3, sys
+con = sqlite3.connect(sys.argv[1])
+print(con.execute("SELECT used_count FROM skill_index WHERE skill_path=?", (sys.argv[2],)).fetchone()[0])
+con.close()
+PY
+)"
+
+SESS2="mesh-consume-test-session-2"
+OUT4="$(python3 "$SCRIPTS/hermes-search.py" \
+  --db "$PDB" --query "relay 커서 페이지네이션 구현" \
+  --global-skills-dir "$MESH" --no-fallback --max 1 --session-id "$SESS2" 2>/dev/null || true)"
+
+LEDGER_COUNT2="$(python3 - "$PDB" "$SESS2" <<'PY'
+import sqlite3, sys
+con = sqlite3.connect(sys.argv[1])
+n = con.execute(
+    "SELECT COUNT(*) FROM skill_injection WHERE session_id=?", (sys.argv[2],)
+).fetchone()[0]
+con.close()
+print(n)
+PY
+)"
+if [[ "$LEDGER_COUNT2" == "1" ]]; then
+  ok "max=1 절단 시 원장 행이 실제 출력(1개)과 일치함(ledger=$LEDGER_COUNT2)"
+else
+  nope "max=1 절단 시 원장 행 수가 출력과 불일치(ledger=$LEDGER_COUNT2, 기대=1)"
+fi
+
+USED_AFTER_PAG="$(python3 - "$PDB" "$PROJ/.hermes/skills/pagination-guide.md" <<'PY'
+import sqlite3, sys
+con = sqlite3.connect(sys.argv[1])
+print(con.execute("SELECT used_count FROM skill_index WHERE skill_path=?", (sys.argv[2],)).fetchone()[0])
+con.close()
+PY
+)"
+USED_AFTER_CUR="$(python3 - "$PDB" "$PROJ/.hermes/skills/cursor-guide.md" <<'PY'
+import sqlite3, sys
+con = sqlite3.connect(sys.argv[1])
+print(con.execute("SELECT used_count FROM skill_index WHERE skill_path=?", (sys.argv[2],)).fetchone()[0])
+con.close()
+PY
+)"
+
+DELTA_PAG=$((USED_AFTER_PAG - USED_BEFORE_PAG))
+DELTA_CUR=$((USED_AFTER_CUR - USED_BEFORE_CUR))
+DELTA_SUM=$((DELTA_PAG + DELTA_CUR))
+if grep -q "pagination-guide" <<<"$OUT4"; then
+  EXPECTED_PRINTED="pagination-guide"
+else
+  EXPECTED_PRINTED="cursor-guide"
+fi
+if [[ "$DELTA_SUM" == "1" ]]; then
+  ok "max=1 절단: 실제 출력된 db 매칭 스킬($EXPECTED_PRINTED)만 used_count 증가(delta 합=$DELTA_SUM)"
+else
+  nope "max=1 절단: used_count 증가분이 출력 스킬 수와 불일치(delta 합=$DELTA_SUM, 기대=1) — pag=$DELTA_PAG cur=$DELTA_CUR"
 fi
 
 # 지원 훅이 --global-skills-dir 를 전달하는지 (정적 확인) — 플래그명 + 실제 경로값까지 검증
