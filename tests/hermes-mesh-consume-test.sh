@@ -106,6 +106,19 @@ else
   nope "동일 스킬이 중복 출력됨(중복 제거 실패, count=$DUP_COUNT)"
 fi
 
+# 지원 훅이 --global-skills-dir 를 전달하는지 (정적 확인) — 플래그명 + 실제 경로값까지 검증
+ASSIST_HOOK="$ROOT/assets/hooks/claude-posttooluse-hermes-assist.sh"
+if grep -q -- "--global-skills-dir" "$ASSIST_HOOK"; then
+  ok "지원 훅이 --global-skills-dir 전달"
+else
+  nope "지원 훅이 --global-skills-dir 미전달"
+fi
+if grep -q -- '--global-skills-dir "\$HOME/.hermes/mesh/skills"' "$ASSIST_HOOK"; then
+  ok "지원 훅이 \$HOME/.hermes/mesh/skills 경로를 전달"
+else
+  nope "지원 훅이 잘못된 경로를 전달(또는 경로 누락)"
+fi
+
 echo ""
 echo "  결과: $PASS 통과 / $FAIL 실패"
 [[ $FAIL -eq 0 ]]
