@@ -306,6 +306,8 @@ def main():
     parser.add_argument("--db", required=True, help="state.db 경로")
     parser.add_argument("--query", required=True, help="사용자 입력 텍스트")
     parser.add_argument("--skills-dir", default="", help="추가 스킬 디렉토리")
+    parser.add_argument("--global-skills-dir", default="",
+                        help="그물망 스킬 디렉토리(~/.hermes/mesh/skills) — 전역 2차 소스")
     parser.add_argument("--max", type=int, default=3, help="최대 결과 수")
     parser.add_argument("--session-id", default="", help="주입 원장 기록용 세션 ID")
     parser.add_argument("--no-fallback", action="store_true",
@@ -330,6 +332,9 @@ def main():
 
     if args.skills_dir and os.path.isdir(args.skills_dir):
         dir_results += search_skills_dir(args.skills_dir, keywords, args.max)
+
+    if args.global_skills_dir and os.path.isdir(args.global_skills_dir):
+        dir_results += search_skills_dir(args.global_skills_dir, keywords, args.max)
 
     # 톰브스톤 스킬은 평면 dir-scan 결과에서도 제외
     def _tombstoned_paths(db):
@@ -360,6 +365,8 @@ def main():
         skills_dirs = [hermes_skills_dir]
         if args.skills_dir:
             skills_dirs.append(args.skills_dir)
+        if args.global_skills_dir:
+            skills_dirs.append(args.global_skills_dir)
         haiku_results = haiku_fallback(args.query, skills_dirs, args.max)
         haiku_results = [r for r in haiku_results if r["path"] not in _already]
 
