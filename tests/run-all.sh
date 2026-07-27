@@ -110,6 +110,7 @@ for t in \
   hermes-pipeline-test.sh \
   hermes-loop-test.sh \
   hermes-redact-test.sh \
+  hermes-crystallize-naming-test.sh \
   hermes-dream-test.sh \
   hermes-recall-measurement-test.sh \
   uninstall-roundtrip-test.sh \

@@ -89,8 +89,9 @@ SKILL_PROMPT = """\
 {evidence}
 오늘 날짜: {date}
 
+{naming_rule}
 출력 형식 (이 형식 그대로):
-# {key}
+# <스킬 이름>
 <!-- hermes:auto-generated version:1 created:{date} -->
 
 ## 문제 상황
@@ -118,8 +119,9 @@ SKILL_PROMPT_FROM_EVIDENCE = """\
 {evidence}
 오늘 날짜: {date}
 
+{naming_rule}
 출력 형식 (이 형식 그대로):
-# {key}
+# <스킬 이름>
 <!-- hermes:auto-generated version:1 created:{date} -->
 
 ## 문제 상황
@@ -135,8 +137,44 @@ SKILL_PROMPT_FROM_EVIDENCE = """\
 - 패턴 키: {key}
 """
 
+# 패턴 키는 세션에서 뽑은 원시 토큰이라 파일명·명령어·조사가 섞여 들어온다
+# (`claude.md`, `wr-scene`, `이유가`). 그대로 제목·파일명으로 쓰면 `claude.md.md`
+# 같은 이름이 생기므로, 이름은 모델이 내용에 맞게 새로 짓게 한다.
+NAMING_RULE = """\
+스킬 이름 규칙 (중요):
+- 첫 줄 제목은 규칙의 내용을 요약한 **영문 kebab-case** 이름으로 직접 지으세요.
+- 패턴 키를 그대로 제목으로 쓰지 마세요. 패턴 키는 세션에서 추출한 원시 토큰이라
+  파일명(`claude.md`)·명령어(`wr-scene`)·조사가 붙은 낱말(`이유가`)일 수 있습니다.
+- 확장자(.md 등)나 경로를 제목에 넣지 마세요.
+- 예: 패턴 키 `claude.md` → `canon-check-before-writing`
+      패턴 키 `critique.md` → `stage-artifacts-as-files`
+"""
+
 # generate_skill_content 가 "이 패턴은 스킬이 아님" 판정 시 반환하는 센티널
 SKIP_SENTINEL = "__HERMES_SKIP__"
+
+# 파일명으로 쓸 수 없는 확장자 꼬리 (`foo.md` → `foo`)
+_EXT_TAIL_RE = re.compile(r"\.(md|py|js|ts|json|ya?ml|txt|sh)$", re.IGNORECASE)
+
+
+def _slugify(text: str) -> str:
+    """임의 문자열을 파일명으로 쓸 수 있는 슬러그로 바꾼다."""
+    text = _EXT_TAIL_RE.sub("", (text or "").strip())
+    text = re.sub(r"[^0-9A-Za-z가-힣]+", "-", text).strip("-").lower()
+    return text[:60]
+
+
+def skill_filename(content: str, key: str) -> str:
+    """생성된 본문의 첫 제목에서 파일명을 정한다.
+
+    모델이 이름 규칙을 따르지 않아 제목이 비었거나 패턴 키와 같으면
+    패턴 키를 슬러그화해 폴백한다 — 최소한 이중 확장자는 나오지 않는다.
+    """
+    m = re.search(r"^#[ \t]+(.+)$", content or "", flags=re.MULTILINE)
+    slug = _slugify(m.group(1)) if m else ""
+    if not slug:
+        slug = _slugify(key)
+    return f"{slug or 'skill'}.md"
 
 
 def _derive_search_terms(key: str) -> list[str]:
@@ -216,6 +254,7 @@ def generate_skill_content(
     if from_evidence:
         prompt = SKILL_PROMPT_FROM_EVIDENCE.format(
             quality_gate=QUALITY_GATE,
+            naming_rule=NAMING_RULE,
             key=key,
             description=meta["description"],
             evidence=evidence,
@@ -225,6 +264,7 @@ def generate_skill_content(
     else:
         prompt = SKILL_PROMPT.format(
             quality_gate=QUALITY_GATE,
+            naming_rule=NAMING_RULE,
             key=key,
             description=meta["description"],
             known_rule=meta["known_rule"],
@@ -376,7 +416,6 @@ def crystallize(db_path: str, keys: list[str], project_dir: str) -> None:
         except Exception as e:
             _log(f"결정화 상태 조회 실패({key}): {e}")
 
-        skill_path = os.path.join(skills_dir, f"{key}.md")
         evidence_limit = 10 if is_fallback else 5
         evidence = fetch_evidence(db_path, meta["search_terms"], limit=evidence_limit)
         count = get_pattern_count(db_path, key)
@@ -390,12 +429,16 @@ def crystallize(db_path: str, keys: list[str], project_dir: str) -> None:
             print(f"[hermes-crystallize] SKIP:{key} — 콘텐츠 생성 실패")
             continue
 
+        # 파일명은 패턴 키가 아니라 생성된 본문의 제목에서 뽑는다
+        filename = skill_filename(content, key)
+        skill_path = os.path.join(skills_dir, filename)
+
         with open(skill_path, "w", encoding="utf-8") as f:
             f.write(content + "\n")
 
         register_skill(db_path, skill_path, key)
         record_global_summary(key, skill_path, project_id)
-        print(f"[hermes] DONE:{key}.md")
+        print(f"[hermes] DONE:{filename} (키: {key})")
 
 
 def main() -> None:
