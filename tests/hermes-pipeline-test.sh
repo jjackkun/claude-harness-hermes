@@ -415,7 +415,9 @@ check "요약 0건이면 dream_log 안 남김" test "$dl0" = "$dl1"
 # (b) 요약 주입 → 결정화 구동 + dream_log 1행 + 리포트
 add_summary dsess1 '{"decisions":["pnpm 버전 고정 결정"],"facts":["WSL2 환경"],"open":[],"prefs":[],"next":[]}'
 dout=$(MOCK_MODE=normal python3 "$S/hermes-dream.py" --db "$DB" --project-dir "$PROJ")
-check "결정화 스킬 .md 생성 (dream-test-key)" test -f "$PROJ/.hermes/skills/dream-test-key.md"
+# 파일명은 패턴 키가 아니라 생성된 본문 제목에서 온다 — 경로는 skill_index 로 확인
+dskill=$(sql "SELECT skill_path FROM skill_index WHERE keywords LIKE '%dream-test-key%' ORDER BY id DESC LIMIT 1")
+check "결정화 스킬 .md 생성 (dream-test-key)" test -n "$dskill" -a -f "$dskill"
 dlrun=$(sql "SELECT COUNT(*) FROM dream_log")
 check "dream_log 1행 기록" test "$dlrun" = "1"
 rp=$(sql "SELECT report_path FROM dream_log ORDER BY id DESC LIMIT 1")
