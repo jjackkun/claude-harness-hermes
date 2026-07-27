@@ -33,6 +33,9 @@ import sqlite3
 import subprocess
 import sys
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from hermes_skills import iter_skill_files  # noqa: E402  (스킬 파일 순회 공유 헬퍼)
+
 
 def connect_db(db_path: str) -> sqlite3.Connection:
     """공통 SQLite 연결 헬퍼 — busy_timeout + WAL (M1)."""
@@ -157,32 +160,13 @@ def search_db(db_path: str, keywords: list, max_results: int) -> list:
     ]
 
 
-def _iter_skill_files(skills_dir: str):
-    """스킬 디렉토리에서 (이름, SKILL.md 경로) 쌍을 순회한다.
-
-    M4 — 폴더형 스킬(<name>/SKILL.md)과 헤르메스 자동 생성 평면 .md 둘 다 포함.
-    """
-    try:
-        entries = list(os.scandir(skills_dir))
-    except OSError as e:
-        _log(f"스킬 디렉토리 열기 실패({skills_dir}): {e}")
-        return
-    for entry in entries:
-        if entry.is_dir():
-            skill_md = os.path.join(entry.path, "SKILL.md")
-            if os.path.isfile(skill_md):
-                yield entry.name, skill_md
-        elif entry.is_file() and entry.name.endswith(".md"):
-            yield entry.name[:-3], entry.path
-
-
 def search_skills_dir(skills_dir: str, keywords: list, max_results: int) -> list:
     """스킬 디렉토리를 직접 탐색해 키워드 매칭 스킬을 찾는다."""
     if not os.path.isdir(skills_dir) or not keywords:
         return []
 
     results = []
-    for name, skill_md in _iter_skill_files(skills_dir):
+    for name, skill_md in iter_skill_files(skills_dir):
         try:
             with open(skill_md, "r", encoding="utf-8") as f:
                 content = f.read().lower()
@@ -228,7 +212,7 @@ def collect_all_skills(skills_dirs: list) -> list:
     for skills_dir in skills_dirs:
         if not os.path.isdir(skills_dir):
             continue
-        for name, skill_md in _iter_skill_files(skills_dir):
+        for name, skill_md in iter_skill_files(skills_dir):
             if name in seen:
                 continue
             description = _extract_description(skill_md)
