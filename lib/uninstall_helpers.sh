@@ -3,15 +3,16 @@
 # Responsibility: uninstall.sh 전용 제거 헬퍼 — 설치물별 안전 제거 (사용자 자산 보존).
 # Sourced by uninstall.sh. 전역 의존: DEV_SETTING_DIR, DRY_RUN, GREEN/YELLOW/RESET.
 
+# uninstall.sh 는 common.sh 배럴을 거치지 않고 이 파일만 source 하므로 직접 로드.
+# shellcheck source=lib/hook_inventory.sh
+source "$(dirname "${BASH_SOURCE[0]}")/hook_inventory.sh"
+
 # ── 공통 ──────────────────────────────────────────────────────────────────────
 
-# _known_hooks: assets/hooks/ 기준 알려진 harness hook 파일명 목록
+# _known_hooks: 알려진 harness hook 파일명 목록 (현행 assets/hooks + 은퇴분).
+# 소유 판별 기준은 설치 경로와 공유한다 — lib/hook_inventory.sh 참조.
 _known_hooks() {
-  local hooks_dir="$DEV_SETTING_DIR/assets/hooks"
-  if [[ -d "$hooks_dir" ]]; then
-    find "$hooks_dir" -maxdepth 1 -type f \( -name "*.sh" -o -name "*.json" \) 2>/dev/null \
-      | xargs -I{} basename {}
-  fi
+  harness_hook_inventory
 }
 
 # _rm_path <file|dir> <path> <label>: dry-run 인지 처리 후 삭제 + 메시지

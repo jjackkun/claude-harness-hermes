@@ -156,7 +156,9 @@ assert "settings.json 에 상대 scripts/hooks 경로 없음" "0" "$REL_COUNT"
 
 ABS_COUNT=$(grep -c '\${CLAUDE_PROJECT_DIR}/scripts/hooks' .claude/settings.json 2>/dev/null; true)
 ABS_COUNT=${ABS_COUNT:-0}
-assert "settings.json 에 \${CLAUDE_PROJECT_DIR} 기반 경로 존재" "8" "$ABS_COUNT"
+# 기대값은 harness 프리셋 단독 설치 시의 hook 수. 2026-08-04 prettier hook 이
+# presets/tools/prettier.conf 로 분리되며 8 → 7.
+assert "settings.json 에 \${CLAUDE_PROJECT_DIR} 기반 경로 존재" "7" "$ABS_COUNT"
 
 # 10b: 실제로 다른 CWD 에서 hook 을 호출해도 self-locate 가드로 정상 동작.
 PROJ_ABS="$(pwd)"

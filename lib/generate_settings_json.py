@@ -5,11 +5,18 @@ Managed keys (merged each run, never deleting user entries):
   hooks, permissions.deny, permissions.allow
 
 Merge policy: preset entries are added or updated in place; entries the
-user added by hand are always preserved. hooks/allow are merge-only —
-nothing is deleted when a preset stops providing a value. The one
-exception is permissions.deny `Agent(...)` entries, which are the
-preset-managed namespace and are synced to the current preset list.
-All other top-level keys are preserved.
+user added by hand are always preserved.
+
+hooks are ownership-synced. Registrations pointing at scripts/hooks/<name>
+for a name the harness ships (or has retired) belong to the harness: they are
+reclaimed on every run and re-added only if a preset still provides them, so
+dropping a preset actually unregisters its hooks. Hooks pointing anywhere else
+are user-owned and never touched.
+
+permissions.allow is merge-only — nothing is deleted when a preset stops
+providing a value. permissions.deny `Agent(...)` entries are the preset-managed
+namespace and are synced to the current preset list. All other top-level keys
+are preserved.
 
 See generate_settings.py for the DS_TMPDIR tmpfile protocol.
 """
@@ -53,6 +60,57 @@ def _merge_hook_items(existing_items: list, preset_items: list) -> list:
     return merged
 
 
+def _is_harness_hook(cmd: object, inventory: set[str]) -> bool:
+    """True when a hook command points at a harness-installed script.
+
+    Harness hooks always live at scripts/hooks/<name>, where <name> is a file
+    shipped in assets/hooks (or listed in RETIRED_HOOK_SOURCES). Anything else
+    is treated as user-owned and never touched.
+    """
+    if not isinstance(cmd, str):
+        return False
+    return any(f"scripts/hooks/{name}" in cmd for name in inventory)
+
+
+def _strip_harness_hooks(existing_hooks: dict, inventory: set[str]) -> dict:
+    """Drop every harness-installed hook entry from the existing settings.
+
+    Preset-provided hooks are re-added by the merge immediately after, so
+    entries a preset still ships survive the round trip; entries whose preset
+    was removed (or which the preset stopped registering) disappear. Without
+    this pass, a dropped preset's hooks are indistinguishable from user-added
+    hooks and would stay registered forever.
+    """
+    if not inventory:
+        return existing_hooks
+    cleaned: dict = {}
+    for event, groups in existing_hooks.items():
+        if not isinstance(groups, list):
+            cleaned[event] = groups
+            continue
+        new_groups: list = []
+        for group in groups:
+            items = group.get("hooks") if isinstance(group, dict) else None
+            if not isinstance(items, list):
+                new_groups.append(group)
+                continue
+            kept = [
+                item
+                for item in items
+                if not _is_harness_hook(
+                    item.get("command") if isinstance(item, dict) else None, inventory
+                )
+            ]
+            if not kept:
+                continue  # 그룹 전체가 하네스 소유 — matcher 껍데기까지 제거
+            new_group = dict(group)
+            new_group["hooks"] = kept
+            new_groups.append(new_group)
+        if new_groups:
+            cleaned[event] = new_groups
+    return cleaned
+
+
 def _merge_hook_groups(existing_groups: list, preset_groups: list) -> list:
     """Merge preset matcher-groups into existing ones for a single event."""
     merged = [dict(g) if isinstance(g, dict) else g for g in existing_groups]
@@ -93,6 +151,7 @@ def main(output_path: str) -> int:
     pre_tool_use = _read_lines(tmpdir, "pre_tool_use")
     post_tool_use = _read_lines(tmpdir, "post_tool_use")
     permissions_allow = _read_lines(tmpdir, "permissions_allow")
+    hook_inventory = set(_read_lines(tmpdir, "harness_hook_inventory"))
     worktree_bg_isolation = _read_lines(tmpdir, "worktree_bg_isolation")
 
     out = Path(output_path)
@@ -171,20 +230,23 @@ def main(output_path: str) -> int:
             for matcher, cmds in pre_by_matcher.items()
         ]
 
-    # Merge preset hooks into existing ones — user-added hooks are preserved,
-    # and events the presets do not touch are left untouched. Nothing is
-    # deleted when presets stop providing hooks.
-    if hooks:
-        existing_hooks = existing.get("hooks")
-        if not isinstance(existing_hooks, dict):
-            existing_hooks = {}
-        merged_hooks = dict(existing_hooks)
-        for event, preset_groups in hooks.items():
-            existing_groups = merged_hooks.get(event)
-            if not isinstance(existing_groups, list):
-                existing_groups = []
-            merged_hooks[event] = _merge_hook_groups(existing_groups, preset_groups)
+    # Reclaim harness-owned hook registrations, then merge the current preset
+    # set back in. User-added hooks survive both passes; hooks whose preset was
+    # removed are dropped. This runs even when the presets contribute no hooks
+    # at all — that is precisely the "whole preset removed" case.
+    existing_hooks = existing.get("hooks")
+    if not isinstance(existing_hooks, dict):
+        existing_hooks = {}
+    merged_hooks = _strip_harness_hooks(existing_hooks, hook_inventory)
+    for event, preset_groups in hooks.items():
+        existing_groups = merged_hooks.get(event)
+        if not isinstance(existing_groups, list):
+            existing_groups = []
+        merged_hooks[event] = _merge_hook_groups(existing_groups, preset_groups)
+    if merged_hooks:
         existing["hooks"] = merged_hooks
+    else:
+        existing.pop("hooks", None)
 
     # ---- worktree ----
     # Set only when a preset provides a value; never delete a user-set key.
