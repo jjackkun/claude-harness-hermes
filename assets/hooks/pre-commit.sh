@@ -138,6 +138,13 @@ EOF
 fi
 
 # 7. R-plan — 완료된 계획이 active/ 에 남아있으면 경고
+#
+# 검사 대상은 **이번 커밋에 스테이징된 계획서만**이다(2026-07-23 변경).
+# 이전에는 find 로 active/ 전체를 스캔해, 커밋에 포함되지도 않은 남의 계획서가 완료 상태이면
+# 무관한 커밋까지 막혔다. 여러 세션이 워킹트리를 공유하면 서로를 영구히 막는다.
+# 막힌 쪽은 남의 회고를 대신 쓸 수 없어 해결책이 없고, 출구가 --no-verify 뿐이라 규율 전체가
+# 무력화된다. 규칙 의도("내가 끝낸 계획을 방치하지 말 것")를 지키는 최소 범위로 좁혔다.
+# 트레이드오프: 아무도 손대지 않은 방치 계획서는 못 잡는다 — 그건 주기 점검(문서 가드닝)의 몫.
 ACTIVE_DIR="docs/exec-plans/active"
 if [[ -d "$ACTIVE_DIR" ]]; then
   while IFS= read -r plan; do
@@ -153,7 +160,7 @@ if [[ -d "$ACTIVE_DIR" ]]; then
   근거: docs/design-docs/core-beliefs.md#r-plan")
       FAIL=1
     fi
-  done < <(find "$ACTIVE_DIR" -maxdepth 1 -name '*.md' -type f 2>/dev/null)
+  done < <(filter_files "^${ACTIVE_DIR}/[^/]+\.md$")
 fi
 
 # 8. R-plan-missing — 코드 수정했는데 active/ 에 계획 없으면 경고

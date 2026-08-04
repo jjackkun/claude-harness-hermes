@@ -250,6 +250,36 @@ assert "pre-commit 정상 종료 (0 또는 위반 없음)" "0" "$HOOK_EXIT"
 rm -f docs/exec-plans/active/no-checkbox-fixture.md small2.py
 
 echo ""
+echo "== 13. R-plan 검사 범위 = 스테이징된 계획서만 =="
+# 전역 find 로 스캔하면 커밋에 포함되지도 않은 남의 완료 계획서가 무관한 커밋을 막는다.
+# 여러 세션이 워킹트리를 공유할 때 서로를 영구 차단하므로 스테이징 범위로 좁혔다.
+# 근거: zeroday-frontend docs/audits/2026-07-23-r-plan-hook-scope.md
+mkdir -p docs/exec-plans/active
+cat > docs/exec-plans/active/all-done-fixture.md << 'FIXTURE'
+# 전부 완료된 계획서 (범위 회귀 테스트 fixture)
+
+- [x] 항목1
+- [x] 항목2
+FIXTURE
+
+# (a) fixture 를 스테이징하지 않으면 → 통과해야 한다 (남의 계획서가 내 커밋을 막지 않음)
+echo "x = 1" > small3.py
+git add small3.py
+.git/hooks/pre-commit >/dev/null 2>&1
+assert "미스테이징 완료계획서는 커밋을 막지 않음" "0" "$?"
+
+# (b) fixture 를 스테이징하면 → 차단해야 한다 (규칙 의도 유지)
+git add docs/exec-plans/active/all-done-fixture.md
+HOOK_OUT=$(.git/hooks/pre-commit 2>&1); HOOK_RC=$?
+[[ $HOOK_RC -ne 0 ]]
+assert "스테이징된 완료계획서는 차단됨" "0" "$?"
+echo "$HOOK_OUT" | grep -q 'R-plan'
+assert "차단 사유가 R-plan 으로 보고됨" "0" "$?"
+
+git reset -q
+rm -f docs/exec-plans/active/all-done-fixture.md small3.py
+
+echo ""
 echo "== 결과 =="
 echo "  통과: $PASS / 실패: $FAIL"
 [[ $FAIL -eq 0 ]]
