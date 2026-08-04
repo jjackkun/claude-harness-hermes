@@ -106,6 +106,7 @@ run_step "sync-plugins.sh --check" bash "$REPO_ROOT/scripts/sync-plugins.sh" --c
 for t in \
   windows-helpers-test.sh \
   harness-hooks-smoke.sh \
+  hook-prune-test.sh \
   windows-smoke.sh \
   hermes-pipeline-test.sh \
   hermes-loop-test.sh \

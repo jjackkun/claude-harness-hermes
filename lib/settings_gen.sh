@@ -36,6 +36,10 @@ _settings_gen_write_arrays() {
   _write_array "$tmpdir/permissions_allow"  "${HARNESS_PERMISSIONS_ALLOW[@]:-}"
   _write_array "$tmpdir/worktree_bg_isolation" "${WORKTREE_BG_ISOLATION[@]:-}"
 
+  # 하네스 소유 hook 파일명 — 생성기가 "preset 에서 빠진 hook"과 "사용자가 직접
+  # 등록한 hook"을 구분해 전자만 회수하는 데 쓴다.
+  harness_hook_inventory > "$tmpdir/harness_hook_inventory"
+
   unset -f _write_array
 }
 

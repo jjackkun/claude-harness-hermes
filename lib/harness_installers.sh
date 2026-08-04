@@ -3,6 +3,30 @@
 # Responsibility: 하네스(PDF 8~9쪽) 특화 installer — hooks / pre-commit / docs-templates /
 # lint-configs / GC workflows / gitignore. 모두 *복사* 사용 (심볼릭 X, 이유: 사용자 편집 + WSL 호환).
 
+# _cleanup_stale_hooks <target_dir>
+# 하네스가 과거에 배포했으나 현재 preset 조합에는 없는 hook 스크립트를 제거.
+# 사용자가 직접 넣은 스크립트(harness_hook_inventory 에 없는 파일명)는 보존한다.
+# hook 은 심볼릭이 아닌 *복사* 라 _cleanup_stale_symlinks 로는 회수되지 않는다.
+_cleanup_stale_hooks() {
+  local dir="$1"
+  [[ -d "$dir" ]] || return 0
+
+  local -A keep=()
+  local entry
+  for entry in "${HARNESS_HOOK_SOURCES[@]:-}"; do
+    [[ -n "$entry" ]] && keep["${entry%%:*}"]=1
+  done
+
+  local name
+  while IFS= read -r name; do
+    [[ -n "$name" ]] || continue
+    [[ -n "${keep[$name]:-}" ]] && continue
+    [[ -f "$dir/$name" ]] || continue
+    rm -f "$dir/$name"
+    log_info "  removed → scripts/hooks/$name"
+  done < <(harness_hook_inventory)
+}
+
 # install_harness_hooks <project_path>
 # assets/hooks/ 의 Claude hook 스크립트를 프로젝트 scripts/hooks/ 로 복사하고
 # settings.local.json 에 등록할 hook 항목을 USER_PROMPT_SUBMIT_HOOKS / PRE_TOOL_USE_HOOKS /
@@ -10,19 +34,23 @@
 install_harness_hooks() {
   local project_path="$1"
   local count=${#HARNESS_HOOK_SOURCES[@]}
-  [[ $count -eq 0 ]] && return 0
   local target_dir="$project_path/scripts/hooks"
-  mkdir -p "$target_dir"
-  local entry name dest
-  for entry in "${HARNESS_HOOK_SOURCES[@]}"; do
-    name="${entry%%:*}"
-    local src="$ASSETS_DIR/hooks/$name"
-    [[ -f "$src" ]] || { log_warn "harness hook missing: $name (skipped)"; continue; }
-    dest="$target_dir/$name"
-    cp "$src" "$dest"
-    chmod +x "$dest"
-    log_info "  hook    → scripts/hooks/$name"
-  done
+  if [[ $count -gt 0 ]]; then
+    mkdir -p "$target_dir"
+    local entry name dest
+    for entry in "${HARNESS_HOOK_SOURCES[@]}"; do
+      name="${entry%%:*}"
+      local src="$ASSETS_DIR/hooks/$name"
+      [[ -f "$src" ]] || { log_warn "harness hook missing: $name (skipped)"; continue; }
+      dest="$target_dir/$name"
+      cp "$src" "$dest"
+      chmod +x "$dest"
+      log_info "  hook    → scripts/hooks/$name"
+    done
+  fi
+  # preset 에서 빠진 hook 회수 — count==0 (hook 을 쓰는 preset 이 전부 빠진 경우) 에도
+  # 실행돼야 하므로 early-return 하지 않는다.
+  _cleanup_stale_hooks "$target_dir"
 }
 
 # install_harness_pre_commit <project_path>
