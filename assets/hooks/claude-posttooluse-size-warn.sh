@@ -36,8 +36,10 @@ except Exception:
 [[ -z "$FILE_PATH" ]] && exit 0
 [[ -f "$FILE_PATH" ]] || exit 0
 
+# `.vue` 포함(2026-08-07) — pre-commit R-size 의 CHECKABLE 과 같은 목록을 쓴다.
+# 경고 대상과 차단 대상이 어긋나면 "편집 중엔 조용하다가 커밋에서 막히는" 상태가 된다.
 case "$FILE_PATH" in
-  *.py|*.js|*.jsx|*.ts|*.tsx|*.svelte) ;;
+  *.py|*.js|*.jsx|*.ts|*.tsx|*.svelte|*.vue) ;;
   *) exit 0 ;;
 esac
 
