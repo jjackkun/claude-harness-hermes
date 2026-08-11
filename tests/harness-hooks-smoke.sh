@@ -280,6 +280,67 @@ git reset -q
 rm -f docs/exec-plans/active/all-done-fixture.md small3.py
 
 echo ""
+echo "== 14. R-secret — 자격증명이 실린 파일은 커밋 차단 =="
+# 설치 경로 회귀 방지: check-secrets.py 와 정답지 모듈이 .git/hooks/ 로 함께
+# 복사되지 않으면 이 단계는 조용히 skip 된다 — 그게 원래 결함의 4번째 겹이었다.
+# ⚠️ 아래는 가짜 값이다.
+assert "check-secrets.py 설치됨" "0" "$([[ -f .git/hooks/check-secrets.py ]]; echo $?)"
+assert "정답지 모듈 설치됨" "0" "$([[ -f .git/hooks/hermes_secret_values.py ]]; echo $?)"
+
+printf 'password = "Hunter2xyz!"\n' > leak.txt
+git add leak.txt
+HOOK_OUT=$(.git/hooks/pre-commit 2>&1); HOOK_RC=$?
+assert "자격증명이 실린 파일은 커밋 차단" "1" "$HOOK_RC"
+echo "$HOOK_OUT" | grep -q '\[P9\]'
+assert "차단 사유가 P9 로 보고됨 (silent-skip 방지)" "0" "$?"
+
+git reset -q
+rm -f leak.txt
+
+echo ""
+echo "== 15. .gitignore 블록 멱등 — CRLF 파일에서도 중복되지 않는다 =="
+# 회귀 방지: 마커 탐지에 정규식(`\r\?$`)을 쓰면 grep 구현에 따라 `\?` 해석이 갈려
+# **조용히** 매칭에 실패하고, 갱신 대신 블록이 덧붙는다. 재설치할 때마다 늘어난다.
+# 실제로 jjackkun_bot(Windows 에서 만들어진 CRLF .gitignore)에서 두 벌이 쌓였다.
+for _le in CRLF LF; do
+  GT=$(mktemp -d)
+  ( cd "$GT" && git init -q && git config user.email "t@e.com" && git config user.name "t" )
+  if [[ "$_le" == CRLF ]]; then printf '# 사용자\r\nnode_modules/\r\n' > "$GT/.gitignore"
+  else printf '# 사용자\nnode_modules/\n' > "$GT/.gitignore"; fi
+  bash "$REPO_ROOT/project-claude.sh" "$GT" harness >/dev/null 2>&1
+  bash "$REPO_ROOT/project-claude.sh" "$GT" harness >/dev/null 2>&1
+  assert "$_le: 재설치해도 하네스 블록 1개" "1" \
+    "$(grep -c '>>> harness-agent-preset >>>' "$GT/.gitignore")"
+  assert "$_le: 마커 밖 사용자 항목 보존" "1" \
+    "$(grep -c 'node_modules/' "$GT/.gitignore")"
+  if [[ -f "$REGISTRY" ]]; then
+    grep -vxF "$GT" "$REGISTRY" > "$REGISTRY.tmp$$" || true
+    mv "$REGISTRY.tmp$$" "$REGISTRY"
+  fi
+  rm -rf "$GT"
+done
+
+echo ""
+echo "== 16. R-fmt 는 하네스 생성물을 검사하지 않는다 =="
+# 회귀 방지: 설치가 만든 CLAUDE.md·.claude/settings.json 은 프로젝트의 .prettierrc 와
+# 맞을 수 없다(프로젝트마다 설정이 다르다). 검사 대상에 넣으면 재설치할 때마다
+# 하네스가 자기 게이트에 자기가 걸려 커밋이 막힌다 — 실제로 3개 프로젝트에서 발생했다.
+GEN_RE='^(CLAUDE\.md|AGENTS\.md|\.claude/(settings(\.local)?\.json|\.dev-setting-manifest\.json)|\.codex/settings(\.local)?\.json)$|^\.claude/memory/'
+for _gen in "CLAUDE.md" ".claude/settings.json" ".claude/.dev-setting-manifest.json" \
+            ".claude/memory/MEMORY.md" ".claude/memory/feedback_x.md"; do
+  echo "$_gen" | grep -qE "$GEN_RE"
+  assert "R-fmt 제외 대상: $_gen" "0" "$?"
+done
+# 일반 소스는 여전히 검사 대상이어야 한다 (제외가 너무 넓어지지 않았는지)
+for _src in "src/App.svelte" "docs/guide.md" "package.json"; do
+  echo "$_src" | grep -qE "$GEN_RE"
+  assert "R-fmt 검사 유지: $_src" "1" "$?"
+done
+# 훅 파일이 실제로 같은 규칙을 쓰는지 (테스트만 통과하는 사태 방지)
+grep -q 'GENERATED_RE=' "$REPO_ROOT/assets/hooks/pre-commit.sh"
+assert "pre-commit 이 생성물 제외 규칙을 갖고 있음" "0" "$?"
+
+echo ""
 echo "== 결과 =="
 echo "  통과: $PASS / 실패: $FAIL"
 [[ $FAIL -eq 0 ]]

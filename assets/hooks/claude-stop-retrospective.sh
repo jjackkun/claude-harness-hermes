@@ -48,9 +48,13 @@ scripts_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/scripts"
 # 이후 모든 처리를 setsid 백그라운드로 위임
 # - setsid: WSL2 에서 Claude Code 의 process group 감시·파이프 EOF 대기를 완전히 벗어남
 # - </dev/null >/dev/null: stdin/stdout 분리. stderr 는 진단용 로그 파일로 보존 (M2).
+# - CLAUDE_PROJECT_DIR: 마스킹(hermes_redact)이 `.env` 정답지를 찾는 기준이다.
+#   넘기지 않으면 cwd 로 폴백하는데, 하위 디렉터리에서 세션을 시작하면 `.env` 를
+#   못 찾고 **값 기반 마스킹이 조용히 무력화**된다 (형태 규칙만 남는다).
 HERMES_TRANSCRIPT="$transcript" \
 HERMES_SESSION_ID="$session_id" \
 HERMES_PROJECT_DIR="$project_dir" \
+CLAUDE_PROJECT_DIR="$project_dir" \
 HERMES_DB_PATH="$db_path" \
 HERMES_SCRIPTS_DIR="$scripts_dir" \
 HERMES_LOG="$project_dir/.hermes/hooks.log" \

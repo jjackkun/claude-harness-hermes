@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
-# git pre-commit hook — 4단 검사 (R-size / R-fmt / R-lint / R-test) + R-plan.
+# git pre-commit hook — 4단 검사 (R-size / R-fmt / R-lint / R-test) + R-struct / R-secret / R-plan.
+#
+# "4단 검사" 문구는 uninstall 이 하네스 설치본을 식별하는 마커다 — 바꾸지 말 것
+# (lib/uninstall_helpers.sh `uninstall_pre_commit`, uninstall.sh 미리보기).
 #
 # 메시지 형식 (2026-04-17 Opus 4.7 튜닝):
 #   [룰 ID] 위반 사실 → 한 줄 권장 행동. 근거: docs/design-docs/core-beliefs.md#<anchor>.
@@ -31,7 +34,16 @@ filter_files() {
 CHECKABLE=$(filter_files '\.(py|js|jsx|ts|tsx|svelte)$')
 JS_TS=$(filter_files '\.(js|jsx|ts|tsx|svelte)$')
 PY_FILES=$(filter_files '\.py$')
-PRETTIER_FILES=$(filter_files '\.(js|jsx|ts|tsx|svelte|json|css|scss|md|yaml|yml)$')
+
+# R-fmt 대상에서 **하네스 생성물**을 뺀다.
+# 이 파일들은 손으로 쓰는 소스가 아니라 설치 스크립트가 통째로 만든 산출물이고,
+# 서식의 주인은 프로젝트의 .prettierrc 가 아니라 생성기다. 프로젝트마다 prettier
+# 설정이 다르므로 생성기가 전부에 맞출 수 없다 — 맞추려 들면 재설치할 때마다
+# 자기 게이트에 자기가 걸려 커밋이 막힌다(실제로 3개 프로젝트에서 발생).
+# `.claude/memory/` 도 같은 부류다 — 기억 시스템이 쓰는 산출물이지 손으로 쓰는 문서가 아니다.
+GENERATED_RE='^(CLAUDE\.md|AGENTS\.md|\.claude/(settings(\.local)?\.json|\.dev-setting-manifest\.json)|\.codex/settings(\.local)?\.json)$|^\.claude/memory/'
+PRETTIER_FILES=$(filter_files '\.(js|jsx|ts|tsx|svelte|json|css|scss|md|yaml|yml)$' \
+  | grep -vE "$GENERATED_RE" || true)
 
 FAIL=0
 VIOLATIONS=()
@@ -57,13 +69,17 @@ fi
 # 2. R-fmt — prettier --check
 if [[ -n "$PRETTIER_FILES" ]] && command -v pnpm >/dev/null 2>&1 \
     && pnpm exec prettier --version >/dev/null 2>&1; then
-  PRETTIER_OUT=$(echo "$PRETTIER_FILES" | xargs pnpm exec prettier --check 2>&1) || {
+  # ANSI 색상 코드를 벗겨 저장한다. prettier 는 파이프에서도 색을 넣는 경우가 있어
+  # `^\[warn\]` 매칭이 빗나가고, 그러면 "위반 파일: (추출 실패)" 만 남아 **무엇을
+  # 고쳐야 하는지 알 수 없는 차단**이 된다 — 사람이 --no-verify 로 도망가는 경로다.
+  PRETTIER_OUT=$(echo "$PRETTIER_FILES" | xargs pnpm exec prettier --check 2>&1 \
+    | sed 's/\x1b\[[0-9;]*m//g') || {
     VIOLATIONS+=("$(cat <<EOF
 
 [R-fmt] prettier 포맷팅 위반.
 
 위반 파일:
-$(echo "$PRETTIER_OUT" | grep -E '^\[warn\]' || echo '(파일 목록 추출 실패 — 직접 확인)')
+$(echo "$PRETTIER_OUT" | grep -E '^\[warn\] ' | grep -v 'Code style issues' || echo '(파일 목록 추출 실패 — 직접 확인)')
   → \`pnpm exec prettier --write <파일>\` 자동 수정. .prettierrc 단독 변경 금지.
   근거: docs/design-docs/core-beliefs.md#r-fmt
 EOF
@@ -131,6 +147,27 @@ if [[ -n "$VUE_AND_CODE" ]] && [[ -f "$CHECK_STRUCT" ]] && command -v node >/dev
 $STRUCT_OUT
   → 위반 메시지의 지침을 따라 폴더·배럴·import 를 수정 후 재시도.
   근거: assets/rules/web/coding-style.md §File-Organization
+EOF
+)")
+    FAIL=1
+  }
+fi
+
+# 6. R-secret — 자격증명·개인정보 커밋 차단
+#
+# 다른 단계와 달리 파일 목록을 넘기지 않는다 — check-secrets.py 가 직접
+# `git diff --cached` 를 읽는다. 여기서 걸러 넘기면 두 곳의 제외 규칙이
+# 어긋날 때 조용히 검사 범위가 줄어든다.
+#
+# 왜 커밋 경계에 있어야 하는가: 마스킹(hermes_redact)은 DB·LLM 입력 경계에만
+# 걸려 있어, 그 경계를 우회해 파일로 들어온 값은 잡지 못한다. git 히스토리는
+# 되돌릴 수 없으므로 여기가 마지막 방어선이다.
+CHECK_SECRETS="$(dirname "$0")/check-secrets.py"
+if [[ -f "$CHECK_SECRETS" ]] && command -v python3 >/dev/null 2>&1; then
+  SECRET_OUT=$(python3 "$CHECK_SECRETS" 2>&1) || {
+    VIOLATIONS+=("$(cat <<EOF
+
+$SECRET_OUT
 EOF
 )")
     FAIL=1

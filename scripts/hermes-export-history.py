@@ -30,6 +30,9 @@ import os
 import sqlite3
 import sys
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from hermes_redact import redact  # noqa: E402  (민감정보 마스킹 공유 헬퍼)
+
 UNKNOWN_DATE = "unknown-date"
 
 
@@ -96,7 +99,7 @@ def _compacted_record(hist_dir: str, session_id: str):
 
 
 def export_session(con: sqlite3.Connection, hist_dir: str, session_id: str,
-                   guard_overwrite: bool = True) -> int:
+                   guard_overwrite: bool = True, project_dir: str = None) -> int:
     """한 세션을 JSONL 로 전량 재작성한다. 반환값은 기록한 라인 수.
 
     `guard_overwrite` 는 --all(전량 재작성) 에서만 참이다. 참일 때, 압축본(1행)
@@ -123,6 +126,14 @@ def export_session(con: sqlite3.Connection, hist_dir: str, session_id: str,
     ).fetchall()
     if not rows:
         return 0
+
+    # ★다층 방어 — DB 적재 경계(hermes_save_session_storage)의 마스킹을 믿지 않는다.
+    # 그 경계가 뚫린 채 이미 적재된 행이 있어도, git 에 나가는 파일은 깨끗해야 한다.
+    # 파일이 곧 커밋 대상이므로 여기가 되돌릴 수 없는 마지막 경계다.
+    # 이후 로직(압축본 판정·기록)은 전부 이 마스킹된 값만 쓴다 — 파일과 DB 를 비교하는
+    # summary_in_db 술어가 마스킹 전/후를 섞어 비교하면 항상 불일치로 오작동한다.
+    rows = [(redact(content, project_dir), role, timestamp, project_id)
+            for content, role, timestamp, project_id in rows]
 
     compacted = _compacted_record(hist_dir, session_id)
     # 파일의 요약이 DB 행 중에 실재하는가 — 재개(있음)와 발산(없음)을 가르는 술어.
@@ -186,7 +197,8 @@ def export_history(db_path: str, project_dir: str, session_id: str = None) -> in
             ]
         # 덮어쓰기 거부 가드는 전량 재작성(--all)에만 건다 — export_session docstring 참조.
         guard = session_id is None
-        exported = sum(export_session(con, hist_dir, sid, guard) for sid in targets)
+        exported = sum(export_session(con, hist_dir, sid, guard, project_dir)
+                       for sid in targets)
     finally:
         con.close()
 
