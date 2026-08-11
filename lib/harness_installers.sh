@@ -282,12 +282,18 @@ install_harness_gitignore() {
     return 0
   fi
 
-  if grep -qxF "$begin" "$gitignore"; then
+  # ★CR 을 벗겨 비교한다. Windows 에서 만들어진 .gitignore 는 CRLF 라 마커가
+  # "# >>> … >>>\r" 이 되고, 정확 일치 매칭이 실패해 **갱신 대신 블록이 중복 추가**된다.
+  # 실제로 jjackkun_bot 에서 블록이 두 벌 쌓였다. 재설치할 때마다 늘어난다.
+  # LF 판과 CR 판을 **고정 문자열로** 각각 확인한다. 정규식(`\r\?$`)은 grep 구현에
+  # 따라 `\?` 해석이 갈려 매칭이 조용히 실패했다 — 그러면 갱신 대신 블록이 덧붙는다.
+  if grep -qxF "$begin" "$gitignore" || grep -qxF "$begin"$'\r' "$gitignore"; then
     local tmp
     tmp="$(mktemp)"
     awk -v b="$begin" -v e="$end" -v repl="$block" '
-      $0 == b { skip=1; print repl; next }
-      skip && $0 == e { skip=0; next }
+      { line = $0; sub(/\r$/, "", line) }
+      line == b { skip=1; print repl; next }
+      skip && line == e { skip=0; next }
       !skip { print }
     ' "$gitignore" > "$tmp"
     mv "$tmp" "$gitignore"

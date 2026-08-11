@@ -298,6 +298,29 @@ git reset -q
 rm -f leak.txt
 
 echo ""
+echo "== 15. .gitignore 블록 멱등 — CRLF 파일에서도 중복되지 않는다 =="
+# 회귀 방지: 마커 탐지에 정규식(`\r\?$`)을 쓰면 grep 구현에 따라 `\?` 해석이 갈려
+# **조용히** 매칭에 실패하고, 갱신 대신 블록이 덧붙는다. 재설치할 때마다 늘어난다.
+# 실제로 jjackkun_bot(Windows 에서 만들어진 CRLF .gitignore)에서 두 벌이 쌓였다.
+for _le in CRLF LF; do
+  GT=$(mktemp -d)
+  ( cd "$GT" && git init -q && git config user.email "t@e.com" && git config user.name "t" )
+  if [[ "$_le" == CRLF ]]; then printf '# 사용자\r\nnode_modules/\r\n' > "$GT/.gitignore"
+  else printf '# 사용자\nnode_modules/\n' > "$GT/.gitignore"; fi
+  bash "$REPO_ROOT/project-claude.sh" "$GT" harness >/dev/null 2>&1
+  bash "$REPO_ROOT/project-claude.sh" "$GT" harness >/dev/null 2>&1
+  assert "$_le: 재설치해도 하네스 블록 1개" "1" \
+    "$(grep -c '>>> harness-agent-preset >>>' "$GT/.gitignore")"
+  assert "$_le: 마커 밖 사용자 항목 보존" "1" \
+    "$(grep -c 'node_modules/' "$GT/.gitignore")"
+  if [[ -f "$REGISTRY" ]]; then
+    grep -vxF "$GT" "$REGISTRY" > "$REGISTRY.tmp$$" || true
+    mv "$REGISTRY.tmp$$" "$REGISTRY"
+  fi
+  rm -rf "$GT"
+done
+
+echo ""
 echo "== 결과 =="
 echo "  통과: $PASS / 실패: $FAIL"
 [[ $FAIL -eq 0 ]]
