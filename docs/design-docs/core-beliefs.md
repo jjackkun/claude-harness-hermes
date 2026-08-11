@@ -59,3 +59,24 @@ DB 키워드 감지 시 additionalContext 로 안내 주입.
 
 코드 파일 수정이 있는데 `active/` 에 계획이 없으면 경고(차단 아님).
 단순 버그 수정은 무시. 다중 파일·설계 결정이면 `docs/exec-plans/active/YYYY-MM-DD-<slug>.md` 작성. 템플릿: `docs/exec-plans/template.md`.
+
+## P9 — 비밀의 경계는 파일이 아니라 값이다 {#p9}
+
+**원칙**: 자격증명·개인정보를 평문으로 커밋하지 않는다. git 히스토리는 되돌릴 수 없으므로
+*들어가기 전에* 막는 것이 유일한 방어다.
+
+**왜 파일 단위 규칙으로는 부족한가**: "`.env` 를 커밋하지 않는다"는 규칙이 완벽히 지켜지는
+동안에도, 같은 값이 **채팅 텍스트**로 전달되는 순간 규칙의 사정권 밖으로 나갔다. 실제로
+그렇게 새어 세션 기록 파일에 실려 커밋·푸시까지 갔다.
+
+**따르는 규칙 셋**:
+- **값 대조가 형태 추측에 우선한다.** `label=value` 딱지를 전제한 마스킹은 사람이 실제로
+  주는 형태(`아이디 | 비번`)를 원리상 못 잡는다. `.env` 실재 값을 정답지로 대조한다.
+- **면제 규칙은 탐지 단위와 같은 폭이어야 한다.** 줄 단위 탐지에 줄 단위 자리표시자 면제를
+  붙이면, 한 줄이 긴 파일(jsonl)에서 `example` 한 번에 그 줄의 진짜 비밀이 통째로 면제된다.
+- **패턴을 복제하면 역류 경로를 함께 정한다.** 복제본에서 구멍을 고치고 원본을 두면,
+  원본을 쓰는 경로가 계속 뚫려 있다.
+
+**기계 강제**: `pre-commit` R-secret 단계(`check-secrets.py`) + DB·export 경계
+마스킹(`hermes_redact.py`). 회귀 고정: `tests/hermes-secret-masking-test.sh`.
+소급 정리: `scripts/hermes-scrub-history.py`. 상세: `docs/superpowers/specs/2026-08-10-hermes-secret-masking-design.md`.

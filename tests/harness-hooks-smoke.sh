@@ -280,6 +280,24 @@ git reset -q
 rm -f docs/exec-plans/active/all-done-fixture.md small3.py
 
 echo ""
+echo "== 14. R-secret — 자격증명이 실린 파일은 커밋 차단 =="
+# 설치 경로 회귀 방지: check-secrets.py 와 정답지 모듈이 .git/hooks/ 로 함께
+# 복사되지 않으면 이 단계는 조용히 skip 된다 — 그게 원래 결함의 4번째 겹이었다.
+# ⚠️ 아래는 가짜 값이다.
+assert "check-secrets.py 설치됨" "0" "$([[ -f .git/hooks/check-secrets.py ]]; echo $?)"
+assert "정답지 모듈 설치됨" "0" "$([[ -f .git/hooks/hermes_secret_values.py ]]; echo $?)"
+
+printf 'password = "Hunter2xyz!"\n' > leak.txt
+git add leak.txt
+HOOK_OUT=$(.git/hooks/pre-commit 2>&1); HOOK_RC=$?
+assert "자격증명이 실린 파일은 커밋 차단" "1" "$HOOK_RC"
+echo "$HOOK_OUT" | grep -q '\[P9\]'
+assert "차단 사유가 P9 로 보고됨 (silent-skip 방지)" "0" "$?"
+
+git reset -q
+rm -f leak.txt
+
+echo ""
 echo "== 결과 =="
 echo "  통과: $PASS / 실패: $FAIL"
 [[ $FAIL -eq 0 ]]

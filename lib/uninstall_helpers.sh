@@ -182,6 +182,8 @@ uninstall_pre_commit() {
     fi
   fi
   _rm_path file "$project_path/.git/hooks/check-component-structure.mjs" ".git/hooks/check-component-structure.mjs"
+  _rm_path file "$project_path/.git/hooks/check-secrets.py" ".git/hooks/check-secrets.py"
+  _rm_path file "$project_path/.git/hooks/hermes_secret_values.py" ".git/hooks/hermes_secret_values.py"
   _rm_path file "$project_path/scripts/check-component-structure.mjs" "scripts/check-component-structure.mjs"
 }
 

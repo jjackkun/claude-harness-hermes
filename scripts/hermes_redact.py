@@ -8,15 +8,29 @@ LLM 으로 들어가기 직전 경계에서 호출한다. 탐지된 비밀을 [R
 과마스킹(한글 산문 훼손)을 막기 위해 라벨=값 형태는 값이 'ASCII 비밀처럼
 보일 때'만 가린다.
 
+★규칙은 두 종류다:
+  1. **값 기반** — `.env` 에 실재하는 값과 대조한다. 딱지가 없어도 가린다.
+     형태 추측은 사람이 실제로 주는 형태(`아이디 | 비번`)를 못 따라가므로
+     정답지 대조가 1순위다. `hermes_secret_values` 참조.
+  2. **형태 기반** — 정답지가 없는 값(타인의 토큰, 대화 중 생성된 키)을 위한 그물.
+
 사용법:
     from hermes_redact import redact
-    safe = redact(raw_text)
+    safe = redact(raw_text)                    # 프로젝트 자동 탐색
+    safe = redact(raw_text, project_dir=path)  # 루트 명시
 """
 
 import re
 
+try:
+    from hermes_secret_values import load_secret_values
+except ImportError:      # 단독 배포 등으로 모듈이 없으면 형태 규칙만 쓴다.
+    load_secret_values = None
+
 # 라벨=값에서 가릴 값: ASCII 자격증명처럼 보이는 토큰만 (한글 단어 제외).
-_SECRET_VALUE = r"[A-Za-z0-9][A-Za-z0-9!@#$%^&*()._+\-/=]{3,}"
+# 첫 글자에 특수문자를 허용한다 — `!Passw0rd` 처럼 특수문자로 시작하는 비밀번호를
+# 놓치기 때문이다. 실제로 이 구멍 때문에 평문 비밀번호가 DB 에 적재됐다.
+_SECRET_VALUE = r"[A-Za-z0-9!@#$%^&*_+\-][A-Za-z0-9!@#$%^&*()._+\-/=]{3,}"
 
 # 라벨=값 규칙이 인식하는 비밀 라벨.
 _KV_LABELS = (
@@ -52,8 +66,11 @@ _RULES = [
 ]
 
 # 라벨=값 규칙: 구분자는 콜론/등호 또는 한글 조사(은/는/이/가). 값만 치환.
+#
+# 라벨 앞에 \b 를 두지 않는다. `UNIPASSAPIKEY=...` 처럼 접두어가 붙어 한 단어가 되면
+# 단어 경계가 사라져 매치에 실패하기 때문이다. 실제로 이 구멍 때문에 API 키를 놓쳤다.
 _KV_RE = re.compile(
-    rf"(?i)\b({_KV_LABELS})(\s*[:=]\s*|[은는이가]\s*)({_SECRET_VALUE})"
+    rf"(?i)({_KV_LABELS})(\s*[:=]\s*|[은는이가]\s*)({_SECRET_VALUE})"
 )
 
 
@@ -61,14 +78,40 @@ def _mask_kv(m: "re.Match") -> str:
     return f"{m.group(1)}{m.group(2)}[REDACTED:SECRET]"
 
 
-def redact(text):
+def _mask_env_values(text: str, project_dir) -> str:
+    """`.env` 에 실재하는 값을 딱지 유무와 무관하게 치환한다.
+
+    긴 값부터 치환한다 — 짧은 값이 긴 값의 부분문자열이면, 짧은 쪽을 먼저 지울 때
+    긴 값이 조각나 원문 일부가 남는다.
+    정규식이 아니라 문자열 치환을 쓴다: 비밀에 흔한 `$`, `*`, `(` 등이 패턴으로
+    해석되는 사고를 원천 차단한다.
+    """
+    if load_secret_values is None:
+        return text
+    try:
+        values = load_secret_values(project_dir)
+    except Exception:    # 정답지 조회 실패가 마스킹 전체를 죽이면 안 된다.
+        return text
+    out = text
+    for key, value in sorted(values.items(), key=lambda kv: -len(kv[1])):
+        if value in out:
+            out = out.replace(value, f"[REDACTED:ENV:{key}]")
+    return out
+
+
+def redact(text, project_dir=None):
     """텍스트 내 민감정보를 [REDACTED:TYPE] 토큰으로 비가역 치환한다.
+
+    `project_dir` 는 값 기반 규칙이 쓸 `.env` 위치의 기준이다. 생략하면
+    CLAUDE_PROJECT_DIR 환경변수, 그것도 없으면 cwd 를 쓴다.
 
     str 이 아니면(예: None) 입력을 그대로 돌려준다 — 호출부 경계에서 안전.
     """
     if not text or not isinstance(text, str):
         return text
-    out = text
+    # 값 기반이 먼저다. 형태 규칙이 값의 일부만 [REDACTED:*] 로 바꿔 놓으면
+    # 남은 조각이 정답지와 더 이상 일치하지 않아 원문이 살아남는다.
+    out = _mask_env_values(text, project_dir)
     for pattern, repl in _RULES:
         out = pattern.sub(repl, out)
     out = _KV_RE.sub(_mask_kv, out)

@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
-# git pre-commit hook — 4단 검사 (R-size / R-fmt / R-lint / R-test) + R-plan.
+# git pre-commit hook — 4단 검사 (R-size / R-fmt / R-lint / R-test) + R-struct / R-secret / R-plan.
+#
+# "4단 검사" 문구는 uninstall 이 하네스 설치본을 식별하는 마커다 — 바꾸지 말 것
+# (lib/uninstall_helpers.sh `uninstall_pre_commit`, uninstall.sh 미리보기).
 #
 # 메시지 형식 (2026-04-17 Opus 4.7 튜닝):
 #   [룰 ID] 위반 사실 → 한 줄 권장 행동. 근거: docs/design-docs/core-beliefs.md#<anchor>.
@@ -131,6 +134,27 @@ if [[ -n "$VUE_AND_CODE" ]] && [[ -f "$CHECK_STRUCT" ]] && command -v node >/dev
 $STRUCT_OUT
   → 위반 메시지의 지침을 따라 폴더·배럴·import 를 수정 후 재시도.
   근거: assets/rules/web/coding-style.md §File-Organization
+EOF
+)")
+    FAIL=1
+  }
+fi
+
+# 6. R-secret — 자격증명·개인정보 커밋 차단
+#
+# 다른 단계와 달리 파일 목록을 넘기지 않는다 — check-secrets.py 가 직접
+# `git diff --cached` 를 읽는다. 여기서 걸러 넘기면 두 곳의 제외 규칙이
+# 어긋날 때 조용히 검사 범위가 줄어든다.
+#
+# 왜 커밋 경계에 있어야 하는가: 마스킹(hermes_redact)은 DB·LLM 입력 경계에만
+# 걸려 있어, 그 경계를 우회해 파일로 들어온 값은 잡지 못한다. git 히스토리는
+# 되돌릴 수 없으므로 여기가 마지막 방어선이다.
+CHECK_SECRETS="$(dirname "$0")/check-secrets.py"
+if [[ -f "$CHECK_SECRETS" ]] && command -v python3 >/dev/null 2>&1; then
+  SECRET_OUT=$(python3 "$CHECK_SECRETS" 2>&1) || {
+    VIOLATIONS+=("$(cat <<EOF
+
+$SECRET_OUT
 EOF
 )")
     FAIL=1

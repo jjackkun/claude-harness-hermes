@@ -75,6 +75,24 @@ install_harness_pre_commit() {
     chmod +x "$git_dir/hooks/check-component-structure.mjs"
     log_info "  hook    → .git/hooks/check-component-structure.mjs"
   fi
+
+  # check-secrets.py (R-secret) — pre-commit 이 $(dirname $0) 에서 참조.
+  local secrets_src="$ASSETS_DIR/hooks/check-secrets.py"
+  if [[ -f "$secrets_src" ]]; then
+    cp "$secrets_src" "$git_dir/hooks/check-secrets.py"
+    chmod +x "$git_dir/hooks/check-secrets.py"
+    log_info "  hook    → .git/hooks/check-secrets.py"
+  fi
+
+  # 정답지 모듈(.env 값 집합)을 훅 옆에 둔다 — check-secrets.py 가 import 한다.
+  # 복제하지 않고 scripts/ 의 원본을 그대로 복사한다: 복제본만 고치고 원본을 두면
+  # 원본을 쓰는 경로(DB 적재 마스킹)가 계속 뚫려 있게 된다.
+  # hermes 프리셋 없이 harness 만 설치한 프로젝트에서도 값 기반 차단이 동작한다.
+  local values_src="$DEV_SETTING_DIR/scripts/hermes_secret_values.py"
+  if [[ -f "$values_src" ]]; then
+    cp "$values_src" "$git_dir/hooks/hermes_secret_values.py"
+    log_info "  hook    → .git/hooks/hermes_secret_values.py"
+  fi
 }
 
 # install_harness_docs_templates <project_path>
