@@ -40,7 +40,8 @@ PY_FILES=$(filter_files '\.py$')
 # 서식의 주인은 프로젝트의 .prettierrc 가 아니라 생성기다. 프로젝트마다 prettier
 # 설정이 다르므로 생성기가 전부에 맞출 수 없다 — 맞추려 들면 재설치할 때마다
 # 자기 게이트에 자기가 걸려 커밋이 막힌다(실제로 3개 프로젝트에서 발생).
-GENERATED_RE='^(CLAUDE\.md|AGENTS\.md|\.claude/(settings(\.local)?\.json|\.dev-setting-manifest\.json)|\.codex/settings(\.local)?\.json)$'
+# `.claude/memory/` 도 같은 부류다 — 기억 시스템이 쓰는 산출물이지 손으로 쓰는 문서가 아니다.
+GENERATED_RE='^(CLAUDE\.md|AGENTS\.md|\.claude/(settings(\.local)?\.json|\.dev-setting-manifest\.json)|\.codex/settings(\.local)?\.json)$|^\.claude/memory/'
 PRETTIER_FILES=$(filter_files '\.(js|jsx|ts|tsx|svelte|json|css|scss|md|yaml|yml)$' \
   | grep -vE "$GENERATED_RE" || true)
 

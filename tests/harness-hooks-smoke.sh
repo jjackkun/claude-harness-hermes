@@ -325,8 +325,9 @@ echo "== 16. R-fmt 는 하네스 생성물을 검사하지 않는다 =="
 # 회귀 방지: 설치가 만든 CLAUDE.md·.claude/settings.json 은 프로젝트의 .prettierrc 와
 # 맞을 수 없다(프로젝트마다 설정이 다르다). 검사 대상에 넣으면 재설치할 때마다
 # 하네스가 자기 게이트에 자기가 걸려 커밋이 막힌다 — 실제로 3개 프로젝트에서 발생했다.
-GEN_RE='^(CLAUDE\.md|AGENTS\.md|\.claude/(settings(\.local)?\.json|\.dev-setting-manifest\.json)|\.codex/settings(\.local)?\.json)$'
-for _gen in "CLAUDE.md" ".claude/settings.json" ".claude/.dev-setting-manifest.json"; do
+GEN_RE='^(CLAUDE\.md|AGENTS\.md|\.claude/(settings(\.local)?\.json|\.dev-setting-manifest\.json)|\.codex/settings(\.local)?\.json)$|^\.claude/memory/'
+for _gen in "CLAUDE.md" ".claude/settings.json" ".claude/.dev-setting-manifest.json" \
+            ".claude/memory/MEMORY.md" ".claude/memory/feedback_x.md"; do
   echo "$_gen" | grep -qE "$GEN_RE"
   assert "R-fmt 제외 대상: $_gen" "0" "$?"
 done
