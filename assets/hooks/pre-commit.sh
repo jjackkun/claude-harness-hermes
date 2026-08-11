@@ -34,7 +34,15 @@ filter_files() {
 CHECKABLE=$(filter_files '\.(py|js|jsx|ts|tsx|svelte)$')
 JS_TS=$(filter_files '\.(js|jsx|ts|tsx|svelte)$')
 PY_FILES=$(filter_files '\.py$')
-PRETTIER_FILES=$(filter_files '\.(js|jsx|ts|tsx|svelte|json|css|scss|md|yaml|yml)$')
+
+# R-fmt 대상에서 **하네스 생성물**을 뺀다.
+# 이 파일들은 손으로 쓰는 소스가 아니라 설치 스크립트가 통째로 만든 산출물이고,
+# 서식의 주인은 프로젝트의 .prettierrc 가 아니라 생성기다. 프로젝트마다 prettier
+# 설정이 다르므로 생성기가 전부에 맞출 수 없다 — 맞추려 들면 재설치할 때마다
+# 자기 게이트에 자기가 걸려 커밋이 막힌다(실제로 3개 프로젝트에서 발생).
+GENERATED_RE='^(CLAUDE\.md|AGENTS\.md|\.claude/(settings(\.local)?\.json|\.dev-setting-manifest\.json)|\.codex/settings(\.local)?\.json)$'
+PRETTIER_FILES=$(filter_files '\.(js|jsx|ts|tsx|svelte|json|css|scss|md|yaml|yml)$' \
+  | grep -vE "$GENERATED_RE" || true)
 
 FAIL=0
 VIOLATIONS=()

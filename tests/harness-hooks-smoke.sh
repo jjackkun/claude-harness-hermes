@@ -321,6 +321,25 @@ for _le in CRLF LF; do
 done
 
 echo ""
+echo "== 16. R-fmt 는 하네스 생성물을 검사하지 않는다 =="
+# 회귀 방지: 설치가 만든 CLAUDE.md·.claude/settings.json 은 프로젝트의 .prettierrc 와
+# 맞을 수 없다(프로젝트마다 설정이 다르다). 검사 대상에 넣으면 재설치할 때마다
+# 하네스가 자기 게이트에 자기가 걸려 커밋이 막힌다 — 실제로 3개 프로젝트에서 발생했다.
+GEN_RE='^(CLAUDE\.md|AGENTS\.md|\.claude/(settings(\.local)?\.json|\.dev-setting-manifest\.json)|\.codex/settings(\.local)?\.json)$'
+for _gen in "CLAUDE.md" ".claude/settings.json" ".claude/.dev-setting-manifest.json"; do
+  echo "$_gen" | grep -qE "$GEN_RE"
+  assert "R-fmt 제외 대상: $_gen" "0" "$?"
+done
+# 일반 소스는 여전히 검사 대상이어야 한다 (제외가 너무 넓어지지 않았는지)
+for _src in "src/App.svelte" "docs/guide.md" "package.json"; do
+  echo "$_src" | grep -qE "$GEN_RE"
+  assert "R-fmt 검사 유지: $_src" "1" "$?"
+done
+# 훅 파일이 실제로 같은 규칙을 쓰는지 (테스트만 통과하는 사태 방지)
+grep -q 'GENERATED_RE=' "$REPO_ROOT/assets/hooks/pre-commit.sh"
+assert "pre-commit 이 생성물 제외 규칙을 갖고 있음" "0" "$?"
+
+echo ""
 echo "== 결과 =="
 echo "  통과: $PASS / 실패: $FAIL"
 [[ $FAIL -eq 0 ]]
