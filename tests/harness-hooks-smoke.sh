@@ -280,7 +280,30 @@ git reset -q
 rm -f docs/exec-plans/active/all-done-fixture.md small3.py
 
 echo ""
-echo "== 14. R-secret — 자격증명이 실린 파일은 커밋 차단 =="
+echo "== 14. R-size 는 .vue(SFC) 도 검사한다 =="
+# 회귀 방지: pre-commit CHECKABLE 과 size-warn case 목록에서 .vue 가 빠져 있었다.
+# 같은 리포의 review-reminder·prettier-warn·dead-file-warn·codex size-warn 은 이미 .vue 를
+# 검사하는데 R-size 두 곳만 누락돼, Vue 프로젝트의 화면 컴포넌트가 906 줄까지 자랐다.
+# 근거: zeroday-frontend docs/exec-plans/backlog/vue-file-size-rule-gap.md
+seq 1 15 | sed 's/.*/<!-- & -->/' > big.vue
+git add big.vue
+HOOK_OUT=$(MAX_LINES_HARD=10 .git/hooks/pre-commit 2>&1); HOOK_RC=$?
+assert "한도 초과 .vue 는 커밋 차단" "1" "$HOOK_RC"
+echo "$HOOK_OUT" | grep -q '\[R-size\] big\.vue'
+assert "차단 사유가 R-size 로 보고됨 (silent-skip 방지)" "0" "$?"
+
+git reset -q
+rm -f big.vue
+
+seq 1 520 | sed 's/.*/<!-- & -->/' > hard.vue
+OUT=$(echo '{"tool_input":{"file_path":"'"$TMP"'/hard.vue"}}' \
+  | scripts/hooks/claude-posttooluse-size-warn.sh 2>&1)
+echo "$OUT" | grep -q "R-size HARD"
+assert "편집 경고도 .vue 를 본다 (경고/차단 목록 일치)" "0" "$?"
+rm -f hard.vue
+
+echo ""
+echo "== 15. R-secret — 자격증명이 실린 파일은 커밋 차단 =="
 # 설치 경로 회귀 방지: check-secrets.py 와 정답지 모듈이 .git/hooks/ 로 함께
 # 복사되지 않으면 이 단계는 조용히 skip 된다 — 그게 원래 결함의 4번째 겹이었다.
 # ⚠️ 아래는 가짜 값이다.
@@ -298,7 +321,7 @@ git reset -q
 rm -f leak.txt
 
 echo ""
-echo "== 15. .gitignore 블록 멱등 — CRLF 파일에서도 중복되지 않는다 =="
+echo "== 16. .gitignore 블록 멱등 — CRLF 파일에서도 중복되지 않는다 =="
 # 회귀 방지: 마커 탐지에 정규식(`\r\?$`)을 쓰면 grep 구현에 따라 `\?` 해석이 갈려
 # **조용히** 매칭에 실패하고, 갱신 대신 블록이 덧붙는다. 재설치할 때마다 늘어난다.
 # 실제로 jjackkun_bot(Windows 에서 만들어진 CRLF .gitignore)에서 두 벌이 쌓였다.
@@ -321,7 +344,7 @@ for _le in CRLF LF; do
 done
 
 echo ""
-echo "== 16. R-fmt 는 하네스 생성물을 검사하지 않는다 =="
+echo "== 17. R-fmt 는 하네스 생성물을 검사하지 않는다 =="
 # 회귀 방지: 설치가 만든 CLAUDE.md·.claude/settings.json 은 프로젝트의 .prettierrc 와
 # 맞을 수 없다(프로젝트마다 설정이 다르다). 검사 대상에 넣으면 재설치할 때마다
 # 하네스가 자기 게이트에 자기가 걸려 커밋이 막힌다 — 실제로 3개 프로젝트에서 발생했다.

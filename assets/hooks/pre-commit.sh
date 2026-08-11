@@ -31,7 +31,11 @@ filter_files() {
   return 0
 }
 
-CHECKABLE=$(filter_files '\.(py|js|jsx|ts|tsx|svelte)$')
+# R-size 대상. `.vue` 포함(2026-08-07) — SFC 도 "한 파일 = 한 책임"의 대상이다.
+# 새 정책이 아니라 누락 보정이다: 이 저장소의 review-reminder·prettier-warn·dead-file-warn·
+# codex size-warn 은 이미 .vue 를 검사하고, R-size 두 훅만 빠져 있었다.
+# .vue 가 없는 프로젝트에선 no-op 이라 부작용이 없다.
+CHECKABLE=$(filter_files '\.(py|js|jsx|ts|tsx|svelte|vue)$')
 JS_TS=$(filter_files '\.(js|jsx|ts|tsx|svelte)$')
 PY_FILES=$(filter_files '\.py$')
 
