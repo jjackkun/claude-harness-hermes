@@ -69,13 +69,17 @@ fi
 # 2. R-fmt — prettier --check
 if [[ -n "$PRETTIER_FILES" ]] && command -v pnpm >/dev/null 2>&1 \
     && pnpm exec prettier --version >/dev/null 2>&1; then
-  PRETTIER_OUT=$(echo "$PRETTIER_FILES" | xargs pnpm exec prettier --check 2>&1) || {
+  # ANSI 색상 코드를 벗겨 저장한다. prettier 는 파이프에서도 색을 넣는 경우가 있어
+  # `^\[warn\]` 매칭이 빗나가고, 그러면 "위반 파일: (추출 실패)" 만 남아 **무엇을
+  # 고쳐야 하는지 알 수 없는 차단**이 된다 — 사람이 --no-verify 로 도망가는 경로다.
+  PRETTIER_OUT=$(echo "$PRETTIER_FILES" | xargs pnpm exec prettier --check 2>&1 \
+    | sed 's/\x1b\[[0-9;]*m//g') || {
     VIOLATIONS+=("$(cat <<EOF
 
 [R-fmt] prettier 포맷팅 위반.
 
 위반 파일:
-$(echo "$PRETTIER_OUT" | grep -E '^\[warn\]' || echo '(파일 목록 추출 실패 — 직접 확인)')
+$(echo "$PRETTIER_OUT" | grep -E '^\[warn\] ' | grep -v 'Code style issues' || echo '(파일 목록 추출 실패 — 직접 확인)')
   → \`pnpm exec prettier --write <파일>\` 자동 수정. .prettierrc 단독 변경 금지.
   근거: docs/design-docs/core-beliefs.md#r-fmt
 EOF
