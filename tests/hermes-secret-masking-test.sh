@@ -50,6 +50,10 @@ CRKY_CN=FAKE01
 CRKY_PW="QWER1234*"
 SHORT=ab
 PLACEHOLDER_KEY=changeme
+APP_BASE_URL=http://localhost:4101
+PORT=4101
+NODE_ENV=development
+DATABASE_URL=postgresql://fakeuser:!Fakepw11aa@localhost:5432/db
 ENVFILE
 
 echo "== 1. hermes_secret_values — 정답지 추출 =="
@@ -66,6 +70,13 @@ expect("특수문자로 시작하는 값도 담는다", vals.get("LDSP_PASSWORD"
 expect("따옴표를 벗긴다", vals.get("CRKY_PW") == "QWER1234*")
 expect("4자 미만 값은 제외한다 (과마스킹 방지)", "SHORT" not in vals)
 expect("자리표시자는 제외한다", "PLACEHOLDER_KEY" not in vals)
+
+# ★.env 는 비밀만 담지 않는다 — 설정값을 가리면 문서·로그가 깨진다.
+# 실제로 APP_BASE_URL 때문에 정상 문서의 curl 예시가 마스킹돼 커밋이 막혔다.
+expect("자격증명 없는 URL 은 제외 (주소일 뿐)", "APP_BASE_URL" not in vals)
+expect("순수 숫자(포트)는 제외", "PORT" not in vals)
+expect("실행 모드 리터럴은 제외", "NODE_ENV" not in vals)
+expect("URL 에 비밀번호가 박히면 마스킹 대상", "DATABASE_URL" in vals)
 PY
 )
 report "$OUT"
@@ -129,6 +140,8 @@ expect("7 라벨 접두어 (\\b 구멍)", "SOME_PASSWORD=Fakepw11aa",
 # --- 음성: 과마스킹 금지 ---
 expect("neg 한글 산문 보존", "비밀번호 변경 화면을 만들었다", must_not="[REDACTED")
 expect("neg 짧은 값은 산문을 깨지 않음", "ab 로 시작하는 단어", must_not="[REDACTED")
+expect("neg 설정 URL 이 든 문서는 안 깨진다",
+       "curl -s http://localhost:4101/src/routes/X.svelte 로 확인", must_not="[REDACTED")
 
 # --- 멱등: 두 번 돌려도 같은 결과 ---
 once = r.redact("fakeuser | !Fakepw11aa", root)

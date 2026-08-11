@@ -34,10 +34,21 @@ ENV_CANDIDATES = (
 
 # 자리표시자는 비밀이 아니다 — 마스킹하면 문서·예제가 깨진다.
 _PLACEHOLDER_RE = re.compile(
-    r"^(changeme|example|placeholder|dummy|test|none|null|true|false)$"
+    r"^(changeme|example|placeholder|dummy|test|none|null|true|false"
+    r"|development|production|staging|local|debug|info|warn|error)$"
     r"|your[-_]|xxx|\*{3,}|<[^>]*>|\$\{[^}]+\}",
     re.IGNORECASE,
 )
+
+# 순수 숫자(포트·타임아웃·개수)는 비밀이 아니다. `4101` 을 마스킹하면 산문이 깨진다.
+_NUMERIC_RE = re.compile(r"^\d+$")
+
+# URL 은 **자격증명이 박혀 있을 때만** 비밀이다.
+#   postgresql://user:pw@host/db   → 비밀 (userinfo 존재)
+#   https://api.example.com/v1?key=abc → 비밀 (질의문자열에 키가 실릴 수 있다)
+#   http://localhost:4101          → 주소일 뿐 — 문서·로그에 그대로 나와야 한다
+_URL_RE = re.compile(r"^[a-z][a-z0-9+.\-]*://", re.IGNORECASE)
+_URL_HAS_CREDENTIAL_RE = re.compile(r"^[a-z][a-z0-9+.\-]*://[^/@\s]*@", re.IGNORECASE)
 
 # `KEY=VALUE` 한 줄. export 접두와 따옴표를 허용한다.
 _ENV_LINE_RE = re.compile(r"^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$")
@@ -59,12 +70,21 @@ def _strip_quotes(raw: str) -> str:
 def _is_maskable(value: str, home: str) -> bool:
     """이 값을 마스킹 대상으로 삼아도 되는가.
 
+    ★`.env` 는 비밀만 담지 않는다 — 포트·URL·모드 같은 **설정값**이 섞여 있다.
+    그것까지 가리면 문서와 로그가 깨진다. 실제로 `APP_BASE_URL=http://localhost:4101`
+    때문에 정상 문서의 curl 예시가 통째로 마스킹돼 커밋이 막혔다.
+
     `$HOME` 경로에 포함되는 값은 제외한다 ⚠️ 실제 사례: 계정 ID 가 홈 디렉터리명과
     같아, 무조건 치환하면 `/home/<id>/...` 경로가 전부 깨진다.
     """
     if len(value) < MIN_VALUE_LEN:
         return False
     if _PLACEHOLDER_RE.search(value):
+        return False
+    if _NUMERIC_RE.match(value):
+        return False
+    # URL 은 자격증명(userinfo)이나 질의문자열을 품을 때만 비밀로 본다.
+    if _URL_RE.match(value) and not _URL_HAS_CREDENTIAL_RE.match(value) and "?" not in value:
         return False
     if home and value in home:
         return False
