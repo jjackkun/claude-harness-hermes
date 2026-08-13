@@ -1,4 +1,7 @@
 # Weekly Doc Gardening — PDF 12쪽 "정기적으로 편차를 검사" (GitLab CI 판)
+# harness-template-sha: PLACEHOLDER
+# ↑ 설치기가 배치 시점에 본문 해시로 치환한다. 이 줄을 지우면 재설치 때
+#   "사용자 수정본" 으로 취급되어 갱신이 멈춘다 (lib/harness_installers.sh).
 #
 # GitHub Actions 판과 동일한 4종 검사. GitLab Schedules 에서 주 1회 실행하도록 설정.
 #
@@ -53,13 +56,14 @@ doc-gardening:
         done < <(grep -oE '\]\([^)]+\.md[^)]*\)' CLAUDE.md | sed -E 's/^\]\(//; s/\).*$//; s/#.*$//')
       fi
 
-      # (2) 완료된 exec-plan 이동 대상
-      if [ -d docs/exec-plans ]; then
-        while IFS= read -r plan; do
-          if grep -qiE '^(status|상태):\s*(done|완료)' "$plan" 2>/dev/null; then
-            echo "- [plan-graduation] \`$plan\` 은 완료 상태 → \`docs/audits/\` 로 이동 고려" >> "$report"
-          fi
-        done < <(find docs/exec-plans -name '*.md' -not -name 'template.md')
+      # (2) exec-plans 편차 감지 — 판정은 공용 스크립트가 한다.
+      #     GitHub 판과 로직을 공유한다. 인라인 복제로 되돌리지 말 것 —
+      #     이전 버전이 복제돼 있었고, 템플릿에 없는 status: 필드를 찾아
+      #     한 번도 발동하지 않았다.
+      if [ -f scripts/hooks/doc-gardening-drift.sh ]; then
+        bash scripts/hooks/doc-gardening-drift.sh "$report"
+      else
+        echo "- [plan-check-skipped] \`scripts/hooks/doc-gardening-drift.sh\` 없음 — 커밋이 필요합니다" >> "$report"
       fi
 
       # (3) core-beliefs R 룰 ↔ 강제 장치 매칭

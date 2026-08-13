@@ -1,9 +1,13 @@
 # Weekly Doc Gardening — PDF 12쪽 "정기적으로 편차를 검사"
+# harness-template-sha: PLACEHOLDER
+# ↑ 설치기가 배치 시점에 본문 해시로 치환한다. 이 줄을 지우면 재설치 때
+#   "사용자 수정본" 으로 취급되어 갱신이 멈춘다 (lib/harness_installers.sh).
 #
 # 매주 한 번, 코드와 docs/ 를 동기화 검증한다. 사람이 놓친 것을 잡는다.
 # 검사 내용(예시):
 #   - CLAUDE.md 가 가리키는 파일이 실제로 존재하는가 (dead link)
-#   - docs/exec-plans/ 에 남은 완료 플랜을 docs/audits/ 로 이동 가능한가
+#   - docs/exec-plans/active/ 에 완료 상태로 남은 플랜이 있는가
+#   - docs/exec-plans/completed/ 에 회고(§8) 없이 들어간 플랜이 있는가
 #   - ARCHITECTURE.md 에 언급된 디렉터리가 실제로 있는가
 #   - core-beliefs.md 의 R 룰이 코드/테스트에 대응하는 강제 장치를 가지고 있는가
 #
@@ -43,13 +47,14 @@ jobs:
             done < <(grep -oE '\]\([^)]+\.md[^)]*\)' CLAUDE.md | sed -E 's/^\]\(//; s/\).*$//; s/#.*$//')
           fi
 
-          # (2) exec-plans 완료 플랜 감지
-          if [[ -d docs/exec-plans ]]; then
-            while IFS= read -r plan; do
-              if grep -qiE '^(status|상태):\s*(done|완료)' "$plan" 2>/dev/null; then
-                echo "- [plan-graduation] \`$plan\` 은 완료 상태 → \`docs/audits/\` 로 이동 고려" >> "$report"
-              fi
-            done < <(find docs/exec-plans -name '*.md' -not -name 'template.md')
+          # (2) exec-plans 편차 감지 — 판정은 공용 스크립트가 한다.
+          #     GitLab 판과 로직을 공유한다. 인라인 복제로 되돌리지 말 것 —
+          #     이전 버전이 복제돼 있었고, 템플릿에 없는 status: 필드를 찾아
+          #     한 번도 발동하지 않았다.
+          if [[ -f scripts/hooks/doc-gardening-drift.sh ]]; then
+            bash scripts/hooks/doc-gardening-drift.sh "$report"
+          else
+            echo "- [plan-check-skipped] \`scripts/hooks/doc-gardening-drift.sh\` 없음 — 커밋이 필요합니다" >> "$report"
           fi
 
           # (3) core-beliefs R 룰 ↔ 강제 장치

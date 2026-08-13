@@ -84,6 +84,17 @@ install_harness_pre_commit() {
     log_info "  hook    → .git/hooks/check-secrets.py"
   fi
 
+  # plan_state.py (R-plan / R-plan-stale / R-retro) — pre-commit 이 $(dirname $0) 에서 참조.
+  # scripts/hooks/ 쪽 사본은 HARNESS_HOOK_SOURCES 가 배치한다(UserPromptSubmit·CI 용).
+  local plan_state_src="$ASSETS_DIR/hooks/plan_state.py"
+  if [[ -f "$plan_state_src" ]]; then
+    if cp "$plan_state_src" "$git_dir/hooks/plan_state.py"; then
+      log_info "  hook    → .git/hooks/plan_state.py"
+    else
+      log_warn "  hook    → .git/hooks/plan_state.py 복사 실패"
+    fi
+  fi
+
   # 정답지 모듈(.env 값 집합)을 훅 옆에 둔다 — check-secrets.py 가 import 한다.
   # 복제하지 않고 scripts/ 의 원본을 그대로 복사한다: 복제본만 고치고 원본을 두면
   # 원본을 쓰는 경로(DB 적재 마스킹)가 계속 뚫려 있게 된다.
@@ -93,6 +104,27 @@ install_harness_pre_commit() {
     cp "$values_src" "$git_dir/hooks/hermes_secret_values.py"
     log_info "  hook    → .git/hooks/hermes_secret_values.py"
   fi
+}
+
+# harness_sync_marker_block <src> <dest> <begin> <end>
+# src 의 마커 블록으로 dest 의 마커 블록을 교체. dest 에 블록이 없으면 파일 끝에 추가.
+# 마커 밖 내용은 건드리지 않는다 (install_harness_gitignore 와 같은 방식).
+harness_sync_marker_block() {
+  local src="$1" dest="$2" begin="$3" end="$4"
+  local block
+  block="$(awk -v b="$begin" -v e="$end" '$0==b{f=1} f{print} $0==e{f=0}' "$src")"
+  [[ -n "$block" ]] || return 0
+
+  if grep -qF "$begin" "$dest"; then
+    awk -v b="$begin" -v e="$end" -v blk="$block" '
+      $0==b {print blk; skip=1; next}
+      $0==e {skip=0; next}
+      !skip {print}
+    ' "$dest" > "$dest.tmp$$" && mv "$dest.tmp$$" "$dest"
+  else
+    printf '\n%s\n' "$block" >> "$dest"
+  fi
+  log_info "  doc     → $(basename "$dest") (하네스 룰 블록 갱신)"
 }
 
 # install_harness_docs_templates <project_path>
@@ -126,6 +158,14 @@ install_harness_docs_templates() {
       local rel="${f#$src_dir/}"
       base="${rel%.tmpl}"
       dest="$project_path/$base"
+      # core-beliefs 는 마커 블록만 갱신한다 — 프로젝트 고유 R 룰은 사용자 소유이고,
+      # 하네스 룰 앵커는 하네스 소유다. 통째로 보존하면 pre-commit 메시지가 가리키는
+      # 앵커가 설치 프로젝트에서 영원히 깨진 채로 남는다.
+      if [[ "$base" == "docs/design-docs/core-beliefs.md" && -e "$dest" ]]; then
+        harness_sync_marker_block "$f" "$dest" \
+          '<!--===HARNESS-RULES:BEGIN===-->' '<!--===HARNESS-RULES:END===-->'
+        continue
+      fi
       if [[ -e "$dest" ]]; then
         continue
       fi
@@ -165,7 +205,51 @@ install_harness_lint_configs() {
 #   - github.com → .github/workflows/weekly-doc-gardening.yml
 #   - gitlab.com 또는 host 에 'gitlab' 포함 → .gitlab/doc-gardening.yml
 #   - 기타/없음 → 스킵 + 안내 로그
-# 기존 파일은 덮어쓰지 않는다 (사용자 개인화 보존).
+# 사용자가 손대지 않은 설치본은 갱신한다 (harness_write_marked_template).
+
+# harness_template_sha <file>
+# 마커 줄을 제외한 본문의 sha256. 설치본이 사용자에 의해 수정됐는지 판정하는 데 쓴다.
+# cmp -s 와 달리 템플릿이 개정돼도 판정이 유지된다.
+# `|| true` 필수: 호출부가 set -euo pipefail 아래에서 돈다(project-claude.sh:23).
+# grep 이 아무것도 못 찾으면 1 을 반환하고 pipefail 이 그것을 파이프라인 상태로 올려
+# 설치기 전체가 중단된다.
+harness_template_sha() {
+  { grep -v '^# harness-template-sha:' "$1" || true; } | sha256sum | cut -d' ' -f1
+}
+
+# harness_write_marked_template <src> <dest> <label>
+# 사용자가 손대지 않은 설치본만 덮어쓴다.
+#
+# 이 판정이 없으면 "기존 보존" 정책 탓에 템플릿 개정본이 기존 프로젝트에 영원히
+# 도달하지 않는다 — 경고하는 검사만 배포되고 그것을 보완할 수거 장치는 배포되지 않는
+# 비대칭이 생긴다(2026-08-13 확인).
+harness_write_marked_template() {
+  local src="$1" dest="$2" label="$3"
+  local src_sha
+  src_sha="$(harness_template_sha "$src")"
+
+  if [[ -e "$dest" ]]; then
+    local dest_marker dest_sha
+    # 마커가 없으면 grep 이 1 을 반환하고 pipefail 이 설치기를 중단시킨다 — `|| true` 필수.
+    dest_marker="$(grep -m1 '^# harness-template-sha:' "$dest" 2>/dev/null | awk '{print $3}' || true)"
+    if [[ -z "$dest_marker" ]]; then
+      log_warn "  workflows → $label (마커 없는 구버전 — 보존. 수동 갱신 필요)"
+      return 0
+    fi
+    dest_sha="$(harness_template_sha "$dest")"
+    if [[ "$dest_sha" != "$dest_marker" ]]; then
+      log_info "  workflows → $label (사용자 수정 감지 — 보존)"
+      return 0
+    fi
+  fi
+
+  mkdir -p "$(dirname "$dest")"
+  if sed "s|^# harness-template-sha:.*|# harness-template-sha: $src_sha|" "$src" > "$dest"; then
+    log_info "  workflows → $label (배치)"
+  else
+    log_warn "  workflows → $label 쓰기 실패"
+  fi
+}
 install_harness_gc_workflows() {
   local project_path="$1"
   [[ ${HARNESS_DOC_GARDENING:-0} -eq 1 ]] || return 0
@@ -186,27 +270,17 @@ install_harness_gc_workflows() {
       local dest_dir="$project_path/.github/workflows"
       local dest="$dest_dir/weekly-doc-gardening.yml"
       [[ -f "$src" ]] || { log_warn "github doc-gardening template missing"; return 0; }
-      mkdir -p "$dest_dir"
-      if [[ -e "$dest" ]]; then
-        log_info "  workflows → .github/workflows/weekly-doc-gardening.yml (이미 존재, 보존)"
-      else
-        cp "$src" "$dest"
-        log_info "  workflows → .github/workflows/weekly-doc-gardening.yml (신규)"
-      fi
+      harness_write_marked_template "$src" "$dest" ".github/workflows/weekly-doc-gardening.yml"
+      log_info "            ↳ scripts/hooks/{plan_state.py,doc-gardening-drift.sh} 를 커밋해야 주간 점검이 동작합니다"
       ;;
     *gitlab*|git@*gitlab*)
       local src="$ASSETS_DIR/cron-templates/gitlab-ci/weekly-doc-gardening.gitlab-ci.yml"
       local dest_dir="$project_path/.gitlab"
       local dest="$dest_dir/doc-gardening.yml"
       [[ -f "$src" ]] || { log_warn "gitlab doc-gardening template missing"; return 0; }
-      mkdir -p "$dest_dir"
-      if [[ -e "$dest" ]]; then
-        log_info "  workflows → .gitlab/doc-gardening.yml (이미 존재, 보존)"
-      else
-        cp "$src" "$dest"
-        log_info "  workflows → .gitlab/doc-gardening.yml (신규)"
-        log_info "            ↳ .gitlab-ci.yml 에 'include: { local: .gitlab/doc-gardening.yml }' 추가 + Schedules 설정 필요"
-      fi
+      harness_write_marked_template "$src" "$dest" ".gitlab/doc-gardening.yml"
+      log_info "            ↳ .gitlab-ci.yml 에 'include: { local: .gitlab/doc-gardening.yml }' 추가 + Schedules 설정 필요"
+      log_info "            ↳ scripts/hooks/{plan_state.py,doc-gardening-drift.sh} 를 커밋해야 주간 점검이 동작합니다"
       ;;
     *)
       log_info "  workflows → skipped (미지원 remote host: $remote)"

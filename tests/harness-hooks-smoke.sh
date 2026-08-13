@@ -364,6 +364,153 @@ grep -q 'GENERATED_RE=' "$REPO_ROOT/assets/hooks/pre-commit.sh"
 assert "pre-commit 이 생성물 제외 규칙을 갖고 있음" "0" "$?"
 
 echo ""
+echo "== 18. 경고 단독 발생 시에도 출력된다 =="
+# 회귀 방지: VIOLATIONS 는 FAIL=1 일 때만 출력되므로, 경고 등급 위반이 단독으로
+# 발생하면 아무것도 보이지 않는다. R-plan-missing 이 그 상태로 방치돼 있었다
+# (2026-08-13 확인). 차단 위반이 하나도 없는 상태에서 경고가 나오는지 본다.
+git reset -q
+git checkout -- . 2>/dev/null || true
+rm -rf docs/exec-plans/active
+mkdir -p docs/exec-plans/active
+echo "y = 1" > warn_only.py
+git add warn_only.py
+WARN_OUT=$(.git/hooks/pre-commit 2>&1); WARN_RC=$?
+assert "경고만 있을 때 exit 0" "0" "$WARN_RC"
+echo "$WARN_OUT" | grep -q "R-plan-missing"
+assert "경고가 실제로 출력됨 (침묵 회귀 방지)" "0" "$?"
+git reset -q; rm -f warn_only.py
+
+echo ""
+echo "== 19. plan_state.py 이중 배치 =="
+[[ -f "$TMP/scripts/hooks/plan_state.py" ]]
+assert "scripts/hooks/plan_state.py 배치됨" "0" "$?"
+[[ -f "$TMP/.git/hooks/plan_state.py" ]]
+assert ".git/hooks/plan_state.py 배치됨" "0" "$?"
+
+echo ""
+echo "== 20. hook_inventory .py 확장이 기존 자산을 지우지 않음 =="
+# assets/hooks/check-secrets.py 가 인벤토리에 들어가면서 scripts/hooks/check-secrets.py
+# 삭제를 시도할 수 있다(실제로는 .git/hooks/ 에만 있어 무해). 재설치 후 확인한다.
+bash "$REPO_ROOT/project-claude.sh" "$TMP" harness >/dev/null 2>&1
+[[ -f "$TMP/.git/hooks/check-secrets.py" ]]
+assert "재설치 후 check-secrets.py 보존" "0" "$?"
+[[ -f "$TMP/scripts/hooks/plan_state.py" ]]
+assert "재설치 후 plan_state.py 보존" "0" "$?"
+
+echo ""
+echo "== 21. R-plan-stale — 계획서가 코드를 따라오지 않음 =="
+git reset -q
+git checkout -- . 2>/dev/null || true
+rm -rf docs/exec-plans/active docs/exec-plans/completed
+mkdir -p docs/exec-plans/active docs/exec-plans/completed
+cat > docs/exec-plans/active/stale-fixture.md << 'FIXTURE'
+# 진행 중 계획
+
+- [x] 항목1
+- [ ] 항목2
+FIXTURE
+git add docs/exec-plans/active/stale-fixture.md
+git -c user.email=t@t -c user.name=t commit -qm "add plan" --no-verify
+
+echo "z = 1" > stale_code.py
+git add stale_code.py
+STALE_OUT=$(.git/hooks/pre-commit 2>&1); STALE_RC=$?
+assert "R-plan-stale 은 차단하지 않음" "0" "$STALE_RC"
+echo "$STALE_OUT" | grep -q "\[R-plan-stale\]"
+assert "R-plan-stale 경고 출력" "0" "$?"
+
+# 계획서를 함께 스테이징하면 경고가 사라진다
+echo "- [ ] 항목3" >> docs/exec-plans/active/stale-fixture.md
+git add docs/exec-plans/active/stale-fixture.md
+STALE_OUT=$(.git/hooks/pre-commit 2>&1)
+echo "$STALE_OUT" | grep -q "\[R-plan-stale\]"
+assert "계획서 동반 스테이징 시 경고 없음" "1" "$?"
+git reset -q; rm -f stale_code.py
+git checkout -- docs/exec-plans/active/stale-fixture.md 2>/dev/null || true
+
+# 계획서 2개 중 1개만 스테이징해도 통과한다 — 어느 계획에 속한 커밋인지 훅은 모른다.
+cat > docs/exec-plans/active/second-fixture.md << 'FIXTURE'
+# 두 번째 계획
+
+- [ ] 항목A
+FIXTURE
+git add docs/exec-plans/active/second-fixture.md
+git -c user.email=t@t -c user.name=t commit -qm "add second plan" --no-verify
+echo "z = 2" > partial_code.py
+echo "- [ ] 항목B" >> docs/exec-plans/active/second-fixture.md
+git add partial_code.py docs/exec-plans/active/second-fixture.md
+PARTIAL_OUT=$(.git/hooks/pre-commit 2>&1)
+echo "$PARTIAL_OUT" | grep -q "\[R-plan-stale\]"
+assert "계획서 2개 중 1개만 스테이징해도 경고 없음" "1" "$?"
+git reset -q; rm -f partial_code.py
+git checkout -- docs/exec-plans/active/second-fixture.md 2>/dev/null || true
+
+echo ""
+echo "== 22. 하네스 생성물만 바뀐 커밋은 경고하지 않음 (자기 게이트 회귀) =="
+echo "# touched by reinstall" >> scripts/hooks/claude-pretooluse-bash-guard.sh
+git add scripts/hooks/claude-pretooluse-bash-guard.sh
+MANAGED_OUT=$(.git/hooks/pre-commit 2>&1)
+echo "$MANAGED_OUT" | grep -q "\[R-plan-stale\]"
+assert "scripts/hooks/ 만 수정 시 경고 없음" "1" "$?"
+git reset -q
+git checkout -- scripts/hooks/ 2>/dev/null || true
+
+echo ""
+echo "== 23. plan_state.py 부재 시 원인이 구분된 경고 =="
+mv .git/hooks/plan_state.py .git/hooks/plan_state.py.bak
+echo "w = 1" > nomod.py
+git add nomod.py
+NOMOD_OUT=$(.git/hooks/pre-commit 2>&1); NOMOD_RC=$?
+assert "모듈 부재는 차단하지 않음" "0" "$NOMOD_RC"
+echo "$NOMOD_OUT" | grep -q "plan_state.py 없음"
+assert "모듈 부재 원인 명시" "0" "$?"
+git reset -q; rm -f nomod.py
+mv .git/hooks/plan_state.py.bak .git/hooks/plan_state.py
+
+echo ""
+echo "== 24. R-retro — 회고 없이 completed/ 로 이동 =="
+git reset -q
+git checkout -- . 2>/dev/null || true
+mkdir -p docs/exec-plans/active docs/exec-plans/completed
+cat > docs/exec-plans/active/retro-fixture.md << 'FIXTURE'
+# 완료된 계획
+
+- [x] 항목1
+
+## 8. 회고 (완료 시 작성)
+
+- 잘된 것:
+- 잘못된 것:
+- 다음 룰 후보:
+FIXTURE
+git add docs/exec-plans/active/retro-fixture.md
+git -c user.email=t@t -c user.name=t commit -qm "add retro fixture" --no-verify
+
+git mv docs/exec-plans/active/retro-fixture.md docs/exec-plans/completed/retro-fixture.md
+RETRO_OUT=$(.git/hooks/pre-commit 2>&1); RETRO_RC=$?
+assert "R-retro 는 차단하지 않음" "0" "$RETRO_RC"
+echo "$RETRO_OUT" | grep -q "\[R-retro\]"
+assert "git mv 이동이 감지됨 (ACM 은 rename 을 놓친다)" "0" "$?"
+
+# 회고를 채우면 경고가 사라진다
+sed -i 's/^- 잘된 것:$/- 잘된 것: 판정 규칙을 한 곳에 모았다/' docs/exec-plans/completed/retro-fixture.md
+git add docs/exec-plans/completed/retro-fixture.md
+RETRO_OUT=$(.git/hooks/pre-commit 2>&1)
+echo "$RETRO_OUT" | grep -q "\[R-retro\]"
+assert "회고를 채우면 경고 없음" "1" "$?"
+git -c user.email=t@t -c user.name=t commit -qm "move plan" --no-verify
+
+echo ""
+echo "== 25. completed/ 내용 수정만으로는 경고하지 않음 (M 제외 회귀) =="
+printf '\n오타 수정.\n' >> docs/exec-plans/completed/retro-fixture.md
+git add docs/exec-plans/completed/retro-fixture.md
+MOD_OUT=$(.git/hooks/pre-commit 2>&1)
+echo "$MOD_OUT" | grep -q "\[R-retro\]"
+assert "수정(M)은 R-retro 대상 아님" "1" "$?"
+git reset -q
+git checkout -- docs/exec-plans/completed/ 2>/dev/null || true
+
+echo ""
 echo "== 결과 =="
 echo "  통과: $PASS / 실패: $FAIL"
 [[ $FAIL -eq 0 ]]

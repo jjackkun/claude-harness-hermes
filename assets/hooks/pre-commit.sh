@@ -18,9 +18,9 @@ MAX_LINES_HARD="${MAX_LINES_HARD:-500}"
 
 mapfile -t STAGED < <(git diff --cached --name-only --diff-filter=ACM)
 # 조기 종료 판정에는 rename 을 포함한 전체 스테이징 여부를 쓴다.
-# 순수 rename(git mv)만 있는 커밋은 ACM 에 잡히지 않아 STAGED 가 비는데, 그러면
-# 어떤 검사도 실행되지 않고 훅이 끝난다(2026-08-13 실측). STAGED 자체에 R 을 넣지
-# 않는 이유는 그러면 R-size 부터 R-secret 까지 모든 검사의 범위가 함께 바뀌기 때문이다.
+# 순수 rename(git mv)만 있는 커밋은 ACM 에 잡히지 않아 STAGED 가 비는데, R-retro 는
+# 바로 그 경우를 봐야 한다(2026-08-13 실측). STAGED 자체에 R 을 넣지 않는 이유는
+# 그러면 R-size 부터 R-secret 까지 모든 검사의 범위가 함께 바뀌기 때문이다.
 [[ -z "$(git diff --cached --name-only)" ]] && exit 0
 
 EXCLUDE_RE='(^|/)(node_modules|venv|\.venv|\.svelte-kit|\.next|dist|build|docs_legacy)(/|$)'
@@ -43,6 +43,19 @@ CHECKABLE=$(filter_files '\.(py|js|jsx|ts|tsx|svelte|vue)$')
 JS_TS=$(filter_files '\.(js|jsx|ts|tsx|svelte)$')
 PY_FILES=$(filter_files '\.py$')
 
+# 계획 축 전용. R-size 를 구동하는 CHECKABLE 과 분리한다 —
+# "계획을 세울 만한 작업 코드"와 줄 수 검사의 대상은 같은 집합이 아니다.
+# 하네스 생성물은 뺀다: 재설치가 scripts/hooks/ 를 덮어쓰므로 포함하면
+# 하네스 갱신 커밋 자체가 자기 게이트에 걸린다(아래 R-fmt 주석의 prettier 사고와 같은 종류).
+# .md 는 넣지 않는다 — 문서 수정마다 계획서를 요구하면 오탈자에도 걸려 우회가 상시화된다.
+HARNESS_MANAGED_RE='^scripts/(hooks|codex-hooks)/'
+WORK_FILES=$(filter_files '\.(py|js|jsx|ts|tsx|svelte|vue|sh|mjs|go|rs|java|rb|php)$' \
+  | grep -vE "$HARNESS_MANAGED_RE" || true)
+
+# 계획서 판정 모듈. pre-commit 옆에 설치기가 복사한다.
+PLAN_STATE="$(dirname "$0")/plan_state.py"
+PLAN_STATE_OK=1
+
 # R-fmt 대상에서 **하네스 생성물**을 뺀다.
 # 이 파일들은 손으로 쓰는 소스가 아니라 설치 스크립트가 통째로 만든 산출물이고,
 # 서식의 주인은 프로젝트의 .prettierrc 가 아니라 생성기다. 프로젝트마다 prettier
@@ -59,6 +72,18 @@ VIOLATIONS=()
 # 출력되므로, 경고 등급 위반이 단독 발생하면 아무것도 보이지 않는다.
 # (2026-08-13 확인: R-plan-missing 이 그 상태로 방치돼 있었다.)
 WARNINGS=()
+
+# 모듈 부재 원인을 구분해 알린다 — 뭉뚱그리면 사용자가 재설치를 반복해도
+# 해결되지 않는 삽질을 한다. 조용히 건너뛰지 않는 것이 핵심이다.
+if [[ ! -f "$PLAN_STATE" ]]; then
+  PLAN_STATE_OK=0
+  WARNINGS+=("
+[R-plan] 계획 축 검사 3개를 건너뜀 — plan_state.py 없음 (재설치 필요)")
+elif ! command -v python3 >/dev/null 2>&1; then
+  PLAN_STATE_OK=0
+  WARNINGS+=("
+[R-plan] 계획 축 검사 3개를 건너뜀 — python3 없음 (인터프리터 설치 필요)")
+fi
 
 # 1. R-size
 if [[ -n "$CHECKABLE" ]]; then
@@ -195,33 +220,82 @@ fi
 # 무력화된다. 규칙 의도("내가 끝낸 계획을 방치하지 말 것")를 지키는 최소 범위로 좁혔다.
 # 트레이드오프: 아무도 손대지 않은 방치 계획서는 못 잡는다 — 그건 주기 점검(문서 가드닝)의 몫.
 ACTIVE_DIR="docs/exec-plans/active"
-if [[ -d "$ACTIVE_DIR" ]]; then
+if (( PLAN_STATE_OK )) && [[ -d "$ACTIVE_DIR" ]]; then
   while IFS= read -r plan; do
     [[ -f "$plan" ]] || continue
-    total=$(grep -cE '^\s*-\s*\[' "$plan" 2>/dev/null || true)
-    done_count=$(grep -cE '^\s*-\s*\[x\]' "$plan" 2>/dev/null || true)
-    total=${total:-0}
-    done_count=${done_count:-0}
-    if [[ "$total" -gt 0 && "$total" -eq "$done_count" ]]; then
-      VIOLATIONS+=("
-[R-plan] 완료된 계획이 active/ 에 남아있음: $plan ($done_count/$total)
+    # set -e 아래에서는 `cmd; rc=$?` 가 훅 전체를 중단시킨다. 반드시 `|| rc=$?` 를 쓴다.
+    rc=0; python3 "$PLAN_STATE" is-complete "$plan" || rc=$?
+    case $rc in
+      0)
+        VIOLATIONS+=("
+[R-plan] 완료된 계획이 active/ 에 남아있음: $plan
   → 회고(§8) 작성 후 \`git mv \"$plan\" \"docs/exec-plans/completed/\$(basename \"$plan\")\"\`.
+     (2026-08-13 계수 규칙 변경: 마크다운 링크 불릿은 더 이상 체크박스로 세지 않는다.)
   근거: docs/design-docs/core-beliefs.md#r-plan")
-      FAIL=1
-    fi
+        FAIL=1
+        ;;
+      2)
+        WARNINGS+=("
+[R-plan] 계획서 판정 불가: $plan — 마크다운 형식을 확인하십시오.")
+        ;;
+    esac
   done < <(filter_files "^${ACTIVE_DIR}/[^/]+\.md$")
 fi
 
-# 8. R-plan-missing — 코드 수정했는데 active/ 에 계획 없으면 경고
-if [[ -n "$CHECKABLE" && -d "$ACTIVE_DIR" ]]; then
-  PLAN_COUNT=$(find "$ACTIVE_DIR" -maxdepth 1 -name '*.md' -type f 2>/dev/null | wc -l)
-  if [[ "$PLAN_COUNT" -eq 0 ]]; then
+# 8. R-plan-missing / R-plan-stale — 계획서가 코드를 따라오는가 (둘 다 경고)
+#
+# R-plan 이 "스테이징된 계획서" 만 보는 순환 의존을 뒤집는 축이다. 차단하지 않는 이유는
+# 계획서 1개일 때 차단하면 워킹트리 공유 시 상호 차단이 발생하기 때문이다
+# (2026-07-23 사고, tests/harness-hooks-smoke.sh 13(a) 가 그 회귀를 고정하고 있다).
+if (( PLAN_STATE_OK )) && [[ -n "$WORK_FILES" && -d "$ACTIVE_DIR" ]]; then
+  ACTIVE_PLANS=()
+  while IFS= read -r p; do
+    ACTIVE_PLANS+=("$p")
+  done < <(find "$ACTIVE_DIR" -maxdepth 1 -name '*.md' ! -name 'template.md' -type f 2>/dev/null | sort)
+  STAGED_PLANS=$(filter_files "^${ACTIVE_DIR}/[^/]+\.md$")
+
+  if [[ ${#ACTIVE_PLANS[@]} -eq 0 ]]; then
     WARNINGS+=("
 [R-plan-missing] 코드 수정 있으나 active/ 에 계획 없음.
   → 단순 버그(1~2파일)면 무시. 다중 파일·설계 결정이면 docs/exec-plans/active/YYYY-MM-DD-<slug>.md 작성.
   근거: docs/design-docs/core-beliefs.md#r-plan-missing")
-    # 경고만, 차단 안 함
+  elif [[ -z "$STAGED_PLANS" ]]; then
+    # 일부라도 스테이징돼 있으면 통과시킨다 — 어느 계획에 속한 커밋인지 훅은 알 수 없고,
+    # 경고를 남발하면 되살린 경고 채널이 다시 무시된다.
+    WARNINGS+=("
+[R-plan-stale] 코드는 바뀌었는데 계획서가 따라오지 않음.
+  active/: ${ACTIVE_PLANS[*]}
+  → 진행분을 계획서에 반영하십시오 (§2 체크박스, §6 의사결정 로그, §7 발견).
+     신규 계획서라면 git add 가 필요합니다.
+  근거: docs/design-docs/core-beliefs.md#r-plan-stale")
   fi
+fi
+
+# 9. R-retro — completed/ 로 옮긴 계획서에 회고가 있는가 (경고)
+#
+# filter_files 를 쓸 수 없다. STAGED 는 --diff-filter=ACM 인데 git mv 는 rename(R100)
+# 으로 분류돼 그 필터에 잡히지 않는다(2026-08-13 실측). 자체 git 호출을 쓰되
+# STAGED 자체는 건드리지 않는다 — 바꾸면 다른 모든 검사의 범위가 함께 바뀐다.
+#
+# M(수정)은 뺀다. 넣으면 옛 계획서의 오타 수정도 걸려, 자기가 하지도 않은 작업의
+# 회고를 지어내야 한다. 이 검사의 근거는 "completed/ 로 옮기는 행위가 완료 선언" 이다.
+if (( PLAN_STATE_OK )); then
+  while IFS= read -r moved; do
+    [[ -n "$moved" && -f "$moved" ]] || continue
+    rc=0; python3 "$PLAN_STATE" retro-empty "$moved" || rc=$?
+    case $rc in
+      0)
+        WARNINGS+=("
+[R-retro] 회고 없이 완료 처리됨: $moved
+  → §8 세 항목(잘된 것 / 잘못된 것 / 다음 룰 후보) 중 최소 하나를 채우십시오.
+  근거: docs/design-docs/core-beliefs.md#r-retro")
+        ;;
+      2)
+        WARNINGS+=("
+[R-retro] 회고 판정 불가: $moved — 마크다운 형식을 확인하십시오.")
+        ;;
+    esac
+  done < <(git diff --cached --name-only --diff-filter=RA -- docs/exec-plans/completed/ 2>/dev/null || true)
 fi
 
 # 출력 — 경고가 먼저 나간다. 차단 여부와 무관하게 항상 보여야 한다.
