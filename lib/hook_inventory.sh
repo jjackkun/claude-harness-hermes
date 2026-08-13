@@ -28,7 +28,8 @@ harness_hook_inventory() {
   {
     local hooks_dir="$DEV_SETTING_DIR/assets/hooks"
     if [[ -d "$hooks_dir" ]]; then
-      find "$hooks_dir" -maxdepth 1 -type f \( -name "*.sh" -o -name "*.json" \) 2>/dev/null \
+      find "$hooks_dir" -maxdepth 1 -type f \
+        \( -name "*.sh" -o -name "*.json" -o -name "*.py" \) 2>/dev/null \
         | xargs -I{} basename {}
     fi
     local name

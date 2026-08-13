@@ -18,17 +18,48 @@ ACTIVE_DIR="docs/exec-plans/active"
 BACKLOG_DIR="docs/exec-plans/backlog"
 _has_plan_output=0
 
+# 판정 모듈은 이 훅과 같은 디렉터리에 배치된다(설치기가 복사).
+# 상대 경로를 쓰지 않는 이유: 위 cd 가 실패해도 `|| true` 로 진행하므로 CWD 를 믿을 수 없다.
+# (2026-04-17 상대 경로 CWD 의존으로 4개 hook silent-fail)
+_plan_state="$(cd "$(dirname "$0")" 2>/dev/null && pwd)/plan_state.py"
+
+# 본문을 보여줄 계획서 수의 상한. 이 출력은 매 턴 프롬프트 앞에 붙으므로 비용이 턴 수에
+# 비례한다. 항목 수 상한의 주인은 plan_state.py 의 PENDING_MAX_DEFAULT 하나다.
+_PLAN_DETAIL_MAX=3
+
 if [[ -d "$ACTIVE_DIR" ]]; then
   ACTIVE_FILES=()
   while IFS= read -r f; do
     ACTIVE_FILES+=("$f")
-  done < <(find "$ACTIVE_DIR" -maxdepth 1 -name '*.md' -type f 2>/dev/null | sort)
+  done < <(find "$ACTIVE_DIR" -maxdepth 1 -name '*.md' ! -name 'template.md' -type f 2>/dev/null | sort)
   if [[ ${#ACTIVE_FILES[@]} -gt 0 ]]; then
     echo ""
     echo "--- [Active Plans] ---"
-    echo "진행 중인 계획이 있습니다. 작업 전 다음 미완료 단계를 확인하세요."
+    echo "진행 중인 계획이 있습니다. 다음 미완료 단계를 확인하세요."
+    _shown=0
     for f in "${ACTIVE_FILES[@]}"; do
-      echo "  - $f"
+      echo "  $f"
+      if [[ $_shown -lt $_PLAN_DETAIL_MAX ]] \
+         && [[ -f "$_plan_state" ]] && command -v python3 >/dev/null 2>&1; then
+        _rc=0
+        # stderr 는 버린다 — 이 훅의 stdout 은 모델 컨텍스트로 주입되므로 트레이스백이
+        # 섞이면 입력이 오염된다. 다만 실패 사실은 stdout 에 남긴다(조용한 실패 금지).
+        _out=$(
+          if [[ -n "${HARNESS_PLAN_PENDING_MAX:-}" ]]; then
+            python3 "$_plan_state" pending "$f" --max "$HARNESS_PLAN_PENDING_MAX" 2>/dev/null
+          else
+            python3 "$_plan_state" pending "$f" 2>/dev/null
+          fi
+        ) || _rc=$?
+        if [[ $_rc -ne 0 ]]; then
+          echo "    (미완료 항목 추출 실패 — 파일을 직접 확인하십시오)"
+        else
+          while IFS= read -r item; do
+            [[ -n "$item" ]] && echo "    $item"
+          done <<< "$_out"
+        fi
+        _shown=$((_shown + 1))
+      fi
     done
     _has_plan_output=1
   fi

@@ -105,6 +105,9 @@ run_step "sync-plugins.sh --check" bash "$REPO_ROOT/scripts/sync-plugins.sh" --c
 
 for t in \
   windows-helpers-test.sh \
+  plan-state-test.sh \
+  doc-gardening-drift-test.sh \
+  update-all-roundtrip-test.sh \
   harness-hooks-smoke.sh \
   hook-prune-test.sh \
   windows-smoke.sh \
