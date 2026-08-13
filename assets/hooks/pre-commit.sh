@@ -17,7 +17,11 @@ MAX_LINES_HARD="${MAX_LINES_HARD:-500}"
 [[ -f .harnessrc ]] && source .harnessrc
 
 mapfile -t STAGED < <(git diff --cached --name-only --diff-filter=ACM)
-[[ ${#STAGED[@]} -eq 0 ]] && exit 0
+# 조기 종료 판정에는 rename 을 포함한 전체 스테이징 여부를 쓴다.
+# 순수 rename(git mv)만 있는 커밋은 ACM 에 잡히지 않아 STAGED 가 비는데, 그러면
+# 어떤 검사도 실행되지 않고 훅이 끝난다(2026-08-13 실측). STAGED 자체에 R 을 넣지
+# 않는 이유는 그러면 R-size 부터 R-secret 까지 모든 검사의 범위가 함께 바뀌기 때문이다.
+[[ -z "$(git diff --cached --name-only)" ]] && exit 0
 
 EXCLUDE_RE='(^|/)(node_modules|venv|\.venv|\.svelte-kit|\.next|dist|build|docs_legacy)(/|$)'
 
@@ -51,6 +55,10 @@ PRETTIER_FILES=$(filter_files '\.(js|jsx|ts|tsx|svelte|json|css|scss|md|yaml|yml
 
 FAIL=0
 VIOLATIONS=()
+# 차단하지 않는 경고. VIOLATIONS 와 분리하는 이유 — VIOLATIONS 는 FAIL=1 일 때만
+# 출력되므로, 경고 등급 위반이 단독 발생하면 아무것도 보이지 않는다.
+# (2026-08-13 확인: R-plan-missing 이 그 상태로 방치돼 있었다.)
+WARNINGS=()
 
 # 1. R-size
 if [[ -n "$CHECKABLE" ]]; then
@@ -208,7 +216,7 @@ fi
 if [[ -n "$CHECKABLE" && -d "$ACTIVE_DIR" ]]; then
   PLAN_COUNT=$(find "$ACTIVE_DIR" -maxdepth 1 -name '*.md' -type f 2>/dev/null | wc -l)
   if [[ "$PLAN_COUNT" -eq 0 ]]; then
-    VIOLATIONS+=("
+    WARNINGS+=("
 [R-plan-missing] 코드 수정 있으나 active/ 에 계획 없음.
   → 단순 버그(1~2파일)면 무시. 다중 파일·설계 결정이면 docs/exec-plans/active/YYYY-MM-DD-<slug>.md 작성.
   근거: docs/design-docs/core-beliefs.md#r-plan-missing")
@@ -216,7 +224,15 @@ if [[ -n "$CHECKABLE" && -d "$ACTIVE_DIR" ]]; then
   fi
 fi
 
-# 출력
+# 출력 — 경고가 먼저 나간다. 차단 여부와 무관하게 항상 보여야 한다.
+if (( ${#WARNINGS[@]} )); then
+  echo ""
+  echo "────────────────────────────────────────────────────────────────────"
+  echo "  하네스 경고 — 차단하지 않음. 판단은 작업자 몫."
+  echo "────────────────────────────────────────────────────────────────────"
+  for w in "${WARNINGS[@]}"; do echo "$w"; done
+fi
+
 if (( FAIL )); then
   echo ""
   echo "════════════════════════════════════════════════════════════════════"
