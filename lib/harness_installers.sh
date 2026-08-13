@@ -217,6 +217,33 @@ harness_template_sha() {
   { grep -v '^# harness-template-sha:' "$1" || true; } | sha256sum | cut -d' ' -f1
 }
 
+# 마커 도입(2026-08-13) 이전에 배포된 템플릿의 본문 해시.
+#
+# 마커가 없는 설치본은 기본적으로 "사용자 수정본" 으로 보고 보존하는데, 첫 세대는
+# 마커 자체가 없었으므로 손대지 않은 파일까지 전부 보존돼 개정본이 영원히 도달하지
+# 않는다. 실제로 2026-08-13 전파에서 8개 프로젝트가 미수정인데도 모두 보존됐고,
+# 그 결과 죽은 status grep 이 그대로 남았다.
+#
+# 이 목록과 일치하면 미수정 구버전으로 보고 갱신한다. 템플릿을 개정할 때 직전
+# 배포본의 해시를 추가할 필요는 없다 — 마커가 심긴 뒤부터는 마커로 판정된다.
+HARNESS_LEGACY_TEMPLATE_SHAS=(
+  # weekly-doc-gardening.gitlab-ci.yml @ 6b27dfa
+  "468f5ec6b5120baf3e681d94cc45924016b9dfaa0e040e8f4b6a5eca0539cdfd"
+  # weekly-doc-gardening.yml (github-actions) @ 6b27dfa
+  "2de09d9f7f3ff94aacded7eaa2f6d8e3417a16078304f9227da7ee49eb72f385"
+)
+
+# harness_is_known_legacy <file>
+harness_is_known_legacy() {
+  local sha
+  sha="$(sha256sum "$1" | cut -d' ' -f1)"
+  local known
+  for known in "${HARNESS_LEGACY_TEMPLATE_SHAS[@]:-}"; do
+    [[ "$sha" == "$known" ]] && return 0
+  done
+  return 1
+}
+
 # harness_write_marked_template <src> <dest> <label>
 # 사용자가 손대지 않은 설치본만 덮어쓴다.
 #
@@ -233,13 +260,20 @@ harness_write_marked_template() {
     # 마커가 없으면 grep 이 1 을 반환하고 pipefail 이 설치기를 중단시킨다 — `|| true` 필수.
     dest_marker="$(grep -m1 '^# harness-template-sha:' "$dest" 2>/dev/null | awk '{print $3}' || true)"
     if [[ -z "$dest_marker" ]]; then
-      log_warn "  workflows → $label (마커 없는 구버전 — 보존. 수동 갱신 필요)"
-      return 0
-    fi
-    dest_sha="$(harness_template_sha "$dest")"
-    if [[ "$dest_sha" != "$dest_marker" ]]; then
-      log_info "  workflows → $label (사용자 수정 감지 — 보존)"
-      return 0
+      # 마커 도입 이전 배포본이면 미수정으로 보고 갱신한다(위 목록 참조).
+      # 마커가 없으므로 아래 해시 비교는 건너뛴다 — 비교하면 항상 불일치라 보존으로 빠진다.
+      if harness_is_known_legacy "$dest"; then
+        log_info "  workflows → $label (알려진 구버전 — 갱신)"
+      else
+        log_warn "  workflows → $label (마커 없는 구버전 — 보존. 수동 갱신 필요)"
+        return 0
+      fi
+    else
+      dest_sha="$(harness_template_sha "$dest")"
+      if [[ "$dest_sha" != "$dest_marker" ]]; then
+        log_info "  workflows → $label (사용자 수정 감지 — 보존)"
+        return 0
+      fi
     fi
   fi
 

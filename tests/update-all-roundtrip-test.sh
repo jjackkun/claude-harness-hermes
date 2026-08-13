@@ -143,6 +143,37 @@ echo "$UPD_OUT" | grep -q "doc-gardening.yml (마커 없는 구버전"; _rc=$?
 assert "GitLab 수동 갱신 경고 출력" "0" "$_rc"
 
 echo ""
+echo "== 8. 알려진 구버전 해시는 마커가 없어도 갱신된다 =="
+# 마커 도입 이전에 배포된 설치본은 마커가 없어 "사용자 수정본" 으로 보존된다.
+# 그러면 마커 도입의 목적(개정본을 기존 프로젝트에 전달)이 첫 세대에 대해 달성되지 않는다.
+# 실제로 2026-08-13 전파에서 8개 프로젝트가 손대지 않은 구버전인데도 전부 보존됐다.
+# HARNESS_LEGACY_TEMPLATE_SHAS 에 등록된 해시와 일치하면 미수정으로 보고 갱신한다.
+LEGACY_PROJ="$TMP/legacyproj"
+mkdir -p "$LEGACY_PROJ"
+cd "$LEGACY_PROJ"
+git init -q .
+git config user.email "harness-test@example.com"
+git config user.name "harness-test"
+git remote add origin https://gitlab.com/example/legacyproj.git
+bash "$SANDBOX/project-claude.sh" "$LEGACY_PROJ" harness >/dev/null 2>&1
+LGWF="$LEGACY_PROJ/.gitlab/doc-gardening.yml"
+
+# 마커를 떼어 "구버전" 상태를 만들고, 그 내용의 해시를 legacy 목록에 등록한다.
+grep -v "^# harness-template-sha:" "$LGWF" > "$LGWF.tmp" && mv "$LGWF.tmp" "$LGWF"
+LEGACY_SHA=$(sha256sum "$LGWF" | cut -d' ' -f1)
+sed -i "s|^HARNESS_LEGACY_TEMPLATE_SHAS=(|HARNESS_LEGACY_TEMPLATE_SHAS=(\n  \"$LEGACY_SHA\"|" \
+  "$SANDBOX/lib/harness_installers.sh"
+echo "# LEGACY TEMPLATE REVISION" >> "$GL_SRC"
+
+UPD_OUT=$(bash "$SANDBOX/update-all.sh" 2>&1)
+grep -q "LEGACY TEMPLATE REVISION" "$LGWF"; _rc=$?
+assert "알려진 구버전 → 갱신됨" "0" "$_rc"
+grep -q "^# harness-template-sha:" "$LGWF"; _rc=$?
+assert "갱신 시 마커가 심어짐 (다음부터 정상 판정)" "0" "$_rc"
+echo "$UPD_OUT" | grep -q "알려진 구버전"; _rc=$?
+assert "구버전 갱신 사실을 로그로 알림" "0" "$_rc"
+
+echo ""
 echo "== 결과 =="
 echo "  통과: $PASS / 실패: $FAIL"
 [[ $FAIL -eq 0 ]]
