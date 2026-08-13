@@ -8,6 +8,8 @@
   is-complete <path>   0=완료   1=미완료   2=판정불가
   retro-empty <path>   0=비었음 1=채워짐   2=판정불가
   pending <path>       0=성공              2=판정불가 (미완료 항목을 stdout 출력)
+  list-complete    <path>...  해당 경로만 stdout, 0=성공 2=일부 판정불가(stderr 보고)
+  list-retro-empty <path>...  동일. 프로세스 1회로 다수 파일을 훑는 배치 경로.
 
 모든 예외는 exit 2 로 매핑한다. 파이썬 기본 예외 종료코드는 1 인데,
 retro-empty 에서 1 은 "채워짐(통과)" 이므로 크래시가 조용한 통과로 둔갑한다.
@@ -55,9 +57,9 @@ def count_boxes(lines):
     return total, done
 
 
-def cmd_is_complete(lines):
+def is_complete(lines):
     total, done = count_boxes(lines)
-    return 0 if total > 0 and total == done else 1
+    return total > 0 and total == done
 
 
 def retro_lines(lines):
@@ -124,13 +126,49 @@ def pending_items(lines, max_count):
     return items
 
 
+def scan(paths, predicate):
+    """paths 중 predicate 가 참인 경로를 stdout 으로 출력한다.
+
+    파일마다 프로세스를 새로 띄우면 completed/ 가 148개인 저장소에서 2.6초가 걸린다
+    (2026-08-13 실측). 세션 시작 훅이 동기로 부르려면 한 번에 처리해야 한다.
+    경로 열거는 여전히 호출부(bash) 몫이다 — 여기서는 넘겨받은 경로만 읽는다.
+
+    판정불가 경로는 stderr 로 보고하고 나머지는 계속 처리한다. 하나라도 있으면 exit 2 —
+    단일 경로 계약의 "2=판정불가" 를 배치 수준에서 유지한다.
+    """
+    had_error = False
+    for path in paths:
+        if os.path.basename(path) == "template.md":
+            continue
+        try:
+            lines = read_lines(path)
+        except Exception as exc:  # noqa: BLE001 — 한 파일의 실패가 전체를 멈추지 않는다
+            print("unparsable: %s (%s)" % (path, exc), file=sys.stderr)
+            had_error = True
+            continue
+        if predicate(lines):
+            print(path)
+    return 2 if had_error else 0
+
+
 def main(argv):
-    if len(argv) < 3:
-        print("usage: plan_state.py {is-complete|retro-empty|pending} <path> [--max N]",
-              file=sys.stderr)
+    if len(argv) < 2:
+        print("usage: plan_state.py {is-complete|retro-empty|pending|"
+              "list-complete|list-retro-empty} <path>... [--max N]", file=sys.stderr)
         return 2
 
     command = argv[1]
+
+    # 배치 명령은 경로를 0개 이상 받는다. 단일 경로 전처리보다 먼저 처리한다.
+    if command == "list-complete":
+        return scan(argv[2:], is_complete)
+    if command == "list-retro-empty":
+        return scan(argv[2:], is_retro_empty)
+
+    if len(argv) < 3:
+        print("usage: plan_state.py %s <path>" % command, file=sys.stderr)
+        return 2
+
     path = argv[2]
 
     # 템플릿은 정의상 미체크에 §8 이 비어 있다. 판정 대상에 넣으면 영구 위반원이 된다.
@@ -141,7 +179,7 @@ def main(argv):
     lines = read_lines(path)
 
     if command == "is-complete":
-        return cmd_is_complete(lines)
+        return 0 if is_complete(lines) else 1
 
     if command == "retro-empty":
         return 0 if is_retro_empty(lines) else 1

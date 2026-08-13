@@ -101,6 +101,47 @@ for wf in "$REPO_ROOT/assets/cron-templates/github-actions/weekly-doc-gardening.
 done
 
 echo ""
+echo "== 4. SessionStart 주기 점검 훅 =="
+# CI 배선(.gitlab-ci.yml include + 웹 UI 스케줄)이 없어도 가드닝이 도는 경로다.
+HOOK="$REPO_ROOT/assets/hooks/claude-sessionstart-doc-gardening.sh"
+cp "$REPO_ROOT/assets/hooks/plan_state.py" "$TMP/scripts/hooks/" 2>/dev/null
+cp "$HOOK" "$TMP/scripts/hooks/"
+( cd "$TMP" && git init -q . 2>/dev/null )
+
+OUT=$( cd "$TMP" && CLAUDE_PROJECT_DIR="$TMP" bash scripts/hooks/claude-sessionstart-doc-gardening.sh </dev/null 2>/dev/null )
+_rc=$?
+assert "훅이 세션 시작을 막지 않음 (exit 0)" "0" "$_rc"
+echo "$OUT" | grep -q "Doc Gardening"; _rc=$?
+assert "편차가 있으면 컨텍스트에 주입" "0" "$_rc"
+echo "$OUT" | grep -q "plan-noretro"; _rc=$?
+assert "실제 편차 항목이 포함됨" "0" "$_rc"
+
+# 스로틀 — 방금 돌았으므로 두 번째 호출은 조용해야 한다.
+OUT2=$( cd "$TMP" && CLAUDE_PROJECT_DIR="$TMP" bash scripts/hooks/claude-sessionstart-doc-gardening.sh </dev/null 2>/dev/null )
+assert "스로틀 내 재호출은 무출력" "" "$OUT2"
+
+# 옵트아웃
+rm -f "$TMP/.git/.harness-gardening-marker"
+OUT3=$( cd "$TMP" && HARNESS_GARDENING_ON_SESSION_START=0 CLAUDE_PROJECT_DIR="$TMP" \
+        bash scripts/hooks/claude-sessionstart-doc-gardening.sh </dev/null 2>/dev/null )
+assert "옵트아웃 시 무출력" "" "$OUT3"
+
+# 모듈 부재 — 조용히 죽지 말고 그냥 통과해야 한다(세션 차단 금지)
+rm -f "$TMP/.git/.harness-gardening-marker" "$TMP/scripts/hooks/plan_state.py"
+( cd "$TMP" && CLAUDE_PROJECT_DIR="$TMP" bash scripts/hooks/claude-sessionstart-doc-gardening.sh </dev/null >/dev/null 2>&1 )
+assert "모듈 부재에도 exit 0" "0" "$?"
+
+echo ""
+echo "== 5. 설치기가 CI 미배선을 경고로 보고한다 =="
+# 안내를 INFO 로 흘리던 탓에 9개 프로젝트 전부에서 가드닝이 한 번도 돈 적이 없었다.
+grep -q 'CI 에서 실행되지 않습니다' "$REPO_ROOT/lib/harness_installers.sh"; _rc=$?
+assert "미배선 경고 문구 존재" "0" "$_rc"
+grep -A2 'CI 에서 실행되지 않습니다' "$REPO_ROOT/lib/harness_installers.sh" | grep -q 'log_warn'; _rc=$?
+assert "INFO 가 아니라 log_warn 로 보고" "0" "$_rc"
+grep -q 'gitlab-ci.yml" 2>/dev/null; then' "$REPO_ROOT/lib/harness_installers.sh"; _rc=$?
+assert "실제 include 유무를 grep 으로 검사" "0" "$_rc"
+
+echo ""
 echo "== 결과 =="
 echo "  통과: $PASS / 실패: $FAIL"
 [[ $FAIL -eq 0 ]]

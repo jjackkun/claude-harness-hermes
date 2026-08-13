@@ -23,30 +23,41 @@ if [[ ! -f "$PLAN_STATE" ]] || ! command -v python3 >/dev/null 2>&1; then
   exit 0
 fi
 
+# 배치 호출을 쓴다. 파일마다 python 을 띄우면 completed/ 가 148개인 저장소에서
+# 2.6초가 걸려(2026-08-13 실측) 세션 시작 훅이 동기로 부를 수 없다.
+# 경로 열거는 여기(bash)서 하고, 마크다운 판정만 넘긴다.
+scan_into_report() {
+  local dir="$1" subcmd="$2" tag="$3" note="$4"
+  [[ -d "$dir" ]] || return 0
+
+  local -a paths=()
+  while IFS= read -r p; do
+    [[ -n "$p" ]] && paths+=("$p")
+  done < <(find "$dir" -maxdepth 1 -name '*.md' ! -name 'template.md' -type f 2>/dev/null | sort)
+  [[ ${#paths[@]} -gt 0 ]] || return 0
+
+  local err rc=0
+  err="$(mktemp)"
+  while IFS= read -r hit; do
+    [[ -n "$hit" ]] && echo "- [$tag] \`$hit\` $note" >> "$REPORT"
+  done < <(python3 "$PLAN_STATE" "$subcmd" "${paths[@]}" 2>"$err" || rc=$?)
+
+  if [[ $rc -ne 0 ]]; then
+    while IFS= read -r line; do
+      [[ -n "$line" ]] && echo "- [plan-unparsable] ${line#unparsable: } — 마크다운 형식 확인" >> "$REPORT"
+    done < "$err"
+  fi
+  rm -f "$err"
+}
+
 # active/ — 완료 상태인데 옮겨지지 않은 계획
-if [[ -d docs/exec-plans/active ]]; then
-  while IFS= read -r plan; do
-    [[ -n "$plan" ]] || continue
-    rc=0; python3 "$PLAN_STATE" is-complete "$plan" || rc=$?
-    case $rc in
-      0) echo "- [plan-graduation] \`$plan\` 완료 상태 → \`docs/exec-plans/completed/\` 로 이동 고려" >> "$REPORT" ;;
-      2) echo "- [plan-unparsable] \`$plan\` 판정 불가 — 마크다운 형식 확인" >> "$REPORT" ;;
-    esac
-  done < <(find docs/exec-plans/active -maxdepth 1 -name '*.md' ! -name 'template.md' -type f 2>/dev/null | sort)
-fi
+scan_into_report docs/exec-plans/active list-complete \
+  "plan-graduation" "완료 상태 → \`docs/exec-plans/completed/\` 로 이동 고려"
 
 # completed/ — 회고 없이 들어간 계획. pre-commit 의 R-retro 는 앞으로의 이동만 잡으므로
 # 이미 쌓인 것은 여기서 수거한다. 상태를 저장해 "새로 생긴 것만" 보고하지 않는다 —
 # 상태 파일이 또 하나의 동기화 지점이 되고, 일괄 백필은 사람의 결정 사항이다.
-if [[ -d docs/exec-plans/completed ]]; then
-  while IFS= read -r plan; do
-    [[ -n "$plan" ]] || continue
-    rc=0; python3 "$PLAN_STATE" retro-empty "$plan" || rc=$?
-    case $rc in
-      0) echo "- [plan-noretro] \`$plan\` 회고(§8) 없이 completed/ 에 있음" >> "$REPORT" ;;
-      2) echo "- [plan-unparsable] \`$plan\` 판정 불가 — 마크다운 형식 확인" >> "$REPORT" ;;
-    esac
-  done < <(find docs/exec-plans/completed -maxdepth 1 -name '*.md' ! -name 'template.md' -type f 2>/dev/null | sort)
-fi
+scan_into_report docs/exec-plans/completed list-retro-empty \
+  "plan-noretro" "회고(§8) 없이 completed/ 에 있음"
 
 exit 0

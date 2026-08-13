@@ -193,6 +193,36 @@ assert "stdin 을 소비하지 않음" "line1
 line2" "$STDIN_LEFT"
 
 echo ""
+echo "== 4. 배치 조회 (list-complete / list-retro-empty) =="
+# 파일마다 python 을 새로 띄우면 completed/ 가 148개인 저장소에서 2.6초가 걸린다
+# (2026-08-13 실측). 세션 시작 훅이 동기로 부르기엔 길어 배치 모드를 둔다.
+# 경로 열거는 여전히 bash 몫이다 — 파이썬은 넘겨받은 경로의 마크다운만 읽는다.
+
+OUT=$(python3 "$MOD" list-complete "$TMP/all-done.md" "$TMP/partial.md" "$TMP/upper.md" 2>/dev/null)
+assert "완료된 것만 출력 (2건)" "2" "$(echo "$OUT" | grep -c '^')"
+echo "$OUT" | grep -q "partial.md"
+assert "미완료는 제외" "1" "$?"
+
+OUT=$(python3 "$MOD" list-retro-empty "$TMP/retro-blank.md" "$TMP/retro-one.md" "$TMP/retro-none.md" 2>/dev/null)
+assert "회고 빈 것만 출력 (2건)" "2" "$(echo "$OUT" | grep -c '^')"
+echo "$OUT" | grep -q "retro-one.md"
+assert "회고 채운 것은 제외" "1" "$?"
+
+OUT=$(python3 "$MOD" list-complete "$TMP/all-done.md" "$TMP/template.md" 2>/dev/null)
+echo "$OUT" | grep -q "template.md"
+assert "배치에서도 template.md 제외" "1" "$?"
+
+ERR=$(python3 "$MOD" list-complete "$TMP/all-done.md" "$TMP/broken.md" 2>&1 >/dev/null)
+assert "판정불가 파일이 섞이면 exit 2" "2" "$(rc list-complete "$TMP/all-done.md" "$TMP/broken.md")"
+echo "$ERR" | grep -q "unparsable"
+assert "판정불가 경로를 stderr 로 보고" "0" "$?"
+OUT=$(python3 "$MOD" list-complete "$TMP/all-done.md" "$TMP/broken.md" 2>/dev/null)
+echo "$OUT" | grep -q "all-done.md"
+assert "판정불가가 있어도 나머지는 계속 처리" "0" "$?"
+
+assert "빈 인자 목록도 정상 종료" "0" "$(rc list-complete)"
+
+echo ""
 echo "== 결과 =="
 echo "  통과: $PASS / 실패: $FAIL"
 [[ $FAIL -eq 0 ]]

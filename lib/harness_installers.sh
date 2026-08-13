@@ -313,8 +313,20 @@ install_harness_gc_workflows() {
       local dest="$dest_dir/doc-gardening.yml"
       [[ -f "$src" ]] || { log_warn "gitlab doc-gardening template missing"; return 0; }
       harness_write_marked_template "$src" "$dest" ".gitlab/doc-gardening.yml"
-      log_info "            ↳ .gitlab-ci.yml 에 'include: { local: .gitlab/doc-gardening.yml }' 추가 + Schedules 설정 필요"
-      log_info "            ↳ scripts/hooks/{plan_state.py,doc-gardening-drift.sh} 를 커밋해야 주간 점검이 동작합니다"
+      # 배선 여부를 실제로 검사한다. GitLab 은 `.gitlab/` 를 자동 발견하지 않으므로
+      # `.gitlab-ci.yml` 의 include 가 없으면 이 파일은 존재만 할 뿐 실행되지 않는다.
+      # 안내를 INFO 로 흘리던 탓에 9개 프로젝트 전부에서 한 번도 돈 적이 없었다
+      # (2026-08-13 확인). 사실대로 경고로 보고한다.
+      if [[ -f "$project_path/.gitlab-ci.yml" ]] \
+         && grep -q "doc-gardening" "$project_path/.gitlab-ci.yml" 2>/dev/null; then
+        log_info "            ↳ .gitlab-ci.yml include 확인됨"
+      else
+        log_warn "  workflows → .gitlab/doc-gardening.yml 은 배치됐으나 CI 에서 실행되지 않습니다"
+        log_warn "            ↳ (1) .gitlab-ci.yml 에 include: [{ local: '.gitlab/doc-gardening.yml' }]"
+        log_warn "            ↳ (2) Settings→CI/CD→Schedules 에 주간 스케줄 등록 (둘 다 없으면 미실행)"
+        log_warn "            ↳ CI 없이도 SessionStart 훅이 주기 점검을 수행합니다 (기본 7일)"
+      fi
+      log_info "            ↳ scripts/hooks/{plan_state.py,doc-gardening-drift.sh} 를 커밋해야 CI 점검이 동작합니다"
       ;;
     *)
       log_info "  workflows → skipped (미지원 remote host: $remote)"
