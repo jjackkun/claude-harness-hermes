@@ -11,6 +11,10 @@ git 히스토리는 되돌릴 수 없으므로 *들어가기 전에* 막는 것�
 정답지(`.env` 실제 값) 대조는 `hermes_secret_values` 를 **공유**한다 — 복제하지
 않는다. 복제본만 고치고 원본을 두면 원본을 쓰는 경로가 계속 뚫려 있게 된다.
 
+★ 다만 **무엇을 정답지에 올릴지는 층마다 다르다.** 마스킹은 아이디까지 가려도
+손해가 없지만, 차단은 아이디 때문에 오탐이 나면 **커밋이 통째로 막힌다.**
+그래서 값은 공유하고 **선별은 각자 한다** (`SECRET_NAME_RE` 참조).
+
 사용:
     python3 check-secrets.py            # 스테이징된 파일 검사 (pre-commit)
     python3 check-secrets.py --all      # 추적 대상 전체 검사
@@ -202,14 +206,33 @@ def scan(path: str, text: str, secret_values: dict) -> list[tuple[int, str, str]
     return hits
 
 
+#: 정답지에 올릴 변수 이름. `ENV_RULE` 과 같은 어휘를 쓴다 —
+#: 두 곳이 갈리면 한쪽만 막는 구멍이 다시 생긴다.
+SECRET_NAME_RE = re.compile(r"(?:KEY|TOKEN|SECRET|PASSWORD|PASSWD|PW|CRED)$")
+
+
 def _secret_values() -> dict:
-    """정답지 조회. 모듈이 없거나 실패해도 차단기는 계속 돈다."""
+    """정답지 조회. 모듈이 없거나 실패해도 차단기는 계속 돈다.
+
+    ⚠️ **아이디류는 뺀다.** `hermes_secret_values` 는 *마스킹* 용 정답지라
+    아이디도 담는다 — LLM 입력에서 가리는 것은 옳다. 그러나 **차단**에서는 다르다.
+
+    실제로 겪은 일: 어느 프로젝트의 `*_ID` 값이 그 머신의 사용자명과 같아
+    **모든 경로 문자열**(`/home/<사용자>/…`)에 걸렸다. 결과가 오탐으로 뒤덮여
+    커밋이 통째로 막혔고, 그 상태의 차단기는 *"끄고 싶은 것"* 이 된다.
+
+    아이디는 비밀이 아니다. 사고 기록·설정 문서가 계정을 명시해야 할 때도 있다.
+    **막을 것은 비밀번호·키·토큰이다.**
+
+    근거: terminal-shipping docs/audits/2026-08-18-etrans-secret-leak.md §3-1
+    """
     if load_secret_values is None:
         return {}
     try:
-        return load_secret_values(os.getcwd())
+        values = load_secret_values(os.getcwd())
     except Exception:
         return {}
+    return {k: v for k, v in values.items() if SECRET_NAME_RE.search(k)}
 
 
 def main() -> int:
