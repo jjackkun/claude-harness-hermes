@@ -38,7 +38,7 @@ print(d.get("source", "") or "")
 fi
 
 # project_dir 해석 — 워크트리 경로는 메인 루트로 정규화(백그라운드 워크트리 세션이
-# 워크트리 안의 없는 .hermes 를 보지 않도록, serena 훅과 동일 처리).
+# 워크트리 안의 없는 .hermes 를 보지 않도록 메인 루트로 정규화한다).
 raw_dir="${CLAUDE_PROJECT_DIR:-$PWD}"
 project_dir="$(printf '%s' "$raw_dir" | sed 's|/.claude/worktrees/[^/]*$||')"
 log_file="$project_dir/.hermes/hooks.log"

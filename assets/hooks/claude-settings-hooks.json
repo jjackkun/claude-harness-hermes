@@ -22,11 +22,6 @@
         "_purpose": "Task/Agent 도구 — frontend/DB/TS 작업을 general-purpose 로 dispatch 하는 것을 차단",
         "matcher": "Task|Agent",
         "command": "${CLAUDE_PROJECT_DIR}/scripts/hooks/claude-pretooluse-agent-guard.sh"
-      },
-      {
-        "_purpose": "[serena 프리셋] Serena 미초기화 시 Edit/Write/MultiEdit 차단 (exit 2) — 2026-05-07",
-        "matcher": "Edit|Write|MultiEdit",
-        "command": "${CLAUDE_PROJECT_DIR}/scripts/hooks/claude-pretooluse-serena-guard.sh"
       }
     ],
     "PostToolUse": [
@@ -44,11 +39,6 @@
         "_purpose": "Write/Edit 누적 15 회 도달 시 code-reviewer dispatch 리마인드 — 2026-04-15 자성",
         "matcher": "Write|Edit",
         "command": "${CLAUDE_PROJECT_DIR}/scripts/hooks/claude-posttooluse-review-reminder.sh"
-      },
-      {
-        "_purpose": "[serena 프리셋] check_onboarding_performed 완료 시 serena-ready flag 생성 — 2026-05-07",
-        "matcher": "mcp__plugin_serena_serena__check_onboarding_performed",
-        "command": "${CLAUDE_PROJECT_DIR}/scripts/hooks/claude-posttooluse-serena-ready.sh"
       }
     ]
   }

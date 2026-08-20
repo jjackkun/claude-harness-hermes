@@ -5,7 +5,7 @@
 #   2026-08-04 이전 generate_settings_json.py 의 hook 병합은 순수 additive 였다.
 #   "preset 에서 빠진 hook"과 "사용자가 직접 등록한 hook"을 구분할 수단이 없어
 #   둘 다 보존됐고, 그 결과 한번 등록된 hook 은 preset 을 제거해도 영구히 남았다
-#   (serena 가드가 프로젝트마다 되살아난 원인). 소유권 기반 회수 로직의 회귀 방지.
+#   (폐기된 가드 훅이 프로젝트마다 되살아난 원인). 소유권 기반 회수 로직의 회귀 방지.
 #
 # 실행: bash tests/hook-prune-test.sh
 # 종료 코드: 0 = 모든 단언 통과, 1 = 실패
@@ -26,7 +26,7 @@ assert() {
   fi
 }
 
-HARNESS_HOOK="claude-pretooluse-serena-guard.sh"
+HARNESS_HOOK="claude-pretooluse-bash-guard.sh"
 HARNESS_CMD="\${CLAUDE_PROJECT_DIR}/scripts/hooks/$HARNESS_HOOK"
 USER_CMD="\${CLAUDE_PROJECT_DIR}/scripts/custom/my-own-hook.sh"
 

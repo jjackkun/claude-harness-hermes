@@ -32,7 +32,7 @@ export DEV_SETTING_DIR ASSETS_DIR TEMPLATES_DIR
 source "$DEV_SETTING_DIR/lib/common.sh"
 
 # ---- Parse flags (order-independent) ----
-# --skills-only        : refresh global skills only (skip uv/plugin install). Fast path
+# --skills-only        : refresh global skills only (skip plugin install). Fast path
 #                        used by setup.sh's [global] step.
 # --set-global "<names>": overwrite presets.global.lock with these global-preset names
 #                        (space-separated; "" clears) before installing. Omit to keep
@@ -155,7 +155,7 @@ fi
 log_success "Common install complete."
 
 # ---- target user 기준 실행 헬퍼 ----
-# sudo 로 실행됐을 때 uv / claude plugin 설치가 root 홈(~root)에 들어가는 것을 방지.
+# sudo 로 실행됐을 때 claude plugin 설치가 root 홈(~root)에 들어가는 것을 방지.
 # root 이고 대상 사용자가 따로 있으면 sudo -u 로 강등해 실행한다.
 _run_as_target() {
   if [[ $EUID -eq 0 && "$TARGET_USER" != "root" ]]; then
@@ -167,24 +167,6 @@ _run_as_target() {
   fi
 }
 
-# ---- uv 자동 설치 (Serena MCP 의존성, $TARGET_USER 홈 기준) ----
-if ! _run_as_target 'command -v uv >/dev/null 2>&1'; then
-  echo ""
-  log_info "uv not found — installing for $TARGET_USER (Serena MCP requires uv)…"
-  if _run_as_target 'curl -LsSf https://astral.sh/uv/install.sh | sh' >/dev/null 2>&1; then
-    # 설치 후 현재 셸 PATH 반영 (target user 홈 기준)
-    export PATH="$TARGET_HOME/.local/bin:$TARGET_HOME/.cargo/bin:$PATH"
-    if _run_as_target 'command -v uv >/dev/null 2>&1'; then
-      log_success "uv installed: $(_run_as_target 'uv --version')"
-    else
-      log_warn "uv installed but not in PATH — open a new shell or add ~/.local/bin to PATH"
-    fi
-  else
-    log_warn "uv install failed — Serena MCP may not work. Install manually: https://astral.sh/uv"
-  fi
-else
-  log_info "uv already installed: $(_run_as_target 'uv --version')"
-fi
 
 # ---- Claude Code 공식 플러그인 자동 설치 ($TARGET_USER 스코프) ----
 # 설치된 플러그인 목록 캐시 (매번 조회 방지)
@@ -209,40 +191,10 @@ if _run_as_target 'command -v claude >/dev/null 2>&1'; then
   _install_plugin "session-report@claude-plugins-official"    "Session Report"
   _install_plugin "claude-md-management@claude-plugins-official" "Claude MD Management"
   _install_plugin "hookify@claude-plugins-official"           "Hookify"
-  _install_plugin "serena@claude-plugins-official"            "Serena MCP"
 else
   log_warn "claude CLI not found — skipping plugin install. Re-run after installing Claude Code."
 fi
 
-# ---- Serena 대시보드 자동 탭 열림 끄기 (설치 시 1회, idempotent) ----
-# Serena 는 실행될 때마다 web_dashboard_open_on_launch 기본값(true)에 따라 브라우저 탭을
-# 새로 연다. MCP 재기동마다 탭이 누적되므로 설치 시점에 false 로 고정한다.
-# 대시보드 서버 자체(web_dashboard: true)는 유지되어 수동 접속은 계속 가능하다.
-_SERENA_CFG="$TARGET_HOME/.serena/serena_config.yml"
-_SERENA_KEY="web_dashboard_open_on_launch"
-if [[ -f "$_SERENA_CFG" ]]; then
-  if grep -qE "^${_SERENA_KEY}:" "$_SERENA_CFG"; then
-    sed -i -E "s/^${_SERENA_KEY}:.*/${_SERENA_KEY}: false/" "$_SERENA_CFG"
-    log_success "  serena  → 대시보드 자동 탭 열림 비활성화 (기존 설정 수정)"
-  else
-    printf '\n%s: false\n' "$_SERENA_KEY" >> "$_SERENA_CFG"
-    log_success "  serena  → 대시보드 자동 탭 열림 비활성화 (키 추가)"
-  fi
-else
-  # 파일 부재(첫 설치) — Serena from_config_file 은 `projects` 키가 없으면 실패하므로
-  # 부분 stub 대신 최소 유효 설정을 생성한다. 나머지 필드는 Serena 가 기본값으로 머지한다.
-  mkdir -p "$(dirname "$_SERENA_CFG")"
-  cat > "$_SERENA_CFG" <<'YAML'
-# Serena 전역 설정 — harness 최소 기본값. Serena 가 첫 실행 시 나머지 필드를 기본값으로 채운다.
-projects: []
-web_dashboard_open_on_launch: false
-YAML
-  log_success "  serena  → 대시보드 자동 탭 열림 비활성화 (최소 설정 생성)"
-fi
-# root 로 실행됐다면 소유권을 타깃 유저로 복구
-if [[ $EUID -eq 0 && "$TARGET_USER" != "root" ]]; then
-  chown -R "$TARGET_USER:$TARGET_USER" "$TARGET_HOME/.serena"
-fi
 
 echo ""
 echo "Next step: set up a project with"

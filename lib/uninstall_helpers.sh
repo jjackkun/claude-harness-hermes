@@ -228,49 +228,6 @@ uninstall_gc_workflows() {
   fi
 }
 
-# ── package.json scripts.serena 제거 ─────────────────────────────────────────
-uninstall_pkg_serena() {
-  local project_path="$1"
-  local pkg="$project_path/package.json"
-  [[ -f "$pkg" ]] || return 0
-  command -v python3 >/dev/null 2>&1 || return 0
-  local removed
-  removed=$(python3 - "$pkg" "$DRY_RUN" <<'PYEOF'
-import json
-import sys
-
-pkg_path, dry_run = sys.argv[1], sys.argv[2]
-try:
-    with open(pkg_path) as f:
-        pkg = json.load(f)
-except (OSError, json.JSONDecodeError):
-    print(0)
-    sys.exit(0)
-
-scripts = pkg.get("scripts")
-cmd = scripts.get("serena", "") if isinstance(scripts, dict) else ""
-# 하네스가 주입한 항목만 제거 (bin/serena-dash 경로 마커)
-if isinstance(cmd, str) and "serena-dash" in cmd:
-    if dry_run != "1":
-        del scripts["serena"]
-        if not scripts:
-            pkg.pop("scripts", None)
-        with open(pkg_path, "w") as f:
-            json.dump(pkg, f, indent=2, ensure_ascii=False)
-            f.write("\n")
-    print(1)
-else:
-    print(0)
-PYEOF
-  ) || removed=0
-  if [[ "${removed:-0}" -gt 0 ]]; then
-    if [[ $DRY_RUN -eq 1 ]]; then
-      echo -e "  ${YELLOW}[dry]${RESET} package.json scripts.serena 제거"
-    else
-      echo -e "  ${GREEN}✔${RESET} package.json scripts.serena 제거"
-    fi
-  fi
-}
 
 # ── Codex 설치물 제거 ─────────────────────────────────────────────────────────
 # .codex/ + AGENTS.md 관리 블록 + scripts/codex-hooks/ + codex 보조 스크립트 +

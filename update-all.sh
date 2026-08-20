@@ -151,19 +151,7 @@ run_target() {
   fi
 }
 
-# ── 머신 전역 도구 체크 (uv + 플러그인 4종 + Codex Serena) ────────────────
-if ! command -v uv >/dev/null 2>&1; then
-  echo -e "${YELLOW}▸ uv 미설치 — 설치 중...${RESET}"
-  if curl -LsSf https://astral.sh/uv/install.sh | sh >/dev/null 2>&1; then
-    # 설치 직후 현재 셸에 PATH 반영 (uv 기본 설치 위치: ~/.local/bin)
-    export PATH="$HOME/.local/bin:$PATH"
-    echo -e "  ${GREEN}✔ uv 설치 완료${RESET}"
-  else
-    echo -e "  ${YELLOW}⚠ uv 설치 실패 — 수동 설치: curl -LsSf https://astral.sh/uv/install.sh | sh${RESET}"
-  fi
-  echo ""
-fi
-
+# ── 머신 전역 도구 체크 (플러그인 3종) ────────────────────────────────────
 if [[ "$TARGET" == "claude" || "$TARGET" == "both" ]] && command -v claude >/dev/null 2>&1; then
   _INSTALLED_PLUGINS=$(claude plugin list 2>/dev/null || true)
   _install_plugin() {
@@ -179,58 +167,9 @@ if [[ "$TARGET" == "claude" || "$TARGET" == "both" ]] && command -v claude >/dev
   _install_plugin "session-report@claude-plugins-official"       "Session Report"
   _install_plugin "claude-md-management@claude-plugins-official" "Claude MD Management"
   _install_plugin "hookify@claude-plugins-official"              "Hookify"
-  _install_plugin "serena@claude-plugins-official"               "Serena MCP"
   unset _INSTALLED_PLUGINS _install_plugin
 fi
 
-# ---- Serena 대시보드 자동 탭 열림 끄기 (idempotent) ----
-# Serena 는 실행마다 web_dashboard_open_on_launch(기본 true)에 따라 새 브라우저 탭을 연다.
-# MCP 재기동마다 탭이 누적되므로 false 로 고정한다. 대시보드 서버 자체는 유지된다.
-_SERENA_CFG="$HOME/.serena/serena_config.yml"
-_SERENA_KEY="web_dashboard_open_on_launch"
-if [[ -f "$_SERENA_CFG" ]]; then
-  if grep -qE "^${_SERENA_KEY}:" "$_SERENA_CFG"; then
-    sed -i -E "s/^${_SERENA_KEY}:.*/${_SERENA_KEY}: false/" "$_SERENA_CFG"
-  else
-    printf '\n%s: false\n' "$_SERENA_KEY" >> "$_SERENA_CFG"
-  fi
-  echo -e "  ${GREEN}✔ Serena 대시보드 자동 탭 열림 비활성화${RESET}"
-else
-  # 파일 부재 — Serena from_config_file 은 `projects` 키가 없으면 실패하므로 최소 유효 설정 생성
-  mkdir -p "$(dirname "$_SERENA_CFG")"
-  cat > "$_SERENA_CFG" <<'YAML'
-# Serena 전역 설정 — harness 최소 기본값. Serena 가 첫 실행 시 나머지 필드를 기본값으로 채운다.
-projects: []
-web_dashboard_open_on_launch: false
-YAML
-  echo -e "  ${GREEN}✔ Serena 대시보드 자동 탭 열림 비활성화 (최소 설정 생성)${RESET}"
-fi
-unset _SERENA_CFG _SERENA_KEY
-
-if [[ "$TARGET" == "codex" || "$TARGET" == "both" ]]; then
-  if ! command -v serena >/dev/null 2>&1; then
-    echo -e "${YELLOW}▸ Serena 미설치 — 설치 중...${RESET}"
-    uv tool install -p 3.13 serena-agent@latest --prerelease=allow >/dev/null 2>&1 \
-      && echo -e "  ${GREEN}✔ Serena 설치 완료${RESET}" \
-      || echo -e "  ${YELLOW}⚠ Serena 설치 실패${RESET}"
-    echo ""
-  fi
-  _CODEX_CONFIG="$HOME/.codex/config.toml"
-  if ! grep -q '\[mcp_servers.serena\]' "$_CODEX_CONFIG" 2>/dev/null; then
-    echo -e "${YELLOW}▸ Codex config.toml 에 Serena MCP 미등록 — 등록 중...${RESET}"
-    mkdir -p "$HOME/.codex"
-    cat >> "$_CODEX_CONFIG" <<'TOML'
-
-[mcp_servers.serena]
-startup_timeout_sec = 15
-command = "serena"
-args = ["start-mcp-server", "--project-from-cwd", "--context=codex"]
-TOML
-    echo -e "  ${GREEN}✔ Serena MCP 등록 완료${RESET}"
-    echo ""
-  fi
-  unset _CODEX_CONFIG
-fi
 
 # ── 전역 공통 assets 갱신 (public-claude.sh) ──────────────────────────────────
 if [[ "$TARGET" == "claude" || "$TARGET" == "both" ]]; then

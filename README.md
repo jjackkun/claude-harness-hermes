@@ -69,7 +69,7 @@ ai-dev-setting/                       ← 이 디렉터리 (private git repo 권
 ├── project-claude.sh                 ← 프로젝트 설치 (매번)
 ├── project-codex.sh                  ← Codex 프로젝트 설치
 ├── uninstall.sh                      ← 설치물 안전 제거 (사용자 자산은 보존)
-├── bin/                              ← 로컬 도구 바이너리 (fzf, serena-dash)
+├── bin/                              ← 로컬 도구 바이너리 (fzf)
 ├── lib/
 │   ├── common.sh                     ← 공통 함수 진입점 (모든 lib 로드)
 │   ├── logging.sh                    ← log_info/warn/error 출력 헬퍼
@@ -95,7 +95,7 @@ ai-dev-setting/                       ← 이 디렉터리 (private git repo 권
 │   ├── build/{jpa,mybatis,maven,gradle}.conf
 │   ├── permissions/{git-write,pm2}.conf  ← 추가 권한 화이트리스트
 │   ├── tools/{terminal-paste-image}.conf
-│   ├── workflow/{harness,hermes,mcp,skill-dev,serena}.conf
+│   ├── workflow/{harness,hermes,mcp,skill-dev}.conf
 │   └── global/                           ← [global] 스텝: ~/.claude 전역 opt-in 스킬 (현재 비어있음)
 ├── scripts/
 │   ├── hermes-init.py                ← 헤르메스 SQLite DB 초기화
@@ -163,15 +163,9 @@ git clone <repo-url> ~/PROJECT/ai-dev-setting
 
 | 도구 | 설명 |
 |------|------|
-| `uv` | Python 패키지 관리자 (Serena 의존성) |
 | Session Report | `/session-report` 커맨드로 세션 요약 |
 | Claude MD Management | `/claude-md` 커맨드로 CLAUDE.md 관리 |
 | Hookify | PreToolUse/PostToolUse 훅 자동 연결 |
-| Serena MCP | 코드 심볼 인덱싱으로 토큰 절감 (자동 백그라운드 동작) |
-
-`setup.sh` (Codex 타겟) 실행 시:
-- `serena-agent` 자동 설치
-- `~/.codex/config.toml` 에 Serena MCP 서버 자동 등록
 
 `update-all.sh` 실행 시에도 동일하게 미설치 항목을 감지해 자동 설치합니다.
 
@@ -284,7 +278,7 @@ Claude 전용 `CLAUDE.md`, `.claude/settings.json` / `.claude/settings.local.jso
 | build | jpa, mybatis, maven, gradle | **CLAUDE.md 규칙 섹션** 위주. jpa 만 전용 스킬(`jpa-patterns`) 보유 — 나머지 전용 스킬/룰은 TODO |
 | permissions | git-write, pm2 | 추가 권한 화이트리스트 |
 | tools | terminal-paste-image | VSCode 익스텐션 등 부가 도구 |
-| workflow | **harness**, **hermes**, mcp, skill-dev, serena | 작업 방식·도구 프리셋 |
+| workflow | **harness**, **hermes**, mcp, skill-dev | 작업 방식·도구 프리셋 |
 | global | _(현재 없음)_ | **전역 opt-in 스킬 자리.** `[global]` 스텝에서 선택 시 프로젝트가 아닌 `~/.claude/skills/` 에 한 번 설치되어 모든 프로젝트에서 사용. `~/.claude/presets.global.lock` 에 기록되고 `update-all` 이 유지. `resolve_preset` 대상이 아니라 프로젝트 프리셋으로는 설치 불가. `presets/global/<name>.conf` 추가 시 자동 노출 |
 
 ### global 카테고리 (전역 opt-in)
@@ -306,20 +300,10 @@ Claude 전용 `CLAUDE.md`, `.claude/settings.json` / `.claude/settings.local.jso
 - **제거(참조추적)**: 선택을 해제하면, **다른 프로젝트도 더 이상 그 플러그인을 선택하지 않을 때만**
   `claude plugin uninstall` 로 전역에서 제거합니다. 어느 프로젝트가 어떤 플러그인을 요구하는지
   `<claude_dir>/.ai-dev-setting/preset-plugins.tsv` 에 `플러그인ID\t프로젝트경로` 로 기록(refcount)합니다.
-- `setup.sh` 가 강제 설치하는 baseline official 플러그인(session-report, hookify, serena 등)은
+- `setup.sh` 가 강제 설치하는 baseline official 플러그인(session-report, hookify 등)은
   이 manifest 에 등록되지 않으므로 절대 제거 대상이 아닙니다.
 - `--dry-run` 으로 설치/제거 계획(`would-install` / `would-remove`)을 미리 확인할 수 있습니다.
 
-### serena 프리셋
-
-`workflow/serena` 를 선택하면 CLAUDE.md 에 "Serena MCP 코드 검색·심볼 탐색 강제" 섹션이 자동 삽입됩니다.
-Claude 가 매 턴 이 룰을 읽어 Grep 대신 Serena 도구(`find_symbol`, `search_for_pattern` 등)를 1순위로 사용하게 합니다.
-
-- **선택 권장**: Python / TypeScript / Java / Dart 등 LSP 지원 언어 + 심볼이 많은 코드 헤비 프로젝트
-- **선택 비추**: bash·markdown·문서 위주 리포 (LSP 가치 낮고 토큰만 소모)
-
-Serena MCP 서버 자체는 `setup.sh` 가 머신 전역으로 자동 설치하므로 이 프리셋과 무관하게 항상 등록되어 있습니다.
-이 프리셋은 단지 "Claude 가 Serena 를 실제로 쓰도록" 룰을 박는 역할입니다.
 
 ### harness 프리셋
 
@@ -498,7 +482,7 @@ Windows NTFS 경로(`/mnt/c/...`)의 경우 NTFS 심볼릭 링크 제한으로 *
 # 1) 리포 클론
 git clone <repo-url> ~/PROJECT/ai-dev-setting
 
-# 2) 각 프로젝트 셋업 (대화형) — uv·플러그인·Serena 자동 설치 포함
+# 2) 각 프로젝트 셋업 (대화형) — 플러그인 자동 설치 포함
 cd ~/PROJECT/my-project
 ~/PROJECT/ai-dev-setting/setup.sh
 ```
@@ -567,7 +551,6 @@ CI(`.github/workflows/ci.yml`)는 push/PR 마다 `SKIP_INTERACTIVE=1 bash tests/
 - `bash` 4 이상
 - `python3` (`generate_settings.py`, 헤르메스 스크립트 사용)
 - `fzf` — `setup.sh` 실행 시 없으면 자동 설치
-- `uv` — `setup.sh` 실행 시 없으면 자동 설치 (Serena MCP 의존성)
 - `jq` — 헤르메스 Stop Hook 에서 transcript JSON 파싱 시 사용
 - 프리셋이 사용하는 외부 도구들(ruff, prettier, mvn, gradlew 등)은 **있으면 사용하고 없으면 조용히 건너뜁니다**
 

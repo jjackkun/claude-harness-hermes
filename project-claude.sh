@@ -175,32 +175,6 @@ write_manifest "$CLAUDE_DIR/.dev-setting-manifest.json"
 printf '%s\n' "${PRESETS[@]}" > "$CLAUDE_DIR/presets.lock"
 log_info "Saved presets → .claude/presets.lock"
 
-# ---- package.json 에 serena 스크립트 주입 (serena preset 선택 + Node 프로젝트만) ----
-SERENA_SELECTED=0
-for _preset in "${PRESETS[@]}"; do
-  [[ "$_preset" == "serena" ]] && { SERENA_SELECTED=1; break; }
-done
-unset _preset
-PKG_JSON="$PROJECT_PATH/package.json"
-if [[ $SERENA_SELECTED -eq 1 && -f "$PKG_JSON" ]] && command -v python3 >/dev/null 2>&1; then
-  SERENA_CMD="$DEV_SETTING_DIR/bin/serena-dash"
-  python3 - "$PKG_JSON" "$SERENA_CMD" <<'PYEOF'
-import json, sys
-pkg_path, cmd = sys.argv[1], sys.argv[2]
-with open(pkg_path) as f:
-    pkg = json.load(f)
-scripts = pkg.setdefault("scripts", {})
-if scripts.get("serena") != cmd:
-    scripts["serena"] = cmd
-    with open(pkg_path, "w") as f:
-        json.dump(pkg, f, indent=2, ensure_ascii=False)
-        f.write("\n")
-    print(f"  ✔ package.json scripts.serena 등록 완료")
-else:
-    print(f"  ✔ package.json scripts.serena 이미 최신")
-PYEOF
-  log_info "Serena dash shortcut → package.json"
-fi
 
 # 머신 로컬 레지스트리에 등록 (dry-run 제외, 중복 방지)
 if [[ $DRY_RUN -eq 0 ]]; then

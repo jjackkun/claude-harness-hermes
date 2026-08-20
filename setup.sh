@@ -114,21 +114,7 @@ if [[ "$TARGET" == "claude" || "$TARGET" == "both" ]] && command -v claude >/dev
     echo ""
   fi
 
-  # ── 공식 플러그인 4종 자동 설치 (머신 전역, idempotent) ──────────────────
-  # uv: Serena MCP 서버 구동에 필요한 Python 패키지 관리자
-  if ! command -v uv >/dev/null 2>&1; then
-    echo -e "${YELLOW}▸ uv 설치 중 (Serena MCP 필요)...${RESET}"
-    if curl -LsSf https://astral.sh/uv/install.sh | sh >/dev/null 2>&1; then
-      # 설치 직후 현재 셸에 PATH 반영 (uv 기본 설치 위치: ~/.local/bin)
-      export PATH="$HOME/.local/bin:$PATH"
-      echo -e "  ${GREEN}✔ uv 설치 완료${RESET}"
-    else
-      echo -e "  ${YELLOW}⚠ uv 설치 실패 — Serena MCP 가 동작하지 않을 수 있습니다${RESET}"
-      echo -e "  ${YELLOW}  수동 설치: curl -LsSf https://astral.sh/uv/install.sh | sh${RESET}"
-    fi
-    echo ""
-  fi
-
+  # ── 공식 플러그인 3종 자동 설치 (머신 전역, idempotent) ──────────────────
   _INSTALLED_PLUGINS=$(claude plugin list 2>/dev/null || true)
   _install_plugin() {
     local id="$1" label="$2"
@@ -145,54 +131,8 @@ if [[ "$TARGET" == "claude" || "$TARGET" == "both" ]] && command -v claude >/dev
   _install_plugin "session-report@claude-plugins-official"      "Session Report"
   _install_plugin "claude-md-management@claude-plugins-official" "Claude MD Management"
   _install_plugin "hookify@claude-plugins-official"              "Hookify"
-  _install_plugin "serena@claude-plugins-official"               "Serena MCP"
   unset _INSTALLED_PLUGINS _install_plugin
   echo ""
-fi
-
-# ── Codex: Serena MCP 서버 등록 (머신 전역, idempotent) ────────────────────
-if [[ "$TARGET" == "codex" || "$TARGET" == "both" ]]; then
-  # uv: Serena 실행에 필요
-  if ! command -v uv >/dev/null 2>&1; then
-    echo -e "${YELLOW}▸ uv 설치 중 (Serena MCP 필요)...${RESET}"
-    if curl -LsSf https://astral.sh/uv/install.sh | sh >/dev/null 2>&1; then
-      # 설치 직후 현재 셸에 PATH 반영 (uv 기본 설치 위치: ~/.local/bin)
-      export PATH="$HOME/.local/bin:$PATH"
-      echo -e "  ${GREEN}✔ uv 설치 완료${RESET}"
-    else
-      echo -e "  ${YELLOW}⚠ uv 설치 실패 — Serena MCP 가 동작하지 않을 수 있습니다${RESET}"
-      echo -e "  ${YELLOW}  수동 설치: curl -LsSf https://astral.sh/uv/install.sh | sh${RESET}"
-    fi
-    echo ""
-  fi
-
-  # serena 설치
-  if ! command -v serena >/dev/null 2>&1; then
-    echo -e "${YELLOW}▸ Serena 설치 중...${RESET}"
-    if uv tool install -p 3.13 serena-agent@latest --prerelease=allow >/dev/null 2>&1; then
-      echo -e "  ${GREEN}✔ Serena 설치 완료${RESET}"
-    else
-      echo -e "  ${YELLOW}⚠ Serena 설치 실패 — 수동: uv tool install -p 3.13 serena-agent@latest --prerelease=allow${RESET}"
-    fi
-    echo ""
-  fi
-
-  # ~/.codex/config.toml 에 MCP 서버 등록 (이미 있으면 skip)
-  _CODEX_CONFIG="$HOME/.codex/config.toml"
-  if ! grep -q '\[mcp_servers.serena\]' "$_CODEX_CONFIG" 2>/dev/null; then
-    echo -e "${YELLOW}▸ Codex config.toml 에 Serena MCP 등록 중...${RESET}"
-    mkdir -p "$HOME/.codex"
-    cat >> "$_CODEX_CONFIG" <<'TOML'
-
-[mcp_servers.serena]
-startup_timeout_sec = 15
-command = "serena"
-args = ["start-mcp-server", "--project-from-cwd", "--context=codex"]
-TOML
-    echo -e "  ${GREEN}✔ Serena MCP 등록 완료${RESET} (~/.codex/config.toml)"
-    echo ""
-  fi
-  unset _CODEX_CONFIG
 fi
 
 # ── 프로젝트 경로 입력 ────────────────────────────────────────────────────────

@@ -12,15 +12,8 @@
 # 소유 판별은 assets/hooks/ 디렉터리 스캔에 의존하므로, 파일을 지우는 순간
 # "하네스 소유"로 인식되지 않아 기존 프로젝트에서 제거할 수 없게 된다.
 # 배포 중단한 hook 은 파일을 지우기 전에 반드시 여기 등재한다.
-RETIRED_HOOK_SOURCES=(
-  # 2026-08-04 serena 프리셋의 강제 초기화 게이트 폐기.
-  # Serena 미초기화 시 Edit/Write/MultiEdit 을 전면 차단(exit 2)했는데,
-  # SessionStart 훅이 compact 마다 ready flag 를 지워 재차단이 반복됐고
-  # LSP 와 무관한 마크다운 편집까지 막혔다. Serena 는 수동 호출로 전환.
-  claude-sessionstart-serena.sh
-  claude-posttooluse-serena-ready.sh
-  claude-pretooluse-serena-guard.sh
-)
+# 지금은 비어 있다. 배포를 중단하는 hook 이 생기면 파일을 지우기 전에 여기 넣는다.
+RETIRED_HOOK_SOURCES=()
 
 # harness_hook_inventory
 # 하네스 소유 hook 파일명 전체(현행 assets/hooks + 은퇴분)를 개행 구분으로 출력.
@@ -33,8 +26,10 @@ harness_hook_inventory() {
         | xargs -I{} basename {}
     fi
     local name
-    for name in "${RETIRED_HOOK_SOURCES[@]}"; do
-      printf '%s\n' "$name"
-    done
+    if (( ${#RETIRED_HOOK_SOURCES[@]} > 0 )); then
+      for name in "${RETIRED_HOOK_SOURCES[@]}"; do
+        printf '%s\n' "$name"
+      done
+    fi
   } | sort -u
 }

@@ -21,9 +21,6 @@ __pycache__/
 .worktrees/
 .claude/worktrees/
 
-# Serena MCP local data — ai-dev-setting 본체는 Serena 룰 미사용 프로젝트
-# (bash/markdown 위주라 LSP 가치 낮음). Serena 가 자동 생성한 .serena/ 무시.
-.serena/
 
 # 헤르메스 로컬 DB — 프로젝트별 생성, 커밋 불필요
 .hermes/

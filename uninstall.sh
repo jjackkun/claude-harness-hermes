@@ -171,10 +171,7 @@ do_uninstall() {
   # 9. GC 워크플로 (weekly-doc-gardening)
   uninstall_gc_workflows "$project_path"
 
-  # 10. package.json scripts.serena
-  uninstall_pkg_serena "$project_path"
-
-  # 11. scripts/ 의 hermes 설치물: hermes-*.py / hermes_*.py(언더스코어 모듈) / hermes-*.sh 래퍼
+  # 10. scripts/ 의 hermes 설치물: hermes-*.py / hermes_*.py(언더스코어 모듈) / hermes-*.sh 래퍼
   #     (hermes.conf 설치 목록 전체를 덮는다 — 명시 목록 대신 일반 패턴으로 설치-제거 대칭 보장)
   local scripts_dir="$project_path/scripts"
   if [[ -d "$scripts_dir" ]]; then
@@ -185,7 +182,7 @@ do_uninstall() {
     done
   fi
 
-  # 12. Codex 설치물 (.codex/, AGENTS.md 블록, codex-hooks, 레지스트리 등)
+  # 11. Codex 설치물 (.codex/, AGENTS.md 블록, codex-hooks, 레지스트리 등)
   uninstall_codex "$project_path"
 
   # 12-1. scripts/ 가 완전히 비었으면 디렉토리 제거
@@ -197,7 +194,7 @@ do_uninstall() {
   # 12-2. 네이티브 메모리 심링크 → 실디렉터리 복원 (Claude Code 메모리 보존)
   restore_memory_symlink "$project_path"
 
-  # 13. .hermes/
+  # 12. .hermes/
   local hermes_dir="$project_path/.hermes"
   if [[ -d "$hermes_dir" ]]; then
     if [[ $remove_hermes -eq 1 ]]; then
@@ -207,7 +204,7 @@ do_uninstall() {
     fi
   fi
 
-  # 14. 레지스트리에서 제거
+  # 13. 레지스트리에서 제거
   if [[ $DRY_RUN -eq 0 ]]; then
     _remove_registry_entry "$REGISTRY" "$project_path"
     echo -e "  ${GREEN}✔${RESET} .installed-projects 에서 제거"
