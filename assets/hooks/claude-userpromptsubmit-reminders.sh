@@ -114,7 +114,7 @@ cat <<'EOF'
 
 --- [Harness Reminders] ---
 1. 기존 코드 검색 → 짧은 계획 → 구현 → 검증.
-2. 파일 책임을 좁게 유지하고 soft 400 / hard 500 줄을 넘기기 전에 분리.
+2. 한 파일은 한 책임. 책임이 둘이 되면 그 자리에서 분리 — 400/500 줄은 안전망이지 분리 시점이 아니다.
 3. 큰 변경·공유 경계·보안/DB/동시성 영향이 있으면 reviewer 로 승격.
 4. --no-verify 금지. UI 작업은 관련 frontend skill 확인.
 근거: docs/design-docs/core-beliefs.md

@@ -512,6 +512,62 @@ git reset -q
 git checkout -- docs/exec-plans/completed/ 2>/dev/null || true
 
 echo ""
+echo "== 26. R-size 책임 신호 — 줄 수와 무관하게 책임 증가를 잡는다 =="
+# 근거: docs/superpowers/specs/2026-08-21-responsibility-over-linecount-design.md
+# 실측 재생: data-model.md 는 물리 설계가 유입돼 책임이 둘이 된 커밋에서 397 줄이었다.
+# soft 400 을 3 줄 차이로 비껴가 어떤 장치도 말하지 않았다. 하위 절은 4→17 로 뛰었다.
+mkdir -p rsize
+{ echo "# 자료 모델"; for i in $(seq 1 4); do echo "### 논리 $i"; done; } > rsize/data-model.md
+git add rsize/data-model.md && git commit -qm "rsize fixture" >/dev/null
+{ echo "# 자료 모델"; for i in $(seq 1 4);  do echo "### 논리 $i"; done
+                     for i in $(seq 1 13); do echo "### 물리 $i"; done; } > rsize/data-model.md
+OUT=$(echo '{"tool_input":{"file_path":"'"$TMP"'/rsize/data-model.md"}}' \
+  | scripts/hooks/claude-posttooluse-size-warn.sh 2>&1)
+echo "$OUT" | grep -q "R-size 책임"
+assert "400 줄 한참 아래에서도 책임 증가는 경고된다" "0" "$?"
+echo "$OUT" | grep -q "4 → 17"
+assert "증가량을 기준선과 함께 보고한다" "0" "$?"
+
+# 오탐 방지: 정상적인 점진 성장(임계 미만)은 조용해야 한다. 과발화하면 사람이 hook 을 끈다.
+{ echo "# 자료 모델"; for i in $(seq 1 6); do echo "### 논리 $i"; done; } > rsize/data-model.md
+OUT=$(echo '{"tool_input":{"file_path":"'"$TMP"'/rsize/data-model.md"}}' \
+  | scripts/hooks/claude-posttooluse-size-warn.sh 2>&1)
+assert "임계 미만 증가는 조용함" "" "$OUT"
+git checkout -q -- rsize/data-model.md
+
+# 신규 파일은 기준선이 없다 — 한 번에 써 내려간 문서를 오탐으로 잡지 않는다.
+{ echo "# 새 문서"; for i in $(seq 1 20); do echo "### 절 $i"; done; } > rsize/brand-new.md
+OUT=$(echo '{"tool_input":{"file_path":"'"$TMP"'/rsize/brand-new.md"}}' \
+  | scripts/hooks/claude-posttooluse-size-warn.sh 2>&1)
+assert "HEAD 에 없는 신규 파일은 조용함" "" "$OUT"
+rm -f rsize/brand-new.md
+
+# 코드 파일도 같은 신호를 받는다 (최상위 def/class 기준).
+echo "def a(): pass" > rsize/svc.py
+git add rsize/svc.py && git commit -qm "rsize py fixture" >/dev/null
+{ echo "def a(): pass"; for i in $(seq 1 6); do echo "def f$i(): pass"; done; } > rsize/svc.py
+OUT=$(echo '{"tool_input":{"file_path":"'"$TMP"'/rsize/svc.py"}}' \
+  | scripts/hooks/claude-posttooluse-size-warn.sh 2>&1)
+echo "$OUT" | grep -q "R-size 책임"
+assert "코드 파일도 책임 증가를 경고" "0" "$?"
+
+# 줄 수 경고가 이미 나갔으면 침묵한다 — 같은 편집에 두 경고를 겹치지 않는다.
+# 기준선은 soft(400) 초과 · hard(500) 미만으로 잡는다 — pre-commit 차단에 걸리면
+# 파일이 HEAD 에 없어져, 억제가 아니라 "기준선 부재" 로 조용해지는 가짜 통과가 된다.
+{ seq 1 450 | sed 's/.*/x = &/'; } > rsize/big.py
+git add rsize/big.py && git commit -qm "rsize big fixture" >/dev/null
+git ls-files --error-unmatch rsize/big.py >/dev/null 2>&1
+assert "억제 검사의 기준선이 실제로 커밋됨" "0" "$?"
+{ seq 1 450 | sed 's/.*/x = &/'; for i in $(seq 1 9); do echo "def g$i(): pass"; done; } > rsize/big.py
+OUT=$(echo '{"tool_input":{"file_path":"'"$TMP"'/rsize/big.py"}}' \
+  | scripts/hooks/claude-posttooluse-size-warn.sh 2>&1)
+echo "$OUT" | grep -q "R-size SOFT"
+assert "줄 수 경고는 정상 발화" "0" "$?"
+echo "$OUT" | grep -q "R-size 책임"
+assert "줄 수 경고가 나가면 책임 경고는 겹치지 않음" "1" "$?"
+git checkout -q -- rsize/ 2>/dev/null || true
+
+echo ""
 echo "== 결과 =="
 echo "  통과: $PASS / 실패: $FAIL"
 [[ $FAIL -eq 0 ]]
