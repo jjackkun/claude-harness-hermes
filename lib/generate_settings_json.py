@@ -13,10 +13,16 @@ reclaimed on every run and re-added only if a preset still provides them, so
 dropping a preset actually unregisters its hooks. Hooks pointing anywhere else
 are user-owned and never touched.
 
-permissions.allow is merge-only — nothing is deleted when a preset stops
-providing a value. permissions.deny `Agent(...)` entries are the preset-managed
-namespace and are synced to the current preset list. All other top-level keys
-are preserved.
+permissions.allow is ownership-synced, like hooks. Entries the harness ships
+(any preset's HARNESS_PERMISSIONS_ALLOW, plus RETIRED_PERMISSION_ALLOW) are
+reclaimed on every run and re-added only if a preset still provides them, so
+dropping a preset actually revokes its permissions. Entries outside that
+inventory are user-owned and never touched. This applies to settings.json only;
+Claude Code's "don't ask again" approvals land in settings.local.json, which the
+harness never touches (see generate_settings.py).
+
+permissions.deny `Agent(...)` entries are the preset-managed namespace and are
+synced to the current preset list. All other top-level keys are preserved.
 
 See generate_settings.py for the DS_TMPDIR tmpfile protocol.
 """
@@ -151,6 +157,7 @@ def main(output_path: str) -> int:
     pre_tool_use = _read_lines(tmpdir, "pre_tool_use")
     post_tool_use = _read_lines(tmpdir, "post_tool_use")
     permissions_allow = _read_lines(tmpdir, "permissions_allow")
+    owned_allow = set(_read_lines(tmpdir, "harness_permission_inventory"))
     hook_inventory = set(_read_lines(tmpdir, "harness_hook_inventory"))
     worktree_bg_isolation = _read_lines(tmpdir, "worktree_bg_isolation")
 
@@ -254,8 +261,8 @@ def main(output_path: str) -> int:
         existing["worktree"] = {"bgIsolation": worktree_bg_isolation[0]}
 
     # ---- permissions ----
-    # allow: merge-only — user-added entries (including Claude Code's
-    # "don't ask again" approvals) are never removed.
+    # allow: ownership-synced. Entries in the harness inventory are reclaimed and
+    # re-added only if a preset still provides them; everything else is user-owned.
     # deny: `Agent(...)` entries are the preset-managed namespace and are
     # synced to the current preset list (entries dropped by presets are
     # removed); all other deny entries are user-owned and preserved.
@@ -263,11 +270,26 @@ def main(output_path: str) -> int:
     if not isinstance(perms, dict):
         perms = {}
 
-    if permissions_allow:
-        existing_allow = perms.get("allow") or []
-        if not isinstance(existing_allow, list):
-            existing_allow = []
-        perms["allow"] = list(dict.fromkeys(existing_allow + permissions_allow))
+    existing_allow = perms.get("allow") or []
+    if not isinstance(existing_allow, list):
+        existing_allow = []
+
+    if owned_allow:
+        # An empty inventory means it could not be computed (older install path,
+        # missing preset dir). Reclaiming against it would wipe every managed
+        # permission, so fall back to merge-only instead.
+        user_allow = [
+            e for e in existing_allow
+            if not (isinstance(e, str) and e in owned_allow)
+        ]
+    else:
+        user_allow = existing_allow
+
+    merged_allow = list(dict.fromkeys(user_allow + permissions_allow))
+    if merged_allow:
+        perms["allow"] = merged_allow
+    else:
+        perms.pop("allow", None)
 
     existing_deny = perms.get("deny") or []
     if not isinstance(existing_deny, list):

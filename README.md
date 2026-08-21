@@ -469,7 +469,7 @@ Windows NTFS 경로(`/mnt/c/...`)의 경우 NTFS 심볼릭 링크 제한으로 *
 | `.claude/settings.json` | **커밋 대상** | `hooks`, `permissions.allow`, `permissions.deny` |
 | `.claude/settings.local.json` | gitignored | `env` 만 |
 
-- **머지 정책 (settings.json)**: 프리셋 항목은 추가·갱신만 하고, **사용자가 직접 추가한 hook·권한 항목은 절대 삭제하지 않습니다.** 프리셋이 더 이상 제공하지 않게 된 항목도 자동 삭제되지 않으므로, 정리가 필요하면 수동으로 제거하거나 `uninstall.sh` 를 사용하세요.
+- **머지 정책 (settings.json)**: **사용자가 직접 추가한 hook·권한 항목은 절대 삭제하지 않습니다.** 하네스가 배포한 항목(hook 등록, `permissions.allow`, `permissions.deny` 의 `Agent(...)`)은 **소유권 동기화** 대상이라, 프리셋이 더 이상 제공하지 않으면 다음 실행에서 자동으로 걷힙니다. 소유 판별 기준은 `lib/hook_inventory.sh` 와 `lib/permission_inventory.sh` 입니다.
 - **settings.local.json**: `env` 외의 키는 전부 보존됩니다.
 - 글로벌 `~/.claude/settings.json` 은 절대 건드리지 않습니다.
 
@@ -521,6 +521,28 @@ unset _section
 새 **프로젝트별** 카테고리를 추가할 경우 `lib/preset.sh` 의 `resolve_preset` 카테고리 루프와 `setup.sh` 의 루프 모두에 카테고리 이름을 추가하세요.
 
 > **전역(global) 스킬을 추가할 때는 다르다.** `presets/global/<name>.conf` 에 `SKILLS+=(...)` 만 넣으면 됩니다. `global` 은 `resolve_preset` 대상이 **아니며**(프로젝트 설치 차단), `setup.sh` 의 `[global]` 스텝과 `public-claude.sh` 의 `presets.global.lock` 처리가 자동으로 잡습니다. 즉 프로젝트 카테고리 루프에는 절대 추가하지 마세요.
+
+## 프리셋 배포 중단하기
+
+**`.conf` 를 먼저 지우면 안 됩니다.** 소유 판별이 `presets/**/*.conf` 와 `assets/hooks/` 스캔에 의존하므로, 파일을 지우는 순간 그 프리셋이 남긴 hook·권한이 **"하네스 것"이라는 증거가 사라져** 이미 설치된 프로젝트에서 영영 걷어낼 수 없게 됩니다. 게다가 설치본의 `.claude/presets.lock` 에는 이름이 남아 있어, 그 프로젝트는 이후 **모든 하네스 업데이트를 받지 못합니다.**
+
+순서를 지키세요:
+
+```bash
+# 1) 은퇴 등재 — .conf 를 지우기 전에 반드시 먼저
+#    lib/permission_inventory.sh : RETIRED_PERMISSION_ALLOW 에 allow 항목
+#    lib/hook_inventory.sh       : RETIRED_HOOK_SOURCES 에 hook 파일명
+
+# 2) 설치본에서 회수가 끝난 것을 확인
+bash update-all.sh
+
+# 3) 그 다음에 .conf 와 회수 코드를 삭제
+git rm presets/<category>/<name>.conf
+```
+
+`presets.lock` 에 남은 유령 항목은 `update-all.sh` 가 경고와 함께 자동으로 걷어내므로 수동 정리가 필요 없습니다.
+
+> 2026-08-21 `serena` 제거가 이 순서를 어겨 11개 프로젝트 중 6곳의 업데이트가 막히고 죽은 권한 184건이 고립됐습니다. 경위는 `docs/superpowers/specs/2026-08-21-preset-retirement-ownership-design.md` 에 있습니다.
 
 ## 테스트
 

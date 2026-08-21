@@ -57,6 +57,21 @@ case "$TARGET" in
     ;;
 esac
 
+# ── presets.lock 위생 ────────────────────────────────────────────────────────
+# lock 은 *기계가 쓴 파일*이다. CLI 인자와 달리 오타일 수 없고, 유효하지 않은
+# 항목은 "예전에 있었다가 하네스가 버린 프리셋" 이라는 뜻이다.
+# 그런 한 줄 때문에 재설치 전체가 실패하면 그 프로젝트는 이후 모든 업데이트를
+# 못 받는다 — 2026-08-21 세레나 제거 후 11곳 중 6곳이 실제로 그 상태였다.
+# 그래서 여기서는 경고 후 빼고 진행한다. CLI 오타 보호는 project-*.sh 에 그대로 둔다.
+# 근거: docs/superpowers/specs/2026-08-21-preset-retirement-ownership-design.md
+preset_exists() {
+  local name="$1" category
+  for category in lang framework database build workflow permissions tools; do
+    [[ -f "$DEV_SETTING_DIR/presets/$category/$name.conf" ]] && return 0
+  done
+  return 1
+}
+
 BOLD='\033[1m'
 CYAN='\033[0;36m'
 GREEN='\033[0;32m'
@@ -124,7 +139,27 @@ run_target() {
     fi
 
     mapfile -t presets < "$lock"
-    preset_args=("${presets[@]}")
+
+    # 유령 프리셋을 걷어낸다. 조용히 빼지 않는다 — 의도한 프리셋이 말없이
+    # 사라지면 그것대로 오래 안 들킨다.
+    local -a live_presets=() ghost_presets=()
+    local item
+    for item in "${presets[@]}"; do
+      [[ -z "$item" ]] && continue
+      if preset_exists "$item"; then live_presets+=("$item"); else ghost_presets+=("$item"); fi
+    done
+    if (( ${#ghost_presets[@]} > 0 )); then
+      echo -e "  ${YELLOW}⚠ 배포 중단된 프리셋을 lock 에서 제거: ${ghost_presets[*]}${RESET}"
+      printf '%s\n' "${live_presets[@]}" > "$lock"
+    fi
+    if (( ${#live_presets[@]} == 0 )); then
+      echo -e "  ${YELLOW}⚠ 유효한 프리셋이 없음 — 스킵${RESET}"
+      SKIP=$((SKIP + 1))
+      SKIP_NAMES+=("$(basename "$path") (유효 프리셋 없음)")
+      echo ""
+      continue
+    fi
+    preset_args=("${live_presets[@]}")
 
     if bash "$script" "$path" "${preset_args[@]}"; then
       echo -e "  ${GREEN}✔ 완료 — $(basename "$path")${RESET}"

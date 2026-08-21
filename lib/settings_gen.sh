@@ -40,6 +40,10 @@ _settings_gen_write_arrays() {
   # 등록한 hook"을 구분해 전자만 회수하는 데 쓴다.
   harness_hook_inventory > "$tmpdir/harness_hook_inventory"
 
+  # 하네스 소유 permissions.allow 항목 — 생성기가 "preset 에서 빠진 권한"과
+  # "사용자가 직접 넣은 권한"을 구분해 전자만 회수하는 데 쓴다.
+  harness_permission_inventory > "$tmpdir/harness_permission_inventory"
+
   unset -f _write_array
 }
 

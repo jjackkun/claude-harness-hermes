@@ -174,6 +174,96 @@ echo "$UPD_OUT" | grep -q "알려진 구버전"; _rc=$?
 assert "구버전 갱신 사실을 로그로 알림" "0" "$_rc"
 
 echo ""
+echo "== 9. 배포 중단된 프리셋이 lock 에 남아도 재설치가 막히지 않는다 =="
+# 2026-08-21: serena 프리셋을 저장소에서 지웠는데 설치본 lock 에는 남아 있어
+# `Unknown preset: 'serena'` 로 재설치가 실패했다. 그 프로젝트들은 세레나만 못 받은 게
+# 아니라 *이후 모든 하네스 업데이트*를 못 받고 있었다 — 11곳 중 6곳.
+# lock 은 기계가 쓴 파일이므로 유효하지 않은 항목 = 하네스가 버린 프리셋이다.
+# 근거: docs/superpowers/specs/2026-08-21-preset-retirement-ownership-design.md
+GHOST_LOCK="$LEGACY_PROJ/.claude/presets.lock"
+printf 'harness\nserena\n' > "$GHOST_LOCK"
+UPD_OUT=$(bash "$SANDBOX/update-all.sh" 2>&1)
+
+echo "$UPD_OUT" | grep -q "Unknown preset"; _rc=$?
+assert "유령 프리셋으로 실패하지 않음" "1" "$_rc"
+echo "$UPD_OUT" | grep -q "✗ 실패 — legacyproj"; _rc=$?
+assert "해당 프로젝트가 실패로 집계되지 않음" "1" "$_rc"
+echo "$UPD_OUT" | grep -q "배포 중단된 프리셋"; _rc=$?
+assert "제거 사실을 경고로 알림 (조용히 빼지 않음)" "0" "$_rc"
+grep -qx "serena" "$GHOST_LOCK"; _rc=$?
+assert "lock 에서 유령 항목이 제거됨" "1" "$_rc"
+grep -qx "harness" "$GHOST_LOCK"; _rc=$?
+assert "유효한 프리셋은 lock 에 보존됨" "0" "$_rc"
+
+# 전부 유령이면 설치할 것이 없다 — 빈 인자로 재설치를 강행하지 않고 스킵한다.
+printf 'serena\n' > "$GHOST_LOCK"
+UPD_OUT=$(bash "$SANDBOX/update-all.sh" 2>&1)
+echo "$UPD_OUT" | grep -q "유효한 프리셋이 없음"; _rc=$?
+assert "전부 유령이면 스킵" "0" "$_rc"
+
+echo ""
+echo "== 10. permissions.allow 소유권 동기화 =="
+# 2026-08-21: allow 가 merge-only 라 프리셋에서 빠진 권한이 영구히 남았다.
+# 세레나 제거 후 6개 프로젝트에 죽은 권한 184건이 쌓여 있었다.
+# hooks 와 같은 소유권 동기화를 적용한다 — 하네스가 배포한 항목만 회수하고
+# 사용자가 넣은 항목은 보존한다. settings.local.json 은 건드리지 않는다.
+# 근거: docs/superpowers/specs/2026-08-21-preset-retirement-ownership-design.md
+PERMPROJ="$TMP/permproj"
+mkdir -p "$PERMPROJ"
+cd "$PERMPROJ"
+git init -q .
+git config user.email "harness-test@example.com"
+git config user.name "harness-test"
+
+bash "$SANDBOX/project-claude.sh" "$PERMPROJ" harness python >/dev/null 2>&1
+PS="$PERMPROJ/.claude/settings.json"
+_has() { python3 -c "
+import json,sys
+a=json.load(open('$PS')).get('permissions',{}).get('allow',[])
+sys.exit(0 if '$1' in a else 1)"; }
+
+_has 'Bash(black:*)'; _rc=$?
+assert "python 프리셋 권한이 배치됨" "0" "$_rc"
+
+# 사용자가 손으로 넣은 항목 + 은퇴 프리셋이 남긴 유령 항목을 주입한다.
+python3 -c "
+import json
+p='$PS'; d=json.load(open(p))
+a=d.setdefault('permissions',{}).setdefault('allow',[])
+a.append('Bash(my-own-tool:*)')
+a.append('mcp__plugin_serena_serena__find_symbol')
+json.dump(d,open(p,'w'),indent=2,ensure_ascii=False)
+"
+# python 프리셋을 빼고 재설치 — 그 권한은 걷히고 사용자 것은 남아야 한다.
+bash "$SANDBOX/project-claude.sh" "$PERMPROJ" harness >/dev/null 2>&1
+
+_has 'Bash(my-own-tool:*)'; _rc=$?
+assert "사용자가 넣은 권한은 보존" "0" "$_rc"
+_has 'Bash(black:*)'; _rc=$?
+assert "프리셋에서 빠진 권한은 회수됨" "1" "$_rc"
+_has 'mcp__plugin_serena_serena__find_symbol'; _rc=$?
+assert "은퇴 등재된 유령 권한도 회수됨" "1" "$_rc"
+_has 'Bash(cat:*)'; _rc=$?
+assert "여전히 제공되는 권한은 유지됨" "0" "$_rc"
+
+# settings.local.json 은 하네스가 권한을 건드리지 않는 자리다.
+PL="$PERMPROJ/.claude/settings.local.json"
+python3 -c "
+import json
+p='$PL'
+try: d=json.load(open(p))
+except Exception: d={}
+d.setdefault('permissions',{}).setdefault('allow',[]).append('mcp__plugin_serena_serena__find_symbol')
+json.dump(d,open(p,'w'),indent=2,ensure_ascii=False)
+"
+bash "$SANDBOX/project-claude.sh" "$PERMPROJ" harness >/dev/null 2>&1
+python3 -c "
+import json,sys
+a=json.load(open('$PL')).get('permissions',{}).get('allow',[])
+sys.exit(0 if 'mcp__plugin_serena_serena__find_symbol' in a else 1)"; _rc=$?
+assert "settings.local.json 의 승인은 건드리지 않음" "0" "$_rc"
+
+echo ""
 echo "== 결과 =="
 echo "  통과: $PASS / 실패: $FAIL"
 [[ $FAIL -eq 0 ]]
