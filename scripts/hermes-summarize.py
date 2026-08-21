@@ -91,7 +91,7 @@ def _msg_text(msg: dict) -> str:
     return str(raw)
 
 
-def messages_to_text(delta: list) -> str:
+def messages_to_text(delta: list, project_dir=None) -> str:
     parts = []
     for msg in delta:
         if not isinstance(msg, dict):
@@ -101,7 +101,7 @@ def messages_to_text(delta: list) -> str:
         if text:
             parts.append(f"[{role}] {text}")
     # 델타가 Haiku(LLM)로 가기 전·요약 슬롯에 박히기 전 경계에서 마스킹
-    return redact("\n".join(parts))
+    return redact("\n".join(parts), project_dir)
 
 
 def load_summary_state(db_path: str, session_id: str):
@@ -256,7 +256,7 @@ def main():
         print("[hermes-summary] 델타 없음 — 스킵")
         return
 
-    slots = generate_slots(prev_slots, messages_to_text(delta))
+    slots = generate_slots(prev_slots, messages_to_text(delta, project_dir))
     if slots is None:
         print("[hermes-summary] 생성 실패 — 이전 요약 유지(다음 턴 재시도)")
         return

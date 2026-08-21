@@ -12,7 +12,7 @@ import sys
 from datetime import datetime
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from hermes_redact import redact  # noqa: E402  (민감정보 마스킹 공유 헬퍼)
+from hermes_redact import project_dir_for_db, redact  # noqa: E402  (민감정보 마스킹 공유 헬퍼)
 from hermes_save_session_storage import connect_db  # noqa: E402
 
 _BUILD_CMD_RE = re.compile(
@@ -134,6 +134,7 @@ def record_signal_context(db_path: str, signals: list, project_id: str, session_
     save_session 이 같은 session_id 행을 먼저 DELETE+INSERT 하므로, 그 뒤에 호출되면
     재저장 때마다 자연히 교체되어 중복이 쌓이지 않는다 (idempotent).
     """
+    project_dir = project_dir_for_db(db_path)
     con = connect_db(db_path)
     con.isolation_level = None
     cur = con.cursor()
@@ -141,7 +142,7 @@ def record_signal_context(db_path: str, signals: list, project_id: str, session_
     try:
         cur.execute("BEGIN IMMEDIATE")
         for key, ctx in signals:
-            content = redact(f"[B신호] {key} :: {ctx}".strip())
+            content = redact(f"[B신호] {key} :: {ctx}".strip(), project_dir)
             cur.execute(
                 "INSERT INTO session_history (content, role, timestamp, project_id, session_id) "
                 "VALUES (?, ?, ?, ?, ?)",

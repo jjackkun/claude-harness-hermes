@@ -26,9 +26,10 @@ except ImportError:  # 헬퍼 미복사 시에도 회상 자체는 동작해야 
     mark_reused = None
 
 try:
-    from hermes_redact import redact
+    from hermes_redact import project_dir_for_db, redact
 except ImportError:  # 마스킹 헬퍼 부재 시 원문 스니펫을 내보내지 않는다(보수적)
     redact = None
+    project_dir_for_db = None
 
 SLOT_KEYS = ["decisions", "open", "prefs", "facts", "next"]
 
@@ -207,8 +208,7 @@ def format_snippet(content: str, db_path: str) -> str:
     """
     if redact is None:
         return "(요약 없음 — 마스킹 헬퍼 부재로 원문 생략)"
-    project_dir = os.path.dirname(os.path.dirname(os.path.abspath(db_path)))
-    return "■ 원문 발췌:\n- " + redact(content[:SNIPPET_LEN], project_dir)
+    return "■ 원문 발췌:\n- " + redact(content[:SNIPPET_LEN], project_dir_for_db(db_path))
 
 
 def do_query(db_path, query) -> None:

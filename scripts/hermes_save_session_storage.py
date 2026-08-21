@@ -11,7 +11,7 @@ import sys
 from datetime import datetime
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from hermes_redact import redact  # noqa: E402  (민감정보 마스킹 공유 헬퍼)
+from hermes_redact import project_dir_for_db, redact  # noqa: E402  (민감정보 마스킹 공유 헬퍼)
 
 
 def connect_db(db_path: str) -> sqlite3.Connection:
@@ -60,6 +60,8 @@ def load_transcript(path: str) -> list:
 
 
 def save_session(db_path: str, messages: list, project_id: str, session_id: str):
+    # 정답지 위치는 db_path 에서 되짚는다 — CLAUDE_PROJECT_DIR 폴백에 기대지 않는다.
+    project_dir = project_dir_for_db(db_path)
     """세션 저장. 같은 session_id 재저장 시 이전 행을 교체한다 (C2)."""
     con = connect_db(db_path)
     con.isolation_level = None  # 명시적 트랜잭션 제어
@@ -91,7 +93,7 @@ def save_session(db_path: str, messages: list, project_id: str, session_id: str)
             content = content.strip()
             if not content:
                 continue
-            content = redact(content)  # 원문 적재 전 민감정보 마스킹
+            content = redact(content, project_dir)  # 원문 적재 전 민감정보 마스킹
 
             cur.execute(
                 "INSERT INTO session_history (content, role, timestamp, project_id, session_id) "

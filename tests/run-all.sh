@@ -115,6 +115,7 @@ for t in \
   hermes-pipeline-test.sh \
   hermes-loop-test.sh \
   hermes-redact-test.sh \
+  hermes-redact-boundary-test.sh \
   hermes-secret-masking-test.sh \
   hermes-crystallize-naming-test.sh \
   hermes-dream-test.sh \

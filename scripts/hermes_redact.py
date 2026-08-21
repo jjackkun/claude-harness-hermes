@@ -20,6 +20,7 @@ LLM 으로 들어가기 직전 경계에서 호출한다. 탐지된 비밀을 [R
     safe = redact(raw_text, project_dir=path)  # 루트 명시
 """
 
+import os
 import re
 
 try:
@@ -97,6 +98,16 @@ def _mask_env_values(text: str, project_dir) -> str:
         if value in out:
             out = out.replace(value, f"[REDACTED:ENV:{key}]")
     return out
+
+
+def project_dir_for_db(db_path):
+    """`<project>/.hermes/state.db` 경로에서 프로젝트 루트를 되짚는다.
+
+    저장 경계는 대부분 `db_path` 만 들고 있다. 정답지(`.env`) 위치를 환경변수
+    폴백에 맡기면 훅 밖(cron·서버·워크트리)에서 정답지가 통째로 비어 값 대조가
+    빠진다. 경로에서 되짚으면 어디서 실행되든 같은 답이 나온다.
+    """
+    return os.path.dirname(os.path.dirname(os.path.abspath(db_path)))
 
 
 def redact(text, project_dir=None):
