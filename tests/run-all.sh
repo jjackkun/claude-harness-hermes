@@ -107,6 +107,7 @@ for t in \
   windows-helpers-test.sh \
   plan-state-test.sh \
   doc-gardening-drift-test.sh \
+  claude-md-skill-index-test.sh \
   update-all-roundtrip-test.sh \
   harness-hooks-smoke.sh \
   hook-prune-test.sh \

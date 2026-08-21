@@ -11,6 +11,47 @@
 DS_MARKER_BEGIN="<!--===DS:BEGIN===-->"
 DS_MARKER_END="<!--===DS:END===-->"
 
+# 스킬 목차 한 줄에 실을 발동 조건의 문자 상한.
+# 근거: 설치된 스킬 중 관측된 가장 긴 발동 조건 절이 98자
+# (structured-file-layout — "...exec-plans — before any code is written")이다.
+# 상한이 그보다 낮으면 정작 호출 시점을 지정하는 절이 잘려 나간다. 여유를 둬 120.
+SKILL_TRIGGER_MAX=120
+
+# _skill_trigger <skill_name>
+# assets/skills/<name>/SKILL.md 의 frontmatter description 을 한 줄로 뽑는다.
+# description 은 스킬 작성자가 "언제 부르나"를 적어 둔 자리다. 생성기가 그것을
+# 새로 쓰지 않고 그대로 옮긴다 — 번역·요약하면 스킬 원본과 갈라진다.
+# 없으면(파일 부재·필드 부재) 아무것도 출력하지 않아 호출부가 이름만 남기게 한다.
+_skill_trigger() {
+  local name="$1"
+  local md="${ASSETS_DIR:-}/skills/$name/SKILL.md"
+  [[ -f "$md" ]] || return 0
+
+  local desc
+  desc=$(sed -n 's/^description:[[:space:]]*//p' "$md" | head -1)
+  desc="${desc%\"}"; desc="${desc#\"}"
+  desc="${desc%\'}"; desc="${desc#\'}"
+  desc="${desc%"${desc##*[![:space:]]}"}"
+  [[ -n "$desc" ]] || return 0
+
+  if [[ ${#desc} -gt $SKILL_TRIGGER_MAX ]]; then
+    # 단어 경계에서만 자른다. 문자 단위로 자르면 로케일이 C 일 때 한글이
+    # 반토막 나 깨진 바이트가 CLAUDE.md 에 박힌다(cut -c 로 실제 발생).
+    local out="" w t glob_was_on=0
+    # description 의 * ? 가 글롭으로 확장되지 않게. 호출자 설정은 원상 복구한다.
+    [[ -o noglob ]] || glob_was_on=1
+    set -f
+    for w in $desc; do
+      [[ $(( ${#out} + ${#w} + 1 )) -gt $SKILL_TRIGGER_MAX ]] && break
+      out+="${out:+ }$w"
+    done
+    [[ $glob_was_on -eq 1 ]] && set +f
+    for t in , ';' : — -; do out="${out%$t}"; done
+    desc="$out…"
+  fi
+  printf '%s' "$desc"
+}
+
 # _managed_block_preamble <target>
 # target: claude | codex
 # 관리 블록 최상단에 들어가는 고정 서문. CLAUDE.md / AGENTS.md 양쪽 생성기가 공유한다.
@@ -45,7 +86,20 @@ _managed_block_preamble() {
   echo ""
   echo "- **항상 적용되는 규칙**: \`$rules_dir\` (및 $global_rules) — 코딩 스타일·보안·테스트·git·리뷰 등. 관련 작업 전 해당 규칙을 먼저 확인한다."
   [[ ${#_rules[@]} -gt 0 ]]  && echo "  - 이 프로젝트 룰셋: ${_rules[*]}"
-  [[ ${#_skills[@]} -gt 0 ]] && echo "- **스킬** (특별·대형 작업 시 직접 호출): \`$skills_dir\` — ${_skills[*]}"
+  if [[ ${#_skills[@]} -gt 0 ]]; then
+    # 이름만 나열하면 "이름을 안다"가 "내용을 안다"로 착각된다. 각 스킬이 스스로
+    # 적어 둔 발동 조건을 함께 실어, 언제 여는지를 목차에서 바로 판단하게 한다.
+    echo "- **스킬** (아래 발동 조건에 걸리면 호출한다. 작업 크기와 무관하다): \`$skills_dir\`"
+    local skill trigger
+    for skill in "${_skills[@]}"; do
+      trigger=$(_skill_trigger "$skill")
+      if [[ -n "$trigger" ]]; then
+        echo "  - $skill — $trigger"
+      else
+        echo "  - $skill"
+      fi
+    done
+  fi
   [[ ${#_agents[@]} -gt 0 ]] && echo "- **에이전트** (검토·위임): \`$agents_dir\` — ${_agents[*]}"
   echo ""
 }
