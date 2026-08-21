@@ -117,6 +117,8 @@ for t in \
   hermes-redact-test.sh \
   hermes-redact-boundary-test.sh \
   hermes-secret-masking-test.sh \
+  check-secrets-answerkey-test.sh \
+  check-secrets-code-expr-test.sh \
   hermes-crystallize-naming-test.sh \
   hermes-dream-test.sh \
   hermes-recall-measurement-test.sh \

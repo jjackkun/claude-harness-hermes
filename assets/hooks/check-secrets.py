@@ -114,6 +114,15 @@ CODE_EXPR_RE = re.compile(
     # 타입 표기. `password: string)` 은 함수 시그니처지 비밀이 아니다.
     r"|(?:string|number|boolean|any|object|str|int|bool|none|null|undefined)\b"
     r"|[\"']?\$"                            # 변수 참조: $GITLAB_API_TOKEN
+    # 맨 이름 참조. 따옴표가 없으므로 리터럴이 아니라 **식별자**다.
+    #   password=PASSWORD)      시험 상수 참조
+    #   token=refresh_plain     지역 변수 참조
+    # ⚠️ 좁게 유지한다 — ALL_CAPS 이거나 밑줄이 든 이름만. 그래야 `Hunter2`
+    #    같은 진짜 비밀이 면제되지 않는다.
+    # ⚠️ (?-i:) 로 대소문자를 구분한다. 이 정규식 전체에 (?i) 가 걸려 있어
+    #    그냥 두면 `password = Hunter2xyz` 같은 진짜 비밀까지 면제된다(실측).
+    r"|(?-i:[A-Z][A-Z0-9_]{2,})(?=[\s),;\]]|$)"
+    r"|(?-i:[a-z_][a-z0-9_]*_[a-z0-9_]*)(?=[\s),;\]]|$)"
     r")"
 )
 
