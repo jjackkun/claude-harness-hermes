@@ -379,7 +379,7 @@ echo "== 16. recall — 키워드 검색 =="
 q=$(python3 "$S/hermes-recall.py" --query "승인" --db "$DB" 2>/dev/null)
 check "검색 결과에 sumS 세션 포함" bash -c "echo '$q' | grep -q 'sumS'"
 qn=$(python3 "$S/hermes-recall.py" --query "절대없는키워드zzz" --db "$DB" 2>/dev/null)
-check "미일치 시 안내 출력" bash -c "echo '$qn' | grep -q '일치 요약 없음'"
+check "미일치 시 안내 출력" bash -c "echo '$qn' | grep -q '일치 기록 없음'"
 
 echo ""
 echo "== 17. UserPromptSubmit 훅 — recall 주입 =="

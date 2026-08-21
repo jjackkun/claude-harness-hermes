@@ -119,6 +119,7 @@ for t in \
   hermes-crystallize-naming-test.sh \
   hermes-dream-test.sh \
   hermes-recall-measurement-test.sh \
+  hermes-recall-history-search-test.sh \
   uninstall-roundtrip-test.sh \
   memory-symlink-roundtrip-test.sh \
   hermes-history-export-test.sh \

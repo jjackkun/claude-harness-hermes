@@ -14,6 +14,7 @@
 import argparse
 import json
 import os
+import re
 import sqlite3
 import sys
 from datetime import datetime
@@ -24,7 +25,23 @@ except ImportError:  # 헬퍼 미복사 시에도 회상 자체는 동작해야 
     ensure_reuse_table = None
     mark_reused = None
 
+try:
+    from hermes_redact import redact
+except ImportError:  # 마스킹 헬퍼 부재 시 원문 스니펫을 내보내지 않는다(보수적)
+    redact = None
+
 SLOT_KEYS = ["decisions", "open", "prefs", "facts", "next"]
+
+MAX_SESSIONS = 5           # 회상 결과로 보여줄 세션 수
+MAX_QUERY_KEYWORDS = 8     # 질의 키워드 상한 — 실측상 5개를 넘으면 recall 이 평탄해진다
+FTS_SCAN_LIMIT = 400       # bm25 상위 스캔 행수. 한 세션이 여러 행을 차지해도 5세션을 채운다
+SNIPPET_LEN = 200          # 요약 없는 세션의 원문 스니펫 길이
+
+# 질의 불용어. 규칙은 hermes-search.py:extract_keywords 와 같은 계열이다.
+QUERY_STOP_WORDS = {
+    "그리고", "그래서", "하지만", "때문에", "합니다", "입니다", "있습니다",
+    "the", "and", "for", "with", "this", "that",
+}
 
 
 def connect_db(db_path: str) -> sqlite3.Connection:
@@ -125,25 +142,105 @@ def do_inject(db_path, project_id, session_id) -> None:
         con.close()
 
 
+def extract_query_keywords(query: str) -> list:
+    """질의 문자열을 검색 키워드로 분해한다.
+
+    LIKE 통짜 매칭은 사용자가 친 어순이 원문에 그대로 있어야만 걸린다. 키워드로
+    쪼개야 "무효화 메모이제이션 버전" 처럼 재구성된 질의가 잡힌다.
+    """
+    tokens = re.findall(r"[a-z0-9가-힣_\-]+", query.lower())
+    return [t for t in tokens if t not in QUERY_STOP_WORDS and len(t) >= 2]
+
+
+def search_history(con, keywords: list) -> list:
+    """1단계 — 대화 원문(FTS5)에서 관련 세션을 bm25 관련도순으로 찾는다.
+
+    반환: [(session_id, 관련도 최상위 행의 content)] — content 는 스니펫 폴백에 재사용한다.
+    """
+    if not keywords:
+        return []
+    match = " OR ".join('"%s"' % kw.replace('"', "") for kw in keywords)
+    try:
+        rows = con.execute(
+            "SELECT session_id, content FROM session_history "
+            "WHERE session_history MATCH ? ORDER BY bm25(session_history) LIMIT ?",
+            (match, FTS_SCAN_LIMIT),
+        ).fetchall()
+    except sqlite3.OperationalError:
+        return []  # FTS5 미탑재 빌드 — 요약 검색만으로 계속한다
+
+    found, seen = [], set()
+    for sid, content in rows:
+        if sid in seen:
+            continue
+        seen.add(sid)
+        found.append((sid, content or ""))
+        if len(found) >= MAX_SESSIONS:
+            break
+    return found
+
+
+def search_summaries(con, keywords: list) -> list:
+    """2단계 — 요약문에만 있는 어휘를 보완한다.
+
+    요약은 원문의 재서술이라 원문에 없는 표현을 쓸 수 있다(요약기가 고른 단어).
+    원문 검색으로 갈아끼우기만 하면 그 어휘가 통째로 사라지므로 합집합으로 남긴다.
+    """
+    if not keywords:
+        return []
+    found = []
+    for kw in keywords:
+        for (sid,) in con.execute(
+            "SELECT session_id FROM session_summary "
+            "WHERE slots_json LIKE ? ORDER BY updated_at DESC LIMIT ?",
+            ("%" + kw + "%", MAX_SESSIONS),
+        ):
+            if sid not in found:
+                found.append(sid)
+    return found
+
+
+def format_snippet(content: str, db_path: str) -> str:
+    """요약이 없는 세션을 원문 스니펫으로 보여준다.
+
+    원문은 시크릿 관문을 아직 통과하지 않은 구간이라 마스킹 없이는 내보내지 않는다.
+    """
+    if redact is None:
+        return "(요약 없음 — 마스킹 헬퍼 부재로 원문 생략)"
+    project_dir = os.path.dirname(os.path.dirname(os.path.abspath(db_path)))
+    return "■ 원문 발췌:\n- " + redact(content[:SNIPPET_LEN], project_dir)
+
+
 def do_query(db_path, query) -> None:
     if not os.path.isfile(db_path):
         print("[hermes-recall] DB 없음")
         return
     con = connect_db(db_path)
     _ensure_schema(con)
-    rows = con.execute(
-        "SELECT session_id, slots_json FROM session_summary "
-        "WHERE slots_json LIKE ? ORDER BY updated_at DESC LIMIT 5",
-        (f"%{query}%",),
-    ).fetchall()
-    con.close()
-    if not rows:
-        print(f"[hermes-recall] '{query}' 일치 요약 없음")
-        return
-    for sid, raw in rows:
-        print(f"== {sid} ==")
-        print(format_inject(_load_slots(raw)) or "(요약 비어있음)")
-        print("")
+    try:
+        keywords = extract_query_keywords(query)[:MAX_QUERY_KEYWORDS]
+        hits = search_history(con, keywords)
+        snippets = dict(hits)
+        ordered = [sid for sid, _ in hits]
+        for sid in search_summaries(con, keywords):
+            if sid not in ordered:
+                ordered.append(sid)
+        ordered = ordered[:MAX_SESSIONS]
+
+        if not ordered:
+            print("[hermes-recall] '%s' 일치 기록 없음" % query)
+            return
+
+        for sid in ordered:
+            row = con.execute(
+                "SELECT slots_json FROM session_summary WHERE session_id=?", (sid,)
+            ).fetchone()
+            print("== %s ==" % sid)
+            block = format_inject(_load_slots(row[0])) if row else ""
+            print(block or format_snippet(snippets.get(sid, ""), db_path))
+            print("")
+    finally:
+        con.close()
 
 
 def main():
