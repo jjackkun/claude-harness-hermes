@@ -106,6 +106,20 @@ install_harness_pre_commit() {
     fi
   fi
 
+  # depcheck.py (R-dep) — complexity.py 와 같은 부류. pre-commit 이 $(dirname $0) 에서 참조한다.
+  local depcheck_src="$ASSETS_DIR/hooks/depcheck.py"
+  if [[ -f "$depcheck_src" ]]; then
+    if cp "$depcheck_src" "$git_dir/hooks/depcheck.py"; then
+      log_info "  hook    → .git/hooks/depcheck.py"
+      # 계약이 없으면 R-dep 은 조용히 통과한다(미설정과 고장을 구분한다).
+      # 그 사실을 여기서 한 번 알린다 — 매 커밋 경고는 경고 피로를 부른다.
+      [[ -f "$project_path/.deprc" ]] || \
+        log_info "            ↳ .deprc 가 없어 R-dep(의존 계약)은 비활성입니다. 계약을 만들면 켜집니다"
+    else
+      log_warn "  hook    → .git/hooks/depcheck.py 복사 실패"
+    fi
+  fi
+
   # 정답지 모듈(.env 값 집합)을 훅 옆에 둔다 — check-secrets.py 가 import 한다.
   # 복제하지 않고 scripts/ 의 원본을 그대로 복사한다: 복제본만 고치고 원본을 두면
   # 원본을 쓰는 경로(DB 적재 마스킹)가 계속 뚫려 있게 된다.

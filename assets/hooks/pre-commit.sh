@@ -206,6 +206,37 @@ $CX_OUT")
   fi
 fi
 
+# 4-ter. R-dep — 모듈 의존 계약
+#
+# scripts/ 에 파이썬이 30개 이상인데 이들 사이의 의존 방향을 규정한 것이 없었다.
+# .deprc 의 tier 는 손으로 적은 것이 아니라 실측 그래프에서 위상적으로 계산했다 —
+# 새 규칙을 만드는 것이 아니라 이미 지켜지던 것을 고정한다.
+# 도입 시점의 위반은 0건이므로 즉시 켜도 정상 코드가 막히지 않는다.
+CHECK_DEP="$(dirname "$0")/depcheck.py"
+if [[ -n "$PY_FILES" ]]; then
+  if [[ ! -f "$CHECK_DEP" ]]; then
+    WARNINGS+=("
+[R-dep] 의존 계약 검사를 건너뜀 — depcheck.py 없음 (재설치 필요)")
+  elif ! command -v python3 >/dev/null 2>&1; then
+    WARNINGS+=("
+[R-dep] 의존 계약 검사를 건너뜀 — python3 없음 (인터프리터 설치 필요)")
+  else
+    DEP_OUT=$(echo "$PY_FILES" | xargs python3 "$CHECK_DEP" 2>&1) || {
+      VIOLATIONS+=("$(cat <<EOF
+
+$DEP_OUT
+EOF
+)")
+      FAIL=1
+    }
+    # R-dep-4(미등록 파일)·계약 부재는 차단하지 않는 경고다.
+    if [[ -n "$DEP_OUT" ]] && [[ "$FAIL" -eq 0 ]]; then
+      WARNINGS+=("
+$DEP_OUT")
+    fi
+  fi
+fi
+
 # 5. R-struct — 컴포넌트 폴더/배럴 규칙 (Vue 프로젝트)
 CHECK_STRUCT="$(dirname "$0")/check-component-structure.mjs"
 VUE_AND_CODE=$(filter_files '\.(vue|js|jsx|ts|tsx)$')

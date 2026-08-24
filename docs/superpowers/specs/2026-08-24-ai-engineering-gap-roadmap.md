@@ -20,7 +20,7 @@
 | 2 | `R-cx` | [순환 복잡도 게이트](2026-08-24-complexity-gate-design.md) | **차단** | 분포 절벽(11→12) = 12 | **완료** |
 | 3 | `R-cov` | [커버리지 강제](2026-08-24-coverage-enforcement-design.md) | 경고 | 미확정 (측정 대상 부재) | 미착수 |
 | 4 | `R-mut` | [변이 테스트](2026-08-24-mutation-testing-design.md) | 진단만 | 미확정 (표본 부족) | 미착수 |
-| 5 | `R-dep` | [모듈 의존 계약](2026-08-24-module-dependency-contract-design.md) | **차단** | 이분 판정 (임계 불필요) | 미착수 |
+| 5 | `R-dep` | [모듈 의존 계약](2026-08-24-module-dependency-contract-design.md) | **차단** | 이분 판정 (임계 불필요) | **완료** |
 | 6 | `R-pipe` | [파이프라인 강제](2026-08-24-agent-pipeline-enforcement-design.md) | 경고 | 이분 판정 불가 | 미착수 |
 | 7 | `R-acc` | [실행 가능한 인수 조건](2026-08-24-executable-acceptance-spec-design.md) | 경고 | — | 미착수 |
 
@@ -72,6 +72,27 @@
   `scripts/hooks/` 로만 보낸다. `pre-commit` 배선 테스트가 아니었으면 못 잡았을 결함이다 —
   계산기 단위 테스트는 전부 통과하고 있었다.
 
+### 5. `R-dep` — 완료 (2026-08-24)
+
+| 산출물 | 내용 |
+|---|---|
+| `assets/hooks/depcheck.py` | AST 기반 계약 검사기 (표준 라이브러리만) |
+| `.deprc` | 38개 파일, tier 0~4. 실측 그래프에서 **위상적으로 계산** |
+| `assets/hooks/pre-commit.sh` | `R-dep` 단계 |
+| `lib/harness_installers.sh` · `lib/uninstall_helpers.sh` | 설치·제거 + 비활성 안내 |
+| `tests/dep-contract-test.sh` | 21/21 |
+| `tests/harness-hooks-smoke.sh` | `pre-commit` 배선 검사 추가 (86/0) |
+
+구현 중 확정한 것:
+
+- **계약 부재는 조용히 통과**(스펙에서 변경). 고장이 아니라 미설정이다.
+  안내는 설치 시점 한 번으로 옮겼다. 모듈 부재는 설치 손상이므로 그대로 경고한다.
+- **`scope:` 지시자 신설.** 계약이 관할하는 범위 밖(외부 도입 스킬 스크립트 등)은
+  `R-dep-4` 경고 대상이 아니다. 없으면 노이즈로 게이트가 꺼진다.
+- **tier 를 손으로 적지 않는다.** 실측 그래프에서 위상 정렬로 계산했다.
+- `except ImportError: pass` 는 선택적 의존이 **아니다.** 이름을 정의하지 않아
+  뒤 코드가 `NameError` 로 죽는다 — "없어도 동작한다" 가 성립하지 않는다.
+
 ## 착수 순서
 
 ```text
@@ -107,6 +128,12 @@
 | **생존 변이 1건** — 프롬프트 본문이 비어도 테스트가 통과 | `hermes_mesh_gate.py:80` | 테스트 보강 필요 |
 | **공개인데 미사용** — `update_goal_status`, `default_max_iterations` | `hermes_loop.py` | 밑줄 처리로 폭 -2 |
 | **선택적 의존 1건** — 훅이 `scripts/` 를 import (의도된 설계, `try/except`) | `check-secrets.py:36` | 계약에 `optional:` 등록 필요 |
+| **불안정 테스트 1건** — 백그라운드 파이프라인을 고정 1초 대기로 기다림 | `hermes-pipeline-test.sh:277` | 부하 시 간헐 실패 |
+
+불안정 테스트는 이미 알려진 실패 모드다 — 같은 파일 221 행이
+"sleep 고정 대기는 CI 고부하에서 flaky" 라며 폴링으로 바꿔 놓았으나 277 행만 남았다.
+2026-08-24 전체 러너에서 1회 실패·1회 통과로 재현됐다(단독 실행은 137/0 통과).
+`R-mut` 착수 시 함께 처리한다 — 테스트의 유효성을 다루는 축이 그쪽이다.
 
 앞의 두 건은 **어느 스펙에도 속하지 않는 단독 버그**다. 스펙 착수와 무관하게 고칠 수 있다.
 그중 문서·구현 불일치는 `R-iface` 구현과 함께 정정했다(2026-08-24).

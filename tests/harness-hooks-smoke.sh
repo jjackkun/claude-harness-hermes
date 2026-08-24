@@ -80,6 +80,31 @@ rm -f .cxbaseline cx.py
 git rm --cached cx.py >/dev/null 2>&1 || true
 
 echo ""
+echo "== 1c. pre-commit R-dep 배선 =="
+# R-cx 에서 complexity.py 가 .git/hooks/ 에 안 깔려 게이트가 죽어 있던 사고를 겪었다.
+# 모듈 단위 테스트는 전부 통과하고 있었다. 그래서 배선을 따로 고정한다.
+mkdir -p dep
+cat > .deprc <<'EOF'
+scope: dep/*.py
+tier: 0  dep/low.py
+tier: 1  dep/high.py
+EOF
+echo "import high" > dep/low.py
+echo "x = 1"       > dep/high.py
+git add .deprc dep/low.py dep/high.py
+HOOK_OUT=$(.git/hooks/pre-commit 2>&1); HOOK_EXIT=$?
+assert "계층 역전 스테이징 시 exit 1" "1" "$HOOK_EXIT"
+echo "$HOOK_OUT" | grep -q "\[R-dep-1\]"
+assert "실제 R-dep 메시지 출력 (silent-skip 방지)" "0" "$?"
+
+echo "x = 1" > dep/low.py
+git add dep/low.py
+HOOK_OUT=$(.git/hooks/pre-commit 2>&1); HOOK_EXIT=$?
+assert "계약을 지키면 통과" "0" "$HOOK_EXIT"
+git rm --cached -q .deprc dep/low.py dep/high.py >/dev/null 2>&1 || true
+rm -rf .deprc dep
+
+echo ""
 echo "== 2. pre-commit 통과 경로 =="
 echo "x = 1" > small.py
 git add small.py
