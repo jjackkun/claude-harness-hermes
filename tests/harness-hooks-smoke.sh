@@ -159,7 +159,8 @@ ABS_COUNT=${ABS_COUNT:-0}
 # 기대값은 harness 프리셋 단독 설치 시의 hook 수. 2026-08-04 prettier hook 이
 # presets/tools/prettier.conf 로 분리되며 8 → 7. 2026-08-13 SessionStart
 # doc-gardening 훅이 추가되며 7 → 8 (CI 배선 없이 가드닝이 도는 경로).
-assert "settings.json 에 \${CLAUDE_PROJECT_DIR} 기반 경로 존재" "8" "$ABS_COUNT"
+# 2026-08-24 PreToolUse(Write) iface-guard 가 추가되며 8 → 9 (R-iface).
+assert "settings.json 에 \${CLAUDE_PROJECT_DIR} 기반 경로 존재" "9" "$ABS_COUNT"
 
 # 10b: 실제로 다른 CWD 에서 hook 을 호출해도 self-locate 가드로 정상 동작.
 PROJ_ABS="$(pwd)"
@@ -550,6 +551,25 @@ OUT=$(echo '{"tool_input":{"file_path":"'"$TMP"'/rsize/svc.py"}}' \
   | scripts/hooks/claude-posttooluse-size-warn.sh 2>&1)
 echo "$OUT" | grep -q "R-size 책임"
 assert "코드 파일도 책임 증가를 경고" "0" "$?"
+
+# 오탐 방지(2026-08-24): 비공개 헬퍼만 늘어난 편집은 인터페이스를 넓히지 않는다.
+# 내부를 깊게 만드는 *개선* 편집이므로 책임 증가로 오인하면 안 된다.
+# 근거: docs/superpowers/specs/2026-08-24-interface-width-gate-design.md 축 B
+echo "def a(): pass" > rsize/deep.py
+git add rsize/deep.py && git commit -qm "rsize deep fixture" >/dev/null
+{ echo "def a(): pass"; for i in $(seq 1 6); do echo "def _h$i(): pass"; done; } > rsize/deep.py
+OUT=$(echo '{"tool_input":{"file_path":"'"$TMP"'/rsize/deep.py"}}' \
+  | scripts/hooks/claude-posttooluse-size-warn.sh 2>&1)
+assert "비공개 헬퍼만 늘면 조용함(오탐 방지)" "" "$OUT"
+
+# 공개가 함께 늘면 여전히 경고한다 — 침묵이 과해지지 않는지 확인한다.
+{ echo "def a(): pass"; for i in $(seq 1 3); do echo "def _h$i(): pass"; done
+                        for i in $(seq 1 3); do echo "def p$i(): pass"; done; } > rsize/deep.py
+OUT=$(echo '{"tool_input":{"file_path":"'"$TMP"'/rsize/deep.py"}}' \
+  | scripts/hooks/claude-posttooluse-size-warn.sh 2>&1)
+echo "$OUT" | grep -q "R-size 책임"
+assert "공개가 함께 늘면 여전히 경고" "0" "$?"
+git checkout -q -- rsize/deep.py 2>/dev/null || true
 
 # 줄 수 경고가 이미 나갔으면 침묵한다 — 같은 편집에 두 경고를 겹치지 않는다.
 # 기준선은 soft(400) 초과 · hard(500) 미만으로 잡는다 — pre-commit 차단에 걸리면

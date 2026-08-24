@@ -163,13 +163,28 @@ PostToolUse 안이 안고 있던 "신규 파일을 어떻게 아는가" 문제�
 근거는 위 "차단 근거" 절이다 — 경고는 무시될 수 있고, 무시되면 이 축은 존재 이유가 없다.
 구조를 먼저 잡게 만드는 것이 목적이므로 통과 가능한 신호로는 목적을 달성하지 못한다.
 
-**호환성 처리 (2단 강등)**:
+**지원 확인됨 (2026-08-24, Claude Code 2.1.241)**:
+설치본 바이너리에서 스키마 문자열을 확인했다.
 
-1. `hookSpecificOutput.permissionDecision: "deny"` 로 차단을 시도한다.
-2. 그 필드가 무시되는 버전에서는 `additionalContext` 주입으로 자동 강등된다 —
-   기존 훅들과 같은 soft 모델이 된다. 훅이 조용히 죽지는 않는다.
+```text
+- `permissionDecision` - "allow", "deny", or "ask" (PreToolUse only)
+- `permissionDecisionReason` - Reason for the permission decision (PreToolUse only)
+- `decision` - "block" ... (deprecated for PreToolUse,
+  use hookSpecificOutput.permissionDecision instead)
+```
 
-두 경로 모두 같은 메시지를 낸다. 구현 시 실제 동작 버전을 확인해 기록한다.
+처리 경로(`returned permissionDecision: deny`)도 존재한다.
+`agent-guard` 헤더가 기록한 "일부 버전에서 지원" 은 현재 버전에서 해소됐다.
+
+**`deny` 를 쓰고 `ask` 는 쓰지 않는다.** `ask` 는 사람에게 확인을 요구해 세션을 멈춘다.
+이 게이트의 대상은 사람이 아니라 에이전트이고, `deny` 의 `permissionDecisionReason` 이
+에이전트에게 되먹여져 스스로 구조를 다시 잡게 하는 것이 목적이다.
+
+**호환성 처리 (2단 강등)** — 구버전 설치본을 위해 유지한다:
+
+1. `hookSpecificOutput.permissionDecision: "deny"` 로 차단한다.
+2. 그 필드가 무시되는 버전에서는 `additionalContext` 주입으로 자동 강등된다.
+   훅이 조용히 죽지는 않는다.
 
 ### 축 B — 델타 신호의 오탐 제거
 
@@ -275,10 +290,8 @@ export { parse } from './parse.js'
 
 ## 미해결 — 구현 전 결정 필요
 
-1. **축 A 의 하드 차단이 실제로 동작하는 Claude Code 버전.**
-   `hookSpecificOutput.permissionDecision` 지원 여부를 구현 시 실측하고 결과를 기록한다.
-   미지원이면 축 A 는 soft 로 강등되며, 그 경우 이 스펙의 목적(구조 우선 강제)이
-   달성되지 않으므로 대안을 재설계해야 한다.
+1. ~~축 A 의 하드 차단 지원 여부~~ — **해소됨** (2026-08-24, 2.1.241 에서 확인).
+   위 "축 A 의 강제 모델" 절 참조. 최소 지원 버전을 언제 문서화할지는 미정이다.
 2. **축 C 의 적용 범위.** 현재 `R-struct` 는 Vue 컴포넌트 폴더 대상이다.
    Python `__init__.py` 까지 넓히면 대상 프로젝트가 달라진다.
 3. **축 A 의 `.svelte` 처리.** `<script>` 블록의 `export let`(Svelte 4) 과 `$props()`(Svelte 5) 는

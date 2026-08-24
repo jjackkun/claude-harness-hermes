@@ -22,6 +22,12 @@
         "_purpose": "Task/Agent 도구 — frontend/DB/TS 작업을 general-purpose 로 dispatch 하는 것을 차단",
         "matcher": "Task|Agent",
         "command": "${CLAUDE_PROJECT_DIR}/scripts/hooks/claude-pretooluse-agent-guard.sh"
+      },
+      {
+        "_purpose": "Write 도구 — 새 파일의 공개 심볼이 8개 이상이면 생성을 차단(R-iface). 파일이 쓰이기 전에 구조 판단을 강제한다 — 2026-08-24",
+        "_note": "이 저장소 최초의 하드 차단 PreToolUse 훅. permissionDecision:deny 지원은 Claude Code 2.1.241 에서 확인. 구버전은 additionalContext 로 자동 강등.",
+        "matcher": "Write",
+        "command": "${CLAUDE_PROJECT_DIR}/scripts/hooks/claude-pretooluse-iface-guard.sh"
       }
     ],
     "PostToolUse": [
@@ -36,7 +42,7 @@
         "command": "${CLAUDE_PROJECT_DIR}/scripts/hooks/claude-posttooluse-size-warn.sh"
       },
       {
-        "_purpose": "Write/Edit 누적 15 회 도달 시 code-reviewer dispatch 리마인드 — 2026-04-15 자성",
+        "_purpose": "첫 코드 편집 시 1회 리뷰 리마인드 + 이후 편집을 .claude/.review-dirty 에 누적 기록 — 2026-04-15 자성 (설명이 \"누적 15회\"로 적혀 있었으나 구현과 달라 2026-08-24 정정)",
         "matcher": "Write|Edit",
         "command": "${CLAUDE_PROJECT_DIR}/scripts/hooks/claude-posttooluse-review-reminder.sh"
       }

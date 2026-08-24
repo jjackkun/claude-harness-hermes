@@ -106,6 +106,8 @@ run_step "sync-plugins.sh --check" bash "$REPO_ROOT/scripts/sync-plugins.sh" --c
 for t in \
   windows-helpers-test.sh \
   plan-state-test.sh \
+  iface-gate-test.sh \
+  struct-barrel-test.sh \
   doc-gardening-drift-test.sh \
   claude-md-skill-index-test.sh \
   update-all-roundtrip-test.sh \

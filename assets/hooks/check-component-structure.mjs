@@ -10,6 +10,14 @@
  *   R-struct-1: *.vue 는 동일 이름 폴더 안에 있어야 한다 (0뎁스 직접 배치 금지)
  *   R-struct-2: 컴포넌트 폴더에 index.js 또는 index.ts 배럴이 있어야 한다
  *   R-struct-3: 컴포넌트 소비자는 .vue 직접 경로 import 금지 (폴더명 import 강제)
+ *   R-struct-4: 배럴(index.js/ts)에서 전량 재export(`export *`) 금지
+ *
+ * R-struct-4 의 근거: 배럴은 은닉 장치가 아니라 재노출 장치다. 전부 내보내면
+ * 호출자가 알아야 할 심볼 수가 그대로여서 인터페이스가 하나도 좁아지지 않는다.
+ * R-iface 가 "나눠라" 라고 해서 나눈 결과가 이 형태면 폭은 줄지 않는다.
+ * R-struct-1~3 과 달리 컴포넌트 경로에 한정하지 않는다 — 배럴 폭은 Vue 만의 문제가 아니다.
+ * (파이썬 `__init__.py` 는 pre-commit 이 이 검사기에 .py 를 넘기지 않아 아직 대상이 아니다.)
+ * 스펙: docs/superpowers/specs/2026-08-24-interface-width-gate-design.md 축 C
  *
  * 예외(allowlist):
  *   - components/ui/ — shadcn 등 자동생성물
@@ -63,6 +71,26 @@ for (const file of files) {
           `[R-struct-2] ${file} — ${dir}/index.js 배럴 없음\n` +
           `  → ${dir}/index.js 에 \`export { default } from './${stem}.vue'\` 추가\n` +
           `  근거: assets/rules/web/coding-style.md §File-Organization`
+        )
+      }
+    }
+  }
+
+  // ── R-struct-4: 배럴의 전량 재export 금지 ──────────────────────────────
+  // 줄 머리에 고정한다 — 문자열 안의 "export *" 나 주석 처리된 `// export *` 를
+  // 위반으로 잡으면 오탐이 나고, 오탐이 나는 차단은 우회를 학습시킨다.
+  if (BARREL_RE.test(name)) {
+    let src
+    try { src = readFileSync(file, 'utf8') } catch { src = null }
+    if (src !== null) {
+      const re = /^[ \t]*export\s*\*.*$/gm
+      let m
+      while ((m = re.exec(src)) !== null) {
+        violations.push(
+          `[R-struct-4] ${file} — 배럴의 전량 재export: '${m[0].trim()}'\n` +
+          `  → 필요한 심볼만 골라 내보낼 것: \`export { a, b } from './x.js'\`\n` +
+          `  → 전부 내보내면 배럴이 인터페이스를 좁히지 못한다 (import 경로만 짧아짐)\n` +
+          `  근거: docs/design-docs/core-beliefs.md#r-iface`
         )
       }
     }

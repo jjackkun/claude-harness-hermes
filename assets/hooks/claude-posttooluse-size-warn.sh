@@ -85,17 +85,29 @@ fi
 REL=$(git ls-files --full-name --error-unmatch -- "$FILE_PATH" 2>/dev/null) || exit 0
 [[ -n "$REL" ]] || exit 0
 
+# SYM_PAT 은 "책임 수"의 대리 지표(전체 심볼), PUB_PAT 은 "인터페이스 폭"(공개 심볼)이다.
+# 둘이 갈라지는 것은 파이썬뿐이다 — 마크다운의 절은 전부 노출이고, `^export ` 는 이미 공개만 센다.
 case "$FILE_PATH" in
-  *.md) SYM_PAT='^### '        ; SYM_UNIT='하위 절' ;;
-  *.py) SYM_PAT='^(def |class |async def )' ; SYM_UNIT='최상위 def/class' ;;
-  *)    SYM_PAT='^export '     ; SYM_UNIT='export 심볼' ;;
+  *.md) SYM_PAT='^### '        ; PUB_PAT='^### '        ; SYM_UNIT='하위 절' ;;
+  *.py) SYM_PAT='^(def |class |async def )'
+        PUB_PAT='^(def |class |async def )[a-zA-Z]'     ; SYM_UNIT='최상위 def/class' ;;
+  *)    SYM_PAT='^export '     ; PUB_PAT='^export '     ; SYM_UNIT='export 심볼' ;;
 esac
 
 SYM_NOW=$(grep -cE "$SYM_PAT" "$FILE_PATH" 2>/dev/null || true)
 SYM_BASE=$(git show "HEAD:$REL" 2>/dev/null | grep -cE "$SYM_PAT" || true)
 SYM_NOW="${SYM_NOW:-0}"; SYM_BASE="${SYM_BASE:-0}"
 
-if (( SYM_NOW - SYM_BASE >= RESP_DELTA_WARN )); then
+PUB_NOW=$(grep -cE "$PUB_PAT" "$FILE_PATH" 2>/dev/null || true)
+PUB_BASE=$(git show "HEAD:$REL" 2>/dev/null | grep -cE "$PUB_PAT" || true)
+PUB_NOW="${PUB_NOW:-0}"; PUB_BASE="${PUB_BASE:-0}"
+
+# 임계 5 는 그대로 두고 "공개도 늘었는가" 를 AND 로 더한다 (2026-08-24).
+# 비공개 헬퍼만 늘어난 편집은 인터페이스를 넓히지 않는다 — 내부를 깊게 만드는 *개선*이다.
+# 그것을 책임 증가로 경고하면 좋은 편집이 벌을 받고, 경고 피로로 사람이 hook 을 끈다.
+# 임계값 재산정이 아니라 오탐 제거다 — 5 의 근거 문서는 그대로 유효하다.
+# 근거: docs/superpowers/specs/2026-08-24-interface-width-gate-design.md 축 B
+if (( SYM_NOW - SYM_BASE >= RESP_DELTA_WARN )) && (( PUB_NOW > PUB_BASE )); then
   echo "[R-size 책임] $FILE_PATH — 마지막 커밋 대비 $SYM_UNIT: $SYM_BASE → $SYM_NOW (+$((SYM_NOW - SYM_BASE)))."
   echo "  이 파일에 책임이 몇 개인지 세고, 2개 이상이면 파일별 책임 분리 → 배럴 재export."
   echo "  먼저 볼 것: 방금 늘어난 것이 *파일명이 약속한 책임* 안에 있는가."
