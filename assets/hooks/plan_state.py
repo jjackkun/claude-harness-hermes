@@ -38,10 +38,40 @@ RETRO_HEADING_RE = re.compile(r"^##\s*8[.)]")
 RETRO_FALLBACK_RE = re.compile(r"^##.*회고")
 SECTION_END_RE = re.compile(r"^##\s")
 
+# §2 목표 섹션. 회고(§8)와 같은 방식으로 번호 우선, 제목 폴백.
+GOAL_HEADING_RE = re.compile(r"^##\s*2[.)]")
+GOAL_FALLBACK_RE = re.compile(r"^##.*목표")
+
+# 검증 명령의 표지는 인라인 코드 스팬이다. 명령을 파싱하지도 실행하지도 않는다 —
+# 계획서는 에이전트가 쓰는 파일이고, 거기 적힌 것을 훅이 실행하면 게이트가
+# 게이트 대상에게 실행 권한을 넘기는 것이 된다. "적혀 있는가" 까지만 본다.
+INLINE_CODE_RE = re.compile(r"`[^`]+`")
+
 
 def read_lines(path):
     with open(path, encoding="utf-8") as handle:
         return handle.read().splitlines()
+
+
+def _section_body(lines, heading_re, fallback_re):
+    """제목 정규식으로 시작하는 섹션의 본문 줄을 돌려준다. 섹션이 없으면 None."""
+    start = None
+    for pattern in (heading_re, fallback_re):
+        for index, line in enumerate(lines):
+            if pattern.match(line):
+                start = index
+                break
+        if start is not None:
+            break
+    if start is None:
+        return None
+
+    body = []
+    for line in lines[start + 1:]:
+        if SECTION_END_RE.match(line):
+            break
+        body.append(line)
+    return body
 
 
 def count_boxes(lines):
@@ -64,25 +94,7 @@ def is_complete(lines):
 
 def retro_lines(lines):
     """§8 회고 섹션의 본문 줄을 돌려준다. 섹션이 없으면 None."""
-    start = None
-    for index, line in enumerate(lines):
-        if RETRO_HEADING_RE.match(line):
-            start = index
-            break
-    if start is None:
-        for index, line in enumerate(lines):
-            if RETRO_FALLBACK_RE.match(line):
-                start = index
-                break
-    if start is None:
-        return None
-
-    body = []
-    for line in lines[start + 1:]:
-        if SECTION_END_RE.match(line):
-            break
-        body.append(line)
-    return body
+    return _section_body(lines, RETRO_HEADING_RE, RETRO_FALLBACK_RE)
 
 
 def is_retro_empty(lines):
@@ -126,6 +138,41 @@ def pending_items(lines, max_count):
     return items
 
 
+def _goal_items(lines):
+    """§2 목표 항목을 [{checked, text, verified}] 로 돌려준다. §2 가 없으면 None.
+
+    검증 명령은 목표 줄 자체 또는 그 뒤 이어지는 줄에 올 수 있다 —
+    템플릿이 보여주는 형식이 명령을 다음 줄에 들여쓰는 형태이기 때문이다.
+    """
+    body = _section_body(lines, GOAL_HEADING_RE, GOAL_FALLBACK_RE)
+    if body is None:
+        return None
+
+    items = []
+    for line in body:
+        match = CHECKBOX_RE.match(line)
+        if match:
+            items.append({
+                "checked": match.group(1) in ("x", "X"),
+                "text": line.strip(),
+                "verified": bool(INLINE_CODE_RE.search(line)),
+            })
+        elif items and line.strip() and INLINE_CODE_RE.search(line):
+            items[-1]["verified"] = True
+    return items
+
+
+def _report_goals(lines, select):
+    """§2 목표 중 select 가 참인 것을 출력한다. 0=해당 있음 1=없음 2=§2 부재."""
+    items = _goal_items(lines)
+    if items is None:
+        return 2
+    hits = [item["text"] for item in items if select(item)]
+    for hit in hits:
+        print(hit)
+    return 0 if hits else 1
+
+
 def scan(paths, predicate):
     """paths 중 predicate 가 참인 경로를 stdout 으로 출력한다.
 
@@ -151,19 +198,46 @@ def scan(paths, predicate):
     return 2 if had_error else 0
 
 
+# 서브커맨드를 if 사슬로 늘어놓으면 명령 하나마다 main 의 복잡도가 1씩 오른다.
+# R-acc 가 두 개를 더할 때 기준선(13)을 넘겨 R-cx 에 막혔다 — 표로 옮겨 분기를 없앤다.
+# 배치 명령: 경로 0개 이상, 파일별 판정 술어를 받는다.
+BATCH_COMMANDS = {
+    "list-complete": is_complete,
+    "list-retro-empty": is_retro_empty,
+}
+
+# 단일 경로 명령: lines 와 argv 를 받아 종료코드를 돌려준다.
+SINGLE_COMMANDS = {
+    "is-complete": lambda lines, argv: 0 if is_complete(lines) else 1,
+    "retro-empty": lambda lines, argv: 0 if is_retro_empty(lines) else 1,
+    "pending": lambda lines, argv: _print_pending(lines, argv),
+    "goals-unverified": lambda lines, argv: _report_goals(
+        lines, lambda item: not item["verified"]),
+    "goals-pending": lambda lines, argv: _report_goals(
+        lines, lambda item: not item["checked"]),
+}
+
+
+def _print_pending(lines, argv):
+    max_count = PENDING_MAX_DEFAULT
+    if "--max" in argv:
+        max_count = int(argv[argv.index("--max") + 1])
+    for item in pending_items(lines, max_count):
+        print(item)
+    return 0
+
+
 def main(argv):
-    if len(argv) < 2:
-        print("usage: plan_state.py {is-complete|retro-empty|pending|"
-              "list-complete|list-retro-empty} <path>... [--max N]", file=sys.stderr)
+    command = argv[1] if len(argv) >= 2 else ""
+
+    if command in BATCH_COMMANDS:
+        # 배치 명령은 경로를 0개 이상 받는다. 단일 경로 전처리보다 먼저 처리한다.
+        return scan(argv[2:], BATCH_COMMANDS[command])
+
+    if command not in SINGLE_COMMANDS:
+        print("usage: plan_state.py {%s} <path>... [--max N]"
+              % "|".join(list(SINGLE_COMMANDS) + list(BATCH_COMMANDS)), file=sys.stderr)
         return 2
-
-    command = argv[1]
-
-    # 배치 명령은 경로를 0개 이상 받는다. 단일 경로 전처리보다 먼저 처리한다.
-    if command == "list-complete":
-        return scan(argv[2:], is_complete)
-    if command == "list-retro-empty":
-        return scan(argv[2:], is_retro_empty)
 
     if len(argv) < 3:
         print("usage: plan_state.py %s <path>" % command, file=sys.stderr)
@@ -176,24 +250,7 @@ def main(argv):
     if os.path.basename(path) == "template.md":
         return 1
 
-    lines = read_lines(path)
-
-    if command == "is-complete":
-        return 0 if is_complete(lines) else 1
-
-    if command == "retro-empty":
-        return 0 if is_retro_empty(lines) else 1
-
-    if command == "pending":
-        max_count = PENDING_MAX_DEFAULT
-        if "--max" in argv:
-            max_count = int(argv[argv.index("--max") + 1])
-        for item in pending_items(lines, max_count):
-            print(item)
-        return 0
-
-    print("unknown subcommand: %s" % command, file=sys.stderr)
-    return 2
+    return SINGLE_COMMANDS[command](read_lines(path), argv)
 
 
 if __name__ == "__main__":

@@ -327,6 +327,27 @@ if (( PLAN_STATE_OK )) && [[ -d "$ACTIVE_DIR" ]]; then
         ;;
     esac
   done < <(filter_files "^${ACTIVE_DIR}/[^/]+\.md$")
+
+  # 7-bis. R-acc-1 — §2 목표가 실행 가능한 형태인가 (경고)
+  #
+  # 템플릿은 §2 에 "검증 가능한 형태" 를 이미 요구하지만 형식이 없어 산문으로 채워지고,
+  # 그 문장이 실제로 검증되는지는 아무도 보지 않았다. 목표마다 확인 명령을 붙이게 한다.
+  #
+  # 명령을 실행하지는 않는다. 계획서는 에이전트가 쓰는 파일이고, 거기 적힌 것을
+  # 커밋 훅이 실행하면 게이트가 게이트 대상에게 실행 권한을 넘기는 것이 된다.
+  #
+  # 스테이징된 계획서만 본다 — active/ 전체를 훑으면 남의 옛 형식 계획서까지 걸려
+  # 무관한 커밋이 매번 경고를 받는다. R-plan 이 2026-07-23 에 같은 이유로 좁힌 범위다.
+  while IFS= read -r plan; do
+    [[ -f "$plan" ]] || continue
+    rc=0; BARE=$(python3 "$PLAN_STATE" goals-unverified "$plan" 2>/dev/null) || rc=$?
+    [[ "$rc" -eq 0 && -n "$BARE" ]] || continue
+    WARNINGS+=("
+[R-acc] §2 목표에 검증 명령이 없음: $plan
+$(echo "$BARE" | head -3 | sed 's/^/    /')
+  → 목표마다 그것을 확인하는 명령을 붙이십시오 (예: \`bash tests/foo-test.sh\`).
+  근거: docs/design-docs/core-beliefs.md#r-acc")
+  done < <(filter_files "^${ACTIVE_DIR}/[^/]+\.md$")
 fi
 
 # 8. R-plan-missing / R-plan-stale — 계획서가 코드를 따라오는가 (둘 다 경고)
@@ -412,6 +433,20 @@ if (( PLAN_STATE_OK )); then
 [R-retro] 회고 판정 불가: $moved — 마크다운 형식을 확인하십시오.")
         ;;
     esac
+
+    # 9-bis. R-acc-2 — §2 목표가 미완인 채 완료 처리되는가 (경고)
+    #
+    # R-retro 와 같은 지점에서 발화한다. 훅을 새로 만들지 않는 이유는 판정 계기가
+    # 같기 때문이다 — completed/ 로 옮기는 행위가 완료 선언이고, R-retro 가 §8 을
+    # 보는 자리에서 §2 도 함께 본다.
+    rc=0; GOALS=$(python3 "$PLAN_STATE" goals-pending "$moved" 2>/dev/null) || rc=$?
+    if [[ "$rc" -eq 0 && -n "$GOALS" ]]; then
+      WARNINGS+=("
+[R-acc] 미완 목표를 남긴 채 완료 처리됨: $moved
+$(echo "$GOALS" | head -3 | sed 's/^/    /')
+  → 달성했으면 체크하고, 못 했으면 회고(§8)에 이유를 남기십시오.
+  근거: docs/design-docs/core-beliefs.md#r-acc")
+    fi
   done < <(git diff --cached --name-only --diff-filter=RA -- docs/exec-plans/completed/ 2>/dev/null || true)
 fi
 

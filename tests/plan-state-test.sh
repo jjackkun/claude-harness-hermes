@@ -222,6 +222,123 @@ assert "판정불가가 있어도 나머지는 계속 처리" "0" "$?"
 
 assert "빈 인자 목록도 정상 종료" "0" "$(rc list-complete)"
 
+# ── R-acc — §2 목표가 실행 가능한 형태인가 ──────────────────────────────
+# 스펙: docs/superpowers/specs/2026-08-24-executable-acceptance-spec-design.md
+echo ""
+echo "== R-acc-1: 목표에 검증 명령이 붙어 있는가 =="
+
+cat > "$TMP/acc-verified.md" <<'EOF'
+# 계획
+
+## 2. 목표 (What — 검증 가능한 형태)
+
+- [ ] 공개 심볼 8개짜리 새 파일 생성이 차단된다
+      `bash tests/iface-gate-test.sh`
+- [x] 7개짜리는 통과한다
+      `bash tests/iface-gate-test.sh`
+
+## 3. 다음
+- [ ] 검증 명령 없는 항목이지만 §2 가 아니다
+EOF
+assert "모든 §2 목표에 명령이 있으면 exit 1(위반 없음)" "1" "$(rc goals-unverified "$TMP/acc-verified.md")"
+
+cat > "$TMP/acc-bare.md" <<'EOF'
+# 계획
+
+## 2. 목표 (What — 검증 가능한 형태)
+
+- [ ] 무언가를 잘 되게 한다
+- [ ] 이건 명령이 있다
+      `bash tests/foo.sh`
+EOF
+assert "명령 없는 목표가 있으면 exit 0(위반)" "0" "$(rc goals-unverified "$TMP/acc-bare.md")"
+OUT=$(python3 "$MOD" goals-unverified "$TMP/acc-bare.md" 2>/dev/null)
+echo "$OUT" | grep -q "무언가를 잘 되게 한다"
+assert "명령 없는 목표만 stdout 에 나온다" "0" "$?"
+echo "$OUT" | grep -q "이건 명령이 있다"
+assert "명령 있는 목표는 나오지 않는다" "1" "$?"
+
+cat > "$TMP/acc-nosection.md" <<'EOF'
+# 계획
+
+## 3. 다음
+- [ ] 명령 없음
+EOF
+assert "§2 가 없으면 판정불가(exit 2)" "2" "$(rc goals-unverified "$TMP/acc-nosection.md")"
+
+cat > "$TMP/acc-empty.md" <<'EOF'
+# 계획
+
+## 2. 목표 (What — 검증 가능한 형태)
+
+아직 항목 없음.
+
+## 3. 다음
+EOF
+assert "§2 에 목표 항목이 0개면 위반 아님" "1" "$(rc goals-unverified "$TMP/acc-empty.md")"
+
+cat > "$TMP/acc-fallback.md" <<'EOF'
+# 계획
+
+## 목표
+
+- [ ] 명령 없음
+EOF
+assert "번호 없는 '목표' 제목도 §2 로 본다" "0" "$(rc goals-unverified "$TMP/acc-fallback.md")"
+
+assert "template.md 는 판정 대상 밖" "1" "$(rc goals-unverified "$REPO_ROOT/assets/docs-templates/docs/exec-plans/template.md")"
+
+echo ""
+echo "== R-acc-2: §2 목표가 미완인 채 완료 처리되는가 =="
+
+cat > "$TMP/acc-pending.md" <<'EOF'
+# 계획
+
+## 2. 목표 (What — 검증 가능한 형태)
+
+- [x] 끝난 목표
+      `bash tests/a.sh`
+- [ ] 안 끝난 목표
+      `bash tests/b.sh`
+
+## 3. 다음
+- [ ] §2 가 아닌 미완 항목
+EOF
+assert "§2 에 미완 목표가 있으면 exit 0(위반)" "0" "$(rc goals-pending "$TMP/acc-pending.md")"
+OUT=$(python3 "$MOD" goals-pending "$TMP/acc-pending.md" 2>/dev/null)
+echo "$OUT" | grep -q "안 끝난 목표"
+assert "미완 목표가 stdout 에 나온다" "0" "$?"
+echo "$OUT" | grep -q "§2 가 아닌 미완 항목"
+assert "§2 밖의 미완 항목은 세지 않는다" "1" "$?"
+
+cat > "$TMP/acc-alldone.md" <<'EOF'
+# 계획
+
+## 2. 목표 (What — 검증 가능한 형태)
+
+- [x] 끝난 목표
+      `bash tests/a.sh`
+EOF
+assert "§2 가 전부 완료면 exit 1(위반 없음)" "1" "$(rc goals-pending "$TMP/acc-alldone.md")"
+assert "§2 가 없으면 판정불가(exit 2)" "2" "$(rc goals-pending "$TMP/acc-nosection.md")"
+
+echo ""
+echo "== R-acc 회귀: 인터페이스 폭과 복잡도가 늘지 않았는가 =="
+# plan_state.py 는 공개 심볼 8개로 이미 R-iface 임계(8)에 있다.
+# 새 파서를 공개로 추가하면 폭이 늘어난다 — 비공개로 넣어야 한다.
+WIDTH=$(python3 -c "
+import ast
+t = ast.parse(open('$MOD', encoding='utf-8').read())
+print(len([n.name for n in t.body
+           if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef))
+           and not n.name.startswith('_')]))")
+assert "공개 심볼이 8개를 넘지 않는다" "0" "$([[ "$WIDTH" -le 8 ]] && echo 0 || echo 1)"
+
+# main 복잡도 13 이 .cxbaseline 동결값이다. 서브커맨드를 그냥 더하면 14 가 되어 막힌다.
+CXMAIN=$(python3 "$REPO_ROOT/assets/hooks/complexity.py" --report "$MOD" 2>/dev/null \
+  | awk '$3 == "main" { print $1 }')
+assert "main 복잡도가 기준선(13) 이하" "0" "$([[ "${CXMAIN:-99}" -le 13 ]] && echo 0 || echo 1)"
+
 echo ""
 echo "== 결과 =="
 echo "  통과: $PASS / 실패: $FAIL"

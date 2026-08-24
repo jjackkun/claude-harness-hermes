@@ -27,7 +27,7 @@ scripts/hermes-reindex.py 13
 scripts/hermes-lifecycle.py 13
 scripts/hermes-dream.py 13
 assets/rules/harness/examples/python/test_sdk_ban.py 13
-assets/hooks/plan_state.py 13
+assets/hooks/plan_state.py 8
 scripts/hermes_lifecycle_apply.py 12
 assets/skills/skill-creator/scripts/utils.py 12
 assets/rules/harness/examples/python/test_mode_isolation.py 12

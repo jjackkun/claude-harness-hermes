@@ -35,8 +35,32 @@ echo "── 계산 정확도 (실측 재현) ──"
 # 스펙 표의 값을 그대로 재현한다. 계산기가 바뀌면 스펙의 임계 근거도 무효가 된다.
 VAL="$(python3 "$CX" --report "$ROOT/scripts/hermes-search.py" 2>/dev/null | awk '{print $1}' | sort -rn | head -1)"
 [[ "$VAL" == "48" ]] && ok "hermes-search.py 최대 48 재현" || nope "hermes-search.py 최대 48 재현 (실제 $VAL)"
-VAL="$(python3 "$CX" --report "$ROOT/assets/hooks/plan_state.py" 2>/dev/null | awk '{print $1}' | sort -rn | head -1)"
-[[ "$VAL" == "13" ]] && ok "plan_state.py 최대 13 재현" || nope "plan_state.py 최대 13 재현 (실제 $VAL)"
+# plan_state.py 를 같은 방식으로 박아 뒀다가 R-acc 리팩터링으로 13 → 8 이 되면서 깨졌다.
+# 살아 있는 소스의 측정값을 픽스처로 쓰면 **개선이 회귀로 신고된다.**
+# 고정해야 할 것은 특정 파일의 숫자가 아니라 기준선과 실측의 관계다:
+# .cxbaseline 값이 실측보다 낮으면 손대지도 않은 파일이 다음 커밋에서 막힌다.
+STALE=$(python3 - "$ROOT" <<'PYEOF'
+import subprocess, sys, os
+root = sys.argv[1]
+cx = os.path.join(root, "assets/hooks/complexity.py")
+bad = []
+for line in open(os.path.join(root, ".cxbaseline"), encoding="utf-8"):
+    line = line.split("#", 1)[0].strip()
+    if not line:
+        continue
+    path, _, value = line.rpartition(" ")
+    target = os.path.join(root, path)
+    if not os.path.isfile(target):
+        continue
+    out = subprocess.run([sys.executable, cx, "--report", target],
+                         capture_output=True, text=True).stdout
+    peak = max([int(l.split()[0]) for l in out.splitlines() if l.split()] or [0])
+    if peak > int(value):
+        bad.append("%s: 기준선 %s < 실측 %d" % (path, value, peak))
+print("\n".join(bad))
+PYEOF
+)
+[[ -z "$STALE" ]] && ok ".cxbaseline 이 실측보다 낮은 항목 없음" || nope ".cxbaseline 어긋남: $STALE"
 
 echo "── 라쳇 (.cxbaseline) ──"
 gen 20 > c.py

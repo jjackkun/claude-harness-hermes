@@ -199,6 +199,43 @@ git rm --cached -q pipe_probe.py >/dev/null 2>&1 || true
 rm -f pipe_probe.py .claude/.review-dirty
 
 echo ""
+echo "== 1f. R-acc 배선 — 계획서 §2 목표가 실행 가능한 형태인가 =="
+mkdir -p docs/exec-plans/active docs/exec-plans/completed
+cat > docs/exec-plans/active/2026-08-25-acc-probe.md <<'PLANEOF'
+# 계획
+
+## 2. 목표 (What — 검증 가능한 형태)
+
+- [ ] 명령 없는 목표
+
+## 8. 회고
+- 잘된 것: x
+PLANEOF
+git add docs/exec-plans/active/2026-08-25-acc-probe.md
+ACC_OUT=$(.git/hooks/pre-commit 2>&1); ACC_RC=$?
+assert "R-acc 는 차단하지 않음" "0" "$ACC_RC"
+echo "$ACC_OUT" | grep -q "\[R-acc\]"
+assert "명령 없는 §2 목표에 R-acc-1 발화" "0" "$?"
+
+# 명령을 붙이면 침묵해야 한다 — 오발화 확인.
+cat > docs/exec-plans/active/2026-08-25-acc-probe.md <<'PLANEOF'
+# 계획
+
+## 2. 목표 (What — 검증 가능한 형태)
+
+- [ ] 명령 있는 목표
+      `bash tests/foo-test.sh`
+
+## 8. 회고
+- 잘된 것: x
+PLANEOF
+git add docs/exec-plans/active/2026-08-25-acc-probe.md
+.git/hooks/pre-commit 2>&1 | grep -q "\[R-acc\]"
+assert "명령이 붙으면 R-acc-1 침묵" "1" "$?"
+git rm --cached -q docs/exec-plans/active/2026-08-25-acc-probe.md >/dev/null 2>&1 || true
+rm -rf docs/exec-plans
+
+echo ""
 echo "== 2. pre-commit 통과 경로 =="
 echo "x = 1" > small.py
 git add small.py
