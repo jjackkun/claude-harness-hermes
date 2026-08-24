@@ -105,6 +105,62 @@ git rm --cached -q .deprc dep/low.py dep/high.py >/dev/null 2>&1 || true
 rm -rf .deprc dep
 
 echo ""
+echo "== 1d. pre-commit R-test — 세 상태를 구분한다 =="
+# 이 게이트는 파이썬 테스트가 0개인 상태로 exit 5 를 통과 처리하며
+# **한 번도 무언가를 막은 적이 없었다.** 판정 자체는 옳다(파이썬 없는 프로젝트도 설치 대상).
+# 문제는 그 예외 경로에 영구히 머물러 있다는 사실을 아무도 모른다는 것이었다.
+#
+# 그리고 "도구가 못 뜬 것" 과 "테스트가 실패한 것" 을 구분하지 못했다.
+# 실제로 이 스모크가 HOME 을 격리하는 순간 pytest 가 자기 모듈을 import 하지 못해
+# ModuleNotFoundError Traceback 이 "[R-test] pytest 실패" 로 보고되며 커밋을 막았다.
+# 근거: docs/superpowers/specs/2026-08-24-coverage-enforcement-design.md 1단계
+mkdir -p tests
+echo "def add(a, b): return a + b" > lib_under_test.py
+git add lib_under_test.py
+
+# PATH 앞단에 가짜 pytest 를 놓아 종료코드를 통제한다.
+# 실제 pytest 에 의존하면 이 스모크가 환경에 따라 흔들린다.
+mkdir -p "$TMP/bin"
+mock_pytest() {  # $1 = --version 성공 여부(ok/broken), $2 = 실행 종료코드
+  cat > "$TMP/bin/pytest" <<EOF
+#!/usr/bin/env bash
+if [[ "\$1" == "--version" ]]; then
+  [[ "$1" == "ok" ]] && { echo "pytest 8.0.0"; exit 0; } || { echo "ModuleNotFoundError: No module named 'pytest'" >&2; exit 1; }
+fi
+echo "mock pytest run"
+exit $2
+EOF
+  chmod +x "$TMP/bin/pytest"
+}
+export PATH="$TMP/bin:$PATH"
+
+mock_pytest ok 5
+HOOK_OUT=$(.git/hooks/pre-commit 2>&1); HOOK_EXIT=$?
+assert "수집 0개(exit 5)는 커밋을 막지 않음" "0" "$HOOK_EXIT"
+echo "$HOOK_OUT" | grep -q "\[R-test\]"
+assert "수집 0개 사실을 경고로 표면화" "0" "$?"
+
+mock_pytest ok 0
+HOOK_OUT=$(.git/hooks/pre-commit 2>&1); HOOK_EXIT=$?
+assert "테스트가 통과하면 커밋 통과" "0" "$HOOK_EXIT"
+echo "$HOOK_OUT" | grep -q "\[R-test\]"
+assert "테스트가 통과하면 침묵" "1" "$?"
+
+mock_pytest ok 1
+HOOK_OUT=$(.git/hooks/pre-commit 2>&1); HOOK_EXIT=$?
+assert "테스트 실패는 차단" "1" "$HOOK_EXIT"
+
+mock_pytest broken 1
+HOOK_OUT=$(.git/hooks/pre-commit 2>&1); HOOK_EXIT=$?
+assert "pytest 가 못 뜨면 차단하지 않음" "0" "$HOOK_EXIT"
+echo "$HOOK_OUT" | grep -q "실행 불가"
+assert "실행 불가를 테스트 실패와 구분해 알림" "0" "$?"
+
+rm -f "$TMP/bin/pytest"
+git rm --cached -q lib_under_test.py >/dev/null 2>&1 || true
+rm -f lib_under_test.py; rmdir tests 2>/dev/null || true
+
+echo ""
 echo "== 2. pre-commit 통과 경로 =="
 echo "x = 1" > small.py
 git add small.py

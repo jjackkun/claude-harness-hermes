@@ -155,10 +155,31 @@ if [[ -n "$PY_FILES" ]]; then
   done
   [[ -z "$PYTEST_BIN" ]] && command -v pytest >/dev/null 2>&1 && PYTEST_BIN="pytest"
   if [[ -n "$PYTEST_DIR" ]] && [[ -n "$PYTEST_BIN" ]]; then
-    # 종료코드 캡처. exit 0=통과, 5=수집 0개 → 통과로 간주. 그 외(실패/중단/에러)는 차단.
-    PYTEST_OUT=$("$PYTEST_BIN" "$PYTEST_DIR" -q 2>&1) && PYTEST_RC=0 || PYTEST_RC=$?
-    if [[ "$PYTEST_RC" -ne 0 && "$PYTEST_RC" -ne 5 ]]; then
-      VIOLATIONS+=("$(cat <<EOF
+    # 세 상태를 구분한다. 예전에는 "실패" 와 "실행 불가" 가 한 덩어리였고,
+    # "수집 0개" 는 조용히 통과라 게이트가 죽은 줄 아무도 몰랐다.
+    #
+    # (a) 실행 불가 — pytest 가 자기 모듈도 import 못 하는 상태. 차단하지 않는다.
+    #     도구가 못 뜬 것을 "테스트 실패" 로 보고하면 사람이 코드를 뒤지게 된다.
+    #     실측: HOME 이 바뀌어 user-site 가 사라지면 실행 파일은 있는데 import 가 깨진다.
+    if ! "$PYTEST_BIN" --version >/dev/null 2>&1; then
+      WARNINGS+=("
+[R-test] pytest 실행 불가 — 이번 커밋의 파이썬 변경은 검증되지 않았다.
+  \$($PYTEST_BIN --version) 이 실패한다. 설치가 깨졌거나 인터프리터가 바뀌었다.
+  근거: docs/design-docs/core-beliefs.md#r-test")
+    else
+      # 종료코드 캡처. 0=통과, 5=수집 0개.
+      PYTEST_OUT=$("$PYTEST_BIN" "$PYTEST_DIR" -q 2>&1) && PYTEST_RC=0 || PYTEST_RC=$?
+      if [[ "$PYTEST_RC" -eq 5 ]]; then
+        # (b) 수집 0개 — 차단하지 않는다. 파이썬 없는 프로젝트도 설치 대상이므로
+        #     막으면 안 된다. 다만 조용히 넘기면 게이트가 죽은 줄 모른다.
+        #     이 저장소가 실제로 그 상태였다: 테스트 0개인 채로 R-test 가 늘 통과했다.
+        WARNINGS+=("
+[R-test] 스테이징된 .py 가 있으나 수집된 테스트가 0개다.
+  이 커밋의 파이썬 변경은 어떤 테스트로도 검증되지 않는다.
+  근거: docs/design-docs/core-beliefs.md#r-test")
+      elif [[ "$PYTEST_RC" -ne 0 ]]; then
+        # (c) 실제 실패 — 차단.
+        VIOLATIONS+=("$(cat <<EOF
 
 [R-test] pytest 실패.
 
@@ -167,7 +188,8 @@ $(echo "$PYTEST_OUT" | tail -30)
   근거: docs/design-docs/core-beliefs.md#r-test
 EOF
 )")
-      FAIL=1
+        FAIL=1
+      fi
     fi
   fi
 fi
