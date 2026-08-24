@@ -106,6 +106,17 @@ install_harness_pre_commit() {
     fi
   fi
 
+  # coverage_probe.py (R-cov) — complexity.py 와 같은 부류.
+  # 표준 라이브러리 trace 기반이라 프로젝트에 추가 설치를 요구하지 않는다.
+  local covprobe_src="$ASSETS_DIR/hooks/coverage_probe.py"
+  if [[ -f "$covprobe_src" ]]; then
+    if cp "$covprobe_src" "$git_dir/hooks/coverage_probe.py"; then
+      log_info "  hook    → .git/hooks/coverage_probe.py"
+    else
+      log_warn "  hook    → .git/hooks/coverage_probe.py 복사 실패"
+    fi
+  fi
+
   # depcheck.py (R-dep) — complexity.py 와 같은 부류. pre-commit 이 $(dirname $0) 에서 참조한다.
   local depcheck_src="$ASSETS_DIR/hooks/depcheck.py"
   if [[ -f "$depcheck_src" ]]; then

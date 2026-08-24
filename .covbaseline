@@ -1,0 +1,43 @@
+# R-cov 커버리지 스냅샷. 값은 <실행줄>/<전체줄>.
+# 갱신 방법 (스위트 전체 실행이 필요하므로 커밋 훅이 아니라 사람이 돌린다):
+#   python3 assets/hooks/coverage_probe.py run --data .covdata -- \
+#     bash tests/run-all.sh
+#   python3 assets/hooks/coverage_probe.py baseline --data .covdata \
+#     --scope assets/hooks,scripts > .covbaseline
+assets/hooks/check-secrets.py 86/94
+assets/hooks/complexity.py 74/75
+assets/hooks/coverage_probe.py 119/134
+assets/hooks/depcheck.py 116/116
+assets/hooks/plan_state.py 135/137
+scripts/hermes-cleanup.py 137/150
+scripts/hermes-correlate.py 68/76
+scripts/hermes-crystallize.py 164/188
+scripts/hermes-dream.py 232/252
+scripts/hermes-evolve-skill.py 89/123
+scripts/hermes-export-history.py 80/87
+scripts/hermes-increment.py 35/36
+scripts/hermes-index-skills.py 34/37
+scripts/hermes-init.py 69/71
+scripts/hermes-lifecycle.py 244/290
+scripts/hermes-loop.py 157/187
+scripts/hermes-manager.py 48/68
+scripts/hermes-message.py 0/93
+scripts/hermes-prune.py 29/32
+scripts/hermes-recall.py 130/147
+scripts/hermes-reindex.py 97/114
+scripts/hermes-save-session.py 33/38
+scripts/hermes-scrub-history.py 78/86
+scripts/hermes-search.py 229/278
+scripts/hermes-summarize.py 128/153
+scripts/hermes_lifecycle_apply.py 148/173
+scripts/hermes_loop.py 166/179
+scripts/hermes_loop_prompt.py 21/21
+scripts/hermes_loop_report.py 65/69
+scripts/hermes_mesh_gate.py 41/41
+scripts/hermes_redact.py 29/32
+scripts/hermes_reuse.py 22/22
+scripts/hermes_save_session_patterns.py 66/85
+scripts/hermes_save_session_signals.py 87/101
+scripts/hermes_save_session_storage.py 73/88
+scripts/hermes_secret_values.py 58/60
+scripts/hermes_skills.py 33/35

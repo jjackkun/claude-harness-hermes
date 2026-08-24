@@ -111,6 +111,7 @@ for t in \
   complexity-gate-test.sh \
   dep-contract-test.sh \
   pipe-gate-test.sh \
+  coverage-probe-test.sh \
   doc-gardening-drift-test.sh \
   claude-md-skill-index-test.sh \
   update-all-roundtrip-test.sh \

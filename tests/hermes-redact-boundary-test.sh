@@ -23,7 +23,7 @@ printf 'E2E_ADMIN_PASSWORD=Qx7vRn2Lp9Ttz\n' > "$PROJ/.env"
 
 # T1 헬퍼 — db_path 에서 프로젝트 루트를 되짚는 공용 함수가 있다
 helper() {
-PYTHONPATH="$SCRIPTS" python3 - "$DB" "$PROJ" <<'PY'
+PYTHONPATH="$SCRIPTS${PYTHONPATH:+:$PYTHONPATH}" python3 - "$DB" "$PROJ" <<'PY'
 import sys
 from hermes_redact import project_dir_for_db
 assert project_dir_for_db(sys.argv[1]) == sys.argv[2], project_dir_for_db(sys.argv[1])
@@ -36,7 +36,7 @@ else nope "T1 project_dir_for_db 헬퍼가 프로젝트 루트를 되짚는다";
 # T2 적재 경계 — CLAUDE_PROJECT_DIR 이 딴 곳이어도 정답지 값이 마스킹된다
 store() {
 cd "$ELSEWHERE" || return 1
-CLAUDE_PROJECT_DIR="$ELSEWHERE" PYTHONPATH="$SCRIPTS" python3 - "$DB" <<'PY'
+CLAUDE_PROJECT_DIR="$ELSEWHERE" PYTHONPATH="$SCRIPTS${PYTHONPATH:+:$PYTHONPATH}" python3 - "$DB" <<'PY'
 import sqlite3, sys
 from hermes_save_session_storage import save_session
 msgs = [{"role": "user", "content": "운영 계정 정보 공유합니다 Qx7vRn2Lp9Ttz 로 로그인하세요"}]
@@ -53,7 +53,7 @@ else nope "T2 적재 경계가 환경변수와 무관하게 정답지로 마스�
 # T3 요약 경계 — 요약도 DB 에 저장되고 서버로 나간다
 summ() {
 cd "$ELSEWHERE" || return 1
-CLAUDE_PROJECT_DIR="$ELSEWHERE" PYTHONPATH="$SCRIPTS" python3 - "$DB" <<'PY'
+CLAUDE_PROJECT_DIR="$ELSEWHERE" PYTHONPATH="$SCRIPTS${PYTHONPATH:+:$PYTHONPATH}" python3 - "$DB" <<'PY'
 import importlib.util, sys
 spec = importlib.util.spec_from_file_location("s", __import__("os").environ["SUMM"])
 m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
@@ -70,7 +70,7 @@ else nope "T3 요약 경계가 정답지로 마스킹한다"; fi
 # T4 B신호 경계 — 같은 session_history 테이블에 쓰므로 같은 관문을 통과해야 한다
 sig() {
 cd "$ELSEWHERE" || return 1
-CLAUDE_PROJECT_DIR="$ELSEWHERE" PYTHONPATH="$SCRIPTS" python3 - "$DB" <<'PYX'
+CLAUDE_PROJECT_DIR="$ELSEWHERE" PYTHONPATH="$SCRIPTS${PYTHONPATH:+:$PYTHONPATH}" python3 - "$DB" <<'PYX'
 import sqlite3, sys
 from hermes_save_session_signals import record_signal_context
 record_signal_context(sys.argv[1], [("adminpw", "운영 비번 Qx7vRn2Lp9Ttz 확인")], "proj", "sessB")

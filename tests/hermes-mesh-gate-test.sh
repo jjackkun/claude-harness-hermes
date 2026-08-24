@@ -9,7 +9,7 @@ nope() { echo "  ✗ $1"; FAIL=$((FAIL+1)); }
 
 # --- stage1 탈락 필터 ---
 run_stage1() {
-PYTHONPATH="$SCRIPTS" python3 - <<'PY'
+PYTHONPATH="$SCRIPTS${PYTHONPATH:+:$PYTHONPATH}" python3 - <<'PY'
 import hermes_mesh_gate as g
 
 def expect(name, text, want_reject):
@@ -61,12 +61,12 @@ EOF
 run_stage2() {  # $1 = PATH, $2 = HERMES_DISABLED 값(빈 문자열이면 unset)
   local extra_path="$1" disabled="$2"
   if [[ -n "$disabled" ]]; then
-    HERMES_DISABLED="$disabled" PATH="$extra_path:$PATH" PYTHONPATH="$SCRIPTS" python3 - <<'PY'
+    HERMES_DISABLED="$disabled" PATH="$extra_path:$PATH" PYTHONPATH="$SCRIPTS${PYTHONPATH:+:$PYTHONPATH}" python3 - <<'PY'
 import hermes_mesh_gate as g
 print("TRUE" if g.stage2_is_general("일반 지식 본문") else "FALSE")
 PY
   else
-    env -u HERMES_DISABLED PATH="$extra_path:$PATH" PYTHONPATH="$SCRIPTS" python3 - <<'PY'
+    env -u HERMES_DISABLED PATH="$extra_path:$PATH" PYTHONPATH="$SCRIPTS${PYTHONPATH:+:$PYTHONPATH}" python3 - <<'PY'
 import hermes_mesh_gate as g
 print("TRUE" if g.stage2_is_general("일반 지식 본문") else "FALSE")
 PY
@@ -87,7 +87,7 @@ make_mock "GENERAL"
 
 # claude 부재 → 탈락. PATH 를 좁히면 python3 자체를 못 찾으므로,
 # shutil.which("claude") 만 None 을 돌려주도록 monkeypatch 한다(python3 는 정상 실행).
-NO_CLAUDE="$(env -u HERMES_DISABLED PYTHONPATH="$SCRIPTS" python3 - <<'PY'
+NO_CLAUDE="$(env -u HERMES_DISABLED PYTHONPATH="$SCRIPTS${PYTHONPATH:+:$PYTHONPATH}" python3 - <<'PY'
 import shutil
 _orig = shutil.which
 shutil.which = lambda name, *a, **k: None if name == "claude" else _orig(name, *a, **k)
@@ -115,7 +115,7 @@ sleep 3
 echo "GENERAL"
 EOF
 chmod +x "$MOCKDIR/claude"
-TIMEOUT_RESULT="$(env -u HERMES_DISABLED PATH="$MOCKDIR:$PATH" PYTHONPATH="$SCRIPTS" python3 - <<'PY'
+TIMEOUT_RESULT="$(env -u HERMES_DISABLED PATH="$MOCKDIR:$PATH" PYTHONPATH="$SCRIPTS${PYTHONPATH:+:$PYTHONPATH}" python3 - <<'PY'
 import hermes_mesh_gate as g
 print("TRUE" if g.stage2_is_general("일반 지식 본문", timeout=1) else "FALSE")
 PY
@@ -127,7 +127,7 @@ PY
 # --- mesh_gate 오케스트레이션 (mock claude GENERAL 사용) ---
 make_mock "GENERAL"
 run_gate() {  # stdin=본문, 결과 "passed|reason|scrubbed_contains_redacted"
-  PATH="$MOCKDIR:$PATH" PYTHONPATH="$SCRIPTS" python3 - "$1" <<'PY'
+  PATH="$MOCKDIR:$PATH" PYTHONPATH="$SCRIPTS${PYTHONPATH:+:$PYTHONPATH}" python3 - "$1" <<'PY'
 import sys, hermes_mesh_gate as g
 passed, reason, scrubbed = g.mesh_gate(sys.argv[1])
 has_red = "[REDACTED" in (scrubbed or "")

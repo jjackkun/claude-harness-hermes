@@ -8,7 +8,7 @@ ok()   { echo "  ✓ $1"; PASS=$((PASS+1)); }
 nope() { echo "  ✗ $1"; FAIL=$((FAIL+1)); }
 
 run() {
-PYTHONPATH="$SCRIPTS" python3 - <<'PY'
+PYTHONPATH="$SCRIPTS${PYTHONPATH:+:$PYTHONPATH}" python3 - <<'PY'
 import hermes_redact as r
 
 def expect(name, text, must_have=None, must_not=None):

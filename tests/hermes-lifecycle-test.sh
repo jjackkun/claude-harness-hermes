@@ -34,7 +34,7 @@ if ddl_check 2>/dev/null | grep -q OK; then ok "DDL: init.py 가 session_reuse �
 
 # (b)+(c) ensure_reuse_table 최초 호출 → __epoch__ 마커 + get_tracking_epoch, 재호출 멱등
 epoch_check() {
-PYTHONPATH="$SCRIPTS" python3 - "$TMP" <<'PY'
+PYTHONPATH="$SCRIPTS${PYTHONPATH:+:$PYTHONPATH}" python3 - "$TMP" <<'PY'
 import sqlite3, os, sys, time
 import hermes_reuse as r
 db = os.path.join(sys.argv[1], ".hermes", "reuse-epoch.db")
@@ -100,7 +100,7 @@ mkdir -p "$GH"
 
 # 시나리오 구성: 나이는 파일명 날짜, 재활용은 session_reuse, 결정화는 pattern_session⋈pattern_count
 gate_setup() {
-PYTHONPATH="$SCRIPTS" python3 - "$GDB" "$GH" "$1" <<'PY'
+PYTHONPATH="$SCRIPTS${PYTHONPATH:+:$PYTHONPATH}" python3 - "$GDB" "$GH" "$1" <<'PY'
 import sqlite3, sys, os, json
 from datetime import datetime, timedelta
 import hermes_reuse as r
@@ -184,7 +184,7 @@ chmod +x "$TMP/bin/claude"
 
 # 후보 픽스처: 오래됨(200일) + 미재활용 + 결정화된 세션 2개(원문 여러 줄 + DB 행)
 prop_setup() {
-PYTHONPATH="$SCRIPTS" python3 - "$PDB" "$PH" <<'PY'
+PYTHONPATH="$SCRIPTS${PYTHONPATH:+:$PYTHONPATH}" python3 - "$PDB" "$PH" <<'PY'
 import sqlite3, sys, os, json
 from datetime import datetime, timedelta
 import hermes_reuse as r
@@ -276,7 +276,7 @@ fi
 Z="$TMP/prop-zero"; ZDB="$Z/.hermes/state.db"
 python3 "$SCRIPTS/hermes-init.py" --both "$Z" >/dev/null 2>&1
 mkdir -p "$Z/.hermes/history"
-PYTHONPATH="$SCRIPTS" python3 -c "
+PYTHONPATH="$SCRIPTS${PYTHONPATH:+:$PYTHONPATH}" python3 -c "
 import sqlite3, sys, hermes_reuse as r
 r.ensure_reuse_table(sqlite3.connect(sys.argv[1]))
 " "$ZDB" >/dev/null 2>&1
@@ -358,7 +358,7 @@ mkdir -p "$P4H"
 SECRET_MAIL="secret@example.com"
 SECRET_PW="password=hunter2SECRET"
 
-PYTHONPATH="$SCRIPTS" python3 - "$P4DB" "$P4H" "$SECRET_MAIL" "$SECRET_PW" <<'PY' >/dev/null 2>&1
+PYTHONPATH="$SCRIPTS${PYTHONPATH:+:$PYTHONPATH}" python3 - "$P4DB" "$P4H" "$SECRET_MAIL" "$SECRET_PW" <<'PY' >/dev/null 2>&1
 import sqlite3, sys, os, json
 from datetime import datetime, timedelta
 import hermes_reuse as r
@@ -864,7 +864,7 @@ else
   nope "전제(F5): 제안 생성 실패"
 fi
 # 제안 이후 f5-b 가 재활용됨 → ② 게이트 탈락
-PYTHONPATH="$SCRIPTS" python3 -c "
+PYTHONPATH="$SCRIPTS${PYTHONPATH:+:$PYTHONPATH}" python3 -c "
 import sqlite3, sys, hermes_reuse as r
 con = sqlite3.connect(sys.argv[1]); r.mark_reused(con, ['f5-b']); con.commit()
 " "$L5DB" >/dev/null 2>&1
@@ -926,7 +926,7 @@ EOF
 chmod +x "$H6BIN/claude"
 
 # 후보 픽스처: 오래됨(200일) + 미재활용 + 결정화 세션 2개(원문 여러 줄 + DB 행)
-PYTHONPATH="$SCRIPTS" python3 - "$H6DB" "$H6H" <<'PY' >/dev/null 2>&1
+PYTHONPATH="$SCRIPTS${PYTHONPATH:+:$PYTHONPATH}" python3 - "$H6DB" "$H6H" <<'PY' >/dev/null 2>&1
 import sqlite3, sys, os, json
 from datetime import datetime, timedelta
 import hermes_reuse as r

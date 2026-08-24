@@ -242,7 +242,7 @@ fi
 
 # ── (G6) get_tracking_epoch: session_reuse 부재 DB 에서 조용히 None (F3) ─────
 epoch_guard() {
-PYTHONPATH="$SCRIPTS" python3 - "$TMP/s7-noreuse.db" <<'PY'
+PYTHONPATH="$SCRIPTS${PYTHONPATH:+:$PYTHONPATH}" python3 - "$TMP/s7-noreuse.db" <<'PY'
 import sqlite3, sys
 import hermes_reuse as r
 con = sqlite3.connect(sys.argv[1])

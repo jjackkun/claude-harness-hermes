@@ -187,6 +187,7 @@ uninstall_pre_commit() {
   _rm_path file "$project_path/.git/hooks/plan_state.py" ".git/hooks/plan_state.py"
   _rm_path file "$project_path/.git/hooks/complexity.py" ".git/hooks/complexity.py"
   _rm_path file "$project_path/.git/hooks/depcheck.py" ".git/hooks/depcheck.py"
+  _rm_path file "$project_path/.git/hooks/coverage_probe.py" ".git/hooks/coverage_probe.py"
   _rm_path file "$project_path/scripts/check-component-structure.mjs" "scripts/check-component-structure.mjs"
 }
 

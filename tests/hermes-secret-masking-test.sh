@@ -57,7 +57,7 @@ DATABASE_URL=postgresql://fakeuser:!Fakepw11aa@localhost:5432/db
 ENVFILE
 
 echo "== 1. hermes_secret_values — 정답지 추출 =="
-OUT=$(cd "$PROJ" && PYTHONPATH="$SCRIPTS" python3 - <<'PY'
+OUT=$(cd "$PROJ" && PYTHONPATH="$SCRIPTS${PYTHONPATH:+:$PYTHONPATH}" python3 - <<'PY'
 import os
 import hermes_secret_values as sv
 
@@ -84,7 +84,7 @@ report "$OUT"
 echo ""
 echo "== 1b. \$HOME 에 포함된 값은 정답지에서 뺀다 =="
 # 실제 사례: 계정 ID 가 홈 디렉터리명과 같아, 치환하면 /home/<id>/... 경로가 다 깨진다.
-OUT=$(PYTHONPATH="$SCRIPTS" python3 - <<'PY'
+OUT=$(PYTHONPATH="$SCRIPTS${PYTHONPATH:+:$PYTHONPATH}" python3 - <<'PY'
 import hermes_secret_values as sv
 
 home = "/home/fakeuser"
@@ -100,14 +100,14 @@ report "$OUT"
 
 echo ""
 echo "== 1c. 정답지 모듈은 값을 출력하지 않는다 =="
-STDOUT_LEAK=$(cd "$PROJ" && PYTHONPATH="$SCRIPTS" python3 -c \
+STDOUT_LEAK=$(cd "$PROJ" && PYTHONPATH="$SCRIPTS${PYTHONPATH:+:$PYTHONPATH}" python3 -c \
   "import os, hermes_secret_values as sv; sv.load_secret_values(os.getcwd())" 2>&1)
 echo "$STDOUT_LEAK" | grep -q 'Fakepw11aa'
 assert "로드만으로 값이 새어나오지 않음" "1" "$?"
 
 echo ""
 echo "== 2. redact — 관측된 7가지 입력 형태 =="
-OUT=$(cd "$PROJ" && PYTHONPATH="$SCRIPTS" python3 - <<'PY'
+OUT=$(cd "$PROJ" && PYTHONPATH="$SCRIPTS${PYTHONPATH:+:$PYTHONPATH}" python3 - <<'PY'
 import os
 import hermes_redact as r
 
@@ -155,7 +155,7 @@ echo "== 2b. 정답지 기준 경로 — cwd 가 달라도 .env 를 찾는다 ==
 # 하위 디렉터리에서 세션을 시작하면 cwd 폴백으로는 .env 를 못 찾는다.
 # 그러면 값 기반 마스킹이 **조용히** 무력화되고 형태 규칙만 남는다.
 mkdir -p "$PROJ/sub/deeper"
-OUT=$(cd "$PROJ/sub/deeper" && CLAUDE_PROJECT_DIR="$PROJ" PYTHONPATH="$SCRIPTS" python3 - <<'PY'
+OUT=$(cd "$PROJ/sub/deeper" && CLAUDE_PROJECT_DIR="$PROJ" PYTHONPATH="$SCRIPTS${PYTHONPATH:+:$PYTHONPATH}" python3 - <<'PY'
 import hermes_redact as r
 out = r.redact("fakeuser | !Fakepw11aa")      # project_dir 생략 → 환경변수로 해결
 print(("OK::" if "!Fakepw11aa" not in out else "FAIL::")

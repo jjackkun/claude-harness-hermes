@@ -33,7 +33,7 @@ if schema_ok 2>/dev/null | grep -q OK; then check "스키마: dream_log 컬럼3 
 
 # --- Task2: 청킹 무손실 ---
 chunk_ok() {
-PYTHONPATH="$S" python3 - <<'PY'
+PYTHONPATH="$S${PYTHONPATH:+:$PYTHONPATH}" python3 - <<'PY'
 import importlib.util, os
 spec=importlib.util.spec_from_file_location("hd", os.path.join(os.environ["S_DIR"],"hermes-dream.py"))
 hd=importlib.util.module_from_spec(spec); spec.loader.exec_module(hd)
@@ -57,7 +57,7 @@ if S_DIR="$S" chunk_ok 2>/dev/null | grep -q OK; then check "청킹: 무손실 +
 
 # --- 최종리뷰: 동일 updated_at 형제는 분할 금지(부분실패 영구누락 방지) ---
 tie_ok() {
-PYTHONPATH="$S" python3 - <<'PY'
+PYTHONPATH="$S${PYTHONPATH:+:$PYTHONPATH}" python3 - <<'PY'
 import importlib.util, os
 spec=importlib.util.spec_from_file_location("hd", os.path.join(os.environ["S_DIR"],"hermes-dream.py"))
 hd=importlib.util.module_from_spec(spec); spec.loader.exec_module(hd)
@@ -75,7 +75,7 @@ if S_DIR="$S" tie_ok 2>/dev/null | grep -q OK; then check "청킹: 동일 timest
 
 # --- 최종리뷰: claude 부재 시 _propose_chunk 보류(None) — 무신호 손실 차단 ---
 noclaude_ok() {
-PYTHONPATH="$S" python3 - <<'PY'
+PYTHONPATH="$S${PYTHONPATH:+:$PYTHONPATH}" python3 - <<'PY'
 import importlib.util, os
 spec=importlib.util.spec_from_file_location("hd", os.path.join(os.environ["S_DIR"],"hermes-dream.py"))
 hd=importlib.util.module_from_spec(spec); spec.loader.exec_module(hd)
@@ -89,7 +89,7 @@ if S_DIR="$S" noclaude_ok 2>/dev/null | grep -q OK; then check "청크호출: cl
 
 # --- Task3: 이월 큐 ---
 queue_ok() {
-PYTHONPATH="$S" python3 - "$DB" <<'PY'
+PYTHONPATH="$S${PYTHONPATH:+:$PYTHONPATH}" python3 - "$DB" <<'PY'
 import importlib.util, os, sqlite3, sys
 spec=importlib.util.spec_from_file_location("hd", os.path.join(os.environ["S_DIR"],"hermes-dream.py"))
 hd=importlib.util.module_from_spec(spec); spec.loader.exec_module(hd)
@@ -117,7 +117,7 @@ EOF
 chmod +x "$T/bin/claude"; export PATH="$T/bin:$PATH"
 retry_ok() {
 DREAM_CALLCOUNT="$T/cc" DREAM_FAIL_FIRST=1 HERMES_DREAM_TIMEOUT=20 \
-PYTHONPATH="$S" python3 - <<'PY'
+PYTHONPATH="$S${PYTHONPATH:+:$PYTHONPATH}" python3 - <<'PY'
 import importlib.util, os
 spec=importlib.util.spec_from_file_location("hd", os.path.join(os.environ["S_DIR"],"hermes-dream.py"))
 hd=importlib.util.module_from_spec(spec); spec.loader.exec_module(hd)
@@ -130,7 +130,7 @@ if S_DIR="$S" retry_ok 2>/dev/null | grep -q OK; then check "청크호출: 1회 
 
 # --- Task5: 워터마크 + stall ---
 wm_ok() {
-PYTHONPATH="$S" python3 - "$DB" <<'PY'
+PYTHONPATH="$S${PYTHONPATH:+:$PYTHONPATH}" python3 - "$DB" <<'PY'
 import importlib.util, os, sys
 spec=importlib.util.spec_from_file_location("hd", os.path.join(os.environ["S_DIR"],"hermes-dream.py"))
 hd=importlib.util.module_from_spec(spec); spec.loader.exec_module(hd)
@@ -162,7 +162,7 @@ echo "k-$RANDOM"; echo "k-$RANDOM"
 EOF
 chmod +x "$T/bin/claude"; export PATH="$T/bin:$PATH"
 mr_ok() {
-PYTHONPATH="$S" python3 - "$DB" <<'PY'
+PYTHONPATH="$S${PYTHONPATH:+:$PYTHONPATH}" python3 - "$DB" <<'PY'
 import importlib.util, os, sys
 spec=importlib.util.spec_from_file_location("hd", os.path.join(os.environ["S_DIR"],"hermes-dream.py"))
 hd=importlib.util.module_from_spec(spec); spec.loader.exec_module(hd)
@@ -199,7 +199,7 @@ echo "ov-${n}-a"; echo "ov-${n}-b"
 EOF
 chmod +x "$T/bin/claude"
 ov_ok() {
-PYTHONPATH="$S" python3 - "$DB" <<'PY'
+PYTHONPATH="$S${PYTHONPATH:+:$PYTHONPATH}" python3 - "$DB" <<'PY'
 import importlib.util, os, sys
 spec=importlib.util.spec_from_file_location("hd", os.path.join(os.environ["S_DIR"],"hermes-dream.py"))
 hd=importlib.util.module_from_spec(spec); spec.loader.exec_module(hd)
@@ -238,7 +238,7 @@ MD
 EOF
 chmod +x "$T/bin/claude"; export PATH="$T/bin:$PATH"
 g8_ok() {
-PYTHONPATH="$S" python3 - "$DB" <<'PY'
+PYTHONPATH="$S${PYTHONPATH:+:$PYTHONPATH}" python3 - "$DB" <<'PY'
 import importlib.util, os, sys
 spec=importlib.util.spec_from_file_location("hd", os.path.join(os.environ["S_DIR"],"hermes-dream.py"))
 hd=importlib.util.module_from_spec(spec); spec.loader.exec_module(hd)

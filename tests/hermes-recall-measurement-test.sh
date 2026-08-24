@@ -37,7 +37,7 @@ printf '%s\n' '---' 'name: x' '---' '# folderskill title' '`v-model` 패턴' > "
 # 드림 자동생성 스타일: 제목은 영문 슬러그, 한글은 문제 상황·규칙 섹션에 있음(①)
 printf '%s\n' '# token-ttl-auth-layer-issue' '' '## 문제 상황' '백오피스 API 호출 시 토큰 없으면 401 인증 에러' '' '## 규칙' '- [ ] 요청에 Bearer 토큰 포함' > "$SK/token-ttl-auth-layer-issue.md"
 helper_check() {
-PYTHONPATH="$SCRIPTS" python3 - "$SK" <<'PY'
+PYTHONPATH="$SCRIPTS${PYTHONPATH:+:$PYTHONPATH}" python3 - "$SK" <<'PY'
 import sys, os, hermes_skills as h
 names = {n for n, _ in h.iter_skill_files(sys.argv[1])}
 assert names == {"flatone", "folderskill", "token-ttl-auth-layer-issue"}, names
@@ -101,7 +101,7 @@ con.execute("INSERT INTO skill_index (skill_path,keywords,scope,used_count,helpf
 con.commit()
 PY
 rank_check() {
-PYTHONPATH="$SCRIPTS" python3 - "$DB" "$SCRIPTS" <<'PY'
+PYTHONPATH="$SCRIPTS${PYTHONPATH:+:$PYTHONPATH}" python3 - "$DB" "$SCRIPTS" <<'PY'
 import sys, importlib.util, os
 spec=importlib.util.spec_from_file_location("hs", os.path.join(sys.argv[2],"hermes-search.py"))
 hs=importlib.util.module_from_spec(spec); spec.loader.exec_module(hs)
