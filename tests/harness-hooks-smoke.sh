@@ -161,6 +161,44 @@ git rm --cached -q lib_under_test.py >/dev/null 2>&1 || true
 rm -f lib_under_test.py; rmdir tests 2>/dev/null || true
 
 echo ""
+echo "== 1e. R-pipe 배선 — PostToolUse(Task|Agent) 가 실제 settings 에 렌더링되는가 =="
+# POST_TOOL_USE_HOOKS 배열은 이 훅이 처음 채운다. 배열이 비어 있는 동안은
+# 렌더링 경로가 죽어 있어도 아무도 모른다 — complexity.py 가 .git/hooks/ 로
+# 복사되지 않던 것과 같은 자리다(2026-08-24). 실제 산출물을 단언한다.
+python3 - <<'PYEOF'
+import json, sys, glob
+found = False
+for f in glob.glob('.claude/settings*.json'):
+    for e in (json.load(open(f)).get('hooks', {}) or {}).get('PostToolUse', []) or []:
+        if 'Task' in (e.get('matcher') or ''):
+            for h in e.get('hooks', []) or []:
+                if 'review-record' in (h.get('command') or ''):
+                    found = True
+sys.exit(0 if found else 1)
+PYEOF
+assert "settings 에 PostToolUse(Task|Agent) review-record 등록" "0" "$?"
+assert "기록 훅 파일이 설치됨" "0" "$([[ -f scripts/hooks/claude-posttooluse-review-record.sh ]] && echo 0 || echo 1)"
+
+# 커밋 시점 판정이 실제로 붙었는가 — 리뷰 빚이 있으면 경고, 없으면 침묵.
+mkdir -p .claude
+echo "x = 1" > pipe_probe.py
+git add pipe_probe.py
+echo "edit: 1  pipe_probe.py" > .claude/.review-dirty
+PIPE_OUT=$(.git/hooks/pre-commit 2>&1); PIPE_RC=$?
+assert "리뷰 빚이 있어도 차단하지 않음" "0" "$PIPE_RC"
+echo "$PIPE_OUT" | grep -q "\[R-pipe\]"
+assert "R-pipe 경고가 커밋 경로에서 발화" "0" "$?"
+
+# 리뷰어 dispatch 가 그 경고를 실제로 끈다 — 훅과 판정이 같은 파일을 본다는 확인.
+printf '{"tool_name":"Task","tool_input":{"subagent_type":"code-reviewer"}}' \
+  | CLAUDE_PROJECT_DIR="$TMP" scripts/hooks/claude-posttooluse-review-record.sh >/dev/null 2>&1
+PIPE_OUT=$(.git/hooks/pre-commit 2>&1)
+echo "$PIPE_OUT" | grep -q "\[R-pipe\]"
+assert "리뷰어 dispatch 후에는 침묵" "1" "$?"
+git rm --cached -q pipe_probe.py >/dev/null 2>&1 || true
+rm -f pipe_probe.py .claude/.review-dirty
+
+echo ""
 echo "== 2. pre-commit 통과 경로 =="
 echo "x = 1" > small.py
 git add small.py
@@ -256,11 +294,13 @@ assert "settings.json 에 상대 scripts/hooks 경로 없음" "0" "$REL_COUNT"
 
 ABS_COUNT=$(grep -c '\${CLAUDE_PROJECT_DIR}/scripts/hooks' .claude/settings.json 2>/dev/null; true)
 ABS_COUNT=${ABS_COUNT:-0}
-# 기대값은 harness 프리셋 단독 설치 시의 hook 수. 2026-08-04 prettier hook 이
-# presets/tools/prettier.conf 로 분리되며 8 → 7. 2026-08-13 SessionStart
-# doc-gardening 훅이 추가되며 7 → 8 (CI 배선 없이 가드닝이 도는 경로).
-# 2026-08-24 PreToolUse(Write) iface-guard 가 추가되며 8 → 9 (R-iface).
-assert "settings.json 에 \${CLAUDE_PROJECT_DIR} 기반 경로 존재" "9" "$ABS_COUNT"
+# 기대값을 손으로 적지 않는다. 훅을 하나 추가할 때마다 이 숫자를 고쳐야 했고
+# (2026-08-04 8→7, 08-13 7→8, 08-24 8→9), 그 갱신은 기능 회귀와 구분되지 않는다.
+# 프리셋이 등록한 수를 그대로 기대값으로 쓰면 "등록한 것이 전부 렌더링됐는가" 라는
+# 원래 묻고 싶던 질문이 된다.
+EXPECT_ABS=$(grep -c '_HOOKS+=(.*\${CLAUDE_PROJECT_DIR}/scripts/hooks' \
+  "$REPO_ROOT/presets/workflow/harness.conf" 2>/dev/null; true)
+assert "프리셋이 등록한 훅이 전부 settings.json 에 렌더링됨" "$EXPECT_ABS" "$ABS_COUNT"
 
 # 10b: 실제로 다른 CWD 에서 hook 을 호출해도 self-locate 가드로 정상 동작.
 PROJ_ABS="$(pwd)"

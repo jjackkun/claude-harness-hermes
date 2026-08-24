@@ -21,7 +21,7 @@
 | 3 | `R-cov` | [커버리지 강제](2026-08-24-coverage-enforcement-design.md) | 경고 | 미확정 (측정 대상 부재) | **1단계 완료** |
 | 4 | `R-mut` | [변이 테스트](2026-08-24-mutation-testing-design.md) | 진단만 | 미확정 (표본 부족) | 미착수 |
 | 5 | `R-dep` | [모듈 의존 계약](2026-08-24-module-dependency-contract-design.md) | **차단** | 이분 판정 (임계 불필요) | **완료** |
-| 6 | `R-pipe` | [파이프라인 강제](2026-08-24-agent-pipeline-enforcement-design.md) | 경고 | 이분 판정 불가 | 미착수 |
+| 6 | `R-pipe` | [파이프라인 강제](2026-08-24-agent-pipeline-enforcement-design.md) | 경고 | 이분 판정 불가 | **완료** |
 | 7 | `R-acc` | [실행 가능한 인수 조건](2026-08-24-executable-acceptance-spec-design.md) | 경고 | — | 미착수 |
 
 ### 1. `R-iface` — 완료 (2026-08-24)
@@ -123,6 +123,40 @@
    (B) 파이썬 단위 테스트를 신설한다. **(A) 를 권한다**: 28개 통합 테스트가 이미
    실제 경로를 돌고 있어 비용이 낮고, 거기서 잰 값이 "실제로 검증되는 코드" 에 더 가깝다.
 
+### 6. `R-pipe` — 완료 (2026-08-25)
+
+| 산출물 | 내용 |
+|---|---|
+| `assets/hooks/claude-posttooluse-review-record.sh` | 리뷰어 dispatch 를 리뷰 빚 청산으로 기록 (신규) |
+| `assets/hooks/pre-commit.sh` | `8-bis. R-pipe` 단계 — 리뷰 기록이 남은 파일이 커밋에 포함되면 경고 |
+| `presets/workflow/harness.conf` | `POST_TOOL_USE_HOOKS+=('Task\|Agent::…review-record.sh')` |
+| `docs/design-docs/core-beliefs.md` | `#r-review` 정정 + `R-pipe` Provisional 명시 |
+| `tests/pipe-gate-test.sh` | 24/24 |
+| `tests/harness-hooks-smoke.sh` | `1e` 배선 검사 추가 (98/0) |
+
+구현 중 확정한 것 (스펙 미해결 3건 전부):
+
+1. **리뷰 기록 방법** — 리뷰어 dispatch 시 `.review-dirty` 를 **자동 삭제**한다.
+   문서는 이미 "리뷰 후 `rm`" 이었으나 그 `rm` 이 수동이라 지켜지지 않았다. 훅이 대신 지우면
+   문서가 참이 된다. 리뷰어 판별은 목록이 아니라 **`-reviewer` 접미사 규칙**이다 —
+   에이전트를 추가할 때 훅을 같이 고쳐야 한다는 것을 아무도 기억하지 못한다.
+2. **Specifier 강제** — 추가하지 않는다. `R-plan-missing` 이 이미 담당한다.
+3. **경고 피로** — 스펙의 경고 2개를 **1개로 줄였다.** `pre-commit` 에는 이미 경고 지점이
+   15곳 있다. Hardener 조건("변경된 `.py` 에 대응 테스트 존재")은 `R-cov` 2단계와 중복이므로
+   그쪽으로 이관했다.
+
+구현 중 잡은 것:
+
+- **`core-beliefs.md#r-review` 가 없는 강제를 주장하고 있었다.** "안 지우면 commit 단계에서
+  차단" 이라 적혀 있었으나 `pre-commit` 은 `.review-dirty` 를 **한 번도 읽지 않았다**
+  (2026-04-15 도입 이래). `R-test` 가 테스트 0개로 늘 통과하던 것과 같은 결함이다.
+- **`POST_TOOL_USE_HOOKS` 배열은 이번이 첫 사용이다.** 렌더링 경로가 죽어 있었어도
+  아무도 몰랐을 자리라, 실제 `settings.json` 산출물을 단언하는 검사를 스모크에 넣었다.
+- **훅 개수 기대값이 매직넘버였다.** `assert "… 경로 존재" "9"` 는 훅을 추가할 때마다
+  손으로 고쳐야 했고(08-04 8→7, 08-13 7→8, 08-24 8→9), 그 갱신은 기능 회귀와 구분되지
+  않는다. 프리셋 등록 수에서 **도출**하도록 바꿨다 — 이제 "등록한 것이 전부 렌더링됐는가"
+  를 묻는다.
+
 ## 착수 순서
 
 ```text
@@ -158,6 +192,7 @@
 | **생존 변이 1건** — 프롬프트 본문이 비어도 테스트가 통과 | `hermes_mesh_gate.py:80` | 테스트 보강 필요 |
 | **공개인데 미사용** — `update_goal_status`, `default_max_iterations` | `hermes_loop.py` | 밑줄 처리로 폭 -2 |
 | **선택적 의존 1건** — 훅이 `scripts/` 를 import (의도된 설계, `try/except`) | `check-secrets.py:36` | 계약에 `optional:` 등록 필요 |
+| **로컬에 없는 도구가 fallback 경로만 검증** — `jq`·`sqlite3`·`prettier`·`fzf` 미설치 | 테스트 환경 | 게이트가 초록인데 안 도는 패턴 |
 | **불안정 테스트 1건** — 백그라운드 파이프라인을 고정 1초 대기로 기다림 | `hermes-pipeline-test.sh:277` | 부하 시 간헐 실패 |
 
 불안정 테스트는 이미 알려진 실패 모드다 — 같은 파일 221 행이

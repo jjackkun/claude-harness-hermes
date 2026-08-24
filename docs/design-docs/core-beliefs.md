@@ -143,7 +143,16 @@ ai-dev-setting 의 lint 룰 메시지에는 한국어 수정 지침이 박혀있
 ## R-review — 리뷰 빚 {#r-review}
 
 코드 수정 발생 시 `.claude/.review-dirty` 생성. 자연 단위(엔드포인트/컴포넌트/마이그레이션 한 단락) 종료 시
-code-reviewer dispatch 후 `rm .claude/.review-dirty`. 안 지우면 commit 단계에서 차단.
+code-reviewer dispatch 후 청산. 청산은 `claude-posttooluse-review-record.sh` 가 자동으로 한다 —
+`subagent_type` 이 `-reviewer` 로 끝나는 dispatch 를 감지해 기록을 지운다. 수동 청산은 `rm .claude/.review-dirty`.
+
+**강제 (`R-pipe`, Provisional)**: 리뷰 기록이 남은 파일이 커밋에 포함되면 `pre-commit` 이 **경고**한다.
+차단이 아닌 이유는 훅이 "리뷰어를 불렀다"까지만 알 수 있고 "리뷰가 유효했다"는 알 수 없기 때문이다 —
+확인 못 하는 것을 차단 조건으로 삼으면 리뷰어를 부르고 결과를 무시하는 형식적 통과를 학습시킨다.
+
+> 2026-08-24 정정: 이 문단은 오래 "안 지우면 commit 단계에서 차단" 이라고 적혀 있었으나
+> `pre-commit` 은 `.review-dirty` 를 **한 번도 읽지 않았다.** 존재하지 않는 강제를 문서가 주장한 것으로,
+> `R-test` 가 테스트 0개로 늘 통과하던 것과 같은 결함이다. 실제 강제(경고)를 붙이면서 문구를 맞췄다.
 
 **도메인 리뷰어 병렬 dispatch (조건부)**: 변경에 DB 스키마/마이그레이션이 포함되면 `code-reviewer` 와 `database-reviewer` 를
 *병렬로 함께* dispatch 한다. code-reviewer 는 Task 도구가 없어 스스로 위임할 수 없으므로 오케스트레이터가 책임.

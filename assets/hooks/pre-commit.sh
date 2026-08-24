@@ -358,6 +358,36 @@ if (( PLAN_STATE_OK )) && [[ -n "$WORK_FILES" && -d "$ACTIVE_DIR" ]]; then
   fi
 fi
 
+# 8-bis. R-pipe — 리뷰 빚을 안은 채 커밋하는가 (경고)
+#
+# .claude/.review-dirty 는 2026-04-15 부터 기록만 되고 아무 판정에도 쓰이지 않았다.
+# 그런데 core-beliefs.md#r-review 는 "안 지우면 commit 단계에서 차단" 이라 적고 있었다 —
+# 존재하지 않는 강제를 문서가 주장한 것이다(R-test 와 같은 결함, 2026-08-24 발견).
+#
+# 차단이 아니라 경고인 이유: 훅은 "리뷰어를 불렀다"까지만 알 수 있고
+# "리뷰가 유효했다"는 알 수 없다. 확인 못 하는 것을 차단 조건으로 삼으면
+# 리뷰어를 부르고 결과를 무시하는 형식적 통과를 학습시킨다.
+#
+# 청산은 claude-posttooluse-review-record.sh 가 리뷰어 dispatch 시 자동으로 한다.
+DIRTY_FILE=".claude/.review-dirty"
+if [[ -n "$WORK_FILES" && -f "$DIRTY_FILE" ]]; then
+  # 기록된 경로 중 이번 커밋에 실제로 들어간 것만 센다. 기록은 세션 단위로 누적되므로
+  # 그대로 나열하면 이 커밋과 무관한 파일까지 보여 경고가 무시된다.
+  DIRTY_STAGED=$(
+    awk '{ print $NF }' "$DIRTY_FILE" 2>/dev/null | sort -u | while IFS= read -r p; do
+      [[ -n "$p" ]] || continue
+      printf '%s\n' "$WORK_FILES" | grep -qxF "$p" && echo "$p"
+    done | head -5
+  )
+  if [[ -n "$DIRTY_STAGED" ]]; then
+    WARNINGS+=("
+[R-pipe] 리뷰 기록 없이 커밋되는 파일: $(echo "$DIRTY_STAGED" | tr '\n' ' ')
+  → 자연 단위가 끝났으면 code-reviewer(또는 도메인 리뷰어)를 dispatch 하십시오.
+     작업 중간이면 무시해도 됩니다. 수동 청산: rm $DIRTY_FILE
+  근거: docs/design-docs/core-beliefs.md#r-review")
+  fi
+fi
+
 # 9. R-retro — completed/ 로 옮긴 계획서에 회고가 있는가 (경고)
 #
 # filter_files 를 쓸 수 없다. STAGED 는 --diff-filter=ACM 인데 git mv 는 rename(R100)

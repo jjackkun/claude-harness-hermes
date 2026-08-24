@@ -110,6 +110,7 @@ for t in \
   struct-barrel-test.sh \
   complexity-gate-test.sh \
   dep-contract-test.sh \
+  pipe-gate-test.sh \
   doc-gardening-drift-test.sh \
   claude-md-skill-index-test.sh \
   update-all-roundtrip-test.sh \
