@@ -1,0 +1,33 @@
+# R-cx 기준선 — 이 파일들은 임계 12 도입 시점에 이미 초과 상태였다.
+# 값은 그 파일의 **허용 최대 복잡도**다. 넘으면 차단되고, 내려가면 훅이 갱신을 안내한다.
+# 기준선은 내려가기만 한다. 올리려면 docs/audits/ 근거가 필요하다.
+# 생성: 2026-08-24 (docs/superpowers/specs/2026-08-24-complexity-gate-design.md)
+
+assets/skills/continuous-learning-v2/scripts/instinct-cli.py 57
+assets/skills/skill-creator/scripts/run_loop.py 49
+scripts/hermes-search.py 48
+lib/generate_settings_json.py 48
+assets/skills/skill-creator/scripts/run_eval.py 33
+assets/skills/skill-creator/scripts/generate_report.py 30
+scripts/hermes_save_session_patterns.py 27
+assets/skills/skill-creator/scripts/improve_description.py 25
+assets/skills/skill-creator/scripts/quick_validate.py 24
+assets/skills/skill-creator/scripts/aggregate_benchmark.py 24
+assets/skills/skill-creator/eval-viewer/generate_review.py 20
+scripts/hermes-loop.py 19
+scripts/hermes_save_session_signals.py 17
+scripts/hermes_skills.py 16
+scripts/hermes_loop.py 16
+scripts/hermes-correlate.py 16
+scripts/hermes-export-history.py 15
+scripts/hermes-cleanup.py 15
+lib/generate_codex_hooks.py 14
+assets/skills/mcp-builder/scripts/evaluation.py 14
+scripts/hermes-reindex.py 13
+scripts/hermes-lifecycle.py 13
+scripts/hermes-dream.py 13
+assets/rules/harness/examples/python/test_sdk_ban.py 13
+assets/hooks/plan_state.py 13
+scripts/hermes_lifecycle_apply.py 12
+assets/skills/skill-creator/scripts/utils.py 12
+assets/rules/harness/examples/python/test_mode_isolation.py 12

@@ -61,6 +61,25 @@ MAX_LINES_HARD=10 git commit -m "should block" >/dev/null 2>&1
 assert "git commit end-to-end 차단" "1" "$?"
 
 echo ""
+echo "== 1b. pre-commit R-cx 차단 (라쳇) =="
+# 배선 검사다 — 계산기 자체의 판정은 tests/complexity-gate-test.sh 가 본다.
+# 여기서 보는 것은 "pre-commit 단계가 실제로 계산기를 부르는가" 뿐이다.
+# 근거: docs/superpowers/specs/2026-08-24-complexity-gate-design.md
+{ echo "def f(x):"; for i in $(seq 1 11); do echo "    if x == $i: return $i"; done; echo "    return 0"; } > cx.py
+git add cx.py
+HOOK_OUT=$(.git/hooks/pre-commit 2>&1); HOOK_EXIT=$?
+assert "복잡도 12 스테이징 시 exit 1" "1" "$HOOK_EXIT"
+echo "$HOOK_OUT" | grep -q "\[R-cx\]"
+assert "실제 R-cx 메시지 출력 (silent-skip 방지)" "0" "$?"
+
+# 라쳇: .cxbaseline 이 그 파일을 허용하면 통과해야 한다.
+echo "cx.py 12" > .cxbaseline
+HOOK_OUT=$(.git/hooks/pre-commit 2>&1); HOOK_EXIT=$?
+assert "기준선이 허용하면 통과" "0" "$HOOK_EXIT"
+rm -f .cxbaseline cx.py
+git rm --cached cx.py >/dev/null 2>&1 || true
+
+echo ""
 echo "== 2. pre-commit 통과 경로 =="
 echo "x = 1" > small.py
 git add small.py

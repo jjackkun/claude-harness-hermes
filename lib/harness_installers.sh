@@ -95,6 +95,17 @@ install_harness_pre_commit() {
     fi
   fi
 
+  # complexity.py (R-cx) — plan_state.py 와 같은 부류. pre-commit 이 $(dirname $0) 에서 참조한다.
+  # scripts/hooks/ 사본은 HARNESS_HOOK_SOURCES 가 따로 배치한다.
+  local complexity_src="$ASSETS_DIR/hooks/complexity.py"
+  if [[ -f "$complexity_src" ]]; then
+    if cp "$complexity_src" "$git_dir/hooks/complexity.py"; then
+      log_info "  hook    → .git/hooks/complexity.py"
+    else
+      log_warn "  hook    → .git/hooks/complexity.py 복사 실패"
+    fi
+  fi
+
   # 정답지 모듈(.env 값 집합)을 훅 옆에 둔다 — check-secrets.py 가 import 한다.
   # 복제하지 않고 scripts/ 의 원본을 그대로 복사한다: 복제본만 고치고 원본을 두면
   # 원본을 쓰는 경로(DB 적재 마스킹)가 계속 뚫려 있게 된다.

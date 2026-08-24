@@ -108,6 +108,7 @@ for t in \
   plan-state-test.sh \
   iface-gate-test.sh \
   struct-barrel-test.sh \
+  complexity-gate-test.sh \
   doc-gardening-drift-test.sh \
   claude-md-skill-index-test.sh \
   update-all-roundtrip-test.sh \

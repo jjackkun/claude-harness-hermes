@@ -14,15 +14,63 @@
 
 ## 스펙 목록
 
-| # | 룰 | 스펙 | 강제 | 임계 근거 |
-|---|---|---|---|---|
-| 1 | `R-iface` | [인터페이스 폭 게이트](2026-08-24-interface-width-gate-design.md) | **차단** | 분포 고원(7) 위 = 8 |
-| 2 | `R-cx` | [순환 복잡도 게이트](2026-08-24-complexity-gate-design.md) | **차단** | 분포 절벽(11→12) = 12 |
-| 3 | `R-cov` | [커버리지 강제](2026-08-24-coverage-enforcement-design.md) | 경고 | 미확정 (측정 대상 부재) |
-| 4 | `R-mut` | [변이 테스트](2026-08-24-mutation-testing-design.md) | 진단만 | 미확정 (표본 부족) |
-| 5 | `R-dep` | [모듈 의존 계약](2026-08-24-module-dependency-contract-design.md) | **차단** | 이분 판정 (임계 불필요) |
-| 6 | `R-pipe` | [파이프라인 강제](2026-08-24-agent-pipeline-enforcement-design.md) | 경고 | 이분 판정 불가 |
-| 7 | `R-acc` | [실행 가능한 인수 조건](2026-08-24-executable-acceptance-spec-design.md) | 경고 | — |
+| # | 룰 | 스펙 | 강제 | 임계 근거 | 상태 |
+|---|---|---|---|---|---|
+| 1 | `R-iface` | [인터페이스 폭 게이트](2026-08-24-interface-width-gate-design.md) | **차단** | 분포 고원(7) 위 = 8 | **완료** |
+| 2 | `R-cx` | [순환 복잡도 게이트](2026-08-24-complexity-gate-design.md) | **차단** | 분포 절벽(11→12) = 12 | **완료** |
+| 3 | `R-cov` | [커버리지 강제](2026-08-24-coverage-enforcement-design.md) | 경고 | 미확정 (측정 대상 부재) | 미착수 |
+| 4 | `R-mut` | [변이 테스트](2026-08-24-mutation-testing-design.md) | 진단만 | 미확정 (표본 부족) | 미착수 |
+| 5 | `R-dep` | [모듈 의존 계약](2026-08-24-module-dependency-contract-design.md) | **차단** | 이분 판정 (임계 불필요) | 미착수 |
+| 6 | `R-pipe` | [파이프라인 강제](2026-08-24-agent-pipeline-enforcement-design.md) | 경고 | 이분 판정 불가 | 미착수 |
+| 7 | `R-acc` | [실행 가능한 인수 조건](2026-08-24-executable-acceptance-spec-design.md) | 경고 | — | 미착수 |
+
+### 1. `R-iface` — 완료 (2026-08-24)
+
+세 축 모두 구현·테스트·커밋했다. 전체 러너 32/32 통과.
+
+| 축 | 산출물 | 테스트 |
+|---|---|---|
+| A — 파일 생성 전 폭 차단 | `assets/hooks/claude-pretooluse-iface-guard.sh` (신규) | `tests/iface-gate-test.sh` 16/16 |
+| B — 델타 신호 오탐 제거 | `assets/hooks/claude-posttooluse-size-warn.sh` | `tests/harness-hooks-smoke.sh` 80/0 |
+| C — `R-struct-4` 배럴 폭 | `assets/hooks/check-component-structure.mjs` | `tests/struct-barrel-test.sh` 10/10 |
+
+`core-beliefs.md` 에 `#r-iface`·`#r-struct-4` 앵커를 추가했고 둘 다 **Provisional** 이다.
+`presets/workflow/harness.conf` 에 `PRE_TOOL_USE_HOOKS+=('Write::…iface-guard.sh')` 로 등록했다.
+
+구현 중 확정한 것:
+
+- `permissionDecision: "deny"` 는 Claude Code **2.1.241 에서 동작**한다 (스펙 미해결 1번 해소).
+- 축 C 의 적용 범위(스펙 미해결 2번)는 **컴포넌트 경로에 한정하지 않는 쪽**으로 정했다.
+  배럴 폭은 Vue 만의 문제가 아니다. 파이썬 `__init__.py` 는 `pre-commit` 이 검사기에
+  `.py` 를 넘기지 않아 아직 대상 밖이며, 확장은 별도 사안이다.
+
+### 2. `R-cx` — 완료 (2026-08-24)
+
+라쳇 방식으로 구현·테스트·커밋했다. 전체 러너 33/33 통과.
+
+| 산출물 | 내용 |
+|---|---|
+| `assets/hooks/complexity.py` | AST 기반 계산기 (표준 라이브러리만, radon 불필요) |
+| `.cxbaseline` | 28개 파일 동결 (57~12). 기존 위반이 막히지 않게 한다 |
+| `assets/hooks/pre-commit.sh` | `R-cx` 단계. 모듈 부재는 침묵 대신 경고 |
+| `lib/harness_installers.sh` · `lib/uninstall_helpers.sh` | `.git/hooks/complexity.py` 설치·제거 |
+| `tests/complexity-gate-test.sh` | 18/18 |
+| `tests/harness-hooks-smoke.sh` | `pre-commit` 배선 검사 추가 (83/0) |
+
+구현 중 확정한 것:
+
+- **기준선 갱신은 경고 후 수동**(스펙 미해결 1번 해소). 훅이 `.cxbaseline` 을 고쳐 쓰면
+  커밋에 없는 변경이 워킹트리에 생긴다. 개선을 감지하면 안내만 한다.
+- `main()` 예외는 두지 않았다(스펙 미해결 2번). 복잡도 48 은 "진입점의 분기" 논리로도
+  방어되지 않는다. 기존 값은 `.cxbaseline` 이 동결하므로 예외가 필요 없다.
+
+구현 중 잡은 것:
+
+- **경계 조건이 한 칸 어긋나 있었다.** `MAX_COMPLEXITY` 는 *이 값부터 차단*하는 임계이고
+  `.cxbaseline` 값은 *허용하는 최대값*이다. 섞어 써서 복잡도 12 가 통과했다.
+- **`complexity.py` 가 `.git/hooks/` 에 복사되지 않았다.** 모듈 배열(`HARNESS_HOOK_SOURCES`)은
+  `scripts/hooks/` 로만 보낸다. `pre-commit` 배선 테스트가 아니었으면 못 잡았을 결함이다 —
+  계산기 단위 테스트는 전부 통과하고 있었다.
 
 ## 착수 순서
 
@@ -61,6 +109,19 @@
 | **선택적 의존 1건** — 훅이 `scripts/` 를 import (의도된 설계, `try/except`) | `check-secrets.py:36` | 계약에 `optional:` 등록 필요 |
 
 앞의 두 건은 **어느 스펙에도 속하지 않는 단독 버그**다. 스펙 착수와 무관하게 고칠 수 있다.
+그중 문서·구현 불일치는 `R-iface` 구현과 함께 정정했다(2026-08-24).
+
+### 겹치는 기존 미결 사안 — 하네스 자기 설치
+
+이 저장소에는 harness 프리셋이 **설치돼 있지 않다**. `.git/hooks/pre-commit` 도,
+`.claude/settings.json` 의 훅도 없다. 따라서 `R-iface` 를 포함해 여기서 만드는 게이트는
+**정작 이 저장소의 커밋에는 걸리지 않는다.**
+
+이것은 이번 조사의 새 발견이 아니라 **이미 문서화된 승인 대기 사안**이다 —
+[2026-08-13-harness-doc-update-axis-design.md](2026-08-13-harness-doc-update-axis-design.md)
+의 "(A) 자기 설치" 및 §3.9-bis("저장소 운영 방식 변경이라 별도 승인 사항").
+본 로드맵은 그 결정을 대신하지 않으며, 여기서는 **영향만 기록**한다:
+자기 설치 없이는 이 로드맵의 게이트 전부가 다른 프로젝트에서만 작동한다.
 
 ## 측정 방법 — 이번에 배운 것
 

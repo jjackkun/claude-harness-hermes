@@ -172,6 +172,40 @@ EOF
   fi
 fi
 
+# 4-bis. R-cx — 순환 복잡도 (라쳇)
+#
+# R-size 는 파일 크기만 본다. 500줄을 지키면서 복잡도 48 짜리 함수를 쓰는 것이
+# 통과하고 있었다. 임계 12 는 이 저장소 함수 295개의 분포 절벽(11:11개 → 12:4개)에서
+# 나왔다. 기존 위반 파일은 .cxbaseline 이 현재값을 동결하므로 막히지 않고,
+# 그보다 나빠질 때만 차단된다 — 일괄 적용하면 파일의 43% 가 막혀 우회가 상시화된다.
+#
+# 모듈 부재는 조용히 넘기지 않는다. R-test 가 파이썬 테스트 0개인 상태로 몇 달간
+# 아무것도 막지 않으면서 통과 표시를 내고 있었다 — 게이트가 죽은 줄 모르는 것이 최악이다.
+CHECK_CX="$(dirname "$0")/complexity.py"
+if [[ -n "$PY_FILES" ]]; then
+  if [[ ! -f "$CHECK_CX" ]]; then
+    WARNINGS+=("
+[R-cx] 복잡도 검사를 건너뜀 — complexity.py 없음 (재설치 필요)")
+  elif ! command -v python3 >/dev/null 2>&1; then
+    WARNINGS+=("
+[R-cx] 복잡도 검사를 건너뜀 — python3 없음 (인터프리터 설치 필요)")
+  else
+    CX_OUT=$(echo "$PY_FILES" | xargs python3 "$CHECK_CX" 2>&1) || {
+      VIOLATIONS+=("$(cat <<EOF
+
+$CX_OUT
+EOF
+)")
+      FAIL=1
+    }
+    # 개선 안내는 차단 없이도 나온다 — 기준선을 낮출 기회를 놓치지 않도록.
+    if [[ -n "$CX_OUT" ]] && [[ "$FAIL" -eq 0 ]]; then
+      WARNINGS+=("
+$CX_OUT")
+    fi
+  fi
+fi
+
 # 5. R-struct — 컴포넌트 폴더/배럴 규칙 (Vue 프로젝트)
 CHECK_STRUCT="$(dirname "$0")/check-component-structure.mjs"
 VUE_AND_CODE=$(filter_files '\.(vue|js|jsx|ts|tsx)$')
