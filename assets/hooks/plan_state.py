@@ -42,6 +42,17 @@ SECTION_END_RE = re.compile(r"^##\s")
 GOAL_HEADING_RE = re.compile(r"^##\s*2[.)]")
 GOAL_FALLBACK_RE = re.compile(r"^##.*목표")
 
+# §4 영향 영역. 신규 파일 선언이 여기 있다.
+IMPACT_HEADING_RE = re.compile(r"^##\s*4[.)]")
+IMPACT_FALLBACK_RE = re.compile(r"^##.*영향 영역")
+
+# 선언 항목은 인라인 코드 스팬 안에 경로를 적는다 — 템플릿이 보여주는 형식이다.
+DECL_PATH_RE = re.compile(r"`([^`]+)`")
+
+# 템플릿이 그대로 남아 있는 것은 선언이 아니다. 채우지 않은 계획서를
+# "선언했다" 로 세면 이 검사가 곧 무의미해진다.
+PLACEHOLDER_PATHS = ("path/to/file.ext", "path/to/barrel/index.ts")
+
 # 검증 명령의 표지는 인라인 코드 스팬이다. 명령을 파싱하지도 실행하지도 않는다 —
 # 계획서는 에이전트가 쓰는 파일이고, 거기 적힌 것을 훅이 실행하면 게이트가
 # 게이트 대상에게 실행 권한을 넘기는 것이 된다. "적혀 있는가" 까지만 본다.
@@ -162,6 +173,31 @@ def _goal_items(lines):
     return items
 
 
+def _declared_files(lines):
+    """§4 에 선언된 신규 파일 경로. §4 가 없으면 None.
+
+    템플릿은 "신규 파일 목록 (파일별 책임 1줄 필수) ← 비워두지 말 것" 을 요구하고
+    "위 목록을 먼저 못 쓰면 아직 설계가 덜 됐다는 뜻" 이라고까지 적는다.
+    그런데 파서가 §4 를 몰라 강제가 없었다(2026-08-25).
+    """
+    body = _section_body(lines, IMPACT_HEADING_RE, IMPACT_FALLBACK_RE)
+    if body is None:
+        return None
+
+    found = []
+    for line in body:
+        for path in DECL_PATH_RE.findall(line):
+            path = path.strip()
+            # 경로처럼 생긴 것만. 룰 번호(`R-iface`)나 명령은 선언이 아니다.
+            if "/" not in path and "." not in path:
+                continue
+            if path in PLACEHOLDER_PATHS:
+                continue
+            if path not in found:
+                found.append(path)
+    return found
+
+
 def _report_goals(lines, select):
     """§2 목표 중 select 가 참인 것을 출력한다. 0=해당 있음 1=없음 2=§2 부재."""
     items = _goal_items(lines)
@@ -213,9 +249,20 @@ SINGLE_COMMANDS = {
     "pending": lambda lines, argv: _print_pending(lines, argv),
     "goals-unverified": lambda lines, argv: _report_goals(
         lines, lambda item: not item["verified"]),
+    "declared-files": lambda lines, argv: _print_declared(lines),
     "goals-pending": lambda lines, argv: _report_goals(
         lines, lambda item: not item["checked"]),
 }
+
+
+def _print_declared(lines):
+    """0=선언 있음  1=§4 는 있으나 선언 0개  2=§4 부재."""
+    found = _declared_files(lines)
+    if found is None:
+        return 2
+    for path in found:
+        print(path)
+    return 0 if found else 1
 
 
 def _print_pending(lines, argv):

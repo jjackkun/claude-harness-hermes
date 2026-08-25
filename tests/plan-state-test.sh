@@ -323,6 +323,58 @@ assert "§2 가 전부 완료면 exit 1(위반 없음)" "1" "$(rc goals-pending 
 assert "§2 가 없으면 판정불가(exit 2)" "2" "$(rc goals-pending "$TMP/acc-nosection.md")"
 
 echo ""
+echo "== §4 신규 파일 선언 파싱 =="
+# 템플릿 §4 는 "파일별 책임 1줄 필수 ← 비워두지 말 것" 을 요구하지만
+# 파서가 §4 를 아예 몰라 강제가 없었다(2026-08-25).
+cat > "$TMP/decl.md" <<'EOF'
+# 계획
+
+## 2. 목표
+- [ ] 무언가
+      `bash tests/x.sh`
+
+## 4. 영향 영역
+
+- 코드: (수정 목록)
+- **신규 파일 목록 (파일별 책임 1줄 필수)**:
+  - `src/parser/tokenize.py` — 토큰 분해만 담당한다
+  - `src/parser/index.py` — 배럴 재export
+- 룰: R-iface
+
+## 5. 단계
+- `src/other/not-in-four.py` — §4 밖이라 선언이 아니다
+EOF
+OUT=$(python3 "$MOD" declared-files "$TMP/decl.md" 2>/dev/null)
+echo "$OUT" | grep -qx 'src/parser/tokenize.py'
+assert "§4 의 선언 경로를 뽑는다" "0" "$?"
+echo "$OUT" | grep -qx 'src/parser/index.py'
+assert "배럴도 선언으로 센다" "0" "$?"
+echo "$OUT" | grep -q 'not-in-four.py'
+assert "§4 밖의 경로는 선언이 아니다" "1" "$?"
+assert "선언이 있으면 exit 0" "0" "$(rc declared-files "$TMP/decl.md")"
+
+cat > "$TMP/decl-empty.md" <<'EOF'
+# 계획
+
+## 4. 영향 영역
+
+- 코드: (수정 목록)
+- **신규 파일 목록 (파일별 책임 1줄 필수)**: ← 비워두지 말 것.
+  - `path/to/file.ext` — <이 파일의 유일한 책임 한 문장>
+EOF
+OUT=$(python3 "$MOD" declared-files "$TMP/decl-empty.md" 2>/dev/null)
+echo "$OUT" | grep -q 'path/to/file.ext'
+assert "템플릿 플레이스홀더는 선언으로 세지 않는다" "1" "$?"
+
+cat > "$TMP/decl-none.md" <<'EOF'
+# 계획
+
+## 2. 목표
+- [ ] 무언가
+EOF
+assert "§4 가 없으면 판정불가(exit 2)" "2" "$(rc declared-files "$TMP/decl-none.md")"
+
+echo ""
 echo "== R-acc 회귀: 인터페이스 폭과 복잡도가 늘지 않았는가 =="
 # plan_state.py 는 공개 심볼 8개로 이미 R-iface 임계(8)에 있다.
 # 새 파서를 공개로 추가하면 폭이 늘어난다 — 비공개로 넣어야 한다.

@@ -107,6 +107,7 @@ for t in \
   windows-helpers-test.sh \
   plan-state-test.sh \
   iface-gate-test.sh \
+  plan-declare-gate-test.sh \
   struct-barrel-test.sh \
   complexity-gate-test.sh \
   cx-baseline-distribution-test.sh \
