@@ -22,8 +22,10 @@ TMP=$(mktemp -d)
 export HOME="$TMP/fakehome"; mkdir -p "$HOME"
 REGISTRY="$ROOT/.installed-projects"
 cleanup() {
+  # $TMP 만 지우면 안 된다 — 이 테스트는 $TMP/legacyproj 에도 설치한다.
+  # 하위 경로까지 지우지 않으면 레지스트리에 죽은 경로가 쌓인다(2026-08-25 실측: 8건).
   if [[ -f "$REGISTRY" ]]; then
-    grep -vxF "$TMP" "$REGISTRY" > "$REGISTRY.tmp$$" 2>/dev/null || true
+    grep -v "^${TMP}\(/\|$\)" "$REGISTRY" > "$REGISTRY.tmp$$" 2>/dev/null || true
     [[ -f "$REGISTRY.tmp$$" ]] && mv "$REGISTRY.tmp$$" "$REGISTRY"
   fi
   rm -rf "$TMP"

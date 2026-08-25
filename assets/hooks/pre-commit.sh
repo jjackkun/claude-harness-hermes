@@ -151,7 +151,13 @@ EOF
 fi
 
 # 4. R-test — pytest
-if [[ -n "$PY_FILES" ]]; then
+#
+# 대상은 PY_STRUCT_FILES 다 — 하네스 사본만 담긴 커밋은 pytest 를 돌리지 않는다.
+# 그 사본은 원본과 동일하고 상류에서 이미 검증됐으므로, 돌려도 이 커밋에 대해
+# 알려주는 것이 없다. 반면 프로젝트 테스트가 이미 깨져 있으면 **하네스 갱신 커밋이
+# 무관한 실패에 막힌다** — 2026-08-25 전파에서 실제로 발생했다(rim-kanban).
+# 프로젝트 파이썬이 함께 바뀌면 PY_STRUCT_FILES 가 비지 않으므로 그대로 돌아간다.
+if [[ -n "$PY_STRUCT_FILES" ]]; then
   PYTEST_DIR=""
   for cand in tests backend/tests; do
     [[ -d "$cand" ]] && PYTEST_DIR="$cand" && break

@@ -161,6 +161,38 @@ git rm --cached -q lib_under_test.py >/dev/null 2>&1 || true
 rm -f lib_under_test.py; rmdir tests 2>/dev/null || true
 
 echo ""
+echo "== 1b-ter. 하네스 사본만 담긴 커밋은 프로젝트 pytest 에 막히지 않는다 =="
+# 프로젝트 테스트가 이미 깨져 있으면 하네스 갱신 커밋이 무관한 실패에 막힌다.
+# 2026-08-25 전파에서 실제로 발생했다(rim-kanban: pydantic 오류로 pytest 실패).
+# 사본은 원본과 동일하고 상류에서 검증됐으므로 돌려도 알려주는 것이 없다.
+mkdir -p tests scripts/hooks
+cat > tests/test_always_fails.py <<'PYEOF'
+def test_broken():
+    assert False
+PYEOF
+git add tests/test_always_fails.py
+git -c core.hooksPath=/dev/null commit -q -m "깨진 테스트 (설치 이전 상태)" 2>/dev/null || true
+printf 'x = 1
+' > scripts/hooks/harness_copy_probe.py
+git add scripts/hooks/harness_copy_probe.py
+HOOK_OUT=$(.git/hooks/pre-commit 2>&1); HOOK_RC=$?
+assert "하네스 사본만 담긴 커밋은 통과" "0" "$HOOK_RC"
+echo "$HOOK_OUT" | grep -q '\[R-test\]'
+assert "하네스 사본만이면 R-test 단계에 들어가지도 않는다" "1" "$?"
+# 대조군: 프로젝트 파이썬이 섞이면 R-test 단계가 실제로 돈다.
+# 차단 여부로 단언하지 않는다 — 이 픽스처는 HOME 을 격리해 pytest 가 실행 불가이고,
+# 그 경로는 설계상 경고다. "단계에 들어갔는가" 가 여기서 확인 가능한 성질이다.
+echo "y = 2" > project_module.py
+git add project_module.py
+.git/hooks/pre-commit 2>&1 | grep -q '\[R-test\]'
+assert "프로젝트 .py 가 섞이면 R-test 단계가 돈다" "0" "$?"
+git rm --cached -q scripts/hooks/harness_copy_probe.py project_module.py >/dev/null 2>&1 || true
+rm -f scripts/hooks/harness_copy_probe.py project_module.py
+git rm -q --cached tests/test_always_fails.py >/dev/null 2>&1 || true
+rm -f tests/test_always_fails.py
+git -c core.hooksPath=/dev/null commit -q -m "깨진 테스트 제거" 2>/dev/null || true
+
+echo ""
 echo "== 1c-bis. 하네스 사본은 구조 검사(R-cx·R-dep) 대상이 아니다 =="
 # scripts/hooks/*.py 는 assets/hooks/*.py 의 사본이다. 원본이 이미 검사받으므로
 # 사본까지 보면 같은 결함을 두 번 보고하고, 계약 미등록으로 R-dep-4 가 매번 뜬다.
