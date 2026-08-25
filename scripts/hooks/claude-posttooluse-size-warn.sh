@@ -94,12 +94,35 @@ case "$FILE_PATH" in
   *)    SYM_PAT='^export '     ; PUB_PAT='^export '     ; SYM_UNIT='export 심볼' ;;
 esac
 
-SYM_NOW=$(grep -cE "$SYM_PAT" "$FILE_PATH" 2>/dev/null || true)
-SYM_BASE=$(git show "HEAD:$REL" 2>/dev/null | grep -cE "$SYM_PAT" || true)
-SYM_NOW="${SYM_NOW:-0}"; SYM_BASE="${SYM_BASE:-0}"
+# SFC 는 grep 으로 셀 수 없다. `^export ` 는 <script> 안의 들여쓴 prop 을 못 잡고,
+# Svelte 5 runes(`let { a } = $props()`)는 아예 형태가 다르다.
+# 그래서 이 신호는 Svelte 에서 **한 번도 발화할 수 없었다** —
+# 실측(2026-08-25): 표본 200개 중 `^export ` 매칭 0개, `$props()` 사용 177개.
+# 폭 정의는 iface_width.py 한 곳에만 둔다. 두 곳에서 재면 반드시 갈라진다.
+IFACE_MOD=""
+for cand in "$(dirname "$0")/iface_width.py" scripts/hooks/iface_width.py; do
+  [[ -f "$cand" ]] && IFACE_MOD="$cand" && break
+done
 
-PUB_NOW=$(grep -cE "$PUB_PAT" "$FILE_PATH" 2>/dev/null || true)
-PUB_BASE=$(git show "HEAD:$REL" 2>/dev/null | grep -cE "$PUB_PAT" || true)
+count_iface() {  # stdin=내용, $1=확장자 → 공개 심볼 수 (셀 수 없으면 빈 문자열)
+  local out
+  out=$(python3 "$IFACE_MOD" count "$1" 2>/dev/null) || return 1
+  printf '%s' "$out"
+}
+
+EXT=".${FILE_PATH##*.}"
+if [[ -n "$IFACE_MOD" && ( "$EXT" == ".vue" || "$EXT" == ".svelte" ) ]]; then
+  SYM_NOW=$(count_iface "$EXT" < "$FILE_PATH" 2>/dev/null || echo 0)
+  SYM_BASE=$(git show "HEAD:$REL" 2>/dev/null | count_iface "$EXT" 2>/dev/null || echo 0)
+  PUB_NOW="$SYM_NOW"; PUB_BASE="$SYM_BASE"   # SFC 는 공개 폭이 곧 심볼 수다
+  SYM_UNIT='공개 심볼(props/export)'
+else
+  SYM_NOW=$(grep -cE "$SYM_PAT" "$FILE_PATH" 2>/dev/null || true)
+  SYM_BASE=$(git show "HEAD:$REL" 2>/dev/null | grep -cE "$SYM_PAT" || true)
+  PUB_NOW=$(grep -cE "$PUB_PAT" "$FILE_PATH" 2>/dev/null || true)
+  PUB_BASE=$(git show "HEAD:$REL" 2>/dev/null | grep -cE "$PUB_PAT" || true)
+fi
+SYM_NOW="${SYM_NOW:-0}"; SYM_BASE="${SYM_BASE:-0}"
 PUB_NOW="${PUB_NOW:-0}"; PUB_BASE="${PUB_BASE:-0}"
 
 # 임계 5 는 그대로 두고 "공개도 늘었는가" 를 AND 로 더한다 (2026-08-24).

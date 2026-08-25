@@ -84,6 +84,25 @@ echo "$OUT" | grep -q '\[R-pipe\]' && ok "R-pipe 경고 출력" || nope "R-pipe 
 echo "$OUT" | grep -q 'core-beliefs.md#r-review' && ok "메시지에 근거 앵커" || nope "메시지에 근거 앵커"
 echo "$OUT" | grep -q 'scripts_foo.py' && ok "기록된 파일명이 메시지에 나온다" || nope "기록된 파일명이 메시지에 나온다"
 
+echo "── 매칭되지 않는 기록이 있어도 훅이 죽지 않는다 ──"
+# `grep -qxF ... && echo` 는 set -e 아래에서 미매칭 시 **훅을 통째로 종료**시킨다.
+# 그러면 pre-commit 이 메시지 한 줄 없이 exit 1 이 되어 커밋이 침묵 차단된다.
+# 2026-08-25 자기 설치 후 이 저장소에서 실제로 발생했다.
+echo "edit: 1  /elsewhere/unrelated.py" > .claude/.review-dirty
+OUT2="$(run_hook)"; RC2=$(hook_rc)
+[[ "$RC2" -eq 0 ]] && ok "무관한 기록만 있어도 정상 종료" \
+  || nope "훅이 조용히 죽는다 (rc=$RC2) — 커밋이 이유 없이 막힌다"
+echo "$OUT2" | grep -q '\[R-pipe\]' && nope "무관한 기록에는 발화하지 않는다" \
+  || ok "무관한 기록에는 발화하지 않는다"
+
+echo "── 실제 훅이 쓰는 절대 경로로도 매칭된다 ──"
+# review-reminder 는 tool_input.file_path 를 그대로 쓴다 = 절대 경로.
+# 상대 경로 픽스처만 쓰면 테스트는 통과하고 실제로는 영원히 매칭되지 않는다.
+echo "edit: 1  $PWD/scripts_foo.py" > .claude/.review-dirty
+git add scripts_foo.py 2>/dev/null || true
+run_hook | grep -q 'scripts_foo.py' && ok "절대 경로 기록도 매칭된다" \
+  || nope "절대 경로 기록이 매칭되지 않는다 — 실사용에서 죽은 게이트"
+
 echo "── 리뷰 빚이 없으면 침묵한다 ──"
 rm -f .claude/.review-dirty
 run_hook | grep -q '\[R-pipe\]' && nope "리뷰 빚 없으면 침묵" || ok "리뷰 빚 없으면 침묵"

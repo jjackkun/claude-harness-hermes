@@ -431,12 +431,22 @@ DIRTY_FILE=".claude/.review-dirty"
 if [[ -n "$WORK_FILES" && -f "$DIRTY_FILE" ]]; then
   # 기록된 경로 중 이번 커밋에 실제로 들어간 것만 센다. 기록은 세션 단위로 누적되므로
   # 그대로 나열하면 이 커밋과 무관한 파일까지 보여 경고가 무시된다.
+  # 기록은 절대 경로다 — review-reminder 가 tool_input.file_path 를 그대로 쓴다.
+  # 스테이징 목록은 상대 경로이므로 그대로 비교하면 **영원히 매칭되지 않는다**.
+  # (2026-08-25 자기 설치 후 실측: R-pipe 가 이 이유로 한 번도 발화하지 못했다.)
+  #
+  # 그리고 `grep -qxF ... && echo` 는 set -e 아래에서 미매칭 시 while 루프의 종료
+  # 상태를 1 로 만들어 **훅을 통째로 죽인다** — pre-commit 이 메시지 한 줄 없이
+  # exit 1 이 되어 커밋이 침묵 차단된다. 실제로 그 상태였다.
   DIRTY_STAGED=$(
     awk '{ print $NF }' "$DIRTY_FILE" 2>/dev/null | sort -u | while IFS= read -r p; do
       [[ -n "$p" ]] || continue
-      printf '%s\n' "$WORK_FILES" | grep -qxF "$p" && echo "$p"
+      rel="${p#"$PWD"/}"
+      if printf '%s\n' "$WORK_FILES" | grep -qxF "$rel"; then
+        echo "$rel"
+      fi
     done | head -5
-  )
+  ) || true
   if [[ -n "$DIRTY_STAGED" ]]; then
     WARNINGS+=("
 [R-pipe] 리뷰 기록 없이 커밋되는 파일: $(echo "$DIRTY_STAGED" | tr '\n' ' ')

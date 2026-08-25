@@ -42,6 +42,11 @@ frontend/DB/TS 작업은 `fullstack-developer`, `database-reviewer`, `typescript
 **왜 차단인가**: `PreToolUse` 는 아직 아무것도 쓰이지 않은 시점이라 오탐 비용이 거의 0 이다.
 같은 지표라도 커밋 시점에 막으면 완성된 코드의 재구성을 요구해 우회가 상시화된다.
 
+**폭을 재는 정의는 `assets/hooks/iface_width.py` 한 곳뿐이다.** 생성 시점(`iface-guard`)과
+편집 시점(`size-warn` 델타 신호)이 각자 세다가 어긋났다 — 후자는 `^export ` grep 이라
+**Svelte 에서 한 번도 발화할 수 없었다**(실측 2026-08-25: 표본 200개 중 매칭 0개,
+`$props()` 사용 177개). 같은 것을 두 곳에서 재면 반드시 갈라진다.
+
 **SFC(.vue/.svelte)도 같은 임계 8이다.** `<script>` 안만 세며, 세 형태를 모두 본다 —
 `export let/const/...`(Svelte 4 prop·일반 export), `let { a, b } = $props()`(Svelte 5 runes),
 `defineProps`/`defineExpose`(Vue). 하나만 세면 나머지 형태의 컴포넌트가 폭 0 으로 보인다.

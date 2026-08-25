@@ -159,6 +159,27 @@ MARKUP='<template>
 [[ "$(payload "$WORK/I.svelte" "<!-- R-iface-waiver: 한 책임이다 -->"$'\n'"<script>"$'\n'"$SV8</script>" | verdict)" == ALLOW ]] \
   && ok "SFC 도 waiver 가 통한다" || nope "SFC 도 waiver 가 통한다"
 
+# ── 폭 정의는 한 곳뿐이어야 한다 ──────────────────────────────────────
+# 생성 시점(iface-guard)과 편집 시점(size-warn)이 각자 세다가 어긋났다:
+# 후자는 `^export ` grep 이라 Svelte 에서 한 번도 발화할 수 없었다
+# (실측 2026-08-25: 표본 200개 중 매칭 0개, `$props()` 사용 177개).
+echo "-- 공유 모듈 --"
+MOD="$ROOT/assets/hooks/iface_width.py"
+[[ -f "$MOD" ]] && ok "iface_width.py 존재" || nope "iface_width.py 존재"
+[[ "$(printf '<script>\n  let { a, b, c } = $props();\n</script>' | python3 "$MOD" count .svelte)" == "3" ]] \
+  && ok "모듈이 runes props 를 센다" || nope "모듈이 runes props 를 센다"
+[[ "$(printf 'def a(): pass\ndef _b(): pass\n' | python3 "$MOD" count .py)" == "1" ]] \
+  && ok "모듈이 비공개를 제외한다" || nope "모듈이 비공개를 제외한다"
+printf 'x' | python3 "$MOD" count .txt >/dev/null 2>&1
+[[ $? -eq 1 ]] && ok "셀 줄 모르는 확장자는 exit 1 (0 과 구분)" \
+  || nope "셀 줄 모르는 확장자는 exit 1"
+
+# size-warn 이 정말 이 모듈을 쓰는가 — grep 으로 되돌아가면 Svelte 가 다시 죽는다.
+grep -q 'iface_width.py' "$ROOT/assets/hooks/claude-posttooluse-size-warn.sh" \
+  && ok "size-warn 이 공유 모듈을 쓴다" || nope "size-warn 이 공유 모듈을 쓴다"
+grep -q 'iface_width.py' "$ROOT/presets/workflow/harness.conf" \
+  && ok "모듈이 설치 대상에 등록" || nope "모듈이 설치 대상에 등록"
+
 echo
 echo "PASS=$PASS FAIL=$FAIL"
 [[ "$FAIL" -eq 0 ]]
