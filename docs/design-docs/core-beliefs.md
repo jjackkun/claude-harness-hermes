@@ -378,6 +378,7 @@ R-plan 은 *스테이징된* 계획서만 검사한다 — "갱신하지 않는 
 소급 정리: `scripts/hermes-scrub-history.py`. 상세: `docs/superpowers/specs/2026-08-10-hermes-secret-masking-design.md`.
 
 <!--===HARNESS-RULES:BEGIN===-->
+
 ## 하네스 공통 룰
 
 하네스가 강제하는 룰의 앵커. 재설치 시 이 블록만 덮어쓴다 — 아래 R 룰 목록은 보존된다.

@@ -70,7 +70,13 @@ PLAN_STATE_OK=1
 # 설정이 다르므로 생성기가 전부에 맞출 수 없다 — 맞추려 들면 재설치할 때마다
 # 자기 게이트에 자기가 걸려 커밋이 막힌다(실제로 3개 프로젝트에서 발생).
 # `.claude/memory/` 도 같은 부류다 — 기억 시스템이 쓰는 산출물이지 손으로 쓰는 문서가 아니다.
-GENERATED_RE='^(CLAUDE\.md|AGENTS\.md|\.claude/(settings(\.local)?\.json|\.dev-setting-manifest\.json)|\.codex/settings(\.local)?\.json)$|^\.claude/memory/'
+# lint-configs/ 와 .hermes/ 도 같은 부류다(2026-08-25 전파에서 드러남).
+#   lint-configs/harness-max-lines.config.js — 하네스가 생성한다. kis-trading 은 탭+홑따옴표,
+#     그 프로젝트 prettier 는 공백+겹따옴표를 원한다. 생성기가 프로젝트마다 다른 서식에
+#     맞출 수 없으므로 제외한다. core-beliefs.md 는 빈 줄 하나였고 모든 프로젝트에
+#     통하는 수정이라 원천에서 고쳤다 — 문제가 다르면 답도 다르다.
+#   .hermes/ — 결정화 스킬 등 런타임 산출물이지 손으로 쓰는 파일이 아니다.
+GENERATED_RE='^(CLAUDE\.md|AGENTS\.md|\.claude/(settings(\.local)?\.json|\.dev-setting-manifest\.json)|\.codex/settings(\.local)?\.json)$|^\.claude/memory/|^lint-configs/|^\.hermes/'
 PRETTIER_FILES=$(filter_files '\.(js|jsx|ts|tsx|svelte|json|css|scss|md|yaml|yml)$' \
   | grep -vE "$GENERATED_RE" || true)
 

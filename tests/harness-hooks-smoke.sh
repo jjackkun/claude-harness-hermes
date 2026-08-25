@@ -161,6 +161,18 @@ git rm --cached -q lib_under_test.py >/dev/null 2>&1 || true
 rm -f lib_under_test.py; rmdir tests 2>/dev/null || true
 
 echo ""
+echo "== 1b-quater. 하네스 생성물은 R-fmt 대상이 아니다 =="
+# 생성기가 프로젝트마다 다른 prettier 설정에 맞출 수 없다. 맞추려 들면 재설치할 때마다
+# 자기 게이트에 자기가 걸린다 — 2026-08-25 전파에서 kis-trading 이 실제로 막혔다.
+grep -q "lint-configs/" "$REPO_ROOT/assets/hooks/pre-commit.sh"
+assert "GENERATED_RE 가 lint-configs/ 를 제외" "0" "$?"
+grep -q "\\.hermes/" "$REPO_ROOT/assets/hooks/pre-commit.sh"
+assert "GENERATED_RE 가 .hermes/ 를 제외" "0" "$?"
+PF=$(grep -n 'PRETTIER_FILES=' "$REPO_ROOT/assets/hooks/pre-commit.sh" | head -1 | cut -d: -f1)
+GR=$(grep -n 'GENERATED_RE=' "$REPO_ROOT/assets/hooks/pre-commit.sh" | head -1 | cut -d: -f1)
+assert "GENERATED_RE 가 PRETTIER_FILES 보다 먼저 정의됨" "0" "$([[ $GR -lt $PF ]] && echo 0 || echo 1)"
+
+echo ""
 echo "== 1b-ter. 하네스 사본만 담긴 커밋은 프로젝트 pytest 에 막히지 않는다 =="
 # 프로젝트 테스트가 이미 깨져 있으면 하네스 갱신 커밋이 무관한 실패에 막힌다.
 # 2026-08-25 전파에서 실제로 발생했다(rim-kanban: pydantic 오류로 pytest 실패).
