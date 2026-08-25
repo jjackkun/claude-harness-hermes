@@ -151,6 +151,36 @@ harness_sync_marker_block() {
   block="$(awk -v b="$begin" -v e="$end" '$0==b{f=1} f{print} $0==e{f=0}' "$src")"
   [[ -n "$block" ]] || return 0
 
+  # 대상 문서가 같은 앵커를 이미 정식 섹션으로 갖고 있으면, 블록은 **선언하지 않고 링크한다.**
+  # 안 그러면 `{#r-test}` 가 두 번 선언돼 pre-commit 메시지의 `근거:` 링크가 어디로 갈지
+  # 모호해진다. 2026-08-25 이 저장소에 자기 설치를 하면서 드러났다 —
+  # 룰 문서를 제대로 채운 프로젝트라면 어디서나 생기는 충돌이다.
+  if [[ -f "$dest" ]]; then
+    block="$(BLOCK="$block" BEGIN_MARK="$begin" END_MARK="$end" python3 - "$dest" <<'PYEOF'
+import os, re, sys
+
+block = os.environ["BLOCK"]
+begin, end = os.environ["BEGIN_MARK"], os.environ["END_MARK"]
+
+# 대상에서 마커 블록 **밖**이 선언한 앵커만 모은다.
+existing, inside = set(), False
+for line in open(sys.argv[1], encoding="utf-8"):
+    if line.strip() == begin:
+        inside = True
+    elif line.strip() == end:
+        inside = False
+    elif not inside:
+        existing.update(re.findall(r"\{#([a-z0-9-]+)\}", line))
+
+def relink(match):
+    name, anchor = match.group(1), match.group(2)
+    return "- [%s](#%s)" % (name, anchor) if anchor in existing else match.group(0)
+
+sys.stdout.write(re.sub(r"- ([A-Za-z0-9-]+) \{#([a-z0-9-]+)\}", relink, block))
+PYEOF
+)"
+  fi
+
   if grep -qF "$begin" "$dest"; then
     awk -v b="$begin" -v e="$end" -v blk="$block" '
       $0==b {print blk; skip=1; next}

@@ -40,3 +40,14 @@ docs/exec-plans/completed/
 docs/exec-plans/backlog/
 docs/audits/
 docs/superpowers/plans/
+
+# >>> harness-agent-preset >>>
+# Auto-managed by ai-dev-setting. Do not edit between markers.
+.claude/settings.local.json
+.claude/worktrees/
+.claude/.review-dirty
+.claude/.dev-setting-manifest.json
+.claude/presets.lock
+!.claude/memory/
+!.claude/memory/**
+# <<< harness-agent-preset <<<

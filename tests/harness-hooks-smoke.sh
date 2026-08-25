@@ -161,6 +161,28 @@ git rm --cached -q lib_under_test.py >/dev/null 2>&1 || true
 rm -f lib_under_test.py; rmdir tests 2>/dev/null || true
 
 echo ""
+echo "== 1d-bis. 하네스 룰 블록이 앵커를 중복 선언하지 않는다 =="
+# 대상 문서가 같은 앵커를 정식 섹션으로 이미 가지면 블록은 링크로 바뀌어야 한다.
+# 안 그러면 {#r-test} 가 두 번 선언돼 pre-commit 의 `근거:` 링크가 모호해진다
+# (2026-08-25 이 저장소에 자기 설치를 하다 드러났다).
+CB="docs/design-docs/core-beliefs.md"
+mkdir -p "$(dirname "$CB")"
+cat > "$CB" <<'CBEOF'
+# Core Beliefs
+
+## R-test — pytest {#r-test}
+
+프로젝트가 직접 쓴 정식 섹션이다.
+CBEOF
+bash "$REPO_ROOT/project-claude.sh" . harness >/dev/null 2>&1
+DUP=$(grep -c '{#r-test}' "$CB")
+assert "이미 있는 앵커는 블록이 재선언하지 않음" "1" "$DUP"
+grep -q '\[R-test\](#r-test)' "$CB"
+assert "대신 정식 섹션으로 링크" "0" "$?"
+grep -q '{#r-plan-stale}' "$CB"
+assert "없던 앵커는 블록이 그대로 선언" "0" "$?"
+
+echo ""
 echo "== 1e. R-pipe 배선 — PostToolUse(Task|Agent) 가 실제 settings 에 렌더링되는가 =="
 # POST_TOOL_USE_HOOKS 배열은 이 훅이 처음 채운다. 배열이 비어 있는 동안은
 # 렌더링 경로가 죽어 있어도 아무도 모른다 — complexity.py 가 .git/hooks/ 로

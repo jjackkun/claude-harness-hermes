@@ -312,3 +312,20 @@ R-plan 은 *스테이징된* 계획서만 검사한다 — "갱신하지 않는 
 **기계 강제**: `pre-commit` R-secret 단계(`check-secrets.py`) + DB·export 경계
 마스킹(`hermes_redact.py`). 회귀 고정: `tests/hermes-secret-masking-test.sh`.
 소급 정리: `scripts/hermes-scrub-history.py`. 상세: `docs/superpowers/specs/2026-08-10-hermes-secret-masking-design.md`.
+
+<!--===HARNESS-RULES:BEGIN===-->
+## 하네스 공통 룰
+
+하네스가 강제하는 룰의 앵커. 재설치 시 이 블록만 덮어쓴다 — 아래 R 룰 목록은 보존된다.
+pre-commit 메시지의 `근거:` 링크가 이 앵커들을 가리킨다.
+
+- [R-size](#r-size) — 1 파일 = 1 책임 (500 줄 안전망)
+- [R-fmt](#r-fmt) — prettier 서식
+- [R-lint](#r-lint) — ESLint
+- [R-test](#r-test) — pytest
+- [P9](#p9) — 비밀의 경계는 파일이 아니라 값이다
+- [R-plan](#r-plan) — 완료된 계획은 completed/ 로 이동 (차단)
+- [R-plan-missing](#r-plan-missing) — 코드 수정 시 계획 존재 (경고)
+- [R-plan-stale](#r-plan-stale) — 계획서가 코드를 따라오는가 (경고)
+- [R-retro](#r-retro) — 회고 없이 완료 처리 금지 (경고)
+<!--===HARNESS-RULES:END===-->

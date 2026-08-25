@@ -1,0 +1,1 @@
+/home/jjackkun/PROJECT/claude-harness-hermes/assets/agents/silent-failure-hunter.md
