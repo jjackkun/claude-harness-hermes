@@ -358,6 +358,9 @@ def run_cleanup(db, scripts_dir, apply) -> tuple:
     try:
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=120,
                                 env={**os.environ, "HERMES_DISABLED": "1"})
+        # 실패를 삼키면 "정리 완료" 로 오인한다. cleanup 은 DB 잠김 등을 종료코드로 알린다.
+        if result.returncode != 0:
+            _log(f"cleanup 실패 rc={result.returncode}: {result.stderr.strip()[:400]}")
         text = result.stdout
         m = re.search(r"junk 스킬 파일: (\d+)개", text)
         proposed = int(m.group(1)) if m else 0
@@ -448,7 +451,13 @@ def main():
     crystallized = run_crystallize(keys, args.db, args.project_dir, scripts_dir)
     hints = collect_evolution_hints(summaries)
     evolved = run_evolve(hints, args.db, scripts_dir)
+    # cleanup 은 같은 DB 에 쓰고 --apply 면 VACUUM 까지 한다. 이쪽 연결을 연 채로
+    # 띄우면 두 프로세스가 같은 파일을 두고 경합하고, 그 잠김이 cleanup 안에서
+    # "junk 0개" 로 위장돼 삭제가 조용히 건너뛰어졌다(2026-08-25 실측).
+    # 필요한 읽기는 이미 끝났으므로 닫고, 기록할 때 다시 연다.
+    con.close()
     delete_report, delete_proposed = run_cleanup(args.db, scripts_dir, args.apply)
+    con = connect_db(args.db)
 
     date = datetime.now().strftime("%Y-%m-%d")
     report_path = write_report(

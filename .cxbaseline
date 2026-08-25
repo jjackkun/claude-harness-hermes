@@ -20,7 +20,7 @@ scripts/hermes_skills.py 16
 scripts/hermes_loop.py 16
 scripts/hermes-correlate.py 16
 scripts/hermes-export-history.py 15
-scripts/hermes-cleanup.py 15
+scripts/hermes-cleanup.py 12
 lib/generate_codex_hooks.py 14
 assets/skills/mcp-builder/scripts/evaluation.py 14
 scripts/hermes-reindex.py 13

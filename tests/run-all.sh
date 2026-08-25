@@ -128,6 +128,7 @@ for t in \
   check-secrets-code-expr-test.sh \
   hermes-crystallize-naming-test.sh \
   hermes-dream-test.sh \
+  hermes-cleanup-lock-test.sh \
   hermes-recall-measurement-test.sh \
   hermes-recall-history-search-test.sh \
   uninstall-roundtrip-test.sh \

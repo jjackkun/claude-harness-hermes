@@ -161,6 +161,31 @@ git rm --cached -q lib_under_test.py >/dev/null 2>&1 || true
 rm -f lib_under_test.py; rmdir tests 2>/dev/null || true
 
 echo ""
+echo "== 1c-bis. 하네스 사본은 구조 검사(R-cx·R-dep) 대상이 아니다 =="
+# scripts/hooks/*.py 는 assets/hooks/*.py 의 사본이다. 원본이 이미 검사받으므로
+# 사본까지 보면 같은 결함을 두 번 보고하고, 계약 미등록으로 R-dep-4 가 매번 뜬다.
+# (2026-08-25 자기 설치 첫 커밋에서 실제로 발화했다.)
+cat > .deprc <<'DEPEOF'
+scope: scripts/*.py
+DEPEOF
+mkdir -p scripts/hooks
+printf 'import os
+' > scripts/hooks/copied_module.py
+git add .deprc scripts/hooks/copied_module.py
+HOOK_OUT=$(.git/hooks/pre-commit 2>&1)
+echo "$HOOK_OUT" | grep -q 'copied_module.py'
+assert "하네스 사본은 R-dep 경고를 받지 않음" "1" "$?"
+# 대조군: 같은 파일이 scripts/ 바로 아래면 경고를 받아야 한다(검사 자체는 살아있다)
+printf 'import os
+' > scripts/plain_module.py
+git add scripts/plain_module.py
+HOOK_OUT=$(.git/hooks/pre-commit 2>&1)
+echo "$HOOK_OUT" | grep -q 'plain_module.py'
+assert "사본이 아닌 파일은 그대로 경고" "0" "$?"
+git rm --cached -q .deprc scripts/hooks/copied_module.py scripts/plain_module.py >/dev/null 2>&1 || true
+rm -f .deprc scripts/hooks/copied_module.py scripts/plain_module.py
+
+echo ""
 echo "== 1d-bis. 하네스 룰 블록이 앵커를 중복 선언하지 않는다 =="
 # 대상 문서가 같은 앵커를 정식 섹션으로 이미 가지면 블록은 링크로 바뀌어야 한다.
 # 안 그러면 {#r-test} 가 두 번 선언돼 pre-commit 의 `근거:` 링크가 모호해진다

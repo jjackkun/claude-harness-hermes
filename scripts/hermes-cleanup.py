@@ -148,6 +148,31 @@ def clean_patterns(con: sqlite3.Connection, junk_keys: list, apply: bool) -> Non
     con.commit()
 
 
+def _indexed_junk_skills(con: sqlite3.Connection) -> list:
+    """skill_index 에 등록됐지만 키 자체가 확실한 junk 인 항목.
+
+    스키마가 없는 것과 DB 가 잠긴 것은 다르다.
+    전자는 "이 프로젝트엔 스킬 인덱스가 없다" 이므로 건너뛰면 된다.
+    후자를 삼키면 삭제 대상이 비어 **"junk 0개" 라는 거짓 보고**가 나가고,
+    호출부(hermes-dream)는 정리가 끝난 줄 안다 — 실제로 그 경로가
+    hermes-pipeline-test §20(e) 의 간헐 실패로 나타났다(2026-08-25).
+    """
+    try:
+        rows = con.execute("SELECT skill_path FROM skill_index WHERE scope='local'").fetchall()
+    except sqlite3.OperationalError as e:
+        if "no such table" not in str(e):
+            raise
+        print(f"[hermes-cleanup] skill_index 없음 — (b) 건너뜀: {e}", file=sys.stderr)
+        return []
+
+    found = []
+    for (skill_path,) in rows:
+        base = os.path.basename(skill_path)
+        if base.endswith(".md") and is_definite_junk(base[:-3]):
+            found.append((base[:-3], skill_path))
+    return found
+
+
 def clean_junk_skills(
     con: sqlite3.Connection, junk_keys: list, skills_dir: str, apply: bool
 ) -> None:
@@ -161,18 +186,9 @@ def clean_junk_skills(
         if os.path.isfile(md_path):
             targets.append((key, md_path))
 
-    # skill_index 에 등록됐지만 키 자체가 확실한 junk 인 항목도 수집
-    try:
-        rows = con.execute("SELECT skill_path FROM skill_index WHERE scope='local'").fetchall()
-        for (skill_path,) in rows:
-            base = os.path.basename(skill_path)
-            if not base.endswith(".md"):
-                continue
-            key = base[:-3]
-            if is_definite_junk(key) and (key, skill_path) not in targets:
-                targets.append((key, skill_path))
-    except sqlite3.OperationalError as e:
-        print(f"[hermes-cleanup] skill_index 조회 실패: {e}", file=sys.stderr)
+    for item in _indexed_junk_skills(con):
+        if item not in targets:
+            targets.append(item)
 
     print(f"== (b) junk 스킬 파일: {len(targets)}개")
     for key, md_path in targets:
@@ -301,4 +317,10 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except sqlite3.OperationalError as e:
+        # 잠김 등 DB 접근 실패는 종료코드로 드러낸다. 조용히 0 으로 끝내면
+        # 호출부가 "정리 완료" 로 오인한다.
+        print(f"[hermes-cleanup] DB 접근 실패(잠김 등): {e}", file=sys.stderr)
+        sys.exit(2)

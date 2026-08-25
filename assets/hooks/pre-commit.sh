@@ -52,6 +52,14 @@ HARNESS_MANAGED_RE='^scripts/(hooks|codex-hooks)/'
 WORK_FILES=$(filter_files '\.(py|js|jsx|ts|tsx|svelte|vue|sh|mjs|go|rs|java|rb|php)$' \
   | grep -vE "$HARNESS_MANAGED_RE" || true)
 
+# 하네스가 배치한 사본은 파이썬 구조 검사(R-cx·R-dep)의 대상이 아니다.
+# scripts/hooks/*.py 는 assets/hooks/*.py 와 동일한 사본이고 원본이 이미 검사받는다.
+# 사본까지 보면 같은 결함을 두 번 보고하고, 계약(.deprc)에 등록되지 않아
+# 하네스를 갱신하는 커밋마다 R-dep-4 경고가 뜬다 — 경고 피로로 게이트가 꺼진다.
+# R-fmt(GENERATED_RE)·R-plan-missing(HARNESS_MANAGED_RE)이 이미 같은 판단을 하고 있다.
+# (2026-08-25 자기 설치 첫 커밋에서 실제로 발화해 드러났다.)
+PY_STRUCT_FILES=$(printf '%s\n' "$PY_FILES" | grep -vE "$HARNESS_MANAGED_RE" || true)
+
 # 계획서 판정 모듈. pre-commit 옆에 설치기가 복사한다.
 PLAN_STATE="$(dirname "$0")/plan_state.py"
 PLAN_STATE_OK=1
@@ -204,7 +212,7 @@ fi
 # 모듈 부재는 조용히 넘기지 않는다. R-test 가 파이썬 테스트 0개인 상태로 몇 달간
 # 아무것도 막지 않으면서 통과 표시를 내고 있었다 — 게이트가 죽은 줄 모르는 것이 최악이다.
 CHECK_CX="$(dirname "$0")/complexity.py"
-if [[ -n "$PY_FILES" ]]; then
+if [[ -n "$PY_STRUCT_FILES" ]]; then
   if [[ ! -f "$CHECK_CX" ]]; then
     WARNINGS+=("
 [R-cx] 복잡도 검사를 건너뜀 — complexity.py 없음 (재설치 필요)")
@@ -212,7 +220,7 @@ if [[ -n "$PY_FILES" ]]; then
     WARNINGS+=("
 [R-cx] 복잡도 검사를 건너뜀 — python3 없음 (인터프리터 설치 필요)")
   else
-    CX_OUT=$(echo "$PY_FILES" | xargs python3 "$CHECK_CX" 2>&1) || {
+    CX_OUT=$(echo "$PY_STRUCT_FILES" | xargs python3 "$CHECK_CX" 2>&1) || {
       VIOLATIONS+=("$(cat <<EOF
 
 $CX_OUT
@@ -264,7 +272,7 @@ fi
 # 새 규칙을 만드는 것이 아니라 이미 지켜지던 것을 고정한다.
 # 도입 시점의 위반은 0건이므로 즉시 켜도 정상 코드가 막히지 않는다.
 CHECK_DEP="$(dirname "$0")/depcheck.py"
-if [[ -n "$PY_FILES" ]]; then
+if [[ -n "$PY_STRUCT_FILES" ]]; then
   if [[ ! -f "$CHECK_DEP" ]]; then
     WARNINGS+=("
 [R-dep] 의존 계약 검사를 건너뜀 — depcheck.py 없음 (재설치 필요)")
@@ -272,7 +280,7 @@ if [[ -n "$PY_FILES" ]]; then
     WARNINGS+=("
 [R-dep] 의존 계약 검사를 건너뜀 — python3 없음 (인터프리터 설치 필요)")
   else
-    DEP_OUT=$(echo "$PY_FILES" | xargs python3 "$CHECK_DEP" 2>&1) || {
+    DEP_OUT=$(echo "$PY_STRUCT_FILES" | xargs python3 "$CHECK_DEP" 2>&1) || {
       VIOLATIONS+=("$(cat <<EOF
 
 $DEP_OUT
