@@ -60,6 +60,19 @@ WORK_FILES=$(filter_files '\.(py|js|jsx|ts|tsx|svelte|vue|sh|mjs|go|rs|java|rb|p
 # (2026-08-25 자기 설치 첫 커밋에서 실제로 발화해 드러났다.)
 PY_STRUCT_FILES=$(printf '%s\n' "$PY_FILES" | grep -vE "$HARNESS_MANAGED_RE" || true)
 
+# R-test 전용 집합. 구조 검사보다 한 칸 더 좁다.
+#
+# 하네스가 소유하는 파이썬(훅 사본 + hermes 스크립트)은 **하네스 자신의 스위트**가
+# 검증한다. 프로젝트의 pytest 는 그 파일들에 대해 아무것도 알려주지 않는다.
+# 그런데 hermes 스크립트는 scripts/ 바로 아래에 배포되므로 HARNESS_MANAGED_RE 에
+# 걸리지 않아, 하네스 갱신 커밋이 프로젝트 pytest 를 깨웠다 —
+# 2026-08-25 전파에서 ai-create 가 DB 미기동으로 막혔다(코드 실패가 아니다).
+#
+# 구조 검사(R-cx·R-dep)에서는 빼지 않는다. 이 저장소에서 hermes 스크립트는 사본이
+# 아니라 원본이고, 오늘 R-cx 가 실제로 그 복잡도를 잡아 고치게 했다.
+HARNESS_OWNED_PY_RE="${HARNESS_MANAGED_RE}|^scripts/hermes[-_]"
+PY_OWN_FILES=$(printf '%s\n' "$PY_FILES" | grep -vE "$HARNESS_OWNED_PY_RE" || true)
+
 # 계획서 판정 모듈. pre-commit 옆에 설치기가 복사한다.
 PLAN_STATE="$(dirname "$0")/plan_state.py"
 PLAN_STATE_OK=1
@@ -158,12 +171,12 @@ fi
 
 # 4. R-test — pytest
 #
-# 대상은 PY_STRUCT_FILES 다 — 하네스 사본만 담긴 커밋은 pytest 를 돌리지 않는다.
+# 대상은 PY_OWN_FILES 다 — 하네스가 소유한 파이썬만 담긴 커밋은 pytest 를 돌리지 않는다.
 # 그 사본은 원본과 동일하고 상류에서 이미 검증됐으므로, 돌려도 이 커밋에 대해
 # 알려주는 것이 없다. 반면 프로젝트 테스트가 이미 깨져 있으면 **하네스 갱신 커밋이
 # 무관한 실패에 막힌다** — 2026-08-25 전파에서 실제로 발생했다(rim-kanban).
 # 프로젝트 파이썬이 함께 바뀌면 PY_STRUCT_FILES 가 비지 않으므로 그대로 돌아간다.
-if [[ -n "$PY_STRUCT_FILES" ]]; then
+if [[ -n "$PY_OWN_FILES" ]]; then
   PYTEST_DIR=""
   for cand in tests backend/tests; do
     [[ -d "$cand" ]] && PYTEST_DIR="$cand" && break
