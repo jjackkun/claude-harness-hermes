@@ -212,7 +212,8 @@ install_harness_cx_baseline() {
   [[ -f "$src" ]] || return 0
 
   local added
-  added=$(SRC="$src" DEST="$project_path/.cxbaseline" PROJ="$project_path" python3 <<'PYEOF'
+  added=$(SRC="$src" DEST="$project_path/.cxbaseline" PROJ="$project_path" \
+          CXMOD="$DEV_SETTING_DIR/assets/hooks/complexity.py" python3 <<'PYEOF'
 import os
 
 src, dest, proj = os.environ["SRC"], os.environ["DEST"], os.environ["PROJ"]
@@ -236,7 +237,58 @@ def entries(path):
 # 프로젝트에 실제로 있는 경로만 옮긴다.
 incoming = {k: v for k, v in entries(src).items()
             if os.path.isfile(os.path.join(proj, k))}
+
+
+def project_violations():
+    """프로젝트가 **설치 전부터 갖고 있던** 위반을 현재값으로 동결한다.
+
+    하네스 기준선은 하네스 파일만 덮는다. 프로젝트 자기 코드는 아무도 동결해 주지
+    않아, R-cx 를 켜는 순간 그 파일을 건드리는 커밋이 전부 막힌다 —
+    R-cx 스펙이 경고한 "그 상태로 켜면 게이트를 끄는 것이 정상 작업 흐름이 된다" 다.
+    임계 미만 파일은 넣지 않는다. 넣으면 현재값이 상한이 되어 오히려 더 조인다.
+    """
+    import importlib.util
+    import subprocess
+
+    mod_path = os.environ.get("CXMOD", "")
+    if not os.path.isfile(mod_path):
+        return {}
+    spec = importlib.util.spec_from_file_location("harness_cx", mod_path)
+    mod = importlib.util.module_from_spec(spec)
+    try:
+        spec.loader.exec_module(mod)
+    except Exception:  # noqa: BLE001 — 측정 불가는 시딩 생략일 뿐 설치 실패가 아니다
+        return {}
+
+    try:
+        listed = subprocess.run(["git", "-C", proj, "ls-files", "*.py"],
+                                capture_output=True, text=True, timeout=60)
+    except Exception:  # noqa: BLE001
+        return {}
+    if listed.returncode != 0:
+        return {}
+
+    threshold = int(os.environ.get("MAX_COMPLEXITY", getattr(mod, "DEFAULT_MAX", 12)))
+    skip = ("node_modules/", "venv/", ".venv/", "dist/", "build/",
+            "scripts/hooks/", "scripts/codex-hooks/")
+    found = {}
+    for rel in listed.stdout.splitlines():
+        rel = rel.strip()
+        if not rel or any(part in rel for part in skip):
+            continue
+        measured = mod.measure(os.path.join(proj, rel))
+        if not measured:
+            continue
+        worst = max(c for c, _, _ in measured)
+        if worst >= threshold:
+            found[rel] = worst
+    return found
+
+
 current = entries(dest)
+seeded = {k: v for k, v in project_violations().items()
+          if k not in incoming and k not in current}
+incoming.update(seeded)
 
 merged, added = dict(current), 0
 for path, value in incoming.items():
@@ -262,12 +314,18 @@ if merged != current:
         for path in sorted(merged):
             handle.write("%s %d\n" % (path, merged[path]))
 
-print(added)
+print("%d %d" % (added, len(seeded)))
 PYEOF
 ) || return 0
 
-  [[ "${added:-0}" -gt 0 ]] \
-    && log_info "  R-cx    → .cxbaseline (하네스 설치분 ${added}개 항목 동결)"
+  local from_harness="${added%% *}" from_project="${added##* }"
+  [[ "${from_harness:-0}" -gt 0 ]] \
+    && log_info "  R-cx    → .cxbaseline (하네스 설치분 ${from_harness}개 항목 동결)"
+  if [[ "${from_project:-0}" -gt 0 ]]; then
+    # 조용히 얼리지 않는다 — 부채가 보이지 않으면 게이트가 죽은 것과 같다.
+    log_info "  R-cx    → 이 프로젝트의 기존 위반 ${from_project}개를 현재값으로 동결"
+    log_info "            ↳ 목록: .cxbaseline. 값은 내려가기만 하며, 나빠지면 차단됩니다"
+  fi
   return 0
 }
 

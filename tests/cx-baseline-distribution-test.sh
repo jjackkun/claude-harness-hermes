@@ -84,6 +84,63 @@ MERGED=$(awk '$1=="scripts/hermes-search.py" {print $2}' .cxbaseline)
 [[ "$MERGED" == "5" ]] && ok "이미 더 낮은 값이면 올리지 않는다 (라쳇)" \
   || nope "라쳇이 느슨해졌다 (기대=5 실제=$MERGED)"
 
+echo "── 프로젝트 자기 코드도 동결한다 (설치 첫날 차단 방지) ──"
+# 하네스 기준선은 하네스 파일만 덮는다. 프로젝트가 원래 갖고 있던 복잡한 함수는
+# 아무도 동결해 주지 않아, R-cx 를 켜는 순간 그 파일을 건드리는 커밋이 전부 막힌다.
+# 실측(2026-08-25): rim-office 45개 · kis-trading 36개 · upbit-ai-trading 29개.
+# R-cx 스펙이 경고한 실패 모드 그대로다 —
+# "그 상태로 켜면 게이트를 끄는 것이 정상 작업 흐름이 된다".
+#
+# 설치 **전부터** 있던 코드라야 의미가 있으므로 별도 프로젝트를 쓴다.
+# 설치 후에 만들어 커밋하려면 --no-verify 가 필요한데 그것은 R5 위반이다.
+LEGACY_PROJ="$TMP/legacyproj"; mkdir -p "$LEGACY_PROJ/legacy"; cd "$LEGACY_PROJ"
+git init -q
+git config user.email "harness-test@example.com"
+git config user.name "harness-test"
+python3 - <<'LEGEOF'
+# 복잡도 20짜리 기존 코드. 설치 전부터 있던 것이라는 설정이다.
+body = "def legacy(n):\n"
+body += "".join("    if n == %d:\n        return %d\n" % (i, i) for i in range(20))
+body += "    return -1\n"
+open("legacy/old.py", "w", encoding="utf-8").write(body)
+LEGEOF
+git add legacy/old.py && git commit -q -m "설치 이전부터 있던 코드"
+
+INSTALL_OUT=$(bash "$ROOT/project-claude.sh" . harness 2>&1)
+grep -q '^legacy/old.py ' .cxbaseline 2>/dev/null \
+  && ok "설치 시 프로젝트 기존 위반을 기준선에 동결" || nope "프로젝트 기존 위반이 동결되지 않음"
+# if 20개 → McCabe 는 분기 20 + 1 = 21.
+FROZEN=$(awk '$1=="legacy/old.py" {print $2}' .cxbaseline 2>/dev/null)
+[[ "$FROZEN" == "21" ]] && ok "동결값이 실측과 일치 (21)" || nope "동결값 불일치 (실제 '$FROZEN')"
+
+echo "── 조용히 동결하지 않는다 ──"
+# 부채를 얼리는 것 자체는 맞지만 조용히는 안 된다 — 오늘 내내 고친 것이
+# "게이트가 조용히 아무것도 안 하는 상태" 다.
+echo "$INSTALL_OUT" | grep -q '기존 위반' \
+  && ok "설치 로그가 동결 사실을 알린다" || nope "동결이 조용히 일어난다"
+
+echo "── 동결 후에는 막지 않는다 ──"
+printf '\n# touch\n' >> legacy/old.py
+# 한 번에 add 하면 .cxbaseline 부재 시 pathspec 오류로 **아무것도 스테이징되지 않아**
+# 이 단언이 공허하게 통과한다.
+git add legacy/old.py
+git add .cxbaseline 2>/dev/null || true
+.git/hooks/pre-commit >/dev/null 2>&1
+[[ $? -eq 0 ]] && ok "기존 위반 파일을 커밋해도 차단되지 않음" || nope "동결했는데도 차단된다"
+
+echo "── 그래도 후퇴는 잡는다 ──"
+python3 - <<'WORSEEOF'
+body = open("legacy/old.py", encoding="utf-8").read()
+body += "\n\ndef worse(n):\n"
+body += "".join("    if n == %d:\n        return %d\n" % (i, i) for i in range(30))
+body += "    return -1\n"
+open("legacy/old.py", "w", encoding="utf-8").write(body)
+WORSEEOF
+git add legacy/old.py
+.git/hooks/pre-commit >/dev/null 2>&1
+[[ $? -ne 0 ]] && ok "동결값을 넘으면 차단된다" || nope "동결이 곧 면제가 됐다"
+cd "$TMP"
+
 echo "── 배포되지 않은 경로는 넘기지 않는다 ──"
 grep -q '^assets/hooks/' .cxbaseline \
   && nope "프로젝트에 없는 경로가 기준선에 들어갔다" || ok "배포 안 된 경로는 넣지 않는다"
