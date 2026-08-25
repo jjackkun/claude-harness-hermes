@@ -107,11 +107,6 @@ def _load(data_dir):
     return merged
 
 
-def _in_scope(path, scope, root):
-    rel = os.path.relpath(path, root)
-    return not rel.startswith("..") and rel.startswith(scope)
-
-
 def _tally(data_dir, scope, root):
     """[(상대경로, 실행줄수, 전체줄수)] 를 돌려준다. scope 안의 .py 전부가 대상이다.
 

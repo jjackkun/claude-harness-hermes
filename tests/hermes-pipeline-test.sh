@@ -274,8 +274,20 @@ check "정상 패턴은 보존" test "$good" = "1"
 echo ""
 echo "== 12. cron-run.sh — 매니저 파이프라인 =="
 "$S/hermes-cron-run.sh" "$PROJ" start projA,projB
-python3 -c "import time; time.sleep(1)"
 cronlog="$PROJ/.hermes/logs/cron-start-$(date +%Y%m%d).log"
+# 고정 대기(sleep 1)는 CI 고부하에서 flaky 하다 — 219행이 같은 이유로 폴링을 쓴다.
+# 로그 파일 생성이 아니라 **기대 마커까지** 기다린다: 파일은 먼저 생기고 내용은 나중에 찬다.
+python3 - "$cronlog" <<'EOF'
+import sys, time
+for _ in range(100):
+    try:
+        with open(sys.argv[1], encoding="utf-8") as handle:
+            if "매니저 에이전트 시작" in handle.read():
+                break
+    except OSError:
+        pass
+    time.sleep(0.1)
+EOF
 check "cron 로그 생성" test -f "$cronlog"
 check "매니저 프롬프트가 mock claude 로 전달됨" bash -c "grep -q '매니저 에이전트 시작' '$cronlog'"
 badargs=$("$S/hermes-cron-run.sh" "$PROJ" start 2>&1 || true)

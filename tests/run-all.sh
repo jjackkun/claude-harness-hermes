@@ -112,6 +112,7 @@ for t in \
   dep-contract-test.sh \
   pipe-gate-test.sh \
   coverage-probe-test.sh \
+  mutation-probe-test.sh \
   doc-gardening-drift-test.sh \
   claude-md-skill-index-test.sh \
   update-all-roundtrip-test.sh \

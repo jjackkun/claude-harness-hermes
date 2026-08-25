@@ -7,7 +7,7 @@
 # 미등록 경고(R-dep-4) 대상이 아니다.
 scope: scripts/*.py lib/*.py assets/hooks/*.py
 
-tier: 0  assets/hooks/complexity.py assets/hooks/plan_state.py assets/hooks/coverage_probe.py lib/generate_codex_hooks.py
+tier: 0  assets/hooks/complexity.py assets/hooks/plan_state.py assets/hooks/coverage_probe.py scripts/mutation-probe.py lib/generate_codex_hooks.py
 tier: 0  lib/generate_settings.py lib/generate_settings_json.py scripts/hermes-cleanup.py
 tier: 0  scripts/hermes-correlate.py scripts/hermes-dream.py scripts/hermes-evolve-skill.py
 tier: 0  scripts/hermes-increment.py scripts/hermes-manager.py scripts/hermes-message.py
