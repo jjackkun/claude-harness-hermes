@@ -109,6 +109,7 @@ for t in \
   iface-gate-test.sh \
   struct-barrel-test.sh \
   complexity-gate-test.sh \
+  cx-baseline-distribution-test.sh \
   dep-contract-test.sh \
   pipe-gate-test.sh \
   coverage-probe-test.sh \

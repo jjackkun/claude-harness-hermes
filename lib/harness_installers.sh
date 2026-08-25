@@ -193,6 +193,84 @@ PYEOF
   log_info "  doc     → $(basename "$dest") (하네스 룰 블록 갱신)"
 }
 
+# install_harness_cx_baseline <project_path>
+# 하네스가 **자기가 배포한 파일에 한해** 자기 .cxbaseline 기록을 프로젝트로 옮긴다.
+#
+# 왜 필요한가 (2026-08-25 실측): 하네스는 복잡도 48짜리 scripts/hermes-search.py 를
+# 프로젝트에 배포한다. 기준선 없이 R-cx 를 켜면 **사용자가 쓰지도 않은 코드 때문에**
+# 하네스 갱신 커밋이 막힌다 — 자기 코드가 완전히 깨끗한 프로젝트조차 막혔다.
+#
+# 왜 면제가 아니라 기록 이전인가: 경로를 R-cx 대상에서 빼면 그 파일들은 영원히
+# 검사 밖이 된다. 그것이 R-test 가 죽어 있던 방식이다. 값을 동결하면 계속 검사받되
+# 현재 상태는 통과하고, 하네스가 나빠지면 하류에서도 잡힌다.
+#
+# 대상 판별: 하네스 기준선의 항목 중 **프로젝트에 실제로 존재하는 경로**만.
+# 배포 파일 목록을 따로 들고 다니지 않는다 — 목록은 배포가 바뀌면 조용히 어긋난다.
+install_harness_cx_baseline() {
+  local project_path="$1"
+  local src="$DEV_SETTING_DIR/.cxbaseline"
+  [[ -f "$src" ]] || return 0
+
+  local added
+  added=$(SRC="$src" DEST="$project_path/.cxbaseline" PROJ="$project_path" python3 <<'PYEOF'
+import os
+
+src, dest, proj = os.environ["SRC"], os.environ["DEST"], os.environ["PROJ"]
+
+
+def entries(path):
+    """<경로> <값> 항목만 뽑는다. 주석·빈 줄은 대상이 아니다."""
+    out = {}
+    if not os.path.isfile(path):
+        return out
+    for line in open(path, encoding="utf-8"):
+        body = line.split("#", 1)[0].strip()
+        if not body:
+            continue
+        target, _, value = body.rpartition(" ")
+        if target and value.isdigit():
+            out[target] = int(value)
+    return out
+
+
+# 프로젝트에 실제로 있는 경로만 옮긴다.
+incoming = {k: v for k, v in entries(src).items()
+            if os.path.isfile(os.path.join(proj, k))}
+current = entries(dest)
+
+merged, added = dict(current), 0
+for path, value in incoming.items():
+    if path not in current:
+        merged[path] = value
+        added += 1
+    elif value < current[path]:
+        # 라쳇은 내려가기만 한다. 더 높은 값으로 덮으면 프로젝트가 동결한 값이
+        # 조용히 느슨해진다 — 게이트가 약해진 줄 아무도 모른다.
+        merged[path] = value
+
+if merged != current:
+    keep = []
+    if os.path.isfile(dest):
+        # 주석과 사용자 서식은 보존한다. 항목 줄만 다시 쓴다.
+        keep = [ln.rstrip("\n") for ln in open(dest, encoding="utf-8")
+                if not ln.split("#", 1)[0].strip()]
+    if not keep:
+        keep = ["# R-cx 순환 복잡도 기준선. <경로> <허용 최대값>.",
+                "# 하네스 설치분 항목은 재설치 때 갱신된다(값은 내려가기만 한다)."]
+    with open(dest, "w", encoding="utf-8") as handle:
+        handle.write("\n".join(keep) + "\n")
+        for path in sorted(merged):
+            handle.write("%s %d\n" % (path, merged[path]))
+
+print(added)
+PYEOF
+) || return 0
+
+  [[ "${added:-0}" -gt 0 ]] \
+    && log_info "  R-cx    → .cxbaseline (하네스 설치분 ${added}개 항목 동결)"
+  return 0
+}
+
 # install_harness_docs_templates <project_path>
 # assets/docs-templates/ 의 템플릿을 프로젝트로 복사. *기존 파일 덮어쓰지 않음*
 # (사용자가 채운 내용을 지키기 위해).

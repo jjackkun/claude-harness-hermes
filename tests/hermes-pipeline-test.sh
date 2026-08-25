@@ -468,14 +468,30 @@ con.execute("INSERT OR IGNORE INTO skill_index (skill_path,keywords,scope) VALUE
 EOF
 bump_clock  # 직전 (b) dream 의 run_at 이후 초로 dsess2 를 확실히 분리
 add_summary dsess2 '{"decisions":["새 결정"],"facts":["새 사실"],"open":[],"prefs":[],"next":[]}'
-python3 "$S/hermes-dream.py" --db "$DB" --project-dir "$PROJ" >/dev/null 2>&1
+DREAM_D=$(python3 "$S/hermes-dream.py" --db "$DB" --project-dir "$PROJ" 2>&1)
 check "dry-run 은 junk 스킬 삭제 안 함" test -f "$PROJ/.hermes/skills/내가.md"
 
 # (e) --apply 는 junk 스킬 실제 삭제
 bump_clock  # 직전 (d) dream 의 run_at 이후 초로 dsess3 를 확실히 분리
 add_summary dsess3 '{"decisions":["또 결정"],"facts":["또 사실"],"open":[],"prefs":[],"next":[]}'
-python3 "$S/hermes-dream.py" --db "$DB" --project-dir "$PROJ" --apply >/dev/null 2>&1
+# dream 출력을 버리면 삭제가 왜 안 됐는지 알 수 없다 — 이 단언이 하루 넘게
+# 원인 불명이었던 이유가 그것이다(2026-08-25).
+DREAM_E=$(python3 "$S/hermes-dream.py" --db "$DB" --project-dir "$PROJ" --apply 2>&1)
 check "--apply 는 junk 스킬 삭제" bash -c "! test -f '$PROJ/.hermes/skills/내가.md'"
+# 실패했을 때만 근거를 남긴다. dream 이 왜 삭제까지 가지 못했는지는
+# 워터마크와 요약 시각의 대소로만 판정할 수 있다.
+if [[ -f "$PROJ/.hermes/skills/내가.md" ]]; then
+  echo "      dream(d): $DREAM_D"
+  echo "      dream(e): $DREAM_E"
+  python3 - "$DB" <<'WMEOF'
+import sqlite3, sys
+con = sqlite3.connect(sys.argv[1])
+print("      session_summary:", con.execute(
+    "SELECT session_id, updated_at FROM session_summary ORDER BY updated_at").fetchall())
+print("      dream_log(wm):", con.execute(
+    "SELECT id, summary_count, watermark_at FROM dream_log ORDER BY id").fetchall())
+WMEOF
+fi
 
 echo ""
 echo "== 21. dream — 진화 구동 (요약 속 정정) =="
@@ -491,7 +507,8 @@ bump_clock  # 직전 (e) dream 의 run_at 이후 초로 dsess-ev 를 확실히 �
 add_summary dsess-ev '{"decisions":["npm 말고 pnpm 으로 버전 고정"],"facts":["x"],"open":[],"prefs":[],"next":[]}'
 evout=$(MOCK_MODE=evolve python3 "$S/hermes-dream.py" --db "$DB" --project-dir "$PROJ")
 ev=$(sql "SELECT evolved FROM dream_log ORDER BY id DESC LIMIT 1")
-check "정정 요약 → 진화 1건 기록" test "$ev" -ge 1
+check "정정 요약 → 진화 1건 기록" \
+  bash -c "test '$ev' -ge 1 || { echo \"dream(21): $evout\"; exit 1; }"
 
 echo ""
 echo "== 22. crystallize 장부: 드림 등 pattern_count-밖 키도 멱등/거부 마킹 적중 =="

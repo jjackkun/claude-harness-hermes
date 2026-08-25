@@ -160,6 +160,9 @@ fi
 # Harness — PDF 8~9쪽 강제 장치 (preset 이 설정한 플래그·배열에 따라 동작).
 install_harness_hooks         "$PROJECT_PATH"
 install_harness_pre_commit    "$PROJECT_PATH"
+# pre-commit(R-cx) 직후여야 한다 — 게이트를 켜는 것과 그 게이트가 볼 기준선을 두는 것은
+# 같은 단계다. 순서가 벌어지면 그 사이 커밋이 하네스 배포 파일에 막힌다.
+install_harness_cx_baseline   "$PROJECT_PATH"
 install_harness_docs_templates "$PROJECT_PATH"
 install_harness_lint_configs  "$PROJECT_PATH"
 install_harness_gc_workflows  "$PROJECT_PATH"
