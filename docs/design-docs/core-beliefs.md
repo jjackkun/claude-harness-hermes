@@ -42,6 +42,16 @@ frontend/DB/TS 작업은 `fullstack-developer`, `database-reviewer`, `typescript
 **왜 차단인가**: `PreToolUse` 는 아직 아무것도 쓰이지 않은 시점이라 오탐 비용이 거의 0 이다.
 같은 지표라도 커밋 시점에 막으면 완성된 코드의 재구성을 요구해 우회가 상시화된다.
 
+**SFC(.vue/.svelte)도 같은 임계 8이다.** `<script>` 안만 세며, 세 형태를 모두 본다 —
+`export let/const/...`(Svelte 4 prop·일반 export), `let { a, b } = $props()`(Svelte 5 runes),
+`defineProps`/`defineExpose`(Vue). 하나만 세면 나머지 형태의 컴포넌트가 폭 0 으로 보인다.
+마크업은 세지 않는다 — `<template>` 안의 "export let" 은 글자일 뿐이다.
+
+임계 8 은 SFC 에서 **독립적으로 재확인됐다**: 설치된 프로젝트의 SFC 1,063개 중
+97.9%가 폭 7 이하이고 `7:23개 → 8:6개` 로 떨어진다(2026-08-25 실측).
+파이썬·JS 분포에서 나온 값과 같은 자리다. 기존 파일 중 임계 이상은 22개(2.1%)뿐이며,
+`R-iface` 는 **새 파일 생성만** 보므로 그 파일들에는 영향이 없다.
+
 **waiver**: 정말 한 책임이면 파일 상단 20줄 안에 `R-iface-waiver: <근거>` 주석을 남긴다.
 우회 자체를 막는 것이 목적이 아니라 **우회하려면 이유를 적게 만드는 것**이 목적이다.
 

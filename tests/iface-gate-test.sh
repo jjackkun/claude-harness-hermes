@@ -107,6 +107,58 @@ if printf '%s' "$MSG" | grep -q "R-iface"; then ok "메시지에 룰 ID"; else n
 if printf '%s' "$MSG" | grep -q "core-beliefs.md#r-iface"; then ok "메시지에 근거 링크"; else nope "메시지에 근거 링크"; fi
 if printf '%s' "$MSG" | grep -q "9"; then ok "메시지에 실제 심볼 수"; else nope "메시지에 실제 심볼 수"; fi
 
+# ── SFC (.vue / .svelte) ────────────────────────────────────────────────
+# 실측 근거(2026-08-25): 설치된 프로젝트의 SFC 1,063개 중 97.9%가 폭 7 이하이고
+# 7:23개 → 8:6개 로 떨어진다. 파이썬·JS 에서 나온 임계 8 이 독립적으로 재확인됐다.
+echo "-- Svelte --"
+SV7=""; for i in 1 2 3 4 5 6 7; do SV7+="  export let p$i;"$'\n'; done
+SV8="$SV7  export let p8;"$'\n'
+[[ "$(payload "$WORK/A.svelte" "<script>"$'\n'"$SV8</script>"$'\n'"<div/>" | verdict)" == DENY ]] \
+  && ok "svelte export let 8개 → 차단" || nope "svelte export let 8개 → 차단"
+[[ "$(payload "$WORK/B.svelte" "<script>"$'\n'"$SV7</script>"$'\n'"<div/>" | verdict)" == ALLOW ]] \
+  && ok "svelte export let 7개 → 통과" || nope "svelte export let 7개 → 통과"
+
+# Svelte 5 runes — 사용자 규칙이 runes 를 강제하므로 export let 만 세면 폭이 0으로 보인다.
+RUNE8='<script>
+  let { a, b, c, d, e, f, g, h } = $props();
+</script>
+<div/>'
+[[ "$(payload "$WORK/C.svelte" "$RUNE8" | verdict)" == DENY ]] \
+  && ok "svelte props 구조분해 8개 → 차단" || nope "svelte props 구조분해 8개 → 차단"
+RUNE7='<script>
+  let { a, b, c, d, e, f, g } = $props();
+</script>
+<div/>'
+[[ "$(payload "$WORK/D.svelte" "$RUNE7" | verdict)" == ALLOW ]] \
+  && ok "svelte props 7개 → 통과" || nope "svelte props 7개 → 통과"
+
+echo "-- Vue --"
+VUE8='<script setup>
+defineProps({ a: 1, b: 1, c: 1, d: 1, e: 1, f: 1, g: 1, h: 1 })
+</script>
+<template><div/></template>'
+[[ "$(payload "$WORK/E.vue" "$VUE8" | verdict)" == DENY ]] \
+  && ok "vue defineProps 8개 → 차단" || nope "vue defineProps 8개 → 차단"
+VUE7='<script setup>
+defineProps({ a: 1, b: 1, c: 1, d: 1, e: 1, f: 1, g: 1 })
+</script>
+<template><div/></template>'
+[[ "$(payload "$WORK/F.vue" "$VUE7" | verdict)" == ALLOW ]] \
+  && ok "vue defineProps 7개 → 통과" || nope "vue defineProps 7개 → 통과"
+
+echo "-- SFC 견고성 --"
+# 마크업에 있는 단어는 인터페이스가 아니다. <script> 밖은 세지 않는다.
+MARKUP='<template>
+  <p>export let a; export let b; export let c; export let d;</p>
+  <p>export let e; export let f; export let g; export let h;</p>
+</template>'
+[[ "$(payload "$WORK/G.vue" "$MARKUP" | verdict)" == ALLOW ]] \
+  && ok "마크업 안의 export 문자열은 세지 않는다" || nope "마크업 안의 export 문자열은 세지 않는다"
+[[ "$(payload "$WORK/H.svelte" "<div>markup only</div>" | verdict)" == ALLOW ]] \
+  && ok "script 없는 SFC 는 통과" || nope "script 없는 SFC 는 통과"
+[[ "$(payload "$WORK/I.svelte" "<!-- R-iface-waiver: 한 책임이다 -->"$'\n'"<script>"$'\n'"$SV8</script>" | verdict)" == ALLOW ]] \
+  && ok "SFC 도 waiver 가 통한다" || nope "SFC 도 waiver 가 통한다"
+
 echo
 echo "PASS=$PASS FAIL=$FAIL"
 [[ "$FAIL" -eq 0 ]]

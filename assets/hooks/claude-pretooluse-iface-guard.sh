@@ -52,6 +52,37 @@ def public_symbols_js(src):
     """`export ` 로 시작하는 최상위 선언. 재export(`export {` / `export *`)는 축 C 관할이다."""
     return [ln for ln in src.split("\n") if ln.startswith("export ")]
 
+SCRIPT_BLOCK = re.compile(r"<script[^>]*>(.*?)</script>", re.S | re.I)
+PROPS_DESTRUCTURE = re.compile(
+    r"(?:let|const)\s*\{([^}]*)\}\s*=\s*\$props\s*\(\s*\)", re.S)
+DEFINE_MACRO = re.compile(
+    r"define(?:Props|Expose)\s*(?:<[^>]*>)?\s*\(\s*\{([^}]*)\}", re.S)
+
+
+def public_symbols_sfc(src):
+    """SFC(.vue/.svelte)의 공개 폭. `<script>` 안만 본다.
+
+    실측(2026-08-25, 설치된 프로젝트의 SFC 1,063개): 97.9%가 폭 7 이하이고
+    7:23개 → 8:6개 로 떨어진다. 파이썬·JS 에서 나온 임계 8 이 독립적으로 재확인됐다.
+
+    세 형태를 모두 센다 — 하나만 세면 나머지 형태의 컴포넌트가 폭 0 으로 보인다.
+      - `export let/const/function/...`  (Svelte 4 prop, 일반 export)
+      - `let { a, b } = $props()`        (Svelte 5 runes — 이 저장소 규칙이 강제하는 형태)
+      - `defineProps({...})` / `defineExpose({...})` (Vue SFC)
+    마크업은 세지 않는다. `<template>` 안의 "export let" 은 글자일 뿐 인터페이스가 아니다.
+    """
+    scripts = "\n".join(SCRIPT_BLOCK.findall(src))
+    if not scripts:
+        return []
+
+    names = [ln for ln in scripts.split("\n") if ln.strip().startswith("export ")]
+    for match in PROPS_DESTRUCTURE.finditer(scripts):
+        names += [x for x in (p.strip() for p in match.group(1).split(",")) if x]
+    for match in DEFINE_MACRO.finditer(scripts):
+        names += [x for x in (p.strip() for p in match.group(1).split(",")) if x]
+    return names
+
+
 def main():
     try:
         payload = json.load(sys.stdin)
@@ -72,6 +103,8 @@ def main():
         counter = public_symbols_py
     elif ext in (".js", ".jsx", ".ts", ".tsx"):
         counter = public_symbols_js
+    elif ext in (".vue", ".svelte"):
+        counter = public_symbols_sfc
     else:
         return None
 
