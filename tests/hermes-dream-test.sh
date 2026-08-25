@@ -7,7 +7,19 @@ T=$(mktemp -d); trap 'rm -rf "$T"' EXIT
 export HOME="$T/fakehome"; mkdir -p "$HOME" "$T/bin" "$T/proj/.hermes"
 PROJ="$T/proj"; DB="$PROJ/.hermes/state.db"
 pass=0; fail=0
-check() { local d="$1"; shift; if "$@" >/dev/null 2>&1; then echo "  ✓ $d"; pass=$((pass+1)); else echo "  ✗ $d"; fail=$((fail+1)); fi; }
+# 실패 근거를 버리지 않는다 — 2026-08-25, 같은 패턴이 간헐 실패를 진단 불가로 만들었다.
+check() {
+  local d="$1"; shift
+  local out rc
+  out="$("$@" 2>&1)"; rc=$?
+  if [[ $rc -eq 0 ]]; then echo "  ✓ $d"; pass=$((pass+1))
+  else
+    echo "  ✗ $d"
+    echo "      명령: $*"
+    [[ -n "$out" ]] && echo "$out" | head -5 | sed 's/^/      /'
+    fail=$((fail+1))
+  fi
+}
 pyq() { python3 -c "import sqlite3,sys; print(sqlite3.connect('$DB').execute(sys.argv[1]).fetchone()[0])" "$1"; }
 
 # DB 초기화 후 드림 1회 호출 → 드림의 _ensure_schema 가 신규 컬럼/테이블 보강

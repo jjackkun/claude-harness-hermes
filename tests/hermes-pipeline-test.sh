@@ -25,13 +25,28 @@ DB="$PROJ/.hermes/state.db"
 pass=0; fail=0
 check() { # check <desc> <cond...>
   local desc="$1"; shift
-  if "$@" >/dev/null 2>&1; then echo "  ✓ $desc"; pass=$((pass+1));
-  else echo "  ✗ $desc"; fail=$((fail+1)); fi
+  local out rc
+  # 실패 근거를 버리지 않는다. 예전에는 stdout/stderr 를 통째로 /dev/null 로 보내
+  # 실패가 "  ✗ <설명>" 한 줄로만 남았고, 간헐 실패가 하루 넘게 진단 불가였다
+  # (2026-08-25: 재현 시도 29회에도 원인을 좁히지 못한 직접 원인).
+  out="$("$@" 2>&1)"; rc=$?
+  if [[ $rc -eq 0 ]]; then echo "  ✓ $desc"; pass=$((pass+1));
+  else
+    echo "  ✗ $desc"
+    echo "      명령: $*"
+    [[ -n "$out" ]] && echo "$out" | head -5 | sed 's/^/      /'
+    fail=$((fail+1))
+  fi
 }
 sql() { python3 -c "
 import sqlite3,sys
-con=sqlite3.connect('$DB')
-print(con.execute(sys.argv[1]).fetchone()[0])
+# 예외를 빈 문자열로 삼키면 단언이 근거 없이 실패한다(2026-08-25).
+# 잠김은 일시적이므로 기다리고, 그래도 안 되면 stderr 로 드러낸다.
+con=sqlite3.connect('$DB', timeout=30.0)
+row = con.execute(sys.argv[1]).fetchone()
+if row is None:
+    sys.exit('sql: 행 없음 — ' + sys.argv[1])
+print(row[0])
 " "$1"; }
 
 # ── mock claude (PATH 가짜 실행파일) ──
@@ -681,7 +696,10 @@ PY
 oldsql() { python3 -c "
 import sqlite3,sys
 con=sqlite3.connect('$OLDP/.hermes/state.db')
-print(con.execute(sys.argv[1]).fetchone()[0])
+row = con.execute(sys.argv[1]).fetchone()
+if row is None:
+    sys.exit('sql: 행 없음 — ' + sys.argv[1])
+print(row[0])
 " "$1"; }
 
 check "구 스키마: source 컬럼 없음(사전 조건)" bash -c "! python3 -c \"
@@ -729,7 +747,10 @@ PY
 asql() { python3 -c "
 import sqlite3,sys
 con=sqlite3.connect('$ADB')
-print(con.execute(sys.argv[1]).fetchone()[0])
+row = con.execute(sys.argv[1]).fetchone()
+if row is None:
+    sys.exit('sql: 행 없음 — ' + sys.argv[1])
+print(row[0])
 " "$1"; }
 
 # (a) --source assist → 원장에 source='assist' 기록
@@ -940,7 +961,10 @@ PY
 shsql() { python3 -c "
 import sqlite3,sys
 con=sqlite3.connect('$SHDB')
-print(con.execute(sys.argv[1]).fetchone()[0])
+row = con.execute(sys.argv[1]).fetchone()
+if row is None:
+    sys.exit('sql: 행 없음 — ' + sys.argv[1])
+print(row[0])
 " "$1"; }
 
 # 사전조건: source 컬럼 없음
@@ -991,7 +1015,10 @@ PY
 e2esql() { python3 -c "
 import sqlite3,sys
 con=sqlite3.connect('$E2EDB')
-print(con.execute(sys.argv[1]).fetchone()[0])
+row = con.execute(sys.argv[1]).fetchone()
+if row is None:
+    sys.exit('sql: 행 없음 — ' + sys.argv[1])
+print(row[0])
 " "$1"; }
 
 # (1) 주입 — 구 스키마에서 자가수리 후 원장 기록
@@ -1042,7 +1069,10 @@ PY
 q33sql() { python3 -c "
 import sqlite3,sys
 con=sqlite3.connect('$Q33DB')
-print(con.execute(sys.argv[1]).fetchone()[0])
+row = con.execute(sys.argv[1]).fetchone()
+if row is None:
+    sys.exit('sql: 행 없음 — ' + sys.argv[1])
+print(row[0])
 " "$1"; }
 
 # 사전조건: source 컬럼 없음
