@@ -84,6 +84,35 @@ assert "알 수 없는 서브커맨드 → 2" "2" "$(rc bogus "$TMP/all-done.md"
 cp "$REPO_ROOT/assets/docs-templates/docs/exec-plans/template.md" "$TMP/template.md"
 assert "template.md 는 판정 대상 아님 → 1" "1" "$(rc is-complete "$TMP/template.md")"
 
+# `[~]`(진행 중) — 목록에 없으면 그 줄이 **아예 안 세어져** 완료로 판정된다.
+# 하류에서 실제로 겪은 사고이고, 상류 전파가 그 수정을 두 번 되돌렸다(2026-08-27).
+cat > "$TMP/tilde.md" << 'EOF'
+# 계획
+
+- [x] 끝난 것
+- [~] 진행 중인 것
+EOF
+assert "[~] 가 남으면 미완료(1)" "1" "$(rc is-complete "$TMP/tilde.md")"
+
+cat > "$TMP/tilde-only.md" << 'EOF'
+# 계획
+
+- [~] 진행 중인 것
+EOF
+assert "[~] 만 있어도 미완료(1)" "1" "$(rc is-complete "$TMP/tilde-only.md")"
+
+# `~` 를 정규식에만 넣고 완료 판정을 `!= " "` 로 두면 여기서 갈린다 —
+# 그때는 [~] 가 *완료* 로 세어져 지금보다 나빠진다. 개수로 못 박는다.
+assert "[~] 는 total 에 들어가고 done 에는 안 들어간다" "total=2 done=1" \
+  "$(python3 -c "
+import sys
+sys.path.insert(0, '$REPO_ROOT/assets/hooks')
+import plan_state
+lines = open('$TMP/tilde.md', encoding='utf-8').read().splitlines()
+t, d = plan_state.count_boxes(lines)
+print('total=%d done=%d' % (t, d))
+")"
+
 echo ""
 echo "== 2. retro-empty =="
 
@@ -183,6 +212,20 @@ assert "완료 항목은 제외" "1" "$?"
 
 OUT=$(python3 "$MOD" pending "$TMP/pending5.md" --max 2 2>/dev/null)
 assert "--max 2 → 2줄" "2" "$(echo "$OUT" | grep -c '^')"
+
+# pending 목록에도 [~] 가 나와야 한다. 개수만 고치고 목록을 안 고치면
+# "미완료 2개" 라면서 1개만 보여주는 어긋남이 생긴다.
+cat > "$TMP/pending-tilde.md" << 'EOF'
+# 계획
+
+- [x] 끝난 것
+- [~] 진행 중인 것
+- [ ] 아직 안 한 것
+EOF
+OUT=$(python3 "$MOD" pending "$TMP/pending-tilde.md" 2>/dev/null)
+assert "pending 이 [~] 와 [ ] 를 둘 다 센다" "2" "$(echo "$OUT" | grep -c '^')"
+echo "$OUT" | grep -q "진행 중인 것"
+assert "pending 목록에 [~] 항목 포함" "0" "$?"
 
 assert "pending 정상 종료 0" "0" "$(rc pending "$TMP/pending5.md")"
 assert "pending 존재하지 않는 경로 → 2" "2" "$(rc pending "$TMP/nope.md")"

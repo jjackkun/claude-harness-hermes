@@ -31,8 +31,16 @@ RETRO_LABELS = ("잘된 것", "잘못된 것", "다음 룰 후보")
 PENDING_MAX_DEFAULT = 3
 
 # 체크박스만 센다. `- [foo.md](foo.md)` 같은 링크 불릿을 제외하기 위해
-# 대괄호 안을 공백/x/X 로 한정하고 닫는 괄호 뒤 공백을 요구한다.
-CHECKBOX_RE = re.compile(r"^\s*-\s*\[( |x|X)\]\s")
+# 대괄호 안을 표시 문자로 한정하고 닫는 괄호 뒤 공백을 요구한다.
+#
+# `~`(진행 중)를 목록에 넣는 이유: 넣지 않으면 그 줄은 매치되지 않아 **아예 안 세어진다.**
+# 안 센 것은 0 이 되고 0 은 "없다" 로 읽혀, 사람 손이 남은 계획을 계수기가 완료로
+# 판정한다(하류에서 실제로 겪은 사고 — 2026-08-25). 침묵보다 나쁜 조용한 오답이다.
+CHECKBOX_RE = re.compile(r"^\s*-\s*\[( |x|X|~)\]\s")
+
+# 완료로 세는 표시. **정규식과 따로 둔다** — 완료 판정을 `!= " "` 로 쓰면
+# `~` 가 완료로 세어져 지금보다 나빠진다. 표시를 늘릴 때 여기만 보면 된다.
+DONE_MARKS = ("x", "X")
 
 RETRO_HEADING_RE = re.compile(r"^##\s*8[.)]")
 RETRO_FALLBACK_RE = re.compile(r"^##.*회고")
@@ -93,7 +101,7 @@ def count_boxes(lines):
         if not match:
             continue
         total += 1
-        if match.group(1) in ("x", "X"):
+        if match.group(1) in DONE_MARKS:
             done += 1
     return total, done
 
@@ -142,7 +150,7 @@ def pending_items(lines, max_count):
     items = []
     for line in lines:
         match = CHECKBOX_RE.match(line)
-        if match and match.group(1) == " ":
+        if match and match.group(1) not in DONE_MARKS:
             items.append(line.strip())
             if len(items) >= max_count:
                 break
@@ -164,7 +172,7 @@ def _goal_items(lines):
         match = CHECKBOX_RE.match(line)
         if match:
             items.append({
-                "checked": match.group(1) in ("x", "X"),
+                "checked": match.group(1) in DONE_MARKS,
                 "text": line.strip(),
                 "verified": bool(INLINE_CODE_RE.search(line)),
             })
