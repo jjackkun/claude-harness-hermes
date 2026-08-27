@@ -18,6 +18,11 @@ set -uo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 TMP=$(mktemp -d)
+# prettier 는 npx 캐시(~/.npm/_npx)에서 해석된다. HOME 을 갈아치우면 캐시가 사라져
+# 서식 검사가 통째로 SKIP 된다 — 통과가 아니라 **아무것도 안 한 것**인데 초록으로 보인다.
+# 검사를 돌릴 때만 진짜 HOME 을 빌려준다 — npx 가 캐시를 읽기 위해서다.
+# (npm 이 자기 로그를 그 아래 쓸 수는 있다. ~/.claude 는 건드리지 않는다.)
+REAL_HOME="$HOME"
 export HOME="$TMP/fakehome"          # ~/.claude 오염 방지
 mkdir -p "$HOME"
 trap 'rm -rf "$TMP"' EXIT
@@ -93,11 +98,43 @@ CB="$PROJ/docs/design-docs/core-beliefs.md"
 assert "core-beliefs 배치됨" "0" "$_rc"
 grep -q "HARNESS-RULES:BEGIN" "$CB"; _rc=$?
 assert "하네스 룰 마커 블록 존재" "0" "$_rc"
+
+# 생성물이 설치 프로젝트의 R-fmt 에 걸리면 안 된다.
+#
+# 두 번 났다: f1afb8c 는 강조 `*...*` 가 prettier 기본(`_..._`)과 달라 ai-create 의
+# 커밋을 막았고, 그 뒤 목록 바로 뒤에 END 마커가 붙어 prettier 가 빈 줄을 넣으려 해
+# 전파 직후 첫 커밋이 또 막혔다. 자기가 안 건드린 파일이 포맷 위반으로 뜨기 때문에
+# 원인을 엉뚱한 데서 찾게 된다.
+#
+# 방금 배치된 파일은 전부가 템플릿 산출물이므로 통째로 본다 — 마커 블록 안팎을
+# 모두 덮어야 위 두 사고를 다 잡는다.
+_prettier_check() { # _prettier_check <파일> — 0=깨끗 1=위반 2=prettier 없음
+  ( cd "$REPO_ROOT" && HOME="$REAL_HOME" npx --no-install prettier --check "$1" >/dev/null 2>&1 ) && return 0
+  ( cd "$REPO_ROOT" && HOME="$REAL_HOME" npx --no-install prettier --version >/dev/null 2>&1 ) || return 2
+  return 1
+}
+_pc=0; _prettier_check "$CB" || _pc=$?
+if [[ $_pc -eq 2 ]]; then
+  echo "  - SKIP: prettier 없음 (설치 직후 서식 검사)"
+else
+  assert "설치 직후 core-beliefs 가 prettier 를 만족" "0" "$_pc"
+fi
+
 printf '\n### R1. 프로젝트 고유 룰\n' >> "$CB"
 bash "$SANDBOX/update-all.sh" >/dev/null 2>&1
 grep -q "R1. 프로젝트 고유 룰" "$CB"; _rc=$?
 assert "마커 밖 사용자 룰 보존" "0" "$_rc"
 assert "마커 블록 중복 없음" "1" "$(grep -c 'HARNESS-RULES:BEGIN' "$CB")"
+
+# G3 본체 — 마커 블록을 다시 나른 *뒤* 에도 조용해야 한다.
+# harness_sync_marker_block 이 앵커를 재링크하면서 블록을 다시 쓰므로,
+# 배치 직후 통과한 것이 재전파 후에도 통과한다는 보장은 따로 확인해야 한다.
+_pc=0; _prettier_check "$CB" || _pc=$?
+if [[ $_pc -eq 2 ]]; then
+  echo "  - SKIP: prettier 없음 (전파 직후 서식 검사)"
+else
+  assert "전파 직후 core-beliefs 가 prettier 를 만족" "0" "$_pc"
+fi
 
 echo ""
 echo "== 6. presets.lock 부재 → 스킵 =="
