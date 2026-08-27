@@ -11,6 +11,7 @@
 #   - plugins.sh            : preset 플러그인 동기화 (refcount 설치/제거)
 #   - hook_inventory.sh     : 하네스 소유 hook 파일명 목록 (현행 + 은퇴분)
 #   - permission_inventory.sh : 하네스 소유 permissions.allow 목록 (현행 + 은퇴분)
+#   - harness_hook_manifest.sh : 상류가 마지막에 깐 훅 본문의 해시 기록·대조
 #   - harness_installers.sh : 하네스 특화 installer 5종
 #   - settings_gen.sh       : .claude/settings.local.json 생성
 #   - claude_md_gen.sh      : CLAUDE.md 관리 블록 + manifest 작성
@@ -39,6 +40,9 @@ source "$_DS_LIB/hook_inventory.sh"
 # permission_inventory 는 preset.sh 의 reset_preset_vars 를 쓰므로 그 뒤여야 한다.
 # shellcheck source=lib/permission_inventory.sh
 source "$_DS_LIB/permission_inventory.sh"
+# harness_hook_manifest 는 harness_installers 의 두 훅 설치 함수가 쓰므로 먼저.
+# shellcheck source=lib/harness_hook_manifest.sh
+source "$_DS_LIB/harness_hook_manifest.sh"
 # shellcheck source=lib/harness_installers.sh
 source "$_DS_LIB/harness_installers.sh"
 # shellcheck source=lib/settings_gen.sh

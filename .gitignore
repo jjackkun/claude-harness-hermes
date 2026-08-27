@@ -48,6 +48,7 @@ docs/superpowers/plans/
 .claude/.review-dirty
 .claude/.dev-setting-manifest.json
 .claude/presets.lock
+.claude/harness-hooks.lock
 !.claude/memory/
 !.claude/memory/**
 # <<< harness-agent-preset <<<

@@ -35,18 +35,28 @@ install_harness_hooks() {
   local project_path="$1"
   local count=${#HARNESS_HOOK_SOURCES[@]}
   local target_dir="$project_path/scripts/hooks"
+  # 덮기 *전* 에 하류 수정 여부를 판정하고, 덮은 *뒤* 에 새 해시를 기록한다.
+  # 기록을 빠뜨리면 같은 파일이 다음 전파에서 또 뜬다 (lib/harness_hook_manifest.sh).
   if [[ $count -gt 0 ]]; then
     mkdir -p "$target_dir"
-    local entry name dest
+    local entry name dest rel
+    local -a harness_overwritten=() harness_records=()
     for entry in "${HARNESS_HOOK_SOURCES[@]}"; do
       name="${entry%%:*}"
       local src="$ASSETS_DIR/hooks/$name"
       [[ -f "$src" ]] || { log_warn "harness hook missing: $name (skipped)"; continue; }
+      rel="scripts/hooks/$name"
       dest="$target_dir/$name"
+      if harness_hook_is_downstream_edit "$project_path" "$rel"; then
+        harness_overwritten+=("$rel")
+      fi
       cp "$src" "$dest"
       chmod +x "$dest"
-      log_info "  hook    → scripts/hooks/$name"
+      harness_records+=("$(harness_content_sha "$src")  $rel")
+      log_info "  hook    → $rel"
     done
+    harness_hook_manifest_write "$project_path" ${harness_records[@]+"${harness_records[@]}"}
+    harness_report_overwritten "hooks   " ${harness_overwritten[@]+"${harness_overwritten[@]}"}
   fi
   # preset 에서 빠진 hook 회수 — count==0 (hook 을 쓰는 preset 이 전부 빠진 경우) 에도
   # 실행돼야 하므로 early-return 하지 않는다.
@@ -64,81 +74,72 @@ install_harness_pre_commit() {
   [[ -f "$src" ]] || { log_warn "pre-commit.sh missing in assets (skipped)"; return 0; }
   local dest="$git_dir/hooks/pre-commit"
   mkdir -p "$git_dir/hooks"
+  # 여기서 "다르다" 의 뜻은 훅 파일과 다르다 — **하류가 단계를 얹었다** 는 뜻일 때가
+  # 많고, 갈아치는 순간 그 단계가 실제로 사라진다. 무엇을 얹었는지는 하류만 알므로
+  # 하네스는 지켜 주려 하지 않고 **갈아쳤다는 사실만** 말한다.
+  local pre_commit_key=".git/hooks/pre-commit"
+  local pre_commit_replaced=0
+  if harness_hook_is_downstream_edit "$project_path" "$pre_commit_key"; then
+    pre_commit_replaced=1
+  fi
   cp "$src" "$dest"
   chmod +x "$dest"
   log_info "  hook    → .git/hooks/pre-commit (4단 검사)"
-
-  # check-component-structure.mjs — pre-commit 이 $(dirname $0) 에서 참조
-  local struct_src="$ASSETS_DIR/hooks/check-component-structure.mjs"
-  if [[ -f "$struct_src" ]]; then
-    cp "$struct_src" "$git_dir/hooks/check-component-structure.mjs"
-    chmod +x "$git_dir/hooks/check-component-structure.mjs"
-    log_info "  hook    → .git/hooks/check-component-structure.mjs"
+  harness_hook_manifest_write "$project_path" "$(harness_content_sha "$src")  $pre_commit_key"
+  # `[[ ]] && cmd` 로 쓰면 조건이 거짓일 때 이 줄이 1 을 반환하고
+  # set -e 가 설치기를 통째로 멈춘다. if 로 쓴다.
+  if [[ $pre_commit_replaced -eq 1 ]]; then
+    harness_report_pre_commit_replaced
   fi
 
-  # check-secrets.py (R-secret) — pre-commit 이 $(dirname $0) 에서 참조.
-  local secrets_src="$ASSETS_DIR/hooks/check-secrets.py"
-  if [[ -f "$secrets_src" ]]; then
-    cp "$secrets_src" "$git_dir/hooks/check-secrets.py"
-    chmod +x "$git_dir/hooks/check-secrets.py"
-    log_info "  hook    → .git/hooks/check-secrets.py"
-  fi
-
-  # plan_state.py (R-plan / R-plan-stale / R-retro) — pre-commit 이 $(dirname $0) 에서 참조.
-  # scripts/hooks/ 쪽 사본은 HARNESS_HOOK_SOURCES 가 배치한다(UserPromptSubmit·CI 용).
-  local plan_state_src="$ASSETS_DIR/hooks/plan_state.py"
-  if [[ -f "$plan_state_src" ]]; then
-    if cp "$plan_state_src" "$git_dir/hooks/plan_state.py"; then
-      log_info "  hook    → .git/hooks/plan_state.py"
-    else
-      log_warn "  hook    → .git/hooks/plan_state.py 복사 실패"
+  # .git/hooks/ 아래 부수 파일 — pre-commit 이 $(dirname $0) 에서 참조한다.
+  #
+  # pre-commit 본체와 **같은 이유로 조용히 덮으면 안 된다.** 하류가 여기를 손봤다면
+  # (예: check-secrets.py 의 패턴을 자기 도메인에 맞게 조정) 되돌아간 것을 아무도
+  # 알려 주지 않는다. ⚠️ 여기는 pre-commit 보다 더 조용하다 — `.git/hooks/` 는
+  # 추적되지 않아 `git diff` 로도 안 보인다. 잃은 것을 되찾을 단서가 보고뿐이다.
+  #
+  # 일곱을 같은 모양으로 처리한다. 예전에는 블록이 일곱 벌이었고 그중 둘은 복사
+  # 실패를 말하지도 않았다 — 같은 일을 하는 코드가 갈라지면 한쪽만 고쳐진다.
+  local -a sidecar_srcs=(
+    "$ASSETS_DIR/hooks/check-component-structure.mjs"   # R-struct-3
+    "$ASSETS_DIR/hooks/check-secrets.py"                # R-secret
+    "$ASSETS_DIR/hooks/plan_state.py"                   # R-plan / R-plan-stale / R-retro
+    "$ASSETS_DIR/hooks/complexity.py"                   # R-cx
+    "$ASSETS_DIR/hooks/coverage_probe.py"               # R-cov (표준 라이브러리 trace 기반)
+    "$ASSETS_DIR/hooks/depcheck.py"                     # R-dep
+    # 정답지 모듈(.env 값 집합) — check-secrets.py 가 import 한다. 복제하지 않고
+    # scripts/ 의 원본을 그대로 복사한다: 복제본만 고치고 원본을 두면 원본을 쓰는
+    # 경로(DB 적재 마스킹)가 계속 뚫려 있게 된다. hermes 프리셋 없이 harness 만
+    # 설치한 프로젝트에서도 값 기반 차단이 동작한다.
+    "$DEV_SETTING_DIR/scripts/hermes_secret_values.py"
+  )
+  # scripts/hooks/ 쪽 사본은 HARNESS_HOOK_SOURCES 가 따로 배치한다(UserPromptSubmit·CI 용).
+  # 같은 이름이 두 자리에 깔리지만 매니페스트 키가 경로라 서로 충돌하지 않는다.
+  local -a sidecar_overwritten=() sidecar_records=()
+  local sidecar_src sidecar_rel sidecar_dest
+  for sidecar_src in "${sidecar_srcs[@]}"; do
+    [[ -f "$sidecar_src" ]] || continue
+    sidecar_rel=".git/hooks/$(basename "$sidecar_src")"
+    sidecar_dest="$project_path/$sidecar_rel"
+    if harness_hook_is_downstream_edit "$project_path" "$sidecar_rel"; then
+      sidecar_overwritten+=("$sidecar_rel")
     fi
-  fi
-
-  # complexity.py (R-cx) — plan_state.py 와 같은 부류. pre-commit 이 $(dirname $0) 에서 참조한다.
-  # scripts/hooks/ 사본은 HARNESS_HOOK_SOURCES 가 따로 배치한다.
-  local complexity_src="$ASSETS_DIR/hooks/complexity.py"
-  if [[ -f "$complexity_src" ]]; then
-    if cp "$complexity_src" "$git_dir/hooks/complexity.py"; then
-      log_info "  hook    → .git/hooks/complexity.py"
+    if cp "$sidecar_src" "$sidecar_dest"; then
+      chmod +x "$sidecar_dest"
+      sidecar_records+=("$(harness_content_sha "$sidecar_src")  $sidecar_rel")
+      log_info "  hook    → $sidecar_rel"
     else
-      log_warn "  hook    → .git/hooks/complexity.py 복사 실패"
+      log_warn "  hook    → $sidecar_rel 복사 실패"
     fi
-  fi
+  done
+  harness_hook_manifest_write "$project_path" ${sidecar_records[@]+"${sidecar_records[@]}"}
+  harness_report_overwritten "hook    " ${sidecar_overwritten[@]+"${sidecar_overwritten[@]}"}
 
-  # coverage_probe.py (R-cov) — complexity.py 와 같은 부류.
-  # 표준 라이브러리 trace 기반이라 프로젝트에 추가 설치를 요구하지 않는다.
-  local covprobe_src="$ASSETS_DIR/hooks/coverage_probe.py"
-  if [[ -f "$covprobe_src" ]]; then
-    if cp "$covprobe_src" "$git_dir/hooks/coverage_probe.py"; then
-      log_info "  hook    → .git/hooks/coverage_probe.py"
-    else
-      log_warn "  hook    → .git/hooks/coverage_probe.py 복사 실패"
-    fi
-  fi
-
-  # depcheck.py (R-dep) — complexity.py 와 같은 부류. pre-commit 이 $(dirname $0) 에서 참조한다.
-  local depcheck_src="$ASSETS_DIR/hooks/depcheck.py"
-  if [[ -f "$depcheck_src" ]]; then
-    if cp "$depcheck_src" "$git_dir/hooks/depcheck.py"; then
-      log_info "  hook    → .git/hooks/depcheck.py"
-      # 계약이 없으면 R-dep 은 조용히 통과한다(미설정과 고장을 구분한다).
-      # 그 사실을 여기서 한 번 알린다 — 매 커밋 경고는 경고 피로를 부른다.
-      [[ -f "$project_path/.deprc" ]] || \
-        log_info "            ↳ .deprc 가 없어 R-dep(의존 계약)은 비활성입니다. 계약을 만들면 켜집니다"
-    else
-      log_warn "  hook    → .git/hooks/depcheck.py 복사 실패"
-    fi
-  fi
-
-  # 정답지 모듈(.env 값 집합)을 훅 옆에 둔다 — check-secrets.py 가 import 한다.
-  # 복제하지 않고 scripts/ 의 원본을 그대로 복사한다: 복제본만 고치고 원본을 두면
-  # 원본을 쓰는 경로(DB 적재 마스킹)가 계속 뚫려 있게 된다.
-  # hermes 프리셋 없이 harness 만 설치한 프로젝트에서도 값 기반 차단이 동작한다.
-  local values_src="$DEV_SETTING_DIR/scripts/hermes_secret_values.py"
-  if [[ -f "$values_src" ]]; then
-    cp "$values_src" "$git_dir/hooks/hermes_secret_values.py"
-    log_info "  hook    → .git/hooks/hermes_secret_values.py"
+  # 계약이 없으면 R-dep 은 조용히 통과한다(미설정과 고장을 구분한다).
+  # 그 사실을 여기서 한 번 알린다 — 매 커밋 경고는 경고 피로를 부른다.
+  if [[ -f "$git_dir/hooks/depcheck.py" && ! -f "$project_path/.deprc" ]]; then
+    log_info "            ↳ .deprc 가 없어 R-dep(의존 계약)은 비활성입니다. 계약을 만들면 켜집니다"
   fi
 }
 
@@ -555,6 +556,9 @@ install_harness_gitignore() {
       ".claude/.review-dirty"
       ".claude/.dev-setting-manifest.json"
       ".claude/presets.lock"
+      # 이 체크아웃에 *마지막으로 깐* 훅 본문의 해시. 설치 상태이지 공유 소스가 아니다 —
+      # 커밋하면 다른 기계의 기록이 이 기계의 판정으로 쓰여 엉뚱한 파일을 하류 수정으로 본다.
+      ".claude/harness-hooks.lock"
       "!.claude/memory/"
       "!.claude/memory/**"
     ) ;;

@@ -3,7 +3,7 @@
 #
 # 실행 순서:
 #   1. 정적 검사: bash -n (셸 전수) + python3 -m py_compile (scripts/*.py, lib/*.py)
-#   2. 무결성 검사: preset-integrity-test.sh, sync-plugins.sh --check
+#   2. 무결성 검사: preset-integrity-test.sh, hook-copy-sync-test.sh, sync-plugins.sh --check
 #   3. 통합 테스트: windows-helpers / harness-hooks-smoke / windows-smoke /
 #                   hermes-pipeline / uninstall-roundtrip
 #
@@ -99,6 +99,8 @@ run_step "python3 -m py_compile (scripts + lib)" python_compile_check
 # ── 2. 무결성 검사 ────────────────────────────────────────────────────────────
 
 run_step "preset-integrity-test.sh" bash "$TESTS_DIR/preset-integrity-test.sh"
+# 훅은 복사로 배포된다. 복사는 갈라진다 — 무결성 축에 둔다.
+run_step "hook-copy-sync-test.sh" bash "$TESTS_DIR/hook-copy-sync-test.sh"
 run_step "sync-plugins.sh --check" bash "$REPO_ROOT/scripts/sync-plugins.sh" --check
 
 # ── 3. 통합 테스트 ────────────────────────────────────────────────────────────
@@ -118,6 +120,7 @@ for t in \
   doc-gardening-drift-test.sh \
   claude-md-skill-index-test.sh \
   update-all-roundtrip-test.sh \
+  hook-overwrite-report-test.sh \
   harness-hooks-smoke.sh \
   hook-prune-test.sh \
   windows-smoke.sh \
