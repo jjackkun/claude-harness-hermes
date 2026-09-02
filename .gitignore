@@ -48,6 +48,9 @@ docs/superpowers/plans/
 .claude/.review-dirty
 .claude/.dev-setting-manifest.json
 .claude/presets.lock
+# ⚫ 기계마다 다르다 — `.git/hooks/` 에 깐 파일의 sha256 이다.
+#    presets.lock 과 같은 성격인데 빠져 있어서 커밋에 딸려 들어갔다 (2026-09-02).
+.claude/harness-hooks.lock
 !.claude/memory/
 !.claude/memory/**
 # <<< harness-agent-preset <<<
