@@ -113,8 +113,14 @@ for t in \
   cx-baseline-distribution-test.sh \
   dep-contract-test.sh \
   pipe-gate-test.sh \
+  gate-event-test.sh \
+  gate-report-test.sh \
+  gate-instrumentation-test.sh \
+  gate-precommit-instrumentation-test.sh \
+  r5-detection-test.sh \
   coverage-probe-test.sh \
   mutation-probe-test.sh \
+  mutation-trigger-test.sh \
   doc-gardening-drift-test.sh \
   claude-md-skill-index-test.sh \
   update-all-roundtrip-test.sh \

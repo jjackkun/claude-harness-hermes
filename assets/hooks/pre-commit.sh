@@ -100,6 +100,13 @@ VIOLATIONS=()
 # (2026-08-13 확인: R-plan-missing 이 그 상태로 방치돼 있었다.)
 WARNINGS=()
 
+# 게이트 발화 기록. 커밋당 1회라 비용은 무시할 수 있고, 축이 여럿이므로 쌓았다가 한 번에 쓴다.
+if [[ -f "$(dirname "$0")/gate_emit.sh" ]]; then
+  # shellcheck source=/dev/null
+  source "$(dirname "$0")/gate_emit.sh"
+fi
+declare -F gate_add >/dev/null 2>&1 || { gate_add() { :; }; gate_flush() { :; }; }
+
 # 모듈 부재 원인을 구분해 알린다 — 뭉뚱그리면 사용자가 재설치를 반복해도
 # 해결되지 않는 삽질을 한다. 조용히 건너뛰지 않는 것이 핵심이다.
 if [[ ! -f "$PLAN_STATE" ]]; then
@@ -126,8 +133,15 @@ if [[ -n "$CHECKABLE" ]]; then
 EOF
 )")
       FAIL=1
+      R_SIZE_HIT=1
     fi
   done <<< "$CHECKABLE"
+  # 판정 지점 — 스테이징에 검사 대상이 있었을 때만 분모에 넣는다.
+  if [[ "${R_SIZE_HIT:-0}" -eq 1 ]]; then
+    gate_add R-size block precommit "" "한도 $MAX_LINES_HARD 초과"
+  else
+    gate_add R-size pass precommit "" "한도 $MAX_LINES_HARD 이내"
+  fi
 fi
 
 # 2. R-fmt — prettier --check
@@ -241,10 +255,13 @@ if [[ -n "$PY_STRUCT_FILES" ]]; then
   if [[ ! -f "$CHECK_CX" ]]; then
     WARNINGS+=("
 [R-cx] 복잡도 검사를 건너뜀 — complexity.py 없음 (재설치 필요)")
+    gate_add R-cx skipped precommit "" "complexity.py 없음"
   elif ! command -v python3 >/dev/null 2>&1; then
     WARNINGS+=("
 [R-cx] 복잡도 검사를 건너뜀 — python3 없음 (인터프리터 설치 필요)")
+    gate_add R-cx skipped precommit "" "python3 없음"
   else
+    CX_HIT=0
     CX_OUT=$(echo "$PY_STRUCT_FILES" | xargs python3 "$CHECK_CX" 2>&1) || {
       VIOLATIONS+=("$(cat <<EOF
 
@@ -252,11 +269,17 @@ $CX_OUT
 EOF
 )")
       FAIL=1
+      CX_HIT=1
     }
     # 개선 안내는 차단 없이도 나온다 — 기준선을 낮출 기회를 놓치지 않도록.
     if [[ -n "$CX_OUT" ]] && [[ "$FAIL" -eq 0 ]]; then
       WARNINGS+=("
 $CX_OUT")
+    fi
+    if (( CX_HIT )); then
+      gate_add R-cx block precommit "" "임계 초과"
+    else
+      gate_add R-cx pass precommit "" "임계 이내"
     fi
   fi
 fi
@@ -301,10 +324,13 @@ if [[ -n "$PY_STRUCT_FILES" ]]; then
   if [[ ! -f "$CHECK_DEP" ]]; then
     WARNINGS+=("
 [R-dep] 의존 계약 검사를 건너뜀 — depcheck.py 없음 (재설치 필요)")
+    gate_add R-dep skipped precommit "" "depcheck.py 없음"
   elif ! command -v python3 >/dev/null 2>&1; then
     WARNINGS+=("
 [R-dep] 의존 계약 검사를 건너뜀 — python3 없음 (인터프리터 설치 필요)")
+    gate_add R-dep skipped precommit "" "python3 없음"
   else
+    DEP_HIT=0
     DEP_OUT=$(echo "$PY_STRUCT_FILES" | xargs python3 "$CHECK_DEP" 2>&1) || {
       VIOLATIONS+=("$(cat <<EOF
 
@@ -312,7 +338,13 @@ $DEP_OUT
 EOF
 )")
       FAIL=1
+      DEP_HIT=1
     }
+    if (( DEP_HIT )); then
+      gate_add R-dep block precommit "" "계약 위반"
+    else
+      gate_add R-dep pass precommit "" "계약 준수"
+    fi
     # R-dep-4(미등록 파일)·계약 부재는 차단하지 않는 경고다.
     if [[ -n "$DEP_OUT" ]] && [[ "$FAIL" -eq 0 ]]; then
       WARNINGS+=("
@@ -350,6 +382,7 @@ fi
 # 되돌릴 수 없으므로 여기가 마지막 방어선이다.
 CHECK_SECRETS="$(dirname "$0")/check-secrets.py"
 if [[ -f "$CHECK_SECRETS" ]] && command -v python3 >/dev/null 2>&1; then
+  SECRET_HIT=0
   SECRET_OUT=$(python3 "$CHECK_SECRETS" 2>&1) || {
     VIOLATIONS+=("$(cat <<EOF
 
@@ -357,7 +390,16 @@ $SECRET_OUT
 EOF
 )")
     FAIL=1
+    SECRET_HIT=1
   }
+  if (( SECRET_HIT )); then
+    gate_add R-secret block precommit "" "비밀값 탐지"
+  else
+    gate_add R-secret pass precommit "" "탐지 없음"
+  fi
+else
+  # 마지막 방어선이 꺼진 채 커밋이 흐르는 상태다. pass 와 절대 합치지 않는다.
+  gate_add R-secret skipped precommit "" "check-secrets.py 또는 python3 없음"
 fi
 
 # 7. R-plan — 완료된 계획이 active/ 에 남아있으면 경고
@@ -386,9 +428,23 @@ if (( PLAN_STATE_OK )) && [[ -d "$ACTIVE_DIR" ]]; then
       2)
         WARNINGS+=("
 [R-plan] 계획서 판정 불가: $plan — 마크다운 형식을 확인하십시오.")
+        R_PLAN_SEEN=1; R_PLAN_UNKNOWN=1
         ;;
     esac
+    R_PLAN_SEEN=1
+    [[ $rc -eq 0 ]] && R_PLAN_HIT=1
   done < <(filter_files "^${ACTIVE_DIR}/[^/]+\.md$")
+
+  # 계획서가 스테이징에 없으면 이 룰은 평가되지 않은 것이다 — 분모에 넣지 않는다.
+  if [[ "${R_PLAN_SEEN:-0}" -eq 1 ]]; then
+    if [[ "${R_PLAN_HIT:-0}" -eq 1 ]]; then
+      gate_add R-plan block precommit "" "완료된 계획이 active/ 에 남음"
+    elif [[ "${R_PLAN_UNKNOWN:-0}" -eq 1 ]]; then
+      gate_add R-plan skipped precommit "" "계획서 판정 불가"
+    else
+      gate_add R-plan pass precommit "" "미완료 계획만 있음"
+    fi
+  fi
 
   # 7-bis. R-acc-1 — §2 목표가 실행 가능한 형태인가 (경고)
   #
@@ -478,7 +534,13 @@ if [[ -n "$WORK_FILES" && -f "$DIRTY_FILE" ]]; then
   → 자연 단위가 끝났으면 code-reviewer(또는 도메인 리뷰어)를 dispatch 하십시오.
      작업 중간이면 무시해도 됩니다. 수동 청산: rm $DIRTY_FILE
   근거: docs/design-docs/core-beliefs.md#r-review")
+    gate_add R-pipe warn precommit "" "리뷰 기록 없이 커밋되는 파일 있음"
+  else
+    # 빚 기록은 있으나 이번 커밋과 겹치지 않는 경우도 정상 평가다.
+    gate_add R-pipe pass precommit "" "겹치는 파일 없음"
   fi
+elif [[ -n "$WORK_FILES" ]]; then
+  gate_add R-pipe pass precommit "" "리뷰 빚 없음"
 fi
 
 # 9. R-retro — completed/ 로 옮긴 계획서에 회고가 있는가 (경고)
@@ -503,8 +565,13 @@ if (( PLAN_STATE_OK )); then
       2)
         WARNINGS+=("
 [R-retro] 회고 판정 불가: $moved — 마크다운 형식을 확인하십시오.")
+        gate_add R-retro skipped precommit "$moved" "회고 판정 불가"
+        ;;
+      *)
+        gate_add R-retro pass precommit "$moved" "회고 있음"
         ;;
     esac
+    [[ $rc -eq 0 ]] && gate_add R-retro warn precommit "$moved" "회고 없이 완료 처리"
 
     # 9-bis. R-acc-2 — §2 목표가 미완인 채 완료 처리되는가 (경고)
     #

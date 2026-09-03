@@ -72,9 +72,18 @@ done < <(find "$ACTIVE_DIR" -maxdepth 1 -name '*.md' ! -name 'template.md' -type
 
 # `grep -q ... && exit 0` 은 set -e 아래에서 **미발견 시 훅을 통째로 종료**시킨다.
 # 그러면 경고가 영원히 나오지 않는다 — 조용히 죽는 게이트다.
+# 여기가 판정 지점이다 — 위의 조기 반환(확장자·기존 파일·계획 부재)은 분모에 넣지 않는다.
+if [[ -f "$(dirname "$0")/gate_emit.sh" ]]; then
+  # shellcheck source=/dev/null
+  source "$(dirname "$0")/gate_emit.sh"
+fi
+declare -F gate_emit >/dev/null 2>&1 || gate_emit() { :; }
+
 if printf '%s\n' "$DECLARED" | grep -qxF "$REL"; then
+  gate_emit R-declare pass pretooluse "$REL" "§4 에 선언됨"
   exit 0
 fi
+gate_emit R-declare warn pretooluse "$REL" "§4 에 없음"
 
 REASON="[R-declare] $REL — 계획서 §4 의 신규 파일 목록에 없습니다.
   → 만들기 전에 이 파일의 **유일한 책임**을 한 문장으로 §4 에 적으십시오.

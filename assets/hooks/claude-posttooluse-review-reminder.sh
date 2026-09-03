@@ -42,6 +42,16 @@ echo "edit: $(date '+%H:%M:%S')  $FILE_PATH" >> "$DIRTY_FILE"
 if [[ $FIRST_DIRTY -eq 1 ]]; then
   echo "[R-review] 코드 편집 기록 시작 — 큰 변경이면 commit 전 code-reviewer 를 고려하세요."
   echo "  기록 정리: rm .claude/.review-dirty"
+  # 빚이 *생긴* 사건만 기록한다. 이어지는 편집은 같은 빚의 누적이라 세면 중복이 된다.
+  #
+  # 키가 `R-review` 가 아니라 `R-review-debt` 인 이유: bash-guard 가 커밋 시점에
+  # 같은 `R-review` 로 pass/warn 을 남긴다. 한 키에 **분모가 다른 두 모집단**
+  # (편집 횟수 / 커밋 횟수)을 섞으면 발화율이 아무것도 뜻하지 않게 된다.
+  if [[ -f "$(dirname "$0")/gate_emit.sh" ]]; then
+    # shellcheck source=/dev/null
+    source "$(dirname "$0")/gate_emit.sh"
+    gate_emit R-review-debt warn posttooluse "$FILE_PATH" "리뷰 빚 발생"
+  fi
 fi
 
 exit 0

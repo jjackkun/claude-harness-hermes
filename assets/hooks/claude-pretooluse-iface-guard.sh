@@ -38,6 +38,25 @@ import ast, json, os, re, sys
 MAX = int(os.environ.get("MAX_IFACE", "8"))
 WAIVER = re.compile(r"R-iface-waiver\s*:")
 
+
+def emit(verdict, path, detail):
+    """발화 기록. 이 훅은 이미 파이썬이 돌고 있으므로 프로세스를 더 띄우지 않는다.
+
+    관측이 게이트를 죽이면 안 되므로 어떤 실패도 삼킨다 —
+    기록을 못 남기는 것과 파일 생성을 막지 못하는 것 중 후자가 훨씬 나쁘다.
+    """
+    mod = os.environ.get("GATE_EVENT_MOD", "")
+    if not mod or not os.path.exists(mod):
+        return
+    try:
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("gate_event", mod)
+        m = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(m)
+        m.emit("R-iface", verdict, "pretooluse", path, detail)
+    except Exception:
+        pass
+
 def public_symbols_py(src):
     """모듈 최상위의 공개 심볼만 센다. main() 은 CLI 진입점이지 인터페이스가 아니다."""
     tree = ast.parse(src)          # 실패는 호출부에서 통과로 처리한다
@@ -111,6 +130,9 @@ def main():
     # waiver 는 파일 상단에서만 인정한다 — 아래쪽에 묻어두면 리뷰에서 안 보인다.
     head = "\n".join(content.split("\n")[:20])
     if WAIVER.search(head):
+        # waiver 는 pass 와 합치지 않는다 — 이 룰이 경계하는 것은 차단 횟수가 아니라
+        # 우회의 상시화이고, 합치면 그 신호가 사라진다.
+        emit("waived", path, "R-iface-waiver 주석")
         return None
 
     try:
@@ -121,6 +143,7 @@ def main():
         return None
 
     if len(names) < MAX:
+        emit("pass", path, "공개 %d개 < %d" % (len(names), MAX))
         return None
 
     priv = 0
@@ -144,6 +167,7 @@ def main():
         f"  공개: {', '.join(names[:12])}{' …' if len(names) > 12 else ''}\n"
         f"  근거: docs/design-docs/core-beliefs.md#r-iface"
     )
+    emit("block", path, "공개 %d개 >= %d (은닉 %s)" % (len(names), MAX, hide))
     return reason
 
 r = main()
@@ -159,7 +183,13 @@ if r:
     }, ensure_ascii=False))
 PY
 
-RESULT="$(printf '%s' "$INPUT" | MAX_IFACE="$MAX_IFACE" python3 -c "$PYSRC" 2>/dev/null)" || true
+GATE_EVENT_MOD=""
+for _cand in "$(dirname "$0")/gate_event.py" scripts/hooks/gate_event.py; do
+  [[ -f "$_cand" ]] && GATE_EVENT_MOD="$_cand" && break
+done
+
+RESULT="$(printf '%s' "$INPUT" \
+  | MAX_IFACE="$MAX_IFACE" GATE_EVENT_MOD="$GATE_EVENT_MOD" python3 -c "$PYSRC" 2>/dev/null)" || true
 
 [[ -n "$RESULT" ]] && printf '%s\n' "$RESULT"
 exit 0

@@ -117,6 +117,22 @@ install_harness_pre_commit() {
     fi
   fi
 
+  # gate_event.py + gate_emit.sh — pre-commit 의 게이트 발화 기록.
+  # `HARNESS_HOOK_SOURCES` 가 배치하는 곳은 `scripts/hooks/` 이고, pre-commit 은
+  # `$(dirname $0)` = `.git/hooks/` 에서 형제 파일을 찾는다. 여기에 없으면
+  # `source gate_emit.sh` 가 실패해 `gate_add` 가 no-op 이 되고 —
+  # **pre-commit 은 정상 동작하면서 관측만 조용히 꺼진다.** 아무도 눈치채지 못한다.
+  local gate_src
+  for gate_src in gate_event.py gate_emit.sh; do
+    if [[ -f "$ASSETS_DIR/hooks/$gate_src" ]]; then
+      if cp "$ASSETS_DIR/hooks/$gate_src" "$git_dir/hooks/$gate_src"; then
+        log_info "  hook    → .git/hooks/$gate_src"
+      else
+        log_warn "  hook    → .git/hooks/$gate_src 복사 실패 (게이트 발화 기록 비활성)"
+      fi
+    fi
+  done
+
   # depcheck.py (R-dep) — complexity.py 와 같은 부류. pre-commit 이 $(dirname $0) 에서 참조한다.
   local depcheck_src="$ASSETS_DIR/hooks/depcheck.py"
   if [[ -f "$depcheck_src" ]]; then
@@ -555,6 +571,9 @@ install_harness_gitignore() {
       ".claude/.review-dirty"
       ".claude/.dev-setting-manifest.json"
       ".claude/presets.lock"
+      # 게이트 발화 기록. 개발자 로컬 사건이라 커밋하면 매 커밋 diff 노이즈가 된다.
+      # 근거: docs/exec-plans/active/2026-09-03-gate-telemetry.md §6
+      ".harness/"
       "!.claude/memory/"
       "!.claude/memory/**"
     ) ;;

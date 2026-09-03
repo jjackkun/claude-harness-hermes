@@ -34,6 +34,13 @@ SOFT_WARN_LINES="${SOFT_WARN_LINES:-400}"
 HARD_WARN_LINES="${HARD_WARN_LINES:-${MAX_LINES_HARD:-500}}"
 RESP_DELTA_WARN="${RESP_DELTA_WARN:-5}"
 
+# 발화 기록 호출 규약. 없으면 gate_emit 이 정의되지 않으므로 no-op 로 대체한다.
+if [[ -f "$(dirname "$0")/gate_emit.sh" ]]; then
+  # shellcheck source=/dev/null
+  source "$(dirname "$0")/gate_emit.sh"
+fi
+declare -F gate_add >/dev/null 2>&1 || { gate_add() { :; }; gate_flush() { :; }; }
+
 FILE_PATH=$(python3 -c "
 import sys, json
 try:
@@ -70,6 +77,14 @@ elif (( LC > SOFT_WARN_LINES )); then
   echo "[R-size SOFT] $FILE_PATH = $LC 줄 (한도 $HARD_WARN_LINES, 잔여 $((HARD_WARN_LINES - LC))). 이미 늦었을 가능성."
   echo "  이 파일에 책임이 몇 개인지 먼저 세기. 2개 이상이면 지금 split, 1개면 계속."
   echo "  근거: docs/design-docs/core-beliefs.md#r-size"
+fi
+# 줄 수 축의 판정이 여기서 끝난다. 세 갈래를 모두 기록해야 분모가 생긴다.
+if (( LC > HARD_WARN_LINES )); then
+  gate_add R-size warn posttooluse "$FILE_PATH" "$LC 줄 > hard $HARD_WARN_LINES"
+elif (( LC > SOFT_WARN_LINES )); then
+  gate_add R-size warn posttooluse "$FILE_PATH" "$LC 줄 > soft $SOFT_WARN_LINES"
+else
+  gate_add R-size pass posttooluse "$FILE_PATH" "$LC 줄"
 fi
 (( LC > SOFT_WARN_LINES )) && WARNED_LINES=1
 fi
@@ -130,12 +145,17 @@ PUB_NOW="${PUB_NOW:-0}"; PUB_BASE="${PUB_BASE:-0}"
 # 그것을 책임 증가로 경고하면 좋은 편집이 벌을 받고, 경고 피로로 사람이 hook 을 끈다.
 # 임계값 재산정이 아니라 오탐 제거다 — 5 의 근거 문서는 그대로 유효하다.
 # 근거: docs/superpowers/specs/2026-08-24-interface-width-gate-design.md 축 B
+# 책임 축은 줄 수 축과 분모가 다르다 (기준선이 있는 파일만 평가된다).
+# 같은 R-size 키로 합치면 두 분모가 섞여 발화율이 무의미해진다.
 if (( SYM_NOW - SYM_BASE >= RESP_DELTA_WARN )) && (( PUB_NOW > PUB_BASE )); then
+  gate_add R-size-resp warn posttooluse "$FILE_PATH" "$SYM_BASE → $SYM_NOW (공개 $PUB_BASE → $PUB_NOW)"
   echo "[R-size 책임] $FILE_PATH — 마지막 커밋 대비 $SYM_UNIT: $SYM_BASE → $SYM_NOW (+$((SYM_NOW - SYM_BASE)))."
   echo "  이 파일에 책임이 몇 개인지 세고, 2개 이상이면 파일별 책임 분리 → 배럴 재export."
   echo "  먼저 볼 것: 방금 늘어난 것이 *파일명이 약속한 책임* 안에 있는가."
   echo "  줄 수와 무관한 신호다. 400/500 은 안전망이지 분리 시점이 아니다."
   echo "  근거: docs/design-docs/core-beliefs.md#r-size"
+else
+  gate_add R-size-resp pass posttooluse "$FILE_PATH" "$SYM_BASE → $SYM_NOW"
 fi
 
 exit 0

@@ -64,9 +64,18 @@ mapfile -t REF_FILES < <($SEARCHER "$PATTERN" . 2>/dev/null | grep -v -F -x "./$
 
 REF_COUNT=${#REF_FILES[@]}
 
+# 여기가 판정 지점이다 — 위의 조기 반환들은 "대상 아님" 이라 분모에 넣지 않는다.
+if [[ -f "$(dirname "$0")/gate_emit.sh" ]]; then
+  # shellcheck source=/dev/null
+  source "$(dirname "$0")/gate_emit.sh"
+fi
+declare -F gate_emit >/dev/null 2>&1 || gate_emit() { :; }
+
 if (( REF_COUNT > 0 )); then
+  gate_emit R-dead-file pass posttooluse "$REL" "참조 ${REF_COUNT}건"
   exit 0
 fi
+gate_emit R-dead-file warn posttooluse "$REL" "참조 0건"
 
 # 참조 0건 — 경고 + 후보 제안.
 DIR="$(dirname "$FILE_PATH")"

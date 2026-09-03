@@ -99,9 +99,19 @@ if echo "$HAYSTACK" | grep -Eq 'typescript|\.tsx?( |$)|tsconfig|generic type|int
   fi
 fi
 
+# 여기가 R-agent 의 판정 지점이다. 위쪽 code-reviewer 분기는 대상 모집단이 달라
+# (전체 dispatch 가 아니라 리뷰어 dispatch) 같은 분모에 넣지 않는다 — 별도 계장 대상.
+if [[ -f "$(dirname "$0")/gate_emit.sh" ]]; then
+  # shellcheck source=/dev/null
+  source "$(dirname "$0")/gate_emit.sh"
+fi
+declare -F gate_emit >/dev/null 2>&1 || gate_emit() { :; }
+
 if [[ -z "$SUGGEST" ]]; then
+  gate_emit R-agent pass pretooluse "" "도메인 신호 없음"
   exit 0
 fi
+gate_emit R-agent warn pretooluse "" "권장: $SUGGEST"
 
 # 컨텍스트 주입 — 에이전트가 다음 행동을 결정할 수 있게
 python3 - "$SUGGEST" <<'PY'

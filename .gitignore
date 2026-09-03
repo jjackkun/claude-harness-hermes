@@ -51,6 +51,8 @@ docs/superpowers/plans/
 # ⚫ 기계마다 다르다 — `.git/hooks/` 에 깐 파일의 sha256 이다.
 #    presets.lock 과 같은 성격인데 빠져 있어서 커밋에 딸려 들어갔다 (2026-09-02).
 .claude/harness-hooks.lock
+# ⚫ 게이트 발화 기록 — 로컬 관측 데이터다. 소유자는 lib/harness_installers.sh 의 entries.
+.harness/
 !.claude/memory/
 !.claude/memory/**
 # <<< harness-agent-preset <<<
