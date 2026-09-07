@@ -17,7 +17,7 @@ PDF 4~5쪽: "AGENTS.md 를 백과사전이 아닌 *목차* 로 취급한다."
 
 - 프로젝트 고유 불변 원칙(R1~Rn) 위반 발견 시 즉시 중단·보고. 우회 금지.
 - 비자명한 작업은 계획 → 구현 → 검증 흐름. 깊은 리뷰는 위험 신호가 있을 때 승격.
-- 강제 장치: `.git/hooks/pre-commit` (4단 검사) + `.claude/settings.json` (3 hook).
+- 강제 장치: `.git/hooks/pre-commit` (게이트 13종 — 차단 9 / 경고 4) + `.claude/settings.json` 훅.
 
 ## 작업 흐름
 
@@ -47,22 +47,30 @@ PDF 4~5쪽: "AGENTS.md 를 백과사전이 아닌 *목차* 로 취급한다."
   - harness-reasoning-sandwich — 비자명한 작업에 계획 → 구현 → 검증 흐름을 적용하고, 큰 변경일 때만 깊은 리뷰로 승격한다. Use when starting a new feature, multi-file change, or any…
   - harness-promote-rule — 반복되는 결함·리뷰 지적·경계 위반을 docs/design-docs/core-beliefs.md 의 R 룰로 승격하고, 대응하는 강제 장치(테스트·린터 규칙)를 스캐폴드한다. Use when the same…
   - structured-file-layout — Use when creating new files, planning features, or writing exec-plans — before any code is written, to ensure each file…
+  - run-to-the-end — 오래 걸리는 명령을 돌리기 **직전에** 본다. 내가 "시험을 돌립니다" · "전체 검사를 돌리고" · "검증하겠습니다" · "실측하겠습니다" · "빌드하겠습니다" 라고 말하려는 자리, 또는 사용자가 "검사부터…
 - **에이전트** (검토·위임): `.claude/agents/` — architect-lite planner-lite architect planner code-reviewer silent-failure-hunter tdd-guide doc-updater docs-lookup performance-optimizer refactor-cleaner
 
 ## 하네스 엔지니어링 (PDF 방법론)
 
-이 프로젝트는 ai-dev-setting 의 `harness` 프리셋으로 다음 강제 장치가 깔려 있다:
+이 프로젝트는 ai-dev-setting 의 `harness` 프리셋으로 강제 장치가 깔려 있다.
+훅 실체는 `scripts/hooks/`, 커밋 게이트는 `.git/hooks/pre-commit`.
 
-- **매 턴 규율 리마인더**: `scripts/hooks/claude-userpromptsubmit-reminders.sh`
-- **커밋 전 리뷰 검토 리마인드**: `scripts/hooks/claude-pretooluse-bash-guard.sh`
-- **잘못된 에이전트 dispatch 차단**: `scripts/hooks/claude-pretooluse-agent-guard.sh`
-- **새 파일 인터페이스 폭 차단 (공개 심볼 8)**: `scripts/hooks/claude-pretooluse-iface-guard.sh`
-- **편집 후 size 조기 경고 (400/500)**: `scripts/hooks/claude-posttooluse-size-warn.sh`
-- **코드 편집 기록 리마인드**: `scripts/hooks/claude-posttooluse-review-reminder.sh`
-- **커밋 시 순환 복잡도 차단 (임계 12, .cxbaseline 라쳇)**: `.git/hooks/pre-commit` R-cx
-- **커밋 시 의존 계층 역전·순환 차단 (.deprc)**: `.git/hooks/pre-commit` R-dep
-- **git pre-commit 4단 검사**: `.git/hooks/pre-commit` (size + prettier + eslint + pytest)
-- **추론 샌드위치**: 비자명한 작업은 계획 → 구현 → 검증. 깊은 리뷰는 필요할 때만 승격.
+**세션 중 (훅 12종)**: 매 턴 규율 리마인더 · 커밋 전 리뷰 검토 리마인드 + `--no-verify` 탐지 ·
+잘못된 에이전트 dispatch 차단 · **R-iface** 새 파일 공개 심볼 8 이상 **차단**(쓰이기 전) ·
+**R-declare** 새 코드 파일이 계획서 §4 에 선언됐는지 경고 · 편집 후 size 조기 경고(400/500)
++ 인터페이스 폭 증가 경고 · 편집을 리뷰 빚으로 적립 · dead-file 편집 경고 · **R-pipe**
+리뷰어 dispatch 를 리뷰 빚 청산으로 기록 · **R-mut** 주 1회 변이 점검(백그라운드, 결과는
+다음 세션) · 주간 문서 편차 점검 · 권한 프롬프트 피로도 감지
+
+**커밋 시 (게이트 13종)**
+
+- 차단 9: R-size · R-fmt · R-lint · R-test · R-cx(임계 12, `.cxbaseline` 라쳇) · R-dep(`.deprc`) · R-struct · R-secret · R-plan
+- 경고 4: R-cov(테스트가 한 줄도 실행 안 하는 파일 수정) · R-pipe(리뷰 빚) · R-retro(회고 없이 완료) · R-acc(§2 목표 미검증)
+
+**관측**: 모든 게이트 판정이 `.harness/gate-events.jsonl` 에 남는다 — 발화율은
+`python3 scripts/hooks/gate_report.py`. Provisional 룰의 승격·강등 근거다.
+
+**추론 샌드위치**: 비자명한 작업은 계획 → 구현 → 검증. 깊은 리뷰는 필요할 때만 승격.
 
 **프로젝트 고유 불변 원칙(R1~Rn)은 `docs/design-docs/core-beliefs.md` 에 직접 정의한다.**
 PDF 11쪽 인용: "이러한 동작은 이 리포지터리의 특정 구조와 툴링에 따라 크게 달라지며,

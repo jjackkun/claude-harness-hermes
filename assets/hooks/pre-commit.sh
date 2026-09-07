@@ -2,6 +2,10 @@
 # git pre-commit hook — 4단 검사 (R-size / R-fmt / R-lint / R-test) + R-struct / R-secret / R-plan.
 #
 # "4단 검사" 문구는 uninstall 이 하네스 설치본을 식별하는 마커다 — 바꾸지 말 것
+#
+# 현재 실제 게이트는 13종이다 (위 헤더의 "4단 검사" 는 마커라서 그대로 둔다):
+#   차단 9 — R-size R-fmt R-lint R-test R-cx R-dep R-struct R-secret R-plan
+#   경고 4 — R-cov R-pipe R-retro R-acc
 # (lib/uninstall_helpers.sh `uninstall_pre_commit`, uninstall.sh 미리보기).
 #
 # 메시지 형식 (2026-04-17 Opus 4.7 튜닝):

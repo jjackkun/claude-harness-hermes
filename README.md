@@ -77,6 +77,9 @@ ai-dev-setting/                       ← 이 디렉터리 (private git repo 권
 │   ├── installers.sh                 ← 스킬·에이전트·룰·hook 설치 함수
 │   ├── harness_installers.sh         ← 하네스 특화 설치 함수
 │   ├── preset.sh                     ← 프리셋 로드·dedupe·권한 머지
+│   ├── hook_inventory.sh             ← 훅 인벤토리 + 은퇴 훅 회수 (RETIRED_HOOK_SOURCES)
+│   ├── permission_inventory.sh       ← 권한 인벤토리 + 은퇴 권한 회수 (RETIRED_PERMISSION_ALLOW)
+│   ├── plugins.sh                    ← 플러그인 설치·refcount 기반 제거
 │   ├── settings_gen.sh               ← settings.json / settings.local.json 생성 진입점
 │   ├── claude_md_gen.sh              ← CLAUDE.md 마커 블록 생성·병합
 │   ├── hermes_memory.sh              ← 헤르메스 DB 초기화·조회 셸 래퍼
@@ -94,7 +97,7 @@ ai-dev-setting/                       ← 이 디렉터리 (private git repo 권
 │   ├── database/{postgres,mysql,oracle,mongodb,redis}.conf
 │   ├── build/{jpa,mybatis,maven,gradle}.conf
 │   ├── permissions/{git-write,pm2}.conf  ← 추가 권한 화이트리스트
-│   ├── tools/{terminal-paste-image}.conf
+│   ├── tools/{prettier,terminal-paste-image,understand-anything}.conf
 │   ├── workflow/{harness,hermes,mcp,skill-dev}.conf
 │   └── global/                           ← [global] 스텝: ~/.claude 전역 opt-in 스킬 (현재 비어있음)
 ├── scripts/
@@ -123,8 +126,9 @@ ai-dev-setting/                       ← 이 디렉터리 (private git repo 권
 │   ├── skills/<skill>/SKILL.md
 │   ├── agents/<agent>.md
 │   ├── rules/<ruleset>/
-│   └── hooks/                        ← 하네스/헤르메스 hook 스크립트 원본
+│   └── hooks/                        ← 하네스/헤르메스 hook 스크립트 원본 (실행 훅 + 공용 판정 모듈)
 ├── plugins/ai-dev-setting/           ← 플러그인 번들 (agents 는 실파일 — symlink 금지)
+├── lint-configs/                     ← 설치처에 배포하는 린트 설정 (harness-max-lines.config.js)
 ├── tests/                            ← 테스트 (러너: tests/run-all.sh)
 ├── docs/
 │   ├── exec-plans/{active,completed,backlog}/  ← 실행 계획 (+ template.md)
@@ -277,7 +281,7 @@ Claude 전용 `CLAUDE.md`, `.claude/settings.json` / `.claude/settings.local.jso
 | database | postgres, mysql, oracle, mongodb, redis | **CLAUDE.md 가이드 섹션 + 권한** 위주. postgres 만 전용 스킬(`postgres-patterns`) 보유, 일부는 공용 자산(`database-migrations` 스킬, `database-reviewer` 에이전트)만 포함 — 나머지 전용 스킬/룰은 TODO |
 | build | jpa, mybatis, maven, gradle | **CLAUDE.md 규칙 섹션** 위주. jpa 만 전용 스킬(`jpa-patterns`) 보유 — 나머지 전용 스킬/룰은 TODO |
 | permissions | git-write, pm2 | 추가 권한 화이트리스트 |
-| tools | terminal-paste-image | VSCode 익스텐션 등 부가 도구 |
+| tools | prettier, terminal-paste-image, understand-anything | prettier 경고 훅(2026-08-04 harness 에서 분리), VSCode 익스텐션 등 부가 도구 |
 | workflow | **harness**, **hermes**, mcp, skill-dev | 작업 방식·도구 프리셋 |
 | global | _(현재 없음)_ | **전역 opt-in 스킬 자리.** `[global]` 스텝에서 선택 시 프로젝트가 아닌 `~/.claude/skills/` 에 한 번 설치되어 모든 프로젝트에서 사용. `~/.claude/presets.global.lock` 에 기록되고 `update-all` 이 유지. `resolve_preset` 대상이 아니라 프로젝트 프리셋으로는 설치 불가. `presets/global/<name>.conf` 추가 시 자동 노출 |
 
@@ -309,10 +313,124 @@ Claude 전용 `CLAUDE.md`, `.claude/settings.json` / `.claude/settings.local.jso
 
 `workflow/harness` 를 선택하면 프로젝트에 다음이 설치됩니다:
 
-- **스킬**: `harness-boundary-check`, `harness-reasoning-sandwich`, `harness-promote-rule`, `structured-file-layout`
+- **스킬 5종**: `harness-boundary-check`, `harness-reasoning-sandwich`, `harness-promote-rule`, `structured-file-layout`, `run-to-the-end`
 - **룰**: `harness` (코딩 규칙 전문)
-- **훅 8종**: 매 턴 리마인더, bash 가드, 에이전트 가드, prettier 경고, size 경고, 리뷰 리마인더, dead-file 경고, stop 피로도 방지
+- **에이전트 11종**: `architect-lite`, `planner-lite`, `architect`, `planner`, `code-reviewer`, `silent-failure-hunter`, `tdd-guide`, `doc-updater`, `docs-lookup`, `performance-optimizer`, `refactor-cleaner`
+- **세션 중 실행 훅 12종** + 훅들이 공유하는 **판정 모듈 9개** (아래 표)
+- **git pre-commit 게이트 13종** (차단 9 / 경고 4)
+- **게이트 발화 기록**: `.harness/gate-events.jsonl`
 - **CLAUDE.md 섹션**: 불변 규칙 체크리스트 + 작업 기록 시스템 안내 자동 삽입
+
+> prettier 경고 훅은 2026-08-04 에 `presets/tools/prettier.conf` 로 분리되었습니다.
+> harness 프리셋은 더 이상 이 훅을 설치하지 않습니다.
+
+#### 세션 중 실행 훅 (12종)
+
+| 시점 | 훅 | 하는 일 |
+|------|-----|---------|
+| UserPromptSubmit | `claude-userpromptsubmit-reminders.sh` | 매 턴 규율 리마인더 + active 계획서·backlog 표시 |
+| PreToolUse(Bash) | `claude-pretooluse-bash-guard.sh` | 커밋 전 리뷰 검토 리마인드 + `--no-verify` 탐지 |
+| PreToolUse(Task\|Agent) | `claude-pretooluse-agent-guard.sh` | 잘못된 에이전트 dispatch 차단 |
+| PreToolUse(Write) | `claude-pretooluse-iface-guard.sh` | **R-iface** — 새 파일의 공개 심볼이 8 이상이면 **차단** |
+| PreToolUse(Write) | `claude-pretooluse-plan-declare.sh` | **R-declare** — 새 코드 파일이 계획서 §4 에 선언됐는지 경고 |
+| PostToolUse(Edit) | `claude-posttooluse-size-warn.sh` | 400/500 줄 조기 경고 + 인터페이스 폭 증가 경고 |
+| PostToolUse(Edit) | `claude-posttooluse-review-reminder.sh` | 코드 편집을 리뷰 빚으로 적립 (`.claude/.review-dirty`) |
+| PostToolUse(Edit) | `claude-posttooluse-dead-file-warn.sh` | import 그래프에 없는 파일 편집 시 경고 |
+| PostToolUse(Task\|Agent) | `claude-posttooluse-review-record.sh` | **R-pipe** — 리뷰어 dispatch 를 리뷰 빚 청산으로 기록 |
+| SessionStart | `claude-sessionstart-mutation-probe.sh` | **R-mut** — 주 1회 변이 점검(백그라운드), 결과는 다음 세션에 보고 |
+| SessionStart | `claude-sessionstart-doc-gardening.sh` | 주간 문서 편차 점검 (CI 미배선 환경에서도 동작, 7일 스로틀) |
+| Stop | `claude-stop-perm-prompt-fatigue.sh` | 권한 프롬프트 피로도 감지 |
+
+`iface-guard` 는 이 저장소 최초의 **하드 차단** PreToolUse 훅입니다. 임계 8 은 저장소 운영 코드
+36개의 공개 심볼 분포에서 7이 최빈 고원이고 8부터 상위 사분위라는 실측에서 나왔습니다.
+파일이 쓰이기 *전* 시점이라 오탐 비용이 거의 0 이므로 차단할 수 있습니다 — 같은 지표를 커밋
+시점에 막으면 완성된 코드의 재구성을 요구해 우회가 상시화됩니다.
+
+#### 판정 모듈 (9개, 훅이 아니라 훅·pre-commit 이 부르는 공용 코드)
+
+| 모듈 | 축 | 내용 |
+|------|-----|------|
+| `iface_width.py` | R-iface | 인터페이스 폭의 **단일 정의**. `.py`/`.js`/`.ts`/`.svelte`/`.vue` 의 공개 심볼을 센다 |
+| `complexity.py` | R-cx | 순환 복잡도 계산 (`--report` 로 함수별 출력) |
+| `depcheck.py` | R-dep | `.deprc` 계약 기반 tier 역전·순환·금지 경계 검사 |
+| `coverage_probe.py` | R-cov | 표준 라이브러리 `trace` 기반 줄 커버리지 (외부 패키지 의존 0) |
+| `plan_state.py` | R-plan/R-acc/R-retro | 계획서 §2 목표·§8 회고 파싱 |
+| `gate_event.py` | 관측 | 게이트 판정 1건을 JSONL 에 append (**종료코드 항상 0**) |
+| `gate_emit.sh` | 관측 | 셸 훅에서 `gate_event.py` 를 부르는 얇은 래퍼 |
+| `gate_report.py` | 관측 | 룰별 기회·통과·경고·차단·우회·발화율 집계 |
+| `doc-gardening-drift.sh` | 문서 | 계획서가 코드를 따라오는지 편차 탐지 (주간 가드닝이 호출) |
+
+`iface_width.py` 를 모듈로 뺀 이유: 폭을 재는 곳이 둘(생성 시점 차단 / 편집 시점 델타 경고)이라
+각자 세다가 어긋났습니다. 후자는 `^export ` grep 이라 **Svelte 에서 한 번도 발화할 수 없었습니다**
+(실측 — Svelte 200개 표본 중 `^export ` 0개, `$props()` 177개). 정의를 하나로 둡니다.
+
+`coverage_probe.py` 와 `complexity.py` 가 외부 패키지(coverage.py, radon)를 쓰지 않는 이유:
+하네스는 여러 프로젝트에 설치되는 도구이고, 각 프로젝트에 패키지 설치를 요구하면 **설치 실패가
+곧 게이트 침묵**이 됩니다. 실제로 R-test 가 그 상태로 몇 달간 통과하고 있었습니다.
+
+#### git pre-commit 게이트 (13종)
+
+`HARNESS_PRE_COMMIT=1` 이 `.git/hooks/pre-commit` 을 배치합니다.
+(README 구버전의 "4단 검사" 는 R-size/R-fmt/R-lint/R-test 만 있던 시절의 표현입니다.)
+
+**차단 9종** — 하나라도 걸리면 커밋이 서지 않습니다:
+
+| 게이트 | 검사 |
+|--------|------|
+| R-size | 파일 줄 수 한도 (`.py .js .ts .svelte .vue` 등, SFC 포함) |
+| R-fmt | `prettier --check` (하네스 생성물은 대상에서 제외) |
+| R-lint | `eslint --max-warnings 0` |
+| R-test | `pytest` (테스트 0개면 통과가 아니라 실패로 본다) |
+| R-cx | 순환 복잡도 **임계 12**, `.cxbaseline` **라쳇** — 나빠질 때만 차단 |
+| R-dep | `.deprc` 의존 계약 — tier 역전·순환·금지 경계 |
+| R-struct | 컴포넌트 폴더/배럴 규칙 |
+| R-secret | 자격증명·개인정보 커밋 차단 |
+| R-plan | 완료된 계획서가 `active/` 에 남아 있는지 |
+
+**경고 4종** — 알리되 막지 않습니다:
+
+| 게이트 | 검사 | 막지 않는 이유 |
+|--------|------|----------------|
+| R-cov | 어떤 테스트도 실행하지 않는 파일을 고치는가 | 임계 없는 이분 판정, 기존 부채가 즉시 전부 걸린다 |
+| R-pipe | 리뷰 빚을 안은 채 커밋하는가 | 훅은 "리뷰어를 불렀다"만 알 뿐 "리뷰가 유효했다"는 못 본다 |
+| R-retro | `completed/` 로 옮긴 계획서에 §8 회고가 있는가 | 회고 유무는 형식이지 정확성이 아니다 |
+| R-acc | §2 목표에 검증 명령이 있는가 / 미완 목표를 남긴 채 완료 처리하는가 | 위와 같음 |
+
+임계 12 의 근거: 저장소 함수 295개의 복잡도 분포가 `11:11개 → 12:4개` 로 급락합니다.
+그 절벽에 임계를 놓았습니다. 임계 8 이면 68개(23%), 6 이면 101개(34%) 가 걸려 과발화합니다.
+
+#### 베이스라인 라쳇 — 남의 코드로 남을 막지 않는다
+
+R-cx 를 임계 12 로 일괄 적용하면 이 저장소만 해도 파일 37개 중 16개(43%)가 즉시 막힙니다.
+그 상태로 켜면 게이트를 끄거나 `--no-verify` 로 우회하는 것이 정상 작업 흐름이 됩니다.
+
+- `.cxbaseline` — 설치 시점에 **그 프로젝트의 기존 부채를 동결**합니다. 값은 내려가기만 하고,
+  나빠지면 차단합니다.
+- 하네스는 **자기가 배포한 파일에 한해서만** 자기 베이스라인 기록을 프로젝트로 함께 보냅니다.
+  배포한 코드의 복잡도를 설치 대상 프로젝트가 떠안지 않게 하기 위함입니다.
+- `.covbaseline` — R-cov 도 같은 방식으로 기존 미커버 파일을 동결합니다.
+
+#### 게이트 발화 기록 (게이트 텔레메트리)
+
+R 룰 다수가 Provisional("발화율 관측 중") 상태였는데 **발화를 기록하는 코드가 없었습니다.**
+승격·강등 판단의 입력을 만드는 것이 이 축입니다.
+
+```bash
+# 룰별 발화율 집계
+python3 scripts/hooks/gate_report.py
+```
+
+```
+룰        기회  통과  경고  차단  우회  건너뜀  발화율
+-------  --  --  --  --  --  ---  ------
+R-iface  1   0   0   1   0   0    100.0%
+```
+
+- 기록 위치: `.harness/gate-events.jsonl` (한 줄 1 판정: `ts rule verdict stage path detail`)
+- `verdict` 는 `pass` / `warn` / `block` / `bypass` / `skipped`
+- **`gate_event.py` 의 종료코드는 항상 0 입니다.** 관측 장치가 게이트를 죽이면 안 됩니다.
+- `gate_event.py`·`gate_emit.sh` 가 빠지면 계장된 훅들이 emitter 를 못 찾아 **조용히 관측만
+  꺼집니다** — 훅은 계속 동작하므로 아무도 눈치채지 못합니다. 반드시 함께 배포됩니다.
 
 ### hermes 프리셋
 
@@ -547,22 +665,35 @@ git rm presets/<category>/<name>.conf
 ## 테스트
 
 ```bash
-# 전체 실행 (정적 검사 + 무결성 + 통합 테스트)
+# 전체 실행 (정적 검사 + 무결성 + 통합 테스트 43개)
 bash tests/run-all.sh
 
-# 개별 실행
-bash tests/preset-integrity-test.sh    # 프리셋 → assets 참조 무결성
-bash tests/harness-hooks-smoke.sh      # 하네스 hook 차단/통과 경로
-bash tests/hermes-pipeline-test.sh     # 헤르메스 러닝 루프 전체 (HOME 격리, claude 모킹)
-bash tests/uninstall-roundtrip-test.sh # 설치→언인스톨 라운드트립 (사용자 자산 보존)
-bash tests/windows-helpers-test.sh     # Windows 경로 헬퍼 단위 테스트
-bash tests/windows-smoke.sh            # Windows 타깃 설치 (WSL2 + /mnt/c 필요, 아니면 SKIP)
+# 특정 테스트만 건너뛰기
+SKIP_TESTS=windows-smoke.sh,hermes-loop-test.sh bash tests/run-all.sh
 ```
+
+`tests/` 에는 테스트 파일 **43개**가 있고 `run-all.sh` 가 전부 호출합니다. 축별로:
+
+| 축 | 테스트 |
+|----|--------|
+| 설치·무결성 | `preset-integrity-test.sh` (프리셋 → assets 참조), `update-all-roundtrip-test.sh`, `uninstall-roundtrip-test.sh`, `hook-prune-test.sh`, `memory-symlink-roundtrip-test.sh`, `claude-md-skill-index-test.sh` |
+| 게이트 (R 룰) | `iface-gate-test.sh`, `plan-declare-gate-test.sh`, `complexity-gate-test.sh`, `cx-baseline-distribution-test.sh`, `dep-contract-test.sh`, `pipe-gate-test.sh`, `struct-barrel-test.sh`, `coverage-probe-test.sh`, `plan-state-test.sh`, `r5-detection-test.sh` |
+| 변이 점검 (R-mut) | `mutation-probe-test.sh`, `mutation-trigger-test.sh` |
+| 게이트 텔레메트리 | `gate-event-test.sh`, `gate-report-test.sh`, `gate-instrumentation-test.sh`, `gate-precommit-instrumentation-test.sh` |
+| 보안·마스킹 | `hermes-redact-test.sh`, `hermes-redact-boundary-test.sh`, `hermes-secret-masking-test.sh`, `check-secrets-answerkey-test.sh`, `check-secrets-code-expr-test.sh` |
+| 헤르메스 러닝 루프 | `hermes-pipeline-test.sh`, `hermes-loop-test.sh`, `hermes-dream-test.sh`, `hermes-crystallize-naming-test.sh`, `hermes-cleanup-lock-test.sh`, `hermes-recall-measurement-test.sh`, `hermes-recall-history-search-test.sh`, `hermes-history-export-test.sh`, `hermes-lifecycle-test.sh`, `hermes-lifecycle-portability-test.sh`, `hermes-mesh-consume-test.sh`, `hermes-mesh-gate-test.sh` |
+| 문서 가드닝 | `doc-gardening-drift-test.sh` |
+| 훅 동작 | `harness-hooks-smoke.sh` |
+| Windows | `windows-helpers-test.sh`, `windows-smoke.sh` (WSL2 + `/mnt/c` 필요, 아니면 SKIP) |
 
 `tests/run-all.sh` 는 추가로 전체 셸 스크립트 `bash -n` 문법 검사,
 `scripts/*.py`·`lib/*.py` 의 `python3 -m py_compile`, `scripts/sync-plugins.sh --check`
 (assets ↔ plugins 드리프트)를 수행합니다. 각 테스트는 서브셸로 실행되어 하나가
 실패해도 나머지는 계속 실행되고 마지막에 통과/실패가 집계됩니다.
+
+**게이트 테스트는 "통과"만 보지 않습니다.** 가짜 위반을 일부러 만들어 게이트가 *실제로*
+차단하는지 확인합니다 — 통과만 확인하는 검증은 게이트가 조용히 꺼진 것을 못 잡습니다
+(`harness-hooks-smoke.sh` 가 실제로 그 상태였습니다).
 
 CI(`.github/workflows/ci.yml`)는 push/PR 마다 `SKIP_INTERACTIVE=1 bash tests/run-all.sh`
 를 실행합니다. 테스트는 임시 디렉터리 + HOME 격리로 동작하며 실 DB(`~/.hermes`)와
