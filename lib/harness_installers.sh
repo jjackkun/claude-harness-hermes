@@ -66,7 +66,7 @@ install_harness_pre_commit() {
   mkdir -p "$git_dir/hooks"
   cp "$src" "$dest"
   chmod +x "$dest"
-  log_info "  hook    → .git/hooks/pre-commit (4단 검사)"
+  log_info "  hook    → .git/hooks/pre-commit (게이트 13종 — 차단 9 / 경고 4)"
 
   # check-component-structure.mjs — pre-commit 이 $(dirname $0) 에서 참조
   local struct_src="$ASSETS_DIR/hooks/check-component-structure.mjs"
@@ -571,6 +571,10 @@ install_harness_gitignore() {
       ".claude/.review-dirty"
       ".claude/.dev-setting-manifest.json"
       ".claude/presets.lock"
+      # 기계마다 다르다 — `.git/hooks/` 에 깐 파일의 sha256 이다. presets.lock 과 같은
+      # 성격인데 이 목록에서 빠져 있어 커밋에 딸려 들어갔다(2026-09-02). 그때 고친 곳이
+      # *생성된 .gitignore* 였던 탓에 다음 전파가 그대로 덮어썼다 — 소유자는 여기다.
+      ".claude/harness-hooks.lock"
       # 게이트 발화 기록. 개발자 로컬 사건이라 커밋하면 매 커밋 diff 노이즈가 된다.
       # 근거: docs/exec-plans/active/2026-09-03-gate-telemetry.md §6
       ".harness/"
