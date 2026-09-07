@@ -32,13 +32,6 @@ temp/
 # 개인 작업 노트·외부 저작물 PDF — 공개/공유 대상 아님 (로컬 보관용)
 .00_docs/
 
-# ai-dev-setting 자체 dogfooding 작업기록 — 로컬만 (커밋 X).
-# 설치 대상 프로젝트용 docs 구조·템플릿은 assets/docs-templates/ 가 배포하므로
-# 원본 repo 에는 개인 작업로그를 올리지 않는다.
-docs/exec-plans/active/
-docs/exec-plans/completed/
-docs/exec-plans/backlog/
-docs/audits/
 docs/superpowers/plans/
 
 # >>> harness-agent-preset >>>
