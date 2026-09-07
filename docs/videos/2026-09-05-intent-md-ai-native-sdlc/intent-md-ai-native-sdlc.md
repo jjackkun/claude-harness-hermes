@@ -105,7 +105,7 @@ _05:35 — "코드를 쓰고 구현하는 단계가 가장 오래 걸리고 가�
 - Build 에서 번 시간을 앞뒤 단계가 그대로 까먹는다
 
 ![빌드만 줄었다](./screenshots/05-0615-build-collapsed-before-after.jpg)
-_06:15 — 영상 전체에서 가장 핵심적인 비교 그림. **BEFORE**(에이전트 이전)는 Build 박스가 압도적으로 길고 나머지가 짧다. **WITH AGENTS**(에이전트 이후)는 Build 만 "몇 시간"으로 쪼그라들었는데 **Plan·Design·Test·Deploy·Maintain 박스 길이는 그대로**다. 제목이 곧 결론이다 — "빌드는 몇 시간으로 줄었는데, 앞뒤 단계는 그대로"._
+_06:15 — 영상 전체에서 가장 핵심적인 비교 그림. 박스마다 **소요 기간이 라벨로** 붙어 있다. **BEFORE**(여섯 단계 모두 사람의 개입과 속도): Plan 주 · Design 주 · **Build 몇 달**(박스도 압도적으로 길고 "가장 시간을 오래 잡아먹던 단계" 배지가 달림) · Test 주 · Deploy 주 · Maintain 상시. **WITH AGENTS**: Build 만 **몇 시간**으로 줄어 박스가 쪼그라들었고, **나머지 다섯 개는 라벨도 폭도 그대로**(주 / 주 / 주 / 주 / 상시)다. 하단 배지가 변화의 전부를 요약한다 — "BUILD · 몇 주, 몇 달 → 몇 시간"._
 
 ### 리뷰가 특히 깨진다 (06:49)
 
@@ -131,7 +131,7 @@ _06:15 — 영상 전체에서 가장 핵심적인 비교 그림. **BEFORE**(에
 | 단계별 산출물 | 사람이 손으로 쓴 문서 | 에이전트가 초안 생성 → 사람이 승인 |
 
 ![전통 SDLC vs AI 네이티브](./screenshots/06-0900-traditional-vs-ai-native-loop.jpg)
-_09:00 — "단계는 같다, 흐름이 다르다". 왼쪽 **TRADITIONAL** 은 6개 박스가 위에서 아래로 한 줄(= 한 바퀴가 릴리즈 한 번). 오른쪽 **AI-NATIVE** 는 같은 6개 박스가 **Claude 를 가운데 두고 원형 루프**로 배치된다. 가운데 박스에 "모든 페이지의 기점"이라 적혀 있다._
+_09:00 — "단계는 같다, 흐름이 다르다". 왼쪽 **TRADITIONAL · 한 줄로 흐른다** 는 6개 박스가 위에서 아래로 한 줄이고 하단에 "한 바퀴 = 릴리스 한 번" 배지가 붙는다. 오른쪽 **AI-NATIVE · 루프** 는 같은 6개 박스가 원형으로 배치되고, 가운데 박스가 **`Claude` — "코딩 에이전트가 가운데"** 다. 두 그림 사이에 "여섯 단계는 똑같다 →" 가 놓여 단계 자체는 바뀌지 않았음을 강조한다._
 
 ### 단계별 변화
 
@@ -166,7 +166,40 @@ _09:00 — "단계는 같다, 흐름이 다르다". 왼쪽 **TRADITIONAL** 은 6
    - 검증 예시: 최근 배포한 기능을 똑같이 구현시켰을 때 동일한 품질의 결과가 나오는가
 
 ![agent-evals CI](./screenshots/07-1415-agent-evals-ci.jpg)
-_14:15 — `.github/workflows/agent-evals.yml` 전문이 담긴 슬라이드. `on: pull_request: paths: ['CLAUDE.md', '.claude/**']` 로 **하네스 파일이 바뀐 PR에서만** 워크플로가 돈다. 오른쪽 주석 3개: "GitHub Actions 워크플로 하나 / 룰·스킬·훅이 바뀐 PR / evals\*.json = 미리 쌓아 둔 과제 20~50개"._
+_14:15 — `.github/workflows/agent-evals.yml` 전문이 담긴 슬라이드. 오른쪽 주석 3개: **FILE** "GitHub Actions 워크플로 하나 — 플레이북 예시 그대로. 에이전트 하네스가 바뀔 때 도는 잡" / **TRIGGER(3~6행)** "규칙·스킬·훅이 바뀐 PR — `CLAUDE.md`, `.claude/**` 가 바뀌면 실행. **매일 새벽 2시에도 한 번**" / **EVALS(17행)** "`evals/*.json` = 미리 쌓아 둔 과제 20~50개 — 과제 하나가 파일 하나. 프롬프트와 기대 결과"._
+
+화면의 YAML 을 그대로 옮기면 다음과 같다. 본 프로젝트에 그대로 참고할 수 있어 전문을 남긴다.
+
+```yaml
+name: Agent evals
+on:
+  pull_request:
+    paths: ['CLAUDE.md', '.claude/**']
+  schedule:
+    - cron: '0 2 * * *'
+jobs:
+  evals:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm install -g @anthropic-ai/claude-code
+      - name: Run eval suite
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          for eval in evals/*.json; do
+            claude -p "$(jq -r '.prompt' $eval)" \
+              --allowedTools "Read,Edit,Bash(make test)" \
+              --output-format json > result.json
+            ./evals/check.sh "$eval" result.json
+          done
+```
+
+설계상 눈여겨볼 점 세 가지다.
+
+- **트리거가 둘이다.** 하네스 파일이 바뀐 PR + 매일 새벽 2시 정기 실행. 후자는 하네스를 안 건드려도 **모델 쪽 변화로 품질이 흔들리는 것**을 잡기 위한 것이다.
+- **`--allowedTools` 로 권한을 좁힌다.** 평가 실행 시 `Read,Edit,Bash(make test)` 만 허용해, 에이전트가 평가를 통과하려고 엉뚱한 일을 하지 못하게 막는다.
+- **판정을 스크립트로 뺐다.** `./evals/check.sh` 가 과제 파일과 결과 JSON 을 받아 판정한다. 즉 **채점 자체는 LLM 이 아니라 결정론적 스크립트**다.
 
 #### Deploy (14:19)
 
@@ -199,7 +232,9 @@ _14:15 — `.github/workflows/agent-evals.yml` 전문이 담긴 슬라이드. `o
 | Maintain | 장애 회고 md | 에이전트 | 사람 |
 
 ![산출물 체인](./screenshots/08-1825-artifact-chain.jpg)
-_18:25 — "각 단계는 다음이 읽을 파일을 남긴다". 왼쪽부터 `intent.md`(왜 만드나) → `spec.md`(무엇을 어떻게) → `plan.md`(Claude Code 플랜 모드) → 코드 diff·테스트 → PR + 리뷰 기록 → 장애 회고. 화살표 위에 **"PO 승인 후 다음으로"** 가 붙고, 아래 두 줄로 **DRAFT(초안은 전부 에이전트)** / **APPROVE(승인은 사람)** 가 단계별로 표시된다. 전부 **ONE REPOSITORY** 안이다._
+_18:25 — "각 단계는 다음이 읽을 파일을 남긴다". 왼쪽부터 `intent.md`(왜 만드나) → `spec.md`(무엇을 어떻게) → `plan.md`(빌드 직전 · Claude Code 플랜 모드) → 코드 diff·테스트(증명이 붙는다) → PR + 리뷰 기록(계속 쌓인다) → 장애 회고(고친 기록도 파일로). intent→spec 화살표 위에만 **"PO 승인 후 다음으로"** 가 붙는다. 전부 **ONE REPOSITORY** 점선 안이다._
+
+> **눈여겨볼 비대칭**: 아래 두 줄을 보면 **DRAFT(초안은 전부 에이전트)** 배지는 6개 단계 **모두**에 붙지만, **APPROVE(승인은 사람)** 배지는 **세 곳뿐**이다 — `intent.md`(PO가 승인) · `spec.md`(PO가 검토·승인) · `PR + 리뷰 기록`(개발자 리뷰·머지). `plan.md`·코드 diff·장애 회고에는 별도 승인 배지가 없다. **사람의 개입을 모든 단계에 거는 게 아니라 세 지점으로 좁힌 것**이 이 설계의 요점이다.
 
 **핵심 원칙 (18:29)**: 에이전트로 단계 진행 속도를 압축하되, **판단이 필요한 결정은 전부 사람이 책임지는 구조**여야 한다.
 
@@ -253,7 +288,9 @@ feature 브랜치 PR → 코드 리뷰 → 머지
 ```
 
 ![전체 아키텍처](./screenshots/10-2850-full-architecture.jpg)
-_28:50 — "슬랙 태그 한 번에서 feature PR 머지까지" 전체 흐름도. `@claude 태그`(소스: 티켓·로그·아이디어) → `intent.md 초안` → **intent PR**(intent/[슬러그]/intent.md 하나만) → 머지 → **CI 잡**(에이전트가 spec 초안) → **spec PR** → 머지 → 개발자 알림(GitHub + Slack) → **개발자 Plan mode**(intent + spec → plan.md 작성). 가로선이 `MAIN` 브랜치이고, **머지 지점 두 곳이 곧 사람의 승인 지점 두 곳**임을 하단 범례가 표시한다._
+_28:50 — "슬랙 태그 한 번에서 feature PR 머지까지" 전체 흐름도. **Slack** `@claude 태그`(기획자 누구든 / 소스: 티켓·로그·아이디어) → **claude.ai** `intent.md 초안`(에이전트가 쓴다) → "레포에 커밋" → **GitHub PR** `intent PR`(`intent/<기능>/intent.md`) → **PO 머지 ✓** → **CI · 머지 트리거** `CI 잡`(회사 스킬 켜고 spec 생성) → `spec PR`(spec.md · **충돌은 사람이 푼다**) → **PO 머지 ✓** → `개발자 알림`(PO가 PR 코멘트에 멘션 · GitHub → Slack) → **DEVELOPER** `개발자 Plan mode`(intent + spec → plan.md 수락)._
+
+가로선은 `MAIN — 팀이 진실로 삼는 통합 브랜치 (develop을 쓰는 팀이면 develop)` 이고, 그 위에 **`PO 머지 ✓` 체크가 정확히 두 개** 찍혀 있다. 하단 배지 두 개가 설계 원칙을 못박는다 — **"초안 ≠ 승인 · 중요 결정은 사람이"**, **"개발자가 코드베이스·아키텍처 맥락으로 plan 확정"**.
 
 **"승인 = PR 머지"** 로 정의한 것이 이 설계의 요체다. 승인 절차를 별도 도구 없이 GitHub 안에서 끝내고, 승인 이력이 곧 Git 히스토리가 된다.
 
@@ -279,7 +316,9 @@ project-root/
 - 각 폴더 안에 `intent.md`, `spec.md`, `plan.md` **각 1개씩만** 둔다
 
 ![실제 프로젝트 intent 트리](./screenshots/11-3005-real-project-intent-tree.jpg)
-_30:05 — 발표자 실제 프로젝트(cutzal)의 에디터 화면. `intent/` 아래 `audio-stem-export/`, `byo-engine-connection/`, `ci-test-gate/`, `export-output-check/`, `export-output-selection/` 등 슬러그 폴더가 늘어서 있고, 각 폴더 안에 `intent.md`·`plan.md`·`spec.md` 3개가 들어 있다._
+_30:05 — 발표자 실제 프로젝트(cutzal)의 에디터 화면. `intent/` 아래 `audio-stem-export/`, `byo-engine-connection/`, `ci-test-gate/`, `export-output-check/`, `export-output-selection/`, `fps-sanitize/`, `hw-encoder-final/` 등 슬러그 폴더가 늘어서 있다._
+
+> **주의 — 폴더마다 3파일이 다 있는 것은 아니다.** 같은 화면에서 `audio-stem-export/` 는 `intent.md`·`plan.md`·`spec.md` 3개가 다 있지만, `export-output-check/` 는 `intent.md`+`spec.md` 2개, `ci-test-gate/` 는 `intent.md` 하나뿐이다. **파일은 단계가 진행되면서 하나씩 쌓인다.** 즉 "각 1개씩"은 **상한 규칙**(둘 이상 두지 마라)이지, 처음부터 3종 세트를 만들어두라는 뜻이 아니다._
 
 ![폴더당 하나씩 원칙](./screenshots/18-3340-one-folder-one-intent.jpg)
 _33:40 — "폴더당 하나씩. spec 이 둘이면 intent 가 둘". 각 파일 옆에 역할이 한 단어로 붙어 있다 — `intent.md` 왜 만드나 / `spec.md` 무엇을 어떻게 / `plan.md` 순서와 검증._
@@ -291,7 +330,9 @@ _33:40 — "폴더당 하나씩. spec 이 둘이면 intent 가 둘". 각 파일 
 발표자가 자기 프로젝트의 파일을 직접 열어 보여준 화면이다. 템플릿이 아니라 **실제로 굴러가는 문서**라는 점에서 참고 가치가 있다.
 
 ![intent.md 실제 내용](./screenshots/12-3030-intent-md-content.jpg)
-_30:30 — `intent.md`. 제목 아래에 **Issue 링크 · Status(구현 완료) · 생성일 · 커밋 해시**가 메타데이터로 붙어 있다. 본문은 `Problem` → `Proposed outcome`(내보내기 화면에서 만들 항목을 하나씩 체크) → `Affected users and systems`(사용자 / 시스템 구분) 순이다._
+_30:30 — `intent.md` 본문. `Proposed outcome` 은 "내보내기 화면에서 만들 항목을 하나씩 체크한다… 아무것도 안 고르면 시작할 수 없다"처럼 **관찰 가능한 결과**로 적혀 있고, `Affected users and systems` 는 **사용자**(소스별 파일을 다른 편집 프로그램으로 넘기는 사람)와 **시스템**(내보내기 다이얼로그, 렌더 요청 계약(IPC), 렌더 분기)으로 나뉜다._
+
+> 한 화면 앞(위 30:05 스크린샷)에서 이 파일의 머리말이 보인다 — `Issue: #52 · Status: 구현 완료`, 그리고 **"생성: 2026-09-05 — 소급 작성. 배포(`273d902`, 2026-08-30) 뒤에 기록했다"**. 즉 이 intent 는 개발 **전**이 아니라 배포 **후**에 소급 작성된 것이다. 발표자 본인도 기존 기능을 뒤늦게 intent 로 채워 넣고 있으며, 도입 초기에는 이런 소급 기록도 유효한 출발점임을 보여준다.
 
 ![spec.md 실제 내용](./screenshots/13-3105-spec-md-content.jpg)
 _31:05 — `spec.md`. "화면은 줄마다 파일명을 보여준다" 같은 **동작 규정**과 "지켜야 할 계약"(IPC 표면, 소스별 스템 의미) 섹션으로 구성된다. intent 의 "왜"가 여기서 "무엇을·어떤 계약으로"로 내려온다._
@@ -305,10 +346,14 @@ _33:15 — `plan.md`. 상단에 **대응하는 spec 파일 경로를 링크**로
 _31:35 — 실제 **intent PR**. 제목이 `intent: <의도 요약> (#68)` 형식이고, 본문에 "이슈 #68 의 intent 입니다. 머지가 승인입니다"라고 **승인 규약이 명시**되어 있다. 브랜치명은 `intent/ai-chat`._
 
 ![intent PR files changed](./screenshots/16-3150-intent-pr-files-changed.jpg)
-_31:50 — 같은 PR 의 **Files changed 탭**. 변경 파일이 `intent/ai-chat/intent.md` **하나뿐**이다. "intent.md 하나만 담은 PR" 원칙이 화면으로 확인되는 지점._
+_31:50 — 같은 PR 의 **Files changed 탭**. 변경 파일이 `intent/ai-chat/intent.md` **하나뿐**(+97줄)이다. "intent.md 하나만 담은 PR" 원칙이 화면으로 확인되는 지점._
+
+> diff 본문에서 이 프로젝트가 실제로 쓰는 머리말 형식이 드러난다 — `Issue: #68` 링크(원본 접수 창구), `생성: 2026-09-05 — 이슈 본문에서 생성. 이후 정본은 이 파일이다.`, 그리고 **`디자인: [CutZal AI 편집 옵션 (Claude Design)](…)` 링크에 "3턴, 배치×인터랙션 5안 … 2b로 수렴(3a→3c)"** 라는 탐색 이력을 적어두었다. **의도뿐 아니라 "어떤 대안을 검토해 무엇으로 수렴했는지"까지 남기는 것**이 리뷰어의 해석 비용을 줄이는 실제 장치다.
 
 ![spec PR](./screenshots/17-3235-spec-pr.jpg)
-_32:35 — 이어지는 **spec PR**. 제목 `spec: <설계 요약> (#40)`, 브랜치 `spec/byo-engine-connection`, 커밋 1개. 본문이 "#40 에 spec 입니다. 머지가 승인입니다 — 구현은 승인 후에 시작합니다"로 시작해, **승인 전에는 코드를 쓰지 않는다**는 규약을 문서 자체에 박아두고 있다._
+_32:35 — 이어지는 **spec PR**. 제목 `spec: BYO 판정 엔진 연결 계층 (#40)`, 브랜치 `spec/byo-engine-connection`, 커밋 1개, 변경 파일 1개(+113줄). 본문 첫 줄이 **"#40의 spec입니다. 머지가 승인입니다 — 구현은 승인 후에 시작합니다"** 로, **승인 전에는 코드를 쓰지 않는다**는 규약을 PR 본문에 박아두고 있다._
+
+> 본문에서 배울 점이 둘 더 있다. 첫째, spec 이 요구사항을 **검증 가능한 형태로** 옮긴다 — "약관 불변조건 14를 R1~R9 검증 가능한 요구사항으로 옮기고 각각에 증명 방법을 붙였습니다 (R1은 credential 경로 읽기가 코드에 없다는 것을 grep 테스트로)". 둘째, **"봐주셨으면 하는 곳"** 이라는 별도 섹션을 두고 "`## Open questions` 넷 중 둘은 제품 결정이라 [PO] 판단이 필요합니다"처럼 **리뷰어가 어디를 봐야 하는지 지목**한다. 승인을 요청하는 쪽이 승인자의 작업 범위를 좁혀주는 구조다._
 
 ---
 
@@ -397,4 +442,8 @@ _32:35 — 이어지는 **spec PR**. 제목 `spec: <설계 요약> (#40)`, 브�
 - 스크린샷: `screenshots/` 에 18장. 자막에서 화면을 지시하는 표현("지금 보이는 이 포맷", "이런 식으로", "보여 드리도록")이 나오는 지점을 먼저 추려낸 뒤, 해당 구간의 프레임을 확인해 **슬라이드 애니메이션이 완성된 시점**을 골라 720p 원본 해상도로 캡처했다. 파일명의 숫자는 `순번-MMSS-내용` 이다.
 - 영상 다운로드 경위: 설치된 yt-dlp(2026.06.09)는 JS 런타임 문제로 모든 클라이언트에서 HTTP 403 을 반환했다. `node`/`bun` 을 `--js-runtimes` 로 지정해도 android_vr 로 폴백해 실패했고, 최신 yt-dlp(2026.08.19)를 **임시 디렉터리에 격리 설치**(`pip install --target`, 사용자 환경 미변경)하니 visionos 클라이언트로 720p 스트림을 받을 수 있었다.
 - 자동 자막 특성상 고유명사 표기 오류가 있다 (Anthropic→"엔트로픽", PR→"피아/피하", CI→"C", GitHub→"기터브", Jira→"지라", 500 error→"500일러"). 본 문서에서는 문맥으로 복원해 표기했다.
-- 캡션 텍스트는 자막(음성)에서, 슬라이드 안의 문구는 스크린샷에서 각각 확인해 교차 검증했다. 다만 각 스크린샷 캡션의 세부 문구는 **480~560px 축소본으로 판독한 것**이므로, 정확한 원문이 필요하면 원본 이미지를 직접 열어 확인해야 한다.
+- 캡션 텍스트는 자막(음성)에서, 슬라이드 안의 문구는 스크린샷에서 각각 확인해 교차 검증했다. 초판 캡션은 축소본(480~560px)으로 판독했으나, 이후 **18장 전부를 720p 원본으로 다시 읽어 캡션을 교정**했다. 그 과정에서 바로잡은 것들이다.
+  - 09:00 루프 그림 가운데 박스 문구를 "모든 페이지의 기점"으로 잘못 읽었다 → 실제로는 **"코딩 에이전트가 가운데"**.
+  - "각 슬러그 폴더에 3파일이 들어 있다"고 적었으나, 실제 화면은 폴더마다 파일 수가 다르다 → **단계 진행에 따라 쌓인다**로 정정.
+  - `intent.md` 머리말(Issue·Status·소급 작성 기록)을 30:30 화면의 것으로 적었으나, 실제로는 **한 화면 앞(30:05)** 에 보이는 부분이었다.
+  - 18:25 산출물 체인에서 승인 배지가 단계별로 붙는 것처럼 적었으나, 실제로는 **세 곳뿐**이다.
