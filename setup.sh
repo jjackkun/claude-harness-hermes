@@ -95,21 +95,21 @@ RESET='\033[0m'
 echo -e "${BOLD}${CYAN}━━━ AI 개발 환경 프로젝트 설정 (${TARGET}) ━━━${RESET}"
 echo ""
 
-# ── ai-dev-setting 플러그인 자동 등록 (머신 전역, idempotent) ────────────────
+# ── claude-harness-hermes 플러그인 자동 등록 (머신 전역, idempotent) ────────────────
 # 머신 단위로 한 번만 필요. 이미 설치돼 있으면 no-op.
 # directory-type marketplace 라 source 경로를 직접 바라보므로 agents/*.md 수정은
 # 재설치 없이 Claude Code 재시작만으로 반영됨.
 if [[ "$TARGET" == "claude" || "$TARGET" == "both" ]] && command -v claude >/dev/null 2>&1; then
-  if ! claude plugin list 2>/dev/null | grep -q "ai-dev-setting@ai-dev-setting"; then
-    echo -e "${YELLOW}▸ ai-dev-setting 플러그인 등록 중...${RESET}"
+  if ! claude plugin list 2>/dev/null | grep -q "claude-harness-hermes@claude-harness-hermes"; then
+    echo -e "${YELLOW}▸ claude-harness-hermes 플러그인 등록 중...${RESET}"
     claude plugin marketplace add "$DEV_SETTING_DIR" >/dev/null 2>&1 \
       || echo -e "  ${YELLOW}⚠ marketplace 등록 실패 (이미 등록된 경우 무시 가능)${RESET}"
-    if claude plugin install ai-dev-setting@ai-dev-setting --scope user >/dev/null 2>&1; then
+    if claude plugin install claude-harness-hermes@claude-harness-hermes --scope user >/dev/null 2>&1; then
       echo -e "  ${GREEN}✔ 등록 완료${RESET} (Claude Code 재시작 후 에이전트 사용 가능)"
     else
       echo -e "  ${YELLOW}⚠ 자동 등록 실패 — 수동 실행 필요:${RESET}"
       echo -e "    claude plugin marketplace add $DEV_SETTING_DIR"
-      echo -e "    claude plugin install ai-dev-setting@ai-dev-setting --scope user"
+      echo -e "    claude plugin install claude-harness-hermes@claude-harness-hermes --scope user"
     fi
     echo ""
   fi

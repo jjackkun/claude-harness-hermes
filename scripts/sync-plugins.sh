@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# sync-plugins.sh — assets/agents/ -> plugins/ai-dev-setting/agents/ 동기화
+# sync-plugins.sh — assets/agents/ -> plugins/claude-harness-hermes/agents/ 동기화
 #
-# plugins/ai-dev-setting/agents/ 에 존재하는 동명 파일만 assets 최신본으로
+# plugins/claude-harness-hermes/agents/ 에 존재하는 동명 파일만 assets 최신본으로
 # 실파일 복사한다 (symlink 금지 — 플러그인 로더가 symlink를 읽지 못함).
 #
 # Usage:
@@ -12,7 +12,7 @@ set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ASSETS_DIR="$REPO_ROOT/assets/agents"
-PLUGIN_DIR="$REPO_ROOT/plugins/ai-dev-setting/agents"
+PLUGIN_DIR="$REPO_ROOT/plugins/claude-harness-hermes/agents"
 
 CHECK_MODE=0
 if [[ "${1:-}" == "--check" ]]; then

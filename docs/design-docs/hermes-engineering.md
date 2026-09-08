@@ -21,7 +21,7 @@
 - **하네스** = AI가 움직일 수 있는 안전한 트랙
 - **헤르메스** = 그 트랙 위를 달리며 가장 빠른 법을 기록하는 것
 
-`ai-dev-setting`에 이미 하네스가 완성되어 있으므로, 헤르메스는 그 위에 **경량 러닝 루프**를 올리는 방식으로 구현한다.
+`claude-harness-hermes`에 이미 하네스가 완성되어 있으므로, 헤르메스는 그 위에 **경량 러닝 루프**를 올리는 방식으로 구현한다.
 
 ---
 
@@ -144,12 +144,12 @@ pnpm-version-lock.md 발견
 
 ---
 
-## 6. ai-dev-setting과의 통합 구조
+## 6. claude-harness-hermes과의 통합 구조
 
 ### 추가될 파일
 
 ```
-ai-dev-setting/
+claude-harness-hermes/
 ├── lib/
 │   └── hermes_memory.sh            ← SQLite 읽기/쓰기 함수
 ├── presets/workflow/
@@ -200,12 +200,12 @@ ai-dev-setting/
 **① 프로젝트 로컬 진화**
 - 해당 프로젝트에만 해당하는 피드백
 - `[project]/.hermes/skills/` 에만 저장
-- `ai-dev-setting` 원본을 건드리지 않음
+- `claude-harness-hermes` 원본을 건드리지 않음
 - 자동으로 처리
 
-**② 공통 스킬 진화 (ai-dev-setting 반영)**
+**② 공통 스킬 진화 (claude-harness-hermes 반영)**
 - 모든 프로젝트에 적용되어야 할 변경
-- `ai-dev-setting/assets/skills/` 원본을 수정해야 함
+- `claude-harness-hermes/assets/skills/` 원본을 수정해야 함
 - `update-all.sh` 로 전체 프로젝트에 전파 가능
 - **반드시 사용자 승인 후 진행**
 
@@ -214,11 +214,11 @@ ai-dev-setting/
 ```
 프로젝트A에서 공통스킬 진화 감지
          ↓
-"이 변경을 ai-dev-setting 공통에 반영할까요?"
+"이 변경을 claude-harness-hermes 공통에 반영할까요?"
          ↓
 사용자: "응"
          ↓
-ai-dev-setting 브랜치 생성 + 스킬 파일 수정
+claude-harness-hermes 브랜치 생성 + 스킬 파일 수정
          ↓
 PR 생성 (사용자가 직접 머지)
          ↓
@@ -269,7 +269,7 @@ Claude Code는 기본적으로 세션이 끝나면 모든 것을 잊는다.
 ✅ 3층 분리: 스킬 기억에서 pnpm-version-lock.md 바로 나옴
 ```
 
-### 기존 ai-dev-setting과의 매핑
+### 기존 claude-harness-hermes과의 매핑
 
 | 기존 자산 | 3층 기억의 어디 | 방식 |
 |---|---|---|
@@ -318,7 +318,7 @@ Claude Code는 기본적으로 세션이 끝나면 모든 것을 잊는다.
 | 공통 스킬 변경 감지 | 공통 반영 여부 질문 |
 | 특이사항 없음 | 1층 기억에만 저장 후 종료 |
 
-### ai-dev-setting 진입점
+### claude-harness-hermes 진입점
 
 기존 Stop Hook을 **확장**하는 방식으로 구현. 새 Hook을 만들지 않는다.
 
@@ -387,7 +387,7 @@ SQLite FTS5 검색
 Claude가 해당 규칙을 인지한 채로 작업 시작
 ```
 
-### ai-dev-setting 진입점
+### claude-harness-hermes 진입점
 
 기존 `claude-userpromptsubmit-reminders.sh` Hook을 **확장**. 새 Hook을 만들지 않는다.
 

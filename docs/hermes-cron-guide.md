@@ -38,7 +38,7 @@ claude --version
 python3 --version
 
 # hermes DB 초기화 (프로젝트별 1회)
-python3 /path/to/ai-dev-setting/scripts/hermes-init.py \
+python3 /path/to/claude-harness-hermes/scripts/hermes-init.py \
   --both /path/to/your-project
 ```
 
@@ -59,7 +59,7 @@ crontab 은 백슬래시 멀티라인을 지원하지 않으므로,
 # ── 헤르메스 자율 에이전트 ──────────────────────────────────────
 # cron 은 PATH 가 제한적 — claude 가 설치된 디렉터리를 PATH 에 포함시킨다
 PATH=/usr/local/bin:/usr/bin:/bin
-HERMES_SCRIPTS=/path/to/ai-dev-setting/scripts
+HERMES_SCRIPTS=/path/to/claude-harness-hermes/scripts
 
 # 오전 9시 업무 시작 (평일)
 0 9 * * 1-5 $HERMES_SCRIPTS/hermes-cron-run.sh /path/to/your-project start proj-a,proj-b,proj-c
@@ -77,13 +77,13 @@ HERMES_SCRIPTS=/path/to/ai-dev-setting/scripts
 
 ```bash
 # 매니저 프롬프트 미리 보기 (실행 없이)
-python3 /path/to/ai-dev-setting/scripts/hermes-manager.py \
+python3 /path/to/claude-harness-hermes/scripts/hermes-manager.py \
   --db /path/to/project/.hermes/state.db \
   --action start \
   --projects myproject
 
 # 실제 실행 (래퍼가 nohup claude -p 로 매니저 에이전트 시작)
-/path/to/ai-dev-setting/scripts/hermes-cron-run.sh /path/to/project start myproject
+/path/to/claude-harness-hermes/scripts/hermes-cron-run.sh /path/to/project start myproject
 
 # 실행 로그 확인
 tail -f /path/to/project/.hermes/logs/cron-start-$(date +%Y%m%d).log
@@ -95,7 +95,7 @@ tail -f /path/to/project/.hermes/logs/cron-start-$(date +%Y%m%d).log
 
 ```bash
 DB=/path/to/project/.hermes/state.db
-SCRIPT=/path/to/ai-dev-setting/scripts/hermes-message.py
+SCRIPT=/path/to/claude-harness-hermes/scripts/hermes-message.py
 
 # manager 에게 온 미읽은 메시지 조회 (읽음 처리 없이)
 python3 $SCRIPT --db $DB recv --to manager --peek
@@ -151,12 +151,12 @@ STATUS:blocked TASK:<작업명>      NOTE:<블로커 이유>
 
 ```bash
 # 점심 체크인 프롬프트 미리 보기
-python3 /path/to/ai-dev-setting/scripts/hermes-manager.py \
+python3 /path/to/claude-harness-hermes/scripts/hermes-manager.py \
   --db /path/to/project/.hermes/state.db \
   --action check
 
 # 체크인 실행
-/path/to/ai-dev-setting/scripts/hermes-cron-run.sh /path/to/project check
+/path/to/claude-harness-hermes/scripts/hermes-cron-run.sh /path/to/project check
 ```
 
 ## 활성화 체크리스트

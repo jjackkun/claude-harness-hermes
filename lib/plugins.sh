@@ -14,7 +14,7 @@
 _plugin_manifest_path() {
   local claude_dir
   claude_dir="$(detect_claude_config_dir "$HOME")"
-  echo "$claude_dir/.ai-dev-setting/preset-plugins.tsv"
+  echo "$claude_dir/.claude-harness-hermes/preset-plugins.tsv"
 }
 
 # sync_preset_plugins <project_path> [dry_run]

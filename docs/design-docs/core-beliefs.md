@@ -183,7 +183,7 @@ prettier 위반은 `pnpm exec prettier --write` 로 자동 수정. `.prettierrc`
 
 ## R-lint — ESLint {#r-lint}
 
-ai-dev-setting 의 lint 룰 메시지에는 한국어 수정 지침이 박혀있음. 메시지 따라 수정. `eslint-disable` 단독 우회 금지.
+claude-harness-hermes 의 lint 룰 메시지에는 한국어 수정 지침이 박혀있음. 메시지 따라 수정. `eslint-disable` 단독 우회 금지.
 
 ## R-test — pytest {#r-test}
 

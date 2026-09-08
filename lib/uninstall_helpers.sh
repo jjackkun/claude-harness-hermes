@@ -234,7 +234,7 @@ uninstall_gc_workflows() {
 
 # ── Codex 설치물 제거 ─────────────────────────────────────────────────────────
 # .codex/ + AGENTS.md 관리 블록 + scripts/codex-hooks/ + codex 보조 스크립트 +
-# plugins/ai-dev-setting 번들 + .agents/plugins/marketplace.json + 레지스트리 항목
+# plugins/claude-harness-hermes 번들 + .agents/plugins/marketplace.json + 레지스트리 항목
 uninstall_codex() {
   local project_path="$1"
   local codex_begin="<!--===DS-CODEX:BEGIN===-->"   # lib/codex_md_gen.sh 마커
@@ -254,9 +254,9 @@ uninstall_codex() {
   fi
 
   # project-codex.sh 가 생성하는 로컬 플러그인 번들 + 마켓플레이스 등록
-  _rm_path dir "$project_path/plugins/ai-dev-setting" "plugins/ai-dev-setting/"
+  _rm_path dir "$project_path/plugins/claude-harness-hermes" "plugins/claude-harness-hermes/"
   local market="$project_path/.agents/plugins/marketplace.json"
-  if [[ -f "$market" ]] && grep -qF '"ai-dev-setting-local"' "$market"; then
+  if [[ -f "$market" ]] && grep -qF '"claude-harness-hermes-local"' "$market"; then
     _rm_path file "$market" ".agents/plugins/marketplace.json"
   fi
 

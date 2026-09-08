@@ -146,7 +146,7 @@ STATUS:blocked TASK:<작업명>      NOTE:<블로커 이유>
 ```cron
 # cron 은 PATH 가 제한적 — claude 설치 경로를 PATH 에 포함
 PATH=/usr/local/bin:/usr/bin:/bin
-HERMES_SCRIPTS=/path/to/ai-dev-setting/scripts
+HERMES_SCRIPTS=/path/to/claude-harness-hermes/scripts
 
 # 오전 9시 업무 시작 (평일)
 0 9 * * 1-5 $HERMES_SCRIPTS/hermes-cron-run.sh /path/to/project start proj-a,proj-b

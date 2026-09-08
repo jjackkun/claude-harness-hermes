@@ -37,7 +37,7 @@ rim-kanban 패턴: phase handoff 문서로 세션 간 컨텍스트를 인계한�
 ## 5. 다음 행동 (PDF 11쪽 "어려움을 신호로")
 
 - [ ] 새 룰 후보 → docs/design-docs/core-beliefs.md 의 Provisional 섹션에 기록
-- [ ] 새 hook 후보 → ai-dev-setting 으로 PR 승격 가능 여부 검토
+- [ ] 새 hook 후보 → claude-harness-hermes 으로 PR 승격 가능 여부 검토
 - [ ] 문서 갱신 필요: (어느 문서)
 - [ ] 회귀 테스트 추가 필요: (어느 모듈)
 

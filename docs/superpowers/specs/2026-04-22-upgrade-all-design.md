@@ -1,7 +1,7 @@
 # update-all 설계 문서
 
 > 작성일: 2026-04-22
-> 목적: ai-dev-setting이 설치된 프로젝트들을 한 번에 재설치/업그레이드하는 기능
+> 목적: claude-harness-hermes이 설치된 프로젝트들을 한 번에 재설치/업그레이드하는 기능
 
 ## 개요
 
@@ -12,7 +12,7 @@
 ## 파일 구조
 
 ```
-ai-dev-setting/
+claude-harness-hermes/
 ├── update-all.sh              # 신규: 업그레이드 진입점
 ├── setup.sh                    # 수정: --update-all 옵션 추가
 ├── project-claude.sh           # 수정: 실행 시 레지스트리 자동 등록

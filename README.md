@@ -127,7 +127,7 @@ claude-harness-hermes/               ← 이 디렉터리 (private git repo 권�
 │   ├── agents/<agent>.md
 │   ├── rules/<ruleset>/
 │   └── hooks/                        ← 하네스/헤르메스 hook 스크립트 원본 (실행 훅 + 공용 판정 모듈)
-├── plugins/ai-dev-setting/           ← 플러그인 번들 (agents 는 실파일 — symlink 금지)
+├── plugins/claude-harness-hermes/           ← 플러그인 번들 (agents 는 실파일 — symlink 금지)
 ├── lint-configs/                     ← 설치처에 배포하는 린트 설정 (harness-max-lines.config.js)
 ├── tests/                            ← 테스트 (러너: tests/run-all.sh)
 ├── docs/
@@ -265,7 +265,7 @@ Codex target은 프로젝트에 다음을 생성합니다:
 - `.codex/skills`, `.codex/agents`, `.codex/rules`
 - `.codex/hooks.json` — Codex hook metadata
 - `.agents/plugins/marketplace.json` — Codex repo-local marketplace entry
-- `plugins/ai-dev-setting/` — Codex plugin 형태의 project-local bundle
+- `plugins/claude-harness-hermes/` — Codex plugin 형태의 project-local bundle
 - `scripts/codex-hooks/` — Codex 전용 hook scripts
 - `scripts/codex-review.sh` — `codex review --uncommitted` 편의 wrapper
 - `AGENTS.md` — Codex용 프로젝트 지침 파일
@@ -303,7 +303,7 @@ Claude 전용 `CLAUDE.md`, `.claude/settings.json` / `.claude/settings.local.jso
 - **설치**: 프리셋 선택 시 `claude plugin install <id> --scope user` (idempotent)
 - **제거(참조추적)**: 선택을 해제하면, **다른 프로젝트도 더 이상 그 플러그인을 선택하지 않을 때만**
   `claude plugin uninstall` 로 전역에서 제거합니다. 어느 프로젝트가 어떤 플러그인을 요구하는지
-  `<claude_dir>/.ai-dev-setting/preset-plugins.tsv` 에 `플러그인ID\t프로젝트경로` 로 기록(refcount)합니다.
+  `<claude_dir>/.claude-harness-hermes/preset-plugins.tsv` 에 `플러그인ID\t프로젝트경로` 로 기록(refcount)합니다.
 - `setup.sh` 가 강제 설치하는 baseline official 플러그인(session-report, hookify 등)은
   이 manifest 에 등록되지 않으므로 절대 제거 대상이 아닙니다.
 - `--dry-run` 으로 설치/제거 계획(`would-install` / `would-remove`)을 미리 확인할 수 있습니다.

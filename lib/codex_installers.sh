@@ -38,17 +38,17 @@ install_codex_scripts() {
 
 install_codex_plugin_bundle() {
   local project_path="$1"
-  local plugin_dir="$project_path/plugins/ai-dev-setting"
+  local plugin_dir="$project_path/plugins/claude-harness-hermes"
   mkdir -p "$plugin_dir/.codex-plugin" "$plugin_dir/skills" "$plugin_dir/agents" "$plugin_dir/rules"
 
   cat > "$plugin_dir/.codex-plugin/plugin.json" <<'EOF'
 {
-  "name": "ai-dev-setting",
+  "name": "claude-harness-hermes",
   "version": "0.1.0",
   "description": "Project-local harness engineering assets for Codex.",
   "author": {
     "name": "jjackkun",
-    "email": "local@ai-dev-setting"
+    "email": "local@claude-harness-hermes"
   },
   "keywords": ["harness", "codex", "development"],
   "skills": "./skills/",
@@ -63,7 +63,7 @@ install_codex_plugin_bundle() {
 }
 EOF
 
-  log_info "  plugin  → plugins/ai-dev-setting"
+  log_info "  plugin  → plugins/claude-harness-hermes"
 }
 
 install_codex_marketplace() {
@@ -74,16 +74,16 @@ install_codex_marketplace() {
 
   cat > "$market_file" <<'EOF'
 {
-  "name": "ai-dev-setting-local",
+  "name": "claude-harness-hermes-local",
   "interface": {
     "displayName": "AI Dev Setting Local"
   },
   "plugins": [
     {
-      "name": "ai-dev-setting",
+      "name": "claude-harness-hermes",
       "source": {
         "source": "local",
-        "path": "./plugins/ai-dev-setting"
+        "path": "./plugins/claude-harness-hermes"
       },
       "policy": {
         "installation": "INSTALLED_BY_DEFAULT",
