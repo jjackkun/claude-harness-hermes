@@ -560,6 +560,8 @@ if (( PLAN_STATE_OK )) && [[ -n "$WORK_FILES" && -d "$ACTIVE_DIR" ]]; then
 [R-plan-missing] 코드 수정 있으나 active/ 에 계획 없음.
   → 단순 버그(1~2파일)면 무시. 다중 파일·설계 결정이면 docs/exec-plans/active/YYYY-MM-DD-<slug>.md 작성.
   근거: docs/design-docs/core-beliefs.md#r-plan-missing")
+    gate_add R-plan-missing warn precommit "" "active/ 에 계획 없음"
+    gate_add R-plan-stale pass precommit "" "판정 대상 아님 (계획 0건)"
   elif [[ -z "$STAGED_PLANS" ]]; then
     # 일부라도 스테이징돼 있으면 통과시킨다 — 어느 계획에 속한 커밋인지 훅은 알 수 없고,
     # 경고를 남발하면 되살린 경고 채널이 다시 무시된다.
@@ -569,6 +571,11 @@ if (( PLAN_STATE_OK )) && [[ -n "$WORK_FILES" && -d "$ACTIVE_DIR" ]]; then
   → 진행분을 계획서에 반영하십시오 (§2 체크박스, §6 의사결정 로그, §7 발견).
      신규 계획서라면 git add 가 필요합니다.
   근거: docs/design-docs/core-beliefs.md#r-plan-stale")
+    gate_add R-plan-missing pass precommit "" "계획 있음"
+    gate_add R-plan-stale warn precommit "" "계획서가 스테이징되지 않음"
+  else
+    gate_add R-plan-missing pass precommit "" "계획 있음"
+    gate_add R-plan-stale pass precommit "" "계획서가 함께 스테이징됨"
   fi
 fi
 
