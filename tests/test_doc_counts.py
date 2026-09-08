@@ -16,14 +16,19 @@ R-iface-waiver: 공개 심볼 8개는 전부 pytest 수집 대상 테스트 함�
 틀리면 문서 수치가 조용히 틀리고, 그 수치를 강제하는 게이트까지 함께 틀린다.
 """
 
-import sys
+import importlib.util
 from pathlib import Path
 
 import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "assets" / "hooks"))
-
-import doc_counts  # noqa: E402
+# 경로를 고정해 읽는다. `sys.path.insert` + `import doc_counts` 로 하면 모듈 이름으로
+# 캐시되므로, 같은 이름의 사본(scripts/hooks/doc_counts.py)을 대상으로 하는 시험이
+# 나중에 추가됐을 때 먼저 캐시된 쪽이 조용히 재사용돼 **두 사본의 드리프트를 숨긴다.**
+# gate_report.py 가 이미 쓰는 방식이다.
+_SRC = Path(__file__).resolve().parent.parent / "assets" / "hooks" / "doc_counts.py"
+_spec = importlib.util.spec_from_file_location("_doc_counts_under_test", _SRC)
+doc_counts = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(doc_counts)
 
 
 def test_여러_줄_배열을_읽는다():
@@ -71,3 +76,17 @@ def test_render_가_마커_본문을_만든다():
     body = doc_counts.render()
     assert "실행 훅" in body and "게이트" in body
     assert doc_counts.BEGIN not in body, "본문에 마커가 섞이면 갱신이 중첩된다"
+
+
+def test_배포_사본이_원본과_같다():
+    """assets/hooks 와 scripts/hooks 의 사본이 갈라지면 설치본이 다른 코드를 쓴다.
+
+    경로를 고정해 읽는 것만으로는 드리프트를 *막지* 못하고 숨기지만 않을 뿐이다.
+    갈라졌는지 자체를 여기서 단언한다.
+    """
+    copy = Path(__file__).resolve().parent.parent / "scripts" / "hooks" / "doc_counts.py"
+    if not copy.is_file():
+        pytest.skip("scripts/hooks 사본이 없다 — 설치 전 상태")
+    assert copy.read_text(encoding="utf-8") == _SRC.read_text(encoding="utf-8"), (
+        "assets/hooks 와 scripts/hooks 의 doc_counts.py 가 다르다 — 재설치로 동기화할 것"
+    )

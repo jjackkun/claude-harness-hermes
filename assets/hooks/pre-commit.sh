@@ -561,7 +561,10 @@ if (( PLAN_STATE_OK )) && [[ -n "$WORK_FILES" && -d "$ACTIVE_DIR" ]]; then
   → 단순 버그(1~2파일)면 무시. 다중 파일·설계 결정이면 docs/exec-plans/active/YYYY-MM-DD-<slug>.md 작성.
   근거: docs/design-docs/core-beliefs.md#r-plan-missing")
     gate_add R-plan-missing warn precommit "" "active/ 에 계획 없음"
-    gate_add R-plan-stale pass precommit "" "판정 대상 아님 (계획 0건)"
+    # 계획이 0건이면 R-plan-stale 은 평가된 적이 없다. pass 로 적으면 분모(기회)가
+    # 허위로 늘어 발화율이 실제보다 낮아진다 — gate_report.py 의 _row() 가
+    # "기회에서 skipped 는 뺀다" 로 정의하고, R-plan 도 같은 상황에 skipped 를 쓴다.
+    gate_add R-plan-stale skipped precommit "" "판정 대상 아님 (계획 0건)"
   elif [[ -z "$STAGED_PLANS" ]]; then
     # 일부라도 스테이징돼 있으면 통과시킨다 — 어느 계획에 속한 커밋인지 훅은 알 수 없고,
     # 경고를 남발하면 되살린 경고 채널이 다시 무시된다.

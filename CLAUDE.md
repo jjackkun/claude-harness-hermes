@@ -55,29 +55,28 @@ PDF 4~5쪽: "AGENTS.md 를 백과사전이 아닌 *목차* 로 취급한다."
 이 프로젝트는 claude-harness-hermes 의 `harness` 프리셋으로 강제 장치가 깔려 있다.
 훅 실체는 `scripts/hooks/`, 커밋 게이트는 `.git/hooks/pre-commit`.
 
-**세션 중 (훅 12종)**: 매 턴 규율 리마인더 · 커밋 전 리뷰 검토 리마인드 + `--no-verify` 탐지 ·
-잘못된 에이전트 dispatch 차단 · **R-iface** 새 파일 공개 심볼 8 이상 **차단**(쓰이기 전) ·
-**R-declare** 새 코드 파일이 계획서 §4 에 선언됐는지 경고 · 편집 후 size 조기 경고(400/500)
-+ 인터페이스 폭 증가 경고 · 편집을 리뷰 빚으로 적립 · dead-file 편집 경고 · **R-pipe**
-리뷰어 dispatch 를 리뷰 빚 청산으로 기록 · **R-mut** 주 1회 변이 점검(백그라운드, 결과는
-다음 세션) · 주간 문서 편차 점검 · 권한 프롬프트 피로도 감지
+<!--===DS:COUNTS:BEGIN===-->
+- 세션 중 실행 훅 **12종** + 훅이 공유하는 판정 모듈 **10개**
+- git pre-commit 게이트 **16종** — 차단 10 / 경고 6
+- 스킬 **5종** · 에이전트 **11종** · 테스트 **44개**
+<!--===DS:COUNTS:END===-->
 
-**커밋 시 (게이트 13종)**
+**세션 중**: 매 턴 규율 리마인더 · 커밋 전 리뷰 리마인드 + `--no-verify` 탐지 · 에이전트
+dispatch 차단 · **R-iface** 새 파일 공개 심볼 8 이상 **차단**(쓰이기 전) · **R-declare** 새 코드
+파일이 계획서 §4 에 선언됐는지 경고 · size 조기 경고(400/500) + 인터페이스 폭 증가 경고 ·
+편집을 리뷰 빚으로 적립 · dead-file 경고 · **R-pipe** 리뷰어 dispatch 를 빚 청산으로 기록 ·
+**R-mut** 주 1회 변이 점검(백그라운드) · 주간 문서 편차 점검 · 권한 프롬프트 피로도 감지
 
-- 차단 9: R-size · R-fmt · R-lint · R-test · R-cx(임계 12, `.cxbaseline` 라쳇) · R-dep(`.deprc`) · R-struct · R-secret · R-plan
-- 경고 4: R-cov(테스트가 한 줄도 실행 안 하는 파일 수정) · R-pipe(리뷰 빚) · R-retro(회고 없이 완료) · R-acc(§2 목표 미검증)
+**커밋 시 차단**: R-size · R-fmt · R-lint · R-test · R-cx(임계 12, `.cxbaseline` 라쳇) · R-dep(`.deprc`) · R-struct · R-secret · R-plan
+**커밋 시 경고**: R-cov(테스트가 한 줄도 실행 안 하는 파일) · R-pipe(리뷰 빚) · R-retro(회고 없이 완료) · R-acc(§2 목표 미검증) · R-plan-missing · R-plan-stale
 
-**관측**: 모든 게이트 판정이 `.harness/gate-events.jsonl` 에 남는다 — 발화율은
-`python3 scripts/hooks/gate_report.py`. Provisional 룰의 승격·강등 근거다.
+**관측**: 모든 판정이 `.harness/gate-events.jsonl` 에 남는다 — 발화율 `python3 scripts/hooks/gate_report.py`.
 
-**추론 샌드위치**: 비자명한 작업은 계획 → 구현 → 검증. 깊은 리뷰는 필요할 때만 승격.
+**추론 샌드위치**: 비자명한 작업은 계획 → 구현 → 검증. 위반 발견 시 즉시 중단·보고, `--no-verify` 우회 금지.
 
 **프로젝트 고유 불변 원칙(R1~Rn)은 `docs/design-docs/core-beliefs.md` 에 직접 정의한다.**
-PDF 11쪽 인용: "이러한 동작은 이 리포지터리의 특정 구조와 툴링에 따라 크게 달라지며,
-유사한 투자 없이 일반화할 수 있다고 가정해서는 안 된다."
-
-위반 발견 시: 즉시 중단·보고. `--no-verify` 우회 금지.
-규율이 잘못이라고 판단되면 그 *근거*를 `docs/audits/` 에 기록한 뒤 규율을 고친다.
+PDF 11쪽: "이 리포지터리의 특정 구조와 툴링에 따라 크게 달라지며, 유사한 투자 없이
+일반화할 수 있다고 가정해서는 안 된다." 규율이 틀렸다면 근거를 `docs/audits/` 에 남기고 고친다.
 
 ## 작업 기록 시스템 (PDF 5~6쪽)
 
