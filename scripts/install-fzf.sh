@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Install a recent fzf binary into ai-dev-setting/bin/fzf.
+# Install a recent fzf binary into claude-harness-hermes/bin/fzf.
 # setup.sh requires fzf >= 0.48 (for `start` event and `pos(N)+select` chaining).
 
 set -euo pipefail

@@ -25,8 +25,8 @@ Two pillars:
 Assets are shared as Git-versioned presets; a single `git clone` restores your whole environment on a new machine.
 
 ```bash
-git clone https://github.com/jjackkun/claude-harness-hermes ~/PROJECT/ai-dev-setting
-~/PROJECT/ai-dev-setting/setup.sh
+git clone https://github.com/jjackkun/claude-harness-hermes ~/PROJECT/claude-harness-hermes
+~/PROJECT/claude-harness-hermes/setup.sh
 ```
 
 > **Note:** Hermes' hook-based automation depends on the `claude` CLI and is **Claude Code only** (Codex support is currently frozen — see below).
@@ -60,7 +60,7 @@ Claude Code / Codex 의 스킬·에이전트·룰·훅·프로젝트 지침 파�
 ## 아키텍처
 
 ```
-ai-dev-setting/                       ← 이 디렉터리 (private git repo 권장)
+claude-harness-hermes/               ← 이 디렉터리 (private git repo 권장)
 ├── setup.sh                          ← 대화형 설치 UI (fzf, 카테고리별 스텝 선택)
 ├── setup-codex.sh                    ← Codex 전용 대화형 설치 wrapper
 ├── update-all.sh                     ← 등록된 프로젝트 전체 일괄 업데이트 + 전역 도구 체크
@@ -146,10 +146,10 @@ ai-dev-setting/                       ← 이 디렉터리 (private git repo 권
 
 ```bash
 # 1) 리포지토리 클론
-git clone <repo-url> ~/PROJECT/ai-dev-setting
+git clone <repo-url> ~/PROJECT/claude-harness-hermes
 
 # 2) 대화형 UI로 프로젝트 설정
-~/PROJECT/ai-dev-setting/setup.sh
+~/PROJECT/claude-harness-hermes/setup.sh
 ```
 
 `setup.sh` 를 실행하면:
@@ -175,14 +175,14 @@ git clone <repo-url> ~/PROJECT/ai-dev-setting
 
 ## 전체 프로젝트 일괄 업데이트
 
-ai-dev-setting 이 업데이트된 후 등록된 모든 프로젝트에 일괄 재적용:
+claude-harness-hermes 이 업데이트된 후 등록된 모든 프로젝트에 일괄 재적용:
 
 ```bash
 # 직접 실행
-~/PROJECT/ai-dev-setting/update-all.sh
+~/PROJECT/claude-harness-hermes/update-all.sh
 
 # 또는 setup.sh 옵션으로
-~/PROJECT/ai-dev-setting/setup.sh --update-all
+~/PROJECT/claude-harness-hermes/setup.sh --update-all
 ```
 
 `project-claude.sh` 를 실행할 때마다 해당 프로젝트가 머신 로컬 레지스트리(`.installed-projects`)에 자동 등록됩니다. `update-all` 은 이 목록을 읽어 각 프로젝트에 `project-claude.sh` 를 재실행합니다.
@@ -514,7 +514,7 @@ tail -f [project]/.hermes/hooks.log
 
 **자가 진화:**
 - 사용자 피드백("이건 X 말고 Y로")을 감지하면 해당 스킬을 자동 수정 + 버전 bump
-- 로컬 스킬은 자동 진화, ai-dev-setting 공통 스킬 변경은 사용자 승인 후 PR
+- 로컬 스킬은 자동 진화, claude-harness-hermes 공통 스킬 변경은 사용자 승인 후 PR
 
 **자율 에이전트 (선택):**
 - cron + `claude --bg` 조합으로 매니저 에이전트를 주기적으로 실행 가능
@@ -542,7 +542,7 @@ python3 scripts/hermes-cleanup.py --db .hermes/state.db --apply
 
 ### 자산은 심볼릭 링크 (Linux) / 복사 (Windows)
 Linux/WSL2 에서는 `assets/` 자산을 **심볼릭 링크로** 프로젝트의 `.claude/` 에 연결합니다.
-`ai-dev-setting` 리포지토리에서 자산을 수정하고 `git pull` 하면, **이 자산을 사용하는 모든 프로젝트가 자동으로 최신 내용을 받습니다.**
+`claude-harness-hermes` 리포지토리에서 자산을 수정하고 `git pull` 하면, **이 자산을 사용하는 모든 프로젝트가 자동으로 최신 내용을 받습니다.**
 
 Windows NTFS 경로(`/mnt/c/...`)의 경우 NTFS 심볼릭 링크 제한으로 **복사** 방식을 사용합니다.
 이 경우 자산 수정 후 `update-all.sh` 를 다시 실행해야 반영됩니다.
@@ -598,11 +598,11 @@ Windows NTFS 경로(`/mnt/c/...`)의 경우 NTFS 심볼릭 링크 제한으로 *
 
 ```bash
 # 1) 리포 클론
-git clone <repo-url> ~/PROJECT/ai-dev-setting
+git clone <repo-url> ~/PROJECT/claude-harness-hermes
 
 # 2) 각 프로젝트 셋업 (대화형) — 플러그인 자동 설치 포함
 cd ~/PROJECT/my-project
-~/PROJECT/ai-dev-setting/setup.sh
+~/PROJECT/claude-harness-hermes/setup.sh
 ```
 
 두 명령으로 이전 기기와 **완전히 동일한 환경** 이 복원됩니다.

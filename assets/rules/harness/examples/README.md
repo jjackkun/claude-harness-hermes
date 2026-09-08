@@ -58,6 +58,6 @@
 
 ## 원칙 재확인
 
-> 강제는 도메인 지식이다. ai-dev-setting 의 `harness` preset 은 *강제 장치*(hook, lint,
+> 강제는 도메인 지식이다. claude-harness-hermes 의 `harness` preset 은 *강제 장치*(hook, lint,
 > 테스트 러너)만 제공하고 *무엇을 강제할지*는 각 프로젝트가 결정한다. 이 예시는 그
 > "무엇을"을 만들 때 참고하는 샘플 갤러리일 뿐이다.

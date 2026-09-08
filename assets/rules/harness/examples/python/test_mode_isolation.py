@@ -1,6 +1,6 @@
 """[예시] 디렉토리 상호 import 금지 — AST 기반 경계 검사.
 
-⚠️ 이 파일은 ai-dev-setting 의 *예시 갤러리* 에 있다.
+⚠️ 이 파일은 claude-harness-hermes 의 *예시 갤러리* 에 있다.
    rim-kanban 의 backend/tests/test_r1_boundary.py 에서 발췌.
    자기 프로젝트로 복사할 때 치환해야 할 것:
      - EXECUTION_DIR  → 자기 프로젝트의 "격리할 루트 디렉토리"

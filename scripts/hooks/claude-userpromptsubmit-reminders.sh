@@ -8,7 +8,7 @@
 #       매 턴 에이전트 컨텍스트에 들어간다.
 #
 # 등록: .claude/settings.json 의 hooks.UserPromptSubmit 항목.
-# 본 파일은 ai-dev-setting 의 setup.sh 가 프로젝트 scripts/hooks/ 로 복사한다.
+# 본 파일은 claude-harness-hermes 의 setup.sh 가 프로젝트 scripts/hooks/ 로 복사한다.
 
 # CWD 가드 — Claude Code 가 주입하는 $CLAUDE_PROJECT_DIR 로 이동 (없으면 스크립트 위치 기반).
 cd "${CLAUDE_PROJECT_DIR:-$(cd "$(dirname "$0")/../.." 2>/dev/null && pwd)}" 2>/dev/null || true

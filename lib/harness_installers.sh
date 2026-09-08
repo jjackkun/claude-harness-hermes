@@ -601,7 +601,7 @@ install_harness_gitignore() {
 
   local block
   block="$begin"$'\n'
-  block+="# Auto-managed by ai-dev-setting. Do not edit between markers."$'\n'
+  block+="# Auto-managed by claude-harness-hermes. Do not edit between markers."$'\n'
   local e
   for e in "${entries[@]}"; do
     block+="$e"$'\n'

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# uninstall.sh — ai-dev-setting 프로젝트 언인스톨
+# uninstall.sh — claude-harness-hermes 프로젝트 언인스톨
 #
 # Usage:
 #   bash uninstall.sh                    # fzf 멀티선택
@@ -216,7 +216,7 @@ do_uninstall() {
 }
 
 # ── 실행 ──────────────────────────────────────────────────────────────────────
-echo -e "${BOLD}${CYAN}━━━ ai-dev-setting 언인스톨$([ $DRY_RUN -eq 1 ] && echo " (dry-run)") ━━━${RESET}"
+echo -e "${BOLD}${CYAN}━━━ claude-harness-hermes 언인스톨$([ $DRY_RUN -eq 1 ] && echo " (dry-run)") ━━━${RESET}"
 echo ""
 
 # 각 프로젝트 미리보기

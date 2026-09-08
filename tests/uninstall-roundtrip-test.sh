@@ -88,7 +88,7 @@ assert "presets.lock 제거" "0" "$(exists "$PROJ/.claude/presets.lock")"
 assert "scripts/hooks/ 제거" "0" "$(exists "$PROJ/scripts/hooks")"
 assert ".git/hooks/pre-commit 제거" "0" "$(exists "$PROJ/.git/hooks/pre-commit")"
 
-# .claude/{skills,agents,rules} 에 ai-dev-setting assets 를 가리키는 symlink 잔재 0
+# .claude/{skills,agents,rules} 에 claude-harness-hermes assets 를 가리키는 symlink 잔재 0
 LINK_LEFT=0
 for sub in skills agents rules; do
   dir="$PROJ/.claude/$sub"

@@ -8,7 +8,7 @@
 #   hermes-cron-run.sh <project-dir> <start|check|end> [projects-csv]
 #
 # 예시 (crontab):
-#   0 9 * * 1-5 /path/to/ai-dev-setting/scripts/hermes-cron-run.sh /path/to/project start proj-a,proj-b
+#   0 9 * * 1-5 /path/to/claude-harness-hermes/scripts/hermes-cron-run.sh /path/to/project start proj-a,proj-b
 
 set -uo pipefail
 

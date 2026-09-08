@@ -1,6 +1,6 @@
 """[예시] 디렉토리 경계 강제 — pytest.mark.parametrize 다층 방어 패턴.
 
-⚠️ 이 파일은 ai-dev-setting 의 *예시 갤러리* 에 있다.
+⚠️ 이 파일은 claude-harness-hermes 의 *예시 갤러리* 에 있다.
    rim-kanban 의 backend/tests/test_module_boundaries.py 에서 발췌.
 
 test_mode_isolation.py 와 *같은 R1을 다른 각도로* 강제한다. 둘 다 있는 이유:

@@ -1,6 +1,6 @@
 """[예시] 특정 패키지 import·설치·가용성 3중 차단.
 
-⚠️ 이 파일은 ai-dev-setting 의 *예시 갤러리* 에 있다.
+⚠️ 이 파일은 claude-harness-hermes 의 *예시 갤러리* 에 있다.
    rim-kanban 의 backend/tests/test_llm_path.py 에서 발췌 (R3: anthropic SDK 금지).
 
 패턴의 핵심 — "왜 3중인가":

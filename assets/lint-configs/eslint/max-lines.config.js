@@ -1,4 +1,4 @@
-// ai-dev-setting/assets/lint-configs/eslint/max-lines.config.js
+// claude-harness-hermes/assets/lint-configs/eslint/max-lines.config.js
 //
 // PDF 9쪽 인용:
 //   "맞춤형 린터를 사용하여 구조화된 로깅, 스키마 및 유형의 명명 규칙,

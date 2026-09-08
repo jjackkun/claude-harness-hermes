@@ -1,9 +1,9 @@
 ---
-name: ai-dev-setting-install
-description: Use when modifying assets (rules, skills, agents, hooks) in ai-dev-setting and deciding whether changes need reinstallation across projects, or when running setup/update-all commands.
+name: claude-harness-hermes-install
+description: Use when modifying assets (rules, skills, agents, hooks) in claude-harness-hermes and deciding whether changes need reinstallation across projects, or when running setup/update-all commands.
 ---
 
-# ai-dev-setting 설치 메커니즘
+# claude-harness-hermes 설치 메커니즘
 
 ## 핵심 원칙
 
@@ -53,7 +53,7 @@ bash setup.sh --update-all --target both
 ```bash
 # symlink 연결 확인
 ls -la /path/to/project/.claude/rules/common
-# → lrwxrwxrwx ... -> /home/.../ai-dev-setting/assets/rules/common
+# → lrwxrwxrwx ... -> /home/.../claude-harness-hermes/assets/rules/common
 ```
 
 ## 언제 update-all이 필요한가

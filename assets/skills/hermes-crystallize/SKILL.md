@@ -51,4 +51,4 @@ description: Crystallize repeated conversation patterns into reusable skill file
 ## 로컬 vs 공통 진화
 
 - **로컬 스킬** (`[project]/.hermes/skills/`): 자동 생성
-- **공통 스킬** (`ai-dev-setting/assets/skills/`): 사용자 승인 후 PR 생성
+- **공통 스킬** (`claude-harness-hermes/assets/skills/`): 사용자 승인 후 PR 생성

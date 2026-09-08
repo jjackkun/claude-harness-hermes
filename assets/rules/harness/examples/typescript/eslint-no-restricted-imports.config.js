@@ -1,6 +1,6 @@
 // [예시] ESLint no-restricted-imports — 디렉토리 경계 강제 (R1 패턴).
 //
-// ⚠️ 이 파일은 ai-dev-setting 의 *예시 갤러리* 에 있다.
+// ⚠️ 이 파일은 claude-harness-hermes 의 *예시 갤러리* 에 있다.
 //    rim-kanban 의 eslint.config.js 에서 4개 블록 발췌.
 //
 // 왜 pytest 예시(test_mode_isolation.py)와 *중복*으로 이것도 필요한가:

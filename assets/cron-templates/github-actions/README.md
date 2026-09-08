@@ -8,7 +8,7 @@
 
 ## 이것은 무엇인가
 
-ai-dev-setting harness 의 **4차원 방어**. 1차(코드 강제 린터), 2차(pre-commit
+claude-harness-hermes harness 의 **4차원 방어**. 1차(코드 강제 린터), 2차(pre-commit
 게이트), 3차(UserPromptSubmit 리마인더) 위에 올라가는 *정기 정리 작업*.
 
 세 개의 스케줄된 GitHub Actions 워크플로 템플릿:

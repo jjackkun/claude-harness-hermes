@@ -147,7 +147,7 @@ PYEOF
 }
 
 # ── .claude/{skills,agents,rules} 하네스 symlink 정리 ────────────────────────
-# ai-dev-setting/assets 를 가리키는 symlink 만 제거. 사용자 실파일/타 symlink 보존.
+# claude-harness-hermes/assets 를 가리키는 symlink 만 제거. 사용자 실파일/타 symlink 보존.
 uninstall_asset_symlinks() {
   local project_path="$1"
   local assets_dir="$DEV_SETTING_DIR/assets"

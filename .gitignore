@@ -35,7 +35,7 @@ temp/
 docs/superpowers/plans/
 
 # >>> harness-agent-preset >>>
-# Auto-managed by ai-dev-setting. Do not edit between markers.
+# Auto-managed by claude-harness-hermes. Do not edit between markers.
 .claude/settings.local.json
 .claude/worktrees/
 .claude/.review-dirty

@@ -4,7 +4,7 @@
 # .claude/ 아래로 심볼릭. 이미 사라진 preset 의 잔존 심볼릭 정리 포함.
 
 # _cleanup_stale_symlinks <dir> <ext> <current_names...>
-# ai-dev-setting/assets 를 가리키는 심볼릭 중 현재 preset에 없는 것을 제거.
+# claude-harness-hermes/assets 를 가리키는 심볼릭 중 현재 preset에 없는 것을 제거.
 # Windows 경로(NTFS)에는 WSL symlink 가 없으므로 early-return.
 _cleanup_stale_symlinks() {
   local dir="$1" ext="$2"
