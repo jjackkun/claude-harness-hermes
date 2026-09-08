@@ -122,6 +122,17 @@ elif ! command -v python3 >/dev/null 2>&1; then
   WARNINGS+=("
 [R-plan] 계획 축 검사 3개를 건너뜀 — python3 없음 (인터프리터 설치 필요)")
 fi
+# 모듈이 없으면 계획 축 4종이 통째로 무기록이 된다 — 판정을 못 한 것이지 통과가 아니다.
+# "발화 0건" 이 "위반 없음" 으로 읽히면 룰의 승격·강등 판단이 뒤집힌다.
+# 루프로 쓰지 않는다. `gate_add "$_r"` 는 정적 검사(tests/gate-declaration-coverage-test.sh)
+# 와 사람 눈 모두에 "R-plan 이 계장돼 있다" 로 보이지 않는다 — 계장 누락을 잡는 장치가
+# 계장을 못 보면 그 장치가 무의미해진다. 네 줄을 편다.
+if (( ! PLAN_STATE_OK )); then
+  gate_add R-plan         skipped precommit "" "plan_state.py 또는 python3 없음"
+  gate_add R-plan-missing skipped precommit "" "plan_state.py 또는 python3 없음"
+  gate_add R-plan-stale   skipped precommit "" "plan_state.py 또는 python3 없음"
+  gate_add R-acc          skipped precommit "" "plan_state.py 또는 python3 없음"
+fi
 
 # 1. R-size
 # GATE: R-size block
@@ -151,8 +162,11 @@ fi
 
 # 2. R-fmt — prettier --check
 # GATE: R-fmt block
-if [[ -n "$PRETTIER_FILES" ]] && command -v pnpm >/dev/null 2>&1 \
-    && pnpm exec prettier --version >/dev/null 2>&1; then
+if [[ -n "$PRETTIER_FILES" ]]; then
+ if ! command -v pnpm >/dev/null 2>&1 || ! pnpm exec prettier --version >/dev/null 2>&1; then
+  # 도구가 없어서 안 걸린 것은 통과가 아니다. pass 로 세면 발화율이 거짓으로 낮아진다.
+  gate_add R-fmt skipped precommit "" "prettier 없음"
+ else
   # ANSI 색상 코드를 벗겨 저장한다. prettier 는 파이프에서도 색을 넣는 경우가 있어
   # `^\[warn\]` 매칭이 빗나가고, 그러면 "위반 파일: (추출 실패)" 만 남아 **무엇을
   # 고쳐야 하는지 알 수 없는 차단**이 된다 — 사람이 --no-verify 로 도망가는 경로다.
@@ -169,13 +183,22 @@ $(echo "$PRETTIER_OUT" | grep -E '^\[warn\] ' | grep -v 'Code style issues' || e
 EOF
 )")
     FAIL=1
+    FMT_HIT=1
   }
+  if [[ "${FMT_HIT:-0}" == "1" ]]; then
+    gate_add R-fmt block precommit "" "포맷 위반"
+  else
+    gate_add R-fmt pass precommit "" "포맷 준수"
+  fi
+ fi
 fi
 
 # 3. R-lint — ESLint
 # GATE: R-lint block
-if [[ -n "$JS_TS" ]] && command -v pnpm >/dev/null 2>&1 \
-    && pnpm exec eslint --version >/dev/null 2>&1; then
+if [[ -n "$JS_TS" ]]; then
+ if ! command -v pnpm >/dev/null 2>&1 || ! pnpm exec eslint --version >/dev/null 2>&1; then
+  gate_add R-lint skipped precommit "" "eslint 없음"
+ else
   ESLINT_OUT=$(echo "$JS_TS" | xargs pnpm exec eslint --max-warnings 0 2>&1) || {
     VIOLATIONS+=("$(cat <<EOF
 
@@ -187,7 +210,14 @@ $ESLINT_OUT
 EOF
 )")
     FAIL=1
+    LINT_HIT=1
   }
+  if [[ "${LINT_HIT:-0}" == "1" ]]; then
+    gate_add R-lint block precommit "" "린트 위반"
+  else
+    gate_add R-lint pass precommit "" "린트 통과"
+  fi
+ fi
 fi
 
 # 4. R-test — pytest
@@ -209,6 +239,9 @@ if [[ -n "$PY_OWN_FILES" ]]; then
     [[ -x "$cand" ]] && PYTEST_BIN="$cand" && break
   done
   [[ -z "$PYTEST_BIN" ]] && command -v pytest >/dev/null 2>&1 && PYTEST_BIN="pytest"
+  if [[ -z "$PYTEST_DIR" || -z "$PYTEST_BIN" ]]; then
+    gate_add R-test skipped precommit "" "pytest 또는 테스트 디렉터리 없음"
+  fi
   if [[ -n "$PYTEST_DIR" ]] && [[ -n "$PYTEST_BIN" ]]; then
     # 세 상태를 구분한다. 예전에는 "실패" 와 "실행 불가" 가 한 덩어리였고,
     # "수집 0개" 는 조용히 통과라 게이트가 죽은 줄 아무도 몰랐다.
@@ -221,6 +254,9 @@ if [[ -n "$PY_OWN_FILES" ]]; then
 [R-test] pytest 실행 불가 — 이번 커밋의 파이썬 변경은 검증되지 않았다.
   \$($PYTEST_BIN --version) 이 실패한다. 설치가 깨졌거나 인터프리터가 바뀌었다.
   근거: docs/design-docs/core-beliefs.md#r-test")
+      # 화면에는 경고로 뜨지만 성질은 **판정 불가**다. 도구가 못 뜬 것을 통과로도
+      # 발화로도 세면 안 된다.
+      gate_add R-test skipped precommit "" "pytest 실행 불가"
     else
       # 종료코드 캡처. 0=통과, 5=수집 0개.
       PYTEST_OUT=$("$PYTEST_BIN" "$PYTEST_DIR" -q 2>&1) && PYTEST_RC=0 || PYTEST_RC=$?
@@ -232,6 +268,8 @@ if [[ -n "$PY_OWN_FILES" ]]; then
 [R-test] 스테이징된 .py 가 있으나 수집된 테스트가 0개다.
   이 커밋의 파이썬 변경은 어떤 테스트로도 검증되지 않는다.
   근거: docs/design-docs/core-beliefs.md#r-test")
+        # 실행은 됐고 "검증되지 않는다" 를 관측했다 — skipped 가 아니라 warn 이다.
+        gate_add R-test warn precommit "" "수집된 테스트 0개"
       elif [[ "$PYTEST_RC" -ne 0 ]]; then
         # (c) 실제 실패 — 차단.
         VIOLATIONS+=("$(cat <<EOF
@@ -244,6 +282,9 @@ $(echo "$PYTEST_OUT" | tail -30)
 EOF
 )")
         FAIL=1
+        gate_add R-test block precommit "" "pytest 실패 (rc=$PYTEST_RC)"
+      else
+        gate_add R-test pass precommit "" "pytest 통과"
       fi
     fi
   fi
@@ -345,6 +386,8 @@ $CX_OUT")
     fi
     if (( CX_HIT )); then
       gate_add R-cx block precommit "" "임계 초과"
+    elif [[ -n "$CX_OUT" ]]; then
+      gate_add R-cx warn precommit "" "기준선 개선 안내"
     else
       gate_add R-cx pass precommit "" "임계 이내"
     fi
@@ -365,6 +408,10 @@ fi
 # 스위트 전체 실행에 수 분이 걸려 커밋 훅이 직접 측정할 수 없다. .cxbaseline 과 같이
 # 사람이 측정하고 결과를 파일로 남긴다. 파일이 없으면 조용히 통과한다 — 미설정은 고장이 아니다.
 COVBASE=".covbaseline"
+if [[ -n "$PY_FILES" && ! -f "$COVBASE" ]]; then
+  # 미설정은 고장이 아니지만 통과도 아니다 — 측정 기록이 없으면 판정할 수 없다.
+  gate_add R-cov skipped precommit "" "$COVBASE 없음"
+fi
 if [[ -n "$PY_FILES" && -f "$COVBASE" ]]; then
   COV_DEAD=""
   while IFS= read -r f; do
@@ -378,6 +425,9 @@ if [[ -n "$PY_FILES" && -f "$COVBASE" ]]; then
   → 이 변경은 스위트 전체를 돌려도 검증되지 않는다. 테스트를 붙이십시오.
      측정 갱신: $COVBASE 상단 주석 참조.
   근거: docs/design-docs/core-beliefs.md#r-cov")
+    gate_add R-cov warn precommit "" "테스트가 한 줄도 실행 안 하는 파일 수정"
+  else
+    gate_add R-cov pass precommit "" "수정 파일이 모두 테스트에 닿음"
   fi
 fi
 
@@ -411,6 +461,10 @@ EOF
     }
     if (( DEP_HIT )); then
       gate_add R-dep block precommit "" "계약 위반"
+    elif [[ -n "$DEP_OUT" ]]; then
+      # R-dep-4(미등록 파일)·계약 부재는 차단하지 않지만 **관측된 사실**이다.
+      # pass 로 덮으면 이 경고가 텔레메트리에서 통째로 사라진다.
+      gate_add R-dep warn precommit "" "미등록 파일 또는 계약 부재"
     else
       gate_add R-dep pass precommit "" "계약 준수"
     fi
@@ -426,6 +480,9 @@ fi
 # GATE: R-struct block
 CHECK_STRUCT="$(dirname "$0")/check-component-structure.mjs"
 VUE_AND_CODE=$(filter_files '\.(vue|js|jsx|ts|tsx)$')
+if [[ -n "$VUE_AND_CODE" ]] && { [[ ! -f "$CHECK_STRUCT" ]] || ! command -v node >/dev/null 2>&1; }; then
+  gate_add R-struct skipped precommit "" "check-component-structure.mjs 또는 node 없음"
+fi
 if [[ -n "$VUE_AND_CODE" ]] && [[ -f "$CHECK_STRUCT" ]] && command -v node >/dev/null 2>&1; then
   STRUCT_OUT=$(echo "$VUE_AND_CODE" | xargs node "$CHECK_STRUCT" 2>&1) || {
     VIOLATIONS+=("$(cat <<EOF
@@ -438,7 +495,13 @@ $STRUCT_OUT
 EOF
 )")
     FAIL=1
+    STRUCT_HIT=1
   }
+  if [[ "${STRUCT_HIT:-0}" == "1" ]]; then
+    gate_add R-struct block precommit "" "구조 위반"
+  else
+    gate_add R-struct pass precommit "" "구조 준수"
+  fi
 fi
 
 # 6. R-secret — 자격증명·개인정보 커밋 차단
@@ -532,7 +595,22 @@ if (( PLAN_STATE_OK )) && [[ -d "$ACTIVE_DIR" ]]; then
   while IFS= read -r plan; do
     [[ -f "$plan" ]] || continue
     rc=0; BARE=$(python3 "$PLAN_STATE" goals-unverified "$plan" 2>/dev/null) || rc=$?
-    [[ "$rc" -eq 0 && -n "$BARE" ]] || continue
+    # 계획서마다 판정한다 — 분모는 "스테이징된 계획서 수" 다.
+    #
+    # plan_state.py 의 _report_goals 종료코드 계약을 그대로 따른다:
+    #   0 = 미검증 목표 있음 · 1 = 없음(통과) · 2 = §2 부재(판정 불가)
+    # **1 을 실패로 읽으면 통과가 skipped 로 둔갑한다.** 첫 판이 정확히 그랬고,
+    # 예행에서 R-acc 가 늘 skipped 로 찍혀 발각됐다(2026-09-08).
+    case "$rc" in
+      1) gate_add R-acc pass precommit "$plan" "§2 목표에 검증 명령 있음"; continue ;;
+      0) : ;;
+      *) gate_add R-acc skipped precommit "$plan" "§2 판정 불가 (rc=$rc)"; continue ;;
+    esac
+    if [[ -z "$BARE" ]]; then
+      gate_add R-acc pass precommit "$plan" "§2 목표에 검증 명령 있음"
+      continue
+    fi
+    gate_add R-acc warn precommit "$plan" "§2 목표에 검증 명령 없음"
     WARNINGS+=("
 [R-acc] §2 목표에 검증 명령이 없음: $plan
 $(echo "$BARE" | head -3 | sed 's/^/    /')
@@ -666,6 +744,15 @@ if (( PLAN_STATE_OK )); then
     # 같기 때문이다 — completed/ 로 옮기는 행위가 완료 선언이고, R-retro 가 §8 을
     # 보는 자리에서 §2 도 함께 본다.
     rc=0; GOALS=$(python3 "$PLAN_STATE" goals-pending "$moved" 2>/dev/null) || rc=$?
+    # R-acc 는 발화 지점이 둘이다 — 여기(완료 처리 시 미완 목표)와 §7-bis(§2 검증 명령).
+    # 한쪽만 계장하면 gate_report 가 R-acc 를 절반만 센다. 2026-09-08 검토가 잡았다.
+    # 계약: 0=미완 목표 있음 · 1=없음(통과) · 2=§2 부재(판정 불가).
+    case "$rc" in
+      1) gate_add R-acc pass    precommit "$moved" "완료 처리 시 미완 목표 없음" ;;
+      0) [[ -n "$GOALS" ]] && gate_add R-acc warn precommit "$moved" "완료 처리 시 미완 목표 있음" \
+                           || gate_add R-acc pass precommit "$moved" "완료 처리 시 미완 목표 없음" ;;
+      *) gate_add R-acc skipped precommit "$moved" "완료 목표 판정 불가 (rc=$rc)" ;;
+    esac
     if [[ "$rc" -eq 0 && -n "$GOALS" ]]; then
       WARNINGS+=("
 [R-acc] 미완 목표를 남긴 채 완료 처리됨: $moved

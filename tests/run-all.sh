@@ -110,6 +110,7 @@ for t in \
   plan-declare-gate-test.sh \
   doc-counts-gate-test.sh \
   output-budget-test.sh \
+  gate-declaration-coverage-test.sh \
   struct-barrel-test.sh \
   complexity-gate-test.sh \
   cx-baseline-distribution-test.sh \
