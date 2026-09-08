@@ -106,6 +106,17 @@ install_harness_pre_commit() {
     fi
   fi
 
+  # doc_counts.py (R-doc) — complexity.py 와 같은 부류. 수치 블록 마커를 가진 문서가
+  # 없는 프로젝트에서는 pre-commit 이 아예 호출하지 않으므로 조용하다.
+  local doccounts_src="$ASSETS_DIR/hooks/doc_counts.py"
+  if [[ -f "$doccounts_src" ]]; then
+    if cp "$doccounts_src" "$git_dir/hooks/doc_counts.py"; then
+      log_info "  hook    → .git/hooks/doc_counts.py"
+    else
+      log_warn "  hook    → .git/hooks/doc_counts.py 복사 실패"
+    fi
+  fi
+
   # coverage_probe.py (R-cov) — complexity.py 와 같은 부류.
   # 표준 라이브러리 trace 기반이라 프로젝트에 추가 설치를 요구하지 않는다.
   local covprobe_src="$ASSETS_DIR/hooks/coverage_probe.py"

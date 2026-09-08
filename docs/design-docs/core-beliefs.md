@@ -287,6 +287,52 @@ DB 변경이 없는 단위는 단독 dispatch 유지 — 무차별 병렬 호출
 강제: `assets/hooks/claude-pretooluse-agent-guard.sh` 가 code-reviewer dispatch 의 prompt/description 에서
 DB 키워드 감지 시 additionalContext 로 안내 주입.
 
+## R-doc — 문서가 주장하는 수치는 소스와 같아야 한다 {#r-doc}
+
+> 상태: Provisional — 발화율 관측 중. 근거: `docs/exec-plans/active/2026-09-08-doc-counts-gate.md`
+
+README·CLAUDE.md 주입 블록의 수치 구간은 **생성물**이다. 사람이 쓰지 않는다.
+`assets/hooks/doc_counts.py` 가 소스에서 산출하고, pre-commit 이 대조해 어긋나면 **차단**한다.
+
+갱신: `bash scripts/sync-doc-counts.sh`
+
+**왜 이 룰이 생겼는가** (2026-09-08 실측):
+README 가 18일간 "훅 8종"(실제 12) · "pre-commit 4단 검사"(실제 15종) 라고 말하고 있었고,
+같은 오정보가 CLAUDE.md 주입 블록을 타고 12개 프로젝트에 퍼졌다. 문서 축의 기존 룰
+(R-plan / R-plan-missing / R-plan-stale / R-retro / R-acc)은 전부 *계획서* 만 본다 —
+설명 문서를 보는 축이 없어서 아무도 몰랐다.
+
+**왜 "문서를 고쳤는가" 가 아니라 "수치가 맞는가" 를 재는가**:
+전자는 한 글자만 고쳐도 통과한다. 후자는 숫자를 맞춰야만 통과하므로 우회가 없다.
+
+**왜 경고가 아니라 차단인가**:
+같은 날 R-plan-stale 경고가 커밋 3건 전부에서 발화하고 3번 다 무시됐다.
+기계가 확인할 수 있는 것은 오탐 비용이 없으므로 막는다.
+
+**왜 생성하는가**:
+같은 날 `.gitignore` 의 `.claude/harness-hooks.lock` 항목이 사라졌다. 생성물을 손으로
+고쳐서 다음 전파가 덮었기 때문이다. 생성기가 소유한 것을 손으로 고치면 다음 실행까지만 산다.
+
+**판정 불가는 통과가 아니다**: `doc_counts.py` 나 `python3` 이 없으면 `skipped` 로 기록하고
+그 사실을 출력한다. 조용히 `pass` 로 넘기면 게이트가 죽은 채 통과 표시를 낸다 —
+`R-test` 가 몇 달간 실제로 그 상태였다. `gate_report.py` 가 "⚠ 건너뛴 게이트" 로 드러낸다.
+
+**적용 범위**: 판정 대상은 이 저장소의 `README.md` 와 `presets/workflow/harness.conf`
+**두 파일뿐**이다. `pre-commit.sh` 는 12개 프로젝트에 배포되지만, 그곳에는 이 두 경로가
+없으므로 대상이 0개가 되어 발화하지 않는다.
+
+주의 — 배포처 `CLAUDE.md` 에는 수치 블록이 **생긴다**. `harness.conf` 의 주입 블록을
+타고 들어가기 때문이다. 그 값은 전파(`update-all.sh`)마다 `harness.conf` 에서 다시
+생성되고, `harness.conf` 자체가 여기서 게이트를 받으므로 원본이 틀릴 수 없다.
+배포처에서 그 블록을 손으로 고치면 다음 전파가 덮는다 — 생성물이므로 의도된 동작이다.
+
+`doc_counts.py` 는 설치기가 배포처 `.git/hooks/` 로도 복사한다(자기 설치 경로와 같은
+코드를 쓰기 때문). 그곳에서 직접 실행하면 산출 근거 파일이 없어 **종료코드 2 로
+명시적으로 실패**한다. 0 을 사실로 보고하지 않는다 — 2026-09-08 검토에서 실제로
+"훅 0종 / 게이트 0종" 을 종료코드 0 으로 내던 것을 잡았다.
+
+쓸모가 확인되면 harness 프리셋으로 승격한다.
+
 ## R-plan — 완료된 계획 이동 강제 {#r-plan}
 
 `docs/exec-plans/active/*.md` 의 모든 체크박스가 `[x]` 이면 pre-commit 차단.

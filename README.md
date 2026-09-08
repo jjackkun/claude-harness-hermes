@@ -316,15 +316,23 @@ Claude 전용 `CLAUDE.md`, `.claude/settings.json` / `.claude/settings.local.jso
 - **스킬 5종**: `harness-boundary-check`, `harness-reasoning-sandwich`, `harness-promote-rule`, `structured-file-layout`, `run-to-the-end`
 - **룰**: `harness` (코딩 규칙 전문)
 - **에이전트 11종**: `architect-lite`, `planner-lite`, `architect`, `planner`, `code-reviewer`, `silent-failure-hunter`, `tdd-guide`, `doc-updater`, `docs-lookup`, `performance-optimizer`, `refactor-cleaner`
-- **세션 중 실행 훅 12종** + 훅들이 공유하는 **판정 모듈 9개** (아래 표)
-- **git pre-commit 게이트 13종** (차단 9 / 경고 4)
+
+<!--===DS:COUNTS:BEGIN===-->
+- 세션 중 실행 훅 **12종** + 훅이 공유하는 판정 모듈 **10개**
+- git pre-commit 게이트 **16종** — 차단 10 / 경고 6
+- 스킬 **5종** · 에이전트 **11종** · 테스트 **44개**
+<!--===DS:COUNTS:END===-->
+
+> 위 수치는 `assets/hooks/doc_counts.py` 가 소스에서 산출합니다. 손으로 고치지 마십시오 —
+> `bash scripts/sync-doc-counts.sh` 로 갱신하고, 어긋난 채 커밋하면 **R-doc 이 막습니다**.
+
 - **게이트 발화 기록**: `.harness/gate-events.jsonl`
 - **CLAUDE.md 섹션**: 불변 규칙 체크리스트 + 작업 기록 시스템 안내 자동 삽입
 
 > prettier 경고 훅은 2026-08-04 에 `presets/tools/prettier.conf` 로 분리되었습니다.
 > harness 프리셋은 더 이상 이 훅을 설치하지 않습니다.
 
-#### 세션 중 실행 훅 (12종)
+#### 세션 중 실행 훅
 
 | 시점 | 훅 | 하는 일 |
 |------|-----|---------|
@@ -346,7 +354,7 @@ Claude 전용 `CLAUDE.md`, `.claude/settings.json` / `.claude/settings.local.jso
 파일이 쓰이기 *전* 시점이라 오탐 비용이 거의 0 이므로 차단할 수 있습니다 — 같은 지표를 커밋
 시점에 막으면 완성된 코드의 재구성을 요구해 우회가 상시화됩니다.
 
-#### 판정 모듈 (9개, 훅이 아니라 훅·pre-commit 이 부르는 공용 코드)
+#### 판정 모듈 (훅이 아니라 훅·pre-commit 이 부르는 공용 코드)
 
 | 모듈 | 축 | 내용 |
 |------|-----|------|
@@ -368,12 +376,12 @@ Claude 전용 `CLAUDE.md`, `.claude/settings.json` / `.claude/settings.local.jso
 하네스는 여러 프로젝트에 설치되는 도구이고, 각 프로젝트에 패키지 설치를 요구하면 **설치 실패가
 곧 게이트 침묵**이 됩니다. 실제로 R-test 가 그 상태로 몇 달간 통과하고 있었습니다.
 
-#### git pre-commit 게이트 (13종)
+#### git pre-commit 게이트
 
 `HARNESS_PRE_COMMIT=1` 이 `.git/hooks/pre-commit` 을 배치합니다.
 (README 구버전의 "4단 검사" 는 R-size/R-fmt/R-lint/R-test 만 있던 시절의 표현입니다.)
 
-**차단 9종** — 하나라도 걸리면 커밋이 서지 않습니다:
+**차단** — 하나라도 걸리면 커밋이 서지 않습니다:
 
 | 게이트 | 검사 |
 |--------|------|
@@ -387,7 +395,7 @@ Claude 전용 `CLAUDE.md`, `.claude/settings.json` / `.claude/settings.local.jso
 | R-secret | 자격증명·개인정보 커밋 차단 |
 | R-plan | 완료된 계획서가 `active/` 에 남아 있는지 |
 
-**경고 4종** — 알리되 막지 않습니다:
+**경고** — 알리되 막지 않습니다:
 
 | 게이트 | 검사 | 막지 않는 이유 |
 |--------|------|----------------|
@@ -395,6 +403,8 @@ Claude 전용 `CLAUDE.md`, `.claude/settings.json` / `.claude/settings.local.jso
 | R-pipe | 리뷰 빚을 안은 채 커밋하는가 | 훅은 "리뷰어를 불렀다"만 알 뿐 "리뷰가 유효했다"는 못 본다 |
 | R-retro | `completed/` 로 옮긴 계획서에 §8 회고가 있는가 | 회고 유무는 형식이지 정확성이 아니다 |
 | R-acc | §2 목표에 검증 명령이 있는가 / 미완 목표를 남긴 채 완료 처리하는가 | 위와 같음 |
+| R-plan-missing | 코드를 고치는데 계획서가 있는가 | 스크래치·긴급 수정까지 막으면 우회가 상시화된다 |
+| R-plan-stale | 코드는 바뀌었는데 계획서가 따라왔는가 | 위와 같음 |
 
 임계 12 의 근거: 저장소 함수 295개의 복잡도 분포가 `11:11개 → 12:4개` 로 급락합니다.
 그 절벽에 임계를 놓았습니다. 임계 8 이면 68개(23%), 6 이면 101개(34%) 가 걸려 과발화합니다.

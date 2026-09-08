@@ -124,6 +124,7 @@ elif ! command -v python3 >/dev/null 2>&1; then
 fi
 
 # 1. R-size
+# GATE: R-size block
 if [[ -n "$CHECKABLE" ]]; then
   while IFS= read -r f; do
     [[ -f "$f" ]] || continue
@@ -149,6 +150,7 @@ EOF
 fi
 
 # 2. R-fmt — prettier --check
+# GATE: R-fmt block
 if [[ -n "$PRETTIER_FILES" ]] && command -v pnpm >/dev/null 2>&1 \
     && pnpm exec prettier --version >/dev/null 2>&1; then
   # ANSI 색상 코드를 벗겨 저장한다. prettier 는 파이프에서도 색을 넣는 경우가 있어
@@ -171,6 +173,7 @@ EOF
 fi
 
 # 3. R-lint — ESLint
+# GATE: R-lint block
 if [[ -n "$JS_TS" ]] && command -v pnpm >/dev/null 2>&1 \
     && pnpm exec eslint --version >/dev/null 2>&1; then
   ESLINT_OUT=$(echo "$JS_TS" | xargs pnpm exec eslint --max-warnings 0 2>&1) || {
@@ -188,6 +191,7 @@ EOF
 fi
 
 # 4. R-test — pytest
+# GATE: R-test block
 #
 # 대상은 PY_OWN_FILES 다 — 하네스가 소유한 파이썬만 담긴 커밋은 pytest 를 돌리지 않는다.
 # 그 사본은 원본과 동일하고 상류에서 이미 검증됐으므로, 돌려도 이 커밋에 대해
@@ -245,7 +249,66 @@ EOF
   fi
 fi
 
+# 4-quinquies. R-doc — 문서가 주장하는 수치가 소스와 같은가
+# GATE: R-doc block
+#
+# 근거: docs/exec-plans/active/2026-09-08-doc-counts-gate.md
+#
+# 2026-09-08 실측: README 가 18일간 "훅 8종"(실제 12) · "4단 검사"(실제 15종) 라고
+# 말하고 있었고, 같은 오정보가 CLAUDE.md 주입 블록을 타고 12개 프로젝트에 퍼졌다.
+# 문서 축의 기존 룰(R-plan* / R-retro / R-acc)은 전부 *계획서* 만 본다 — 설명 문서를
+# 보는 축이 없어서 아무도 몰랐다.
+#
+# 왜 차단인가: 같은 날 R-plan-stale 경고가 커밋 3건 전부에서 발화하고 3번 다 무시됐다.
+# 수치는 기계가 확인할 수 있으므로 오탐 비용이 없다. 확인 가능한 것은 막는다.
+#
+# 모듈 부재를 조용히 넘기지 않는 것은 R-cx 와 같은 이유다.
+CHECK_DOC="$(dirname "$0")/doc_counts.py"
+# 대상은 "수치 블록을 가진 문서" 다. 파일 존재로 고르지 않는다 —
+# 배포처 프로젝트에도 README.md 는 있고, 그러면 doc_counts.py 가 없는 12곳에서
+# 매 커밋 "게이트가 꺼졌다" 는 소리가 난다. 마커가 없으면 이 게이트의 대상이 아니다.
+DOC_TARGETS=()
+for f in README.md presets/workflow/harness.conf; do
+  [[ -f "$f" ]] && grep -qF '<!--===DS:COUNTS:BEGIN===-->' "$f" && DOC_TARGETS+=("$f")
+done
+if [[ ${#DOC_TARGETS[@]} -eq 0 ]]; then
+  : # 수치 블록을 쓰지 않는 저장소 — 판정할 것이 없으면 발화하지 않는다.
+elif [[ ! -f "$CHECK_DOC" ]]; then
+  echo "[R-doc] doc_counts.py 없음 — 문서 수치 검사를 건너뜁니다 (게이트가 꺼진 상태입니다)"
+  gate_add R-doc skipped precommit "" "doc_counts.py 없음"
+elif ! command -v python3 >/dev/null 2>&1; then
+  echo "[R-doc] python3 없음 — 문서 수치 검사를 건너뜁니다 (게이트가 꺼진 상태입니다)"
+  gate_add R-doc skipped precommit "" "python3 없음"
+else
+  DOC_OUT=$(python3 "$CHECK_DOC" check "${DOC_TARGETS[@]}" 2>&1)
+  DOC_RC=$?
+  # 종료코드를 구분한다. "잴 수 없음"(2)을 "문서가 틀림"(1)으로 합치면 게이트가
+  # 꺼진 상태가 문서 오류로 둔갑하고, 반대로 통과로 합치면 조용히 넘어간다.
+  case "$DOC_RC" in
+    0)
+      gate_add R-doc pass precommit "" "문서 수치 일치"
+      ;;
+    1)
+      echo ""
+      echo "[R-doc] 문서가 주장하는 수치가 소스와 다릅니다."
+      echo "$DOC_OUT"
+      echo "  → 고치는 법: bash scripts/sync-doc-counts.sh"
+      echo "     수치 블록은 생성물입니다. 손으로 고치면 다음 갱신이 덮습니다."
+      echo "  근거: docs/design-docs/core-beliefs.md#r-doc"
+      echo ""
+      FAIL=1
+      gate_add R-doc block precommit "" "문서 수치 불일치"
+      ;;
+    *)
+      echo "[R-doc] 수치를 산출할 수 없어 검사를 건너뜁니다 (게이트가 꺼진 상태입니다)"
+      echo "$DOC_OUT"
+      gate_add R-doc skipped precommit "" "산출 불가 (rc=$DOC_RC)"
+      ;;
+  esac
+fi
+
 # 4-bis. R-cx — 순환 복잡도 (라쳇)
+# GATE: R-cx block
 #
 # R-size 는 파일 크기만 본다. 500줄을 지키면서 복잡도 48 짜리 함수를 쓰는 것이
 # 통과하고 있었다. 임계 12 는 이 저장소 함수 295개의 분포 절벽(11:11개 → 12:4개)에서
@@ -289,6 +352,7 @@ $CX_OUT")
 fi
 
 # 4-quater. R-cov — 어떤 테스트도 실행하지 않는 파일을 고치는가 (경고)
+# GATE: R-cov warn
 #
 # 임계를 두지 않는다. 2026-08-25 실측 분포에서 0% 와 그 다음 값 사이의 간격이
 # 70.6 포인트(0 → 70.6)인 반면, 나머지 36개 파일은 70.6~100 사이에 촘촘히 이어진다.
@@ -318,6 +382,7 @@ if [[ -n "$PY_FILES" && -f "$COVBASE" ]]; then
 fi
 
 # 4-ter. R-dep — 모듈 의존 계약
+# GATE: R-dep block
 #
 # scripts/ 에 파이썬이 30개 이상인데 이들 사이의 의존 방향을 규정한 것이 없었다.
 # .deprc 의 tier 는 손으로 적은 것이 아니라 실측 그래프에서 위상적으로 계산했다 —
@@ -358,6 +423,7 @@ $DEP_OUT")
 fi
 
 # 5. R-struct — 컴포넌트 폴더/배럴 규칙 (Vue 프로젝트)
+# GATE: R-struct block
 CHECK_STRUCT="$(dirname "$0")/check-component-structure.mjs"
 VUE_AND_CODE=$(filter_files '\.(vue|js|jsx|ts|tsx)$')
 if [[ -n "$VUE_AND_CODE" ]] && [[ -f "$CHECK_STRUCT" ]] && command -v node >/dev/null 2>&1; then
@@ -376,6 +442,7 @@ EOF
 fi
 
 # 6. R-secret — 자격증명·개인정보 커밋 차단
+# GATE: R-secret block
 #
 # 다른 단계와 달리 파일 목록을 넘기지 않는다 — check-secrets.py 가 직접
 # `git diff --cached` 를 읽는다. 여기서 걸러 넘기면 두 곳의 제외 규칙이
@@ -407,6 +474,7 @@ else
 fi
 
 # 7. R-plan — 완료된 계획이 active/ 에 남아있으면 경고
+# GATE: R-plan block
 #
 # 검사 대상은 **이번 커밋에 스테이징된 계획서만**이다(2026-07-23 변경).
 # 이전에는 find 로 active/ 전체를 스캔해, 커밋에 포함되지도 않은 남의 계획서가 완료 상태이면
@@ -451,6 +519,7 @@ if (( PLAN_STATE_OK )) && [[ -d "$ACTIVE_DIR" ]]; then
   fi
 
   # 7-bis. R-acc-1 — §2 목표가 실행 가능한 형태인가 (경고)
+# GATE: R-acc warn
   #
   # 템플릿은 §2 에 "검증 가능한 형태" 를 이미 요구하지만 형식이 없어 산문으로 채워지고,
   # 그 문장이 실제로 검증되는지는 아무도 보지 않았다. 목표마다 확인 명령을 붙이게 한다.
@@ -473,6 +542,8 @@ $(echo "$BARE" | head -3 | sed 's/^/    /')
 fi
 
 # 8. R-plan-missing / R-plan-stale — 계획서가 코드를 따라오는가 (둘 다 경고)
+# GATE: R-plan-missing warn
+# GATE: R-plan-stale warn
 #
 # R-plan 이 "스테이징된 계획서" 만 보는 순환 의존을 뒤집는 축이다. 차단하지 않는 이유는
 # 계획서 1개일 때 차단하면 워킹트리 공유 시 상호 차단이 발생하기 때문이다
@@ -502,6 +573,7 @@ if (( PLAN_STATE_OK )) && [[ -n "$WORK_FILES" && -d "$ACTIVE_DIR" ]]; then
 fi
 
 # 8-bis. R-pipe — 리뷰 빚을 안은 채 커밋하는가 (경고)
+# GATE: R-pipe warn
 #
 # .claude/.review-dirty 는 2026-04-15 부터 기록만 되고 아무 판정에도 쓰이지 않았다.
 # 그런데 core-beliefs.md#r-review 는 "안 지우면 commit 단계에서 차단" 이라 적고 있었다 —
@@ -548,6 +620,7 @@ elif [[ -n "$WORK_FILES" ]]; then
 fi
 
 # 9. R-retro — completed/ 로 옮긴 계획서에 회고가 있는가 (경고)
+# GATE: R-retro warn
 #
 # filter_files 를 쓸 수 없다. STAGED 는 --diff-filter=ACM 인데 git mv 는 rename(R100)
 # 으로 분류돼 그 필터에 잡히지 않는다(2026-08-13 실측). 자체 git 호출을 쓰되
