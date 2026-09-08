@@ -109,6 +109,7 @@ for t in \
   iface-gate-test.sh \
   plan-declare-gate-test.sh \
   doc-counts-gate-test.sh \
+  output-budget-test.sh \
   struct-barrel-test.sh \
   complexity-gate-test.sh \
   cx-baseline-distribution-test.sh \

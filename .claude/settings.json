@@ -29,6 +29,15 @@
             "command": "${CLAUDE_PROJECT_DIR}/scripts/hooks/claude-posttooluse-review-record.sh"
           }
         ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/scripts/hooks/claude-posttooluse-output-budget.sh"
+          }
+        ]
       }
     ],
     "Stop": [
