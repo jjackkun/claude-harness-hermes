@@ -130,6 +130,7 @@ for t in \
   harness-hooks-smoke.sh \
   hook-prune-test.sh \
   hook-stdin-dispatch-test.sh \
+  hermes-keywords-test.sh \
   windows-smoke.sh \
   hermes-pipeline-test.sh \
   hermes-loop-test.sh \

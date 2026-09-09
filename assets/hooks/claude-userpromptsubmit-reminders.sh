@@ -106,10 +106,14 @@ except Exception:
     if [[ -n "$_query" ]]; then
       printf '[hermes-search-hook] enter session=%s sid_len=%s q_len=%s\n' \
         "${_sid:-EMPTY}" "${#_sid}" "${#_query}" >> "$_hermes_log" 2>/dev/null || true
+      # --no-fallback: 매칭이 없을 때 claude -p 를 띄우지 않는다. 토큰 일치로 바꾼 뒤
+      # 실제 프롬프트의 14%(400건 중 56건)가 후보 0건이 되는데, 그때마다 훅 안에서
+      # 30초 타임아웃짜리 서브세션을 띄우면 사용자의 턴이 그만큼 멈춘다.
+      # PostToolUse 쪽 assist 훅도 같은 이유로 이미 --no-fallback 을 쓴다.
       _hermes_out=$(python3 "$_hermes_search" \
         --db "$_hermes_db" --query "$_query" --session-id "$_sid" \
         --skills-dir "$PWD/.claude/skills" \
-        --global-skills-dir "$HOME/.hermes/mesh/skills" --max 3 2>>"$_hermes_log")
+        --global-skills-dir "$HOME/.hermes/mesh/skills" --max 3 --no-fallback 2>>"$_hermes_log")
       _hermes_rc=$?   # || true 를 붙이면 rc 가 항상 0이 되어 진단이 무의미해진다.
       if [[ -n "$_hermes_out" ]]; then
         printf '%s\n' "$_hermes_out"

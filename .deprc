@@ -13,8 +13,9 @@ tier: 0  scripts/hermes-correlate.py scripts/hermes-dream.py scripts/hermes-evol
 tier: 0  scripts/hermes-increment.py scripts/hermes-manager.py scripts/hermes-message.py
 tier: 0  scripts/hermes-prune.py scripts/hermes-reindex.py scripts/hermes_lifecycle_apply.py
 tier: 0  scripts/hermes_reuse.py scripts/hermes_secret_values.py scripts/hermes_skills.py
+tier: 0  scripts/hermes_keywords.py
 tier: 1  assets/hooks/check-secrets.py scripts/hermes-crystallize.py scripts/hermes-index-skills.py
-tier: 1  scripts/hermes-search.py scripts/hermes_redact.py
+tier: 1  scripts/hermes-search.py scripts/hermes_redact.py scripts/hermes_search_fallback.py
 tier: 2  scripts/hermes-export-history.py scripts/hermes-lifecycle.py scripts/hermes-recall.py
 tier: 2  scripts/hermes-scrub-history.py scripts/hermes-summarize.py scripts/hermes_loop.py
 tier: 2  scripts/hermes_mesh_gate.py scripts/hermes_save_session_storage.py

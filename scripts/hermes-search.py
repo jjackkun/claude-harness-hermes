@@ -28,13 +28,13 @@ UserPromptSubmit Hook에서 호출.
 import argparse
 import os
 import re
-import shutil
 import sqlite3
-import subprocess
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from hermes_skills import iter_skill_files  # noqa: E402  (스킬 파일 순회 공유 헬퍼)
+from hermes_keywords import document_frequency, idf_score, split_keywords  # noqa: E402
+from hermes_search_fallback import haiku_fallback  # noqa: E402  (claude -p 뉘앙스 폴백)
 
 
 def connect_db(db_path: str) -> sqlite3.Connection:
@@ -122,6 +122,22 @@ def assist_quota_exhausted(db_path: str, session_id: str) -> bool:
         return False
 
 
+
+def _name_bonus(skill_path: str, matched: list, df, total: int) -> float:
+    """스킬 이름(파일명 슬러그 또는 상위 폴더명)이 매칭 키워드와 같으면 가산.
+
+    가산값은 **그 키워드의 희소성에 비례**한다. 고정값(+1.0)을 주면 흔한 말일수록
+    가산이 본래 신호보다 커져 순위를 뒤집는다 — `api`(42%)의 IDF 는 0.87 이므로
+    +1.0 은 그 말 자체보다 큰 힘이 된다. 동점을 가르는 것이 목적이지 덮는 것이
+    아니므로, 이름이 곧 주제라는 신호를 그 키워드의 무게만큼만 더한다.
+    """
+    base = os.path.basename(skill_path)
+    slug = os.path.basename(os.path.dirname(skill_path)) if base == "SKILL.md" else base[:-3]
+    slug = slug.lower()
+    if slug not in matched:
+        return 0.0
+    return idf_score([slug], df, total)
+
 def search_db(db_path: str, keywords: list, max_results: int) -> list:
     """skill_index 에서 관련 스킬을 검색한다.
 
@@ -144,14 +160,29 @@ def search_db(db_path: str, keywords: list, max_results: int) -> list:
         _log(f"DB 검색 실패: {e}")
         return []
 
+    # 토큰 일치. 부분 문자열로 보면 두 글자 질의어가 긴 키워드 안에까지 걸려 후보가
+    # 폭발한다 — 실측(zeroday, 실제 프롬프트 400건): 후보 중앙값이 부분 문자열 107개
+    # 대 토큰 일치 14개, "선별 가능(1~20개)" 프롬프트가 59/400 대 272/400.
+    # 근거: docs/exec-plans/active/2026-09-09-hermes-skill-lifecycle.md §7
+    haystacks = [(path, set(split_keywords(kwfield)), kwfield, helpful, used)
+                 for path, kwfield, helpful, used in rows]
+    df = document_frequency(tokens for _p, tokens, _k, _h, _u in haystacks)
+    total = len(haystacks)
+
     scored = []
-    for path, kwfield, helpful, used in rows:
-        hay = (kwfield or "").lower()
-        matched = [kw for kw in kws if kw in hay]
+    for path, tokens, kwfield, helpful, used in haystacks:
+        matched = [kw for kw in kws if kw in tokens]
         if not matched:
             continue
-        # 정렬 키: (매칭수, 도움수, 사용수) 내림차순
-        scored.append(((len(matched), helpful, used), path, kwfield, matched[0]))
+        # 매칭 수만 세면 `basebutton`(5개 스킬에만 있음) 한 번 맞은 것과 흔한 말 한 번
+        # 맞은 것이 동점이 되어, 정작 그 질문을 위해 만들어진 스킬이 밀린다. 드문
+        # 키워드일수록 크게 세는 IDF 로 바꾼다 — 매칭이 많을수록 합도 커지므로
+        # 예전의 "매칭 수" 정렬을 포함한다.
+        score = idf_score(matched, df, total)
+        # 이름이 곧 주제다. 같은 키워드를 가진 스킬이 여럿일 때, 그 키워드를 제목으로
+        # 삼은 스킬이 그 질문을 위해 만들어진 것이다 — 동점을 그대로 두면 4위로 밀린다.
+        score += _name_bonus(path, matched, df, total)
+        scored.append(((score, helpful, used), path, kwfield, matched[0]))
 
     scored.sort(key=lambda x: x[0], reverse=True)
     return [
@@ -165,109 +196,44 @@ def search_skills_dir(skills_dir: str, keywords: list, max_results: int) -> list
     if not os.path.isdir(skills_dir) or not keywords:
         return []
 
-    results = []
+    kws = [k.lower() for k in keywords]
+    docs = []
+    seen = set()
     for name, skill_md in iter_skill_files(skills_dir):
+        if name in seen:
+            continue
+        seen.add(name)
         try:
             with open(skill_md, "r", encoding="utf-8") as f:
-                content = f.read().lower()
+                content = f.read()
         except Exception as e:
             _log(f"스킬 읽기 실패({skill_md}): {e}")
             continue
 
-        for kw in keywords:
-            if kw in content and name not in [r["name"] for r in results]:
-                results.append({"name": name, "path": skill_md, "matched": kw})
-                break
+        # 본문 전체 부분 문자열이 아니라 토큰 일치로 본다. 전자는 두 글자만 어딘가
+        # 들어 있어도 걸려서, 1,000개가 넘는 결정화 스킬에서는 사실상 무작위였다.
+        docs.append((name, skill_md, set(split_keywords(content))))
 
-    return results[:max_results]
+    # 흔한 말은 **빼지 않고** 점수를 낮춘다. 빼면 그 프로젝트에서 가장 중요한 어휘가
+    # 빈출이라는 이유로 사라져 재현율이 무너진다 — zeroday 에서 `swagger`(172개 스킬)를
+    # 지우자 "스웨거 동기화 해줘" 가 0건이 됐다. IDF 는 흔한 말의 기여를 0 에 수렴시켜
+    # 같은 효과를 재현율 손실 없이 낸다.
+    df = document_frequency(tokens for _n, _p, tokens in docs)
+    total = max(len(docs), 1)
 
-
-def _extract_description(skill_md: str) -> str:
-    """SKILL.md frontmatter 의 description, 없으면 첫 제목 줄을 반환한다."""
-    title = ""
-    try:
-        with open(skill_md, "r", encoding="utf-8") as f:
-            in_frontmatter = False
-            for line in f:
-                line = line.rstrip()
-                if line == "---":
-                    in_frontmatter = not in_frontmatter
-                    continue
-                if in_frontmatter and line.startswith("description:"):
-                    return line[len("description:"):].strip()
-                if not title and line.startswith("# "):
-                    title = line[2:].strip()
-    except Exception as e:
-        _log(f"description 추출 실패({skill_md}): {e}")
-    return title
-
-
-def collect_all_skills(skills_dirs: list) -> list:
-    """모든 스킬 디렉토리에서 스킬 이름과 description을 수집한다.
-
-    M4 — 평면 .md 스킬도 포함 (description 없으면 제목 줄 사용).
-    """
-    skills = []
-    seen = set()
-    for skills_dir in skills_dirs:
-        if not os.path.isdir(skills_dir):
+    scored = []
+    for name, skill_md, tokens in docs:
+        matched = [kw for kw in kws if kw in tokens]
+        if not matched:
             continue
-        for name, skill_md in iter_skill_files(skills_dir):
-            if name in seen:
-                continue
-            description = _extract_description(skill_md)
-            if description:
-                seen.add(name)
-                skills.append({"name": name, "path": skill_md, "description": description})
-    return skills
+        score = idf_score(matched, df, total)
+        scored.append((score + _name_bonus(skill_md, matched, df, total), name, skill_md, matched[0]))
 
-
-def haiku_fallback(query: str, skills_dirs: list, max_results: int) -> list:
-    """FTS5 미스 시 claude -p로 뉘앙스 기반 스킬을 찾는다."""
-    if not shutil.which("claude"):
-        return []
-
-    skills = collect_all_skills(skills_dirs)
-    if not skills:
-        return []
-
-    skill_list = "\n".join([f"- {s['name']}: {s['description']}" for s in skills])
-    prompt = (
-        f'사용자 메시지: "{query}"\n\n'
-        f"아래 스킬 목록에서 이 메시지와 관련된 스킬 이름만 골라줘.\n"
-        f"관련 없으면 아무것도 반환하지 마. 있으면 쉼표로 구분해서 이름만 반환해.\n\n"
-        f"{skill_list}"
-    )
-
-    try:
-        result = subprocess.run(
-            ["claude", "-p", prompt],
-            capture_output=True,
-            text=True,
-            timeout=30,
-            env={**os.environ, "HERMES_DISABLED": "1"},
-        )
-        if result.returncode != 0:
-            stderr_tail = (result.stderr or "").strip()[-300:]
-            _log(f"claude -p 실패: rc={result.returncode} stderr={stderr_tail}")
-            return []
-        text = result.stdout.strip()
-        if not text:
-            return []
-    except subprocess.TimeoutExpired:
-        _log("claude -p timeout")
-        return []
-    except Exception as e:
-        _log(f"claude fallback 오류: {e}")
-        return []
-
-    matched_names = [n.strip() for n in text.split(",")]
-    results = []
-    skill_map = {s["name"]: s for s in skills}
-    for name in matched_names:
-        if name in skill_map and len(results) < max_results:
-            results.append({"name": name, "path": skill_map[name]["path"], "matched": "claude-p"})
-    return results
+    scored.sort(key=lambda x: (-x[0], x[1]))
+    return [
+        {"name": name, "path": path, "matched": first}
+        for _n, name, path, first in scored[:max_results]
+    ]
 
 
 def read_skill_snippet(skill_path: str, max_lines: int = 10) -> str:
@@ -389,7 +355,9 @@ def main():
     dir_results = [r for r in dir_results if r["path"] not in _already]
     mesh_results = [r for r in mesh_results if r["path"] not in _already]
 
-    # 2단계 — FTS5 결과 없으면 Haiku fallback
+    # 2단계 — FTS5 결과 없으면 Haiku fallback.
+    # 배포된 훅은 둘 다 --no-fallback 을 넘기므로 이 경로는 production 에서 꺼져 있다.
+    # 손으로 부르는 경우와 시험의 대조군을 위해 남겨 둔다(고아 코드가 아니다).
     haiku_results = []
     if not db_results and not dir_results and not mesh_results and not args.no_fallback:
         skills_dirs = [hermes_skills_dir]
