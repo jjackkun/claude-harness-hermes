@@ -100,12 +100,25 @@ except Exception:
 " 2>/dev/null || true)"
     _sid="$(printf '%s' "$_raw_stdin" | python3 -c "import sys,json;print(json.load(sys.stdin).get('session_id',''))" 2>/dev/null || true)"
 
+    # 진단 로그 — 실패를 삼키지 않는다. assist 훅(claude-posttooluse-hermes-assist.sh)
+    # 과 같은 파일로 모아 두 경로를 나란히 읽을 수 있게 한다.
+    _hermes_log="$PWD/.hermes/hooks.log"
     if [[ -n "$_query" ]]; then
+      printf '[hermes-search-hook] enter session=%s sid_len=%s q_len=%s\n' \
+        "${_sid:-EMPTY}" "${#_sid}" "${#_query}" >> "$_hermes_log" 2>/dev/null || true
       _hermes_out=$(python3 "$_hermes_search" \
         --db "$_hermes_db" --query "$_query" --session-id "$_sid" \
         --skills-dir "$PWD/.claude/skills" \
-        --global-skills-dir "$HOME/.hermes/mesh/skills" --max 3 2>/dev/null || true)
-      [[ -n "$_hermes_out" ]] && printf '%s\n' "$_hermes_out"
+        --global-skills-dir "$HOME/.hermes/mesh/skills" --max 3 2>>"$_hermes_log")
+      _hermes_rc=$?   # || true 를 붙이면 rc 가 항상 0이 되어 진단이 무의미해진다.
+      if [[ -n "$_hermes_out" ]]; then
+        printf '%s\n' "$_hermes_out"
+        printf '[hermes-search-hook] injected bytes=%s\n' "${#_hermes_out}" >> "$_hermes_log" 2>/dev/null || true
+      else
+        printf '[hermes-search-hook] empty rc=%s\n' "$_hermes_rc" >> "$_hermes_log" 2>/dev/null || true
+      fi
+    else
+      printf '[hermes-search-hook] no-query session=%s\n' "${_sid:-EMPTY}" >> "$_hermes_log" 2>/dev/null || true
     fi
   fi
 fi
