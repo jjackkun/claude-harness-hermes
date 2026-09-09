@@ -136,7 +136,7 @@ _SKILL_KW_RE = re.compile(
 
 ## 5. 단계 (Steps)
 
-### Step 1. 주입 원장이 비는 원인 확정 [Plan] — **완료(원인 미확정)**, 2026-09-09
+### Step 1. 주입 원장이 비는 원인 확정 [Plan] — **완료(원인 확정)**, 2026-09-09
 
 - 입력: zeroday `.hermes/state.db` 사본, `reminders.sh`, `hermes-search.py`
 - 산출: `docs/audits/2026-09-09-hermes-injection-gap.md`
@@ -160,6 +160,10 @@ _SKILL_KW_RE = re.compile(
 - 훅이 등록됐으나 실행 중 조기 종료 — 앞 훅의 stdin 소비 등.
 
 ### Step 2. 원인 제거 + 실사용 1일 측정 [Impl]
+
+> **확정된 제거 대상**: `UserPromptSubmit` 에서 stdin 을 두 훅이 경쟁한다.
+> `mistake-detect` 는 즉시 `cat`, `reminders` 는 계획 스캔 뒤에 읽어 항상 진다.
+> 방향은 **두 훅 통합**(stdin 1회 읽기) — 12곳 공유 경계 변경이라 `code-reviewer` 승격.
 
 - 입력: Step 1 의 원인
 - 산출: 수정 + `update-all.sh` 전파
@@ -198,9 +202,12 @@ _SKILL_KW_RE = re.compile(
   내면 12곳에서 동시에 지식이 사라진다.
 - 2026-09-09: Step 2 의 카운터 확인 전에는 Step 3 으로 넘어가지 않음 — 근거:
   되먹임이 죽은 채로 진화를 고치면 무엇이 좋아졌는지 잴 수 없다.
-- 2026-09-09: **Step 1 을 원인 미확정으로 닫는다** — 근거: 가설 7개를 재현으로 전부
-  반증했고, 남은 실패 경로는 `2>/dev/null` 로 봉인돼 증거가 존재하지 않는다.
-  추측으로 고치지 않는다. 기록: `docs/audits/2026-09-09-hermes-injection-gap.md`.
+- 2026-09-09: **원인 확정 — 훅이 stdin 을 빈 채로 받는다.** 계장 배포 30분 뒤
+  실세션이 `[hermes-search-hook] no-query session=EMPTY` 를 남겼다. 4개월 실제
+  프롬프트 7,074건을 매칭 경로에 통과시키니 96%(6,836건)·총 19,939건이 주입됐어야
+  했다 — "진입했으나 빈손" 은 배제. 기록: `docs/audits/2026-09-09-hermes-injection-gap.md`.
+- 2026-09-09: **`reminders` 가 먼저 읽게 하는 수정은 채택하지 않는다** — 근거: 지는 쪽이
+  `mistake-detect` 로 바뀔 뿐이다. 한 이벤트에서 stdin 이 필요한 훅이 둘인 구조를 없앤다.
 - 2026-09-09: 봉인 해제(계장)를 Step 2 선행 조건으로 넣고 먼저 전파함 — 근거:
   실사용 데이터 없이는 Step 2 의 측정 자체가 시작되지 않는다.
 
