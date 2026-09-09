@@ -131,6 +131,7 @@ for t in \
   hook-prune-test.sh \
   hook-stdin-dispatch-test.sh \
   hermes-keywords-test.sh \
+  hermes-evolve-vocab-test.sh \
   windows-smoke.sh \
   hermes-pipeline-test.sh \
   hermes-loop-test.sh \

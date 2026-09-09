@@ -9,16 +9,18 @@ scope: scripts/*.py lib/*.py assets/hooks/*.py
 
 tier: 0  assets/hooks/complexity.py assets/hooks/depcheck.py assets/hooks/plan_state.py assets/hooks/coverage_probe.py assets/hooks/iface_width.py assets/hooks/gate_event.py assets/hooks/gate_report.py assets/hooks/doc_counts.py scripts/mutation-probe.py lib/generate_codex_hooks.py
 tier: 0  lib/generate_settings.py lib/generate_settings_json.py scripts/hermes-cleanup.py
-tier: 0  scripts/hermes-correlate.py scripts/hermes-dream.py scripts/hermes-evolve-skill.py
+tier: 0  scripts/hermes-correlate.py scripts/hermes-evolve-skill.py
 tier: 0  scripts/hermes-increment.py scripts/hermes-manager.py scripts/hermes-message.py
 tier: 0  scripts/hermes-prune.py scripts/hermes-reindex.py scripts/hermes_lifecycle_apply.py
 tier: 0  scripts/hermes_reuse.py scripts/hermes_secret_values.py scripts/hermes_skills.py
 tier: 0  scripts/hermes_keywords.py
 tier: 1  assets/hooks/check-secrets.py scripts/hermes-crystallize.py scripts/hermes-index-skills.py
 tier: 1  scripts/hermes-search.py scripts/hermes_redact.py scripts/hermes_search_fallback.py
+tier: 1  scripts/hermes_dream_evolve.py
 tier: 2  scripts/hermes-export-history.py scripts/hermes-lifecycle.py scripts/hermes-recall.py
 tier: 2  scripts/hermes-scrub-history.py scripts/hermes-summarize.py scripts/hermes_loop.py
 tier: 2  scripts/hermes_mesh_gate.py scripts/hermes_save_session_storage.py
+tier: 2  scripts/hermes-dream.py
 tier: 3  scripts/hermes-init.py scripts/hermes_loop_prompt.py scripts/hermes_loop_report.py
 tier: 3  scripts/hermes_save_session_patterns.py scripts/hermes_save_session_signals.py
 tier: 4  scripts/hermes-loop.py scripts/hermes-save-session.py

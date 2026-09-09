@@ -91,9 +91,12 @@ _SKILL_KW_RE = re.compile(
 - [x] 목표 2 — **correlate 가 카운터를 실제로 올린다.**
       검증: 목표 1 이후 `select sum(helpful_count)+sum(noop_count) from skill_index` > 0.
       **결과(2026-09-09): 3.** 4개월간 0 이던 값이 처음으로 움직였다.
-- [ ] 목표 3 — **도메인 어휘 하드코딩이 사라진다.**
+- [x] 목표 3 — **도메인 어휘 하드코딩이 사라진다.**
       검증: `grep -c 'pnpm|npm|yarn' scripts/hermes-dream.py` == 0 이고,
       novel-bc 의 실제 요약에서 진화 힌트가 1건 이상 추출된다(드라이런 로그로 확인).
+      **결과(2026-09-09): 충족.** 어휘 0건. 실제 요약 드라이런 — zeroday 5건(상한),
+      novel-bc **1건**, terminal-shipping 2건. 뽑힌 키워드는 `terminaldetailform.vue`
+      `미커밋` `유니패스` 처럼 어휘를 하나도 박지 않고 얻은 그 프로젝트의 주제어다.
 - [ ] 목표 4 — **junk 판정이 실제 junk 를 잡는다.** ⚠️ **2026-09-09 재정의**
       ~~검증: dry-run 이 217개 단어조각 중 과반을 삭제 제안한다~~ — **폐기.**
       실측 결과 파일은 junk 가 아니었다(아래 §7). 삭제 제안을 늘리는 방향은
@@ -104,18 +107,29 @@ _SKILL_KW_RE = re.compile(
       실제 기준은 **상위 3개의 관련성**이다: "BaseButton…" → `basebutton.md`,
       "스웨거 동기화" → `swagger-api-sync`, "지라 댓글" → `jira-*`, "커밋 푸시하자"
       → `commit-session` 이 1위로 나온다.
+      **결과(2026-09-09, zeroday 사본): 4개 중 3개 충족.** "BaseButton…" →
+      `basebutton.md`, "스웨거 동기화" → `스웨거.md`, "커밋 푸시하자" →
+      `commit-session` 은 1위. **"지라 댓글 달아줘" 는 `swagger-api-sync` 가 1위**로
+      나온다 — `지라` 한 단어만 매칭돼 IDF 가 같고 이름 가산도 걸리지 않는다.
+      상위 3개가 모두 지라 관련이라 오답은 아니다. **동점 처리를 넣었으나(키워드가
+      적은 스킬 우선) 이 건은 바뀌지 않았다** — `swagger-api-sync` 가 `used_count`
+      에서 앞서기 때문이다. 사용 이력을 관련성보다 뒤로 미는 것은 과교정이라고 보고
+      두었다. 질의어 하나만 맞을 때 더 나은 신호가 필요하면 그때 다시 본다.
 - [ ] 목표 5 — **전파 후 조용하다.**
       추가 검증(리뷰 지적, 2026-09-09): 토큰 일치로 바꾸면서 한글 조사를 흡수하지
       못해(`커밋` ≠ `커밋을`) 무주입 턴이 늘어난다. 훅 계장이 턴마다
       `injected bytes=` / `empty rc=` 를 남기므로 **비율을 잴 수 있다**:
       `grep -c 'empty rc=' .hermes/hooks.log` 대 `grep -c 'injected bytes='`.
-      전파 1주 뒤 무주입 비율이 30% 를 넘으면 조사 대상으로 본다(측정 시점의
-      추정치는 14%). 한 번 재고 끝내지 않는다.
+      **2026-09-16** 에 잰다(전파일 2026-09-09 + 7일). 무주입 비율이 30% 를 넘으면
+      조사 대상으로 본다(전파 시점 추정치 14%). 한 번 재고 끝내지 않는다.
       검증: `update-all.sh` 후 hermes 설치 프로젝트에서 세션 1회 — 새 경고·오류 0건,
       `.hermes/hooks.log` 에 신규 ERROR 라인 0건.
-- [ ] 목표 6 — **회귀가 고정된다.**
+- [x] 목표 6 — **회귀가 고정된다.**
       검증: `bash tests/run-all.sh` 통과, 신규 시험이 각 수정에 대해 가짜 위반으로
       차단을 확인한다(통과만 보는 시험 금지).
+      **결과(2026-09-09): 51/51.** 가짜 위반 확인 4건 — 나란히 등록 시 stdin 고갈,
+      basename 회수로 인한 사용자 훅 소실, 부분 문자열 매칭, 고정 이름 가산.
+      이 중 마지막 것은 처음에 통과만 보고 있어 픽스처를 다시 짰다.
 
 ## 3. 비목표 (Out of Scope)
 
@@ -132,7 +146,8 @@ _SKILL_KW_RE = re.compile(
 ## 4. 영향 영역
 
 - 코드 (수정):
-  - `scripts/hermes-dream.py` — `_SKILL_KW_RE` 하드코딩 제거
+  - `scripts/hermes-dream.py` — `_SKILL_KW_RE` 하드코딩 제거, 진화 상한 신설
+  - `scripts/hermes-evolve-skill.py` — 대상 조회를 LIKE 부분 문자열 → 토큰 일치
   - `scripts/hermes-search.py` — 매칭을 부분 문자열에서 토큰 일치로 교체
   - `assets/hooks/claude-userpromptsubmit-reminders.sh` — 프롬프트 경로 `--no-fallback`
   - `presets/workflow/hermes.conf` — 신규 모듈 2개 배포 목록에 추가
@@ -162,6 +177,11 @@ _SKILL_KW_RE = re.compile(
   - `scripts/hermes_search_fallback.py` — `claude -p` 뉘앙스 폴백. 매칭(검색의 책임)과
     서브세션 기동(이 파일의 책임)은 비용도 실패 양상도 달라 분리했다. R-size 500줄을
     넘긴 것이 분리 계기다. DB·원장은 건드리지 않는다.
+  - `scripts/hermes_dream_evolve.py` — 교정 요약에서 진화 대상을 고르고 실행한다.
+    dream 은 조율만 하고 선정은 이 파일이 한다(R-size 500줄 초과가 분리 계기).
+  - `tests/hermes-evolve-vocab-test.sh` — 진화 대상 어휘가 코드가 아니라 프로젝트
+    코퍼스에서 오는지, 상한이 조용히 버리지 않는지, 조회가 토큰 일치인지를 막는다.
+    세 안전장치의 실효를 가짜 위반으로 확인하는 것이 유일한 책임.
   - `scripts/hermes-vocab.py` — **조건부**. 목표 3 을 "프로젝트 어휘 추출"로 풀 때만
     만든다. 책임: 해당 프로젝트의 축적 데이터에서 빈출 어휘를 산출한다(판정 없음).
     Step 3 의 측정 결과가 "교정어만으로 충분"으로 나오면 만들지 않는다.
@@ -206,28 +226,37 @@ _SKILL_KW_RE = re.compile(
 - 검증: 목표 1·2. **1일 뒤 카운터가 0이면 원인 확정이 틀린 것이다** — Step 1 로 돌아간다.
   카운터가 붙기 전에 Step 3 으로 넘어가지 않는다.
 
-### Step 3. 도메인 어휘 하드코딩 제거 [Plan → Impl]
+### Step 3. 도메인 어휘 하드코딩 제거 [Plan → Impl] — **완료**, 2026-09-09
 
 - 입력: `_SKILL_KW_RE` 없이 교정어만으로 힌트를 뽑았을 때의 **오탐 규모 실측**.
   세 프로젝트의 기존 요약에 대해 드라이런한다.
-- 산출: 오탐이 감당 가능하면 키워드 조건 제거. 아니면 `hermes-vocab.py` 로
-  프로젝트별 어휘 산출.
+- 산출: `hermes-vocab.py` 는 만들지 않았다. 별도 어휘 산출기 없이 `skill_index` 의
+  **스킬 이름 토큰**을 후보로 쓰면 충분했다. 진화 상한(`EVOLVE_MAX`, 기본 5) 신설 —
+  하드코딩 목록이 사실상 하던 제동을 명시화한 것이다.
 - 검증: 목표 3. novel-bc 에서 힌트가 1건 이상 나오는 것이 성공 기준이다 —
   zeroday 만 좋아지는 수정은 같은 실수의 반복이다.
 
 > ⚠️ **키워드를 추가하는 방식은 금지한다.** 18개를 21개로 늘려도 novel-bc 는 0%다.
 
-### Step 4. junk 판정 확장 [Impl]
+### Step 4. junk 판정 [Impl] — **완료(방향 전환)**, 2026-09-09, `70b9a8b`
 
-- 입력: 217개 단어조각 표본, 정상 스킬 표본
-- 산출: `hermes-cleanup.py` 판정 확장
-- 검증: 목표 4. **정상 스킬을 하나라도 제안하면 실패다** — 되돌릴 수 없는 삭제로
-  이어지는 판정이므로 미탐(놓침)보다 오탐(잘못 지목)이 훨씬 비싸다.
+> ⚠️ **원래 지시(`hermes-cleanup.py` 로 삭제 제안을 늘린다)는 폐기했다.** 그대로
+> 따르면 지식을 지운다 — 결정화 스킬 1,036개 중 규칙이 없는 것은 8개뿐이고
+> 나머지는 실제 지식이다. 삭제 방향으로 되돌아가지 말 것.
 
-### Step 5. 시험 고정 + 전파 [Impl → Review]
+- 실제로 한 것: 삭제가 아니라 **순위**를 고쳤다. `scripts/hermes_keywords.py`(IDF
+  채점) 신설, `hermes-search.py` 를 부분 문자열 → 토큰 일치 + IDF + 이름 가산으로
+  교체, `search_skills_dir` 도 같이(본문 전체 부분 문자열에 점수 없이 디렉터리
+  순서로 앞 3개를 집고 있었다).
+- 시험: `tests/hermes-keywords-test.sh` 17단언. 가짜 위반으로 실효 확인.
+- 되돌린 것: 빈출 키워드를 인덱스에서 삭제하는 방향(§7 참조).
 
-- 산출: `tests/hermes-lifecycle-test.sh`, `run-all.sh` 등록, 전파
-- 검증: 목표 5·6. 큰 변경이자 12곳 공유 경계이므로 `code-reviewer` 로 승격한다.
+### Step 5. 시험 고정 + 전파 [Impl → Review] — **완료**, 2026-09-09
+
+- 산출: `tests/hook-stdin-dispatch-test.sh`(15단언)·`tests/hermes-keywords-test.sh`(17단언),
+  `run-all.sh` 등록, 12곳 전파. `tests/hermes-lifecycle-test.sh` 는 기존 파일이라 신설하지 않았다.
+- 검증: 목표 6 충족. `code-reviewer` 2회 승격 — 디스패처(사용자 훅 소실 HIGH 1건 수정),
+  검색 순위(MEDIUM 2·LOW 2 전부 수정). 전체 51/51 통과.
 
 ## 6. 의사결정 로그
 

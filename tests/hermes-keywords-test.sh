@@ -155,6 +155,27 @@ EOF
 )
 assert "이름이 흔한 말과 같다고 1위가 되지 않는다" "top: f0.md" "$(echo "$out" | sed -n 1p)"
 
+echo "== 5-b. 점수·사용이력이 같으면 키워드가 적은 스킬이 앞선다 =="
+out=$(python3 - "$REPO_ROOT" "$TMP" <<'EOF'
+import importlib.util, os, sqlite3, sys
+root, tmp = sys.argv[1], sys.argv[2]
+sys.path.insert(0, root + "/scripts")
+spec = importlib.util.spec_from_file_location("hs", root + "/scripts/hermes-search.py")
+hs = importlib.util.module_from_spec(spec); spec.loader.exec_module(hs)
+db = os.path.join(tmp, "tie.db")
+c = sqlite3.connect(db)
+c.execute("CREATE TABLE skill_index (skill_path TEXT PRIMARY KEY, keywords TEXT, "
+          "helpful_count INT DEFAULT 0, used_count INT DEFAULT 0, state TEXT)")
+# 둘 다 '지라' 만 맞춘다 — IDF 도 사용이력도 같다. 키워드가 적은 쪽이 그 주제다.
+c.execute("INSERT INTO skill_index VALUES ('/wide.md','지라,a,b,c,d,e,f',0,0,'active')")
+c.execute("INSERT INTO skill_index VALUES ('/narrow.md','지라,a',0,0,'active')")
+c.commit(); c.close()
+r = hs.search_db(db, ["지라"], 2)
+print("order:", ",".join(os.path.basename(x["path"]) for x in r))
+EOF
+)
+assert "동점이면 키워드가 적은 스킬이 앞선다" "order: narrow.md,wide.md" "$(echo "$out" | sed -n 1p)"
+
 echo "== 6. 훅 로그가 주입/무주입을 구별한다 (0건 비율 측정 근거) =="
 LOGDIR="$TMP/logproj"; mkdir -p "$LOGDIR/.hermes" "$LOGDIR/scripts/hooks" "$LOGDIR/.claude/skills"
 cp "$REPO_ROOT"/scripts/hermes*.py "$LOGDIR/scripts/" 2>/dev/null

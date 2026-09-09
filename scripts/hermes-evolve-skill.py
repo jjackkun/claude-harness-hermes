@@ -17,6 +17,9 @@ import subprocess
 import sys
 from datetime import datetime, timedelta, timezone
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from hermes_keywords import split_keywords  # noqa: E402  (토큰 분해 — 정의를 한 곳에 둔다)
+
 
 EVOLVE_COOLDOWN_HOURS = 24
 
@@ -73,19 +76,35 @@ PR_GUIDE_TEMPLATE = """\
 
 
 def find_skill_by_keyword(db_path: str, keyword: str):
+    """키워드를 **토큰으로** 가진 스킬 중 키워드가 가장 적은 것을 고른다.
+
+    예전에는 `keywords LIKE '%키워드%' LIMIT 1` 이었다. 부분 문자열이라 `확인` 이
+    `확인해` 안에도 걸렸고, LIMIT 1 은 여럿 중 아무거나(행 순서)를 집었다 —
+    진화가 엉뚱한 스킬을 고쳐도 알 수 없었다. 키워드 수가 적은 스킬일수록 그
+    키워드가 차지하는 비중이 크므로, 그 키워드를 실제로 다루는 스킬일 가능성이 높다.
+    """
+    token = keyword.lower()
     try:
         con = connect_db(db_path)
         _ensure_last_evolved_column(con)
-        row = con.execute(
-            "SELECT skill_path, scope, last_evolved_at FROM skill_index "
-            "WHERE keywords LIKE ? LIMIT 1",
-            (f"%{keyword}%",),
-        ).fetchone()
+        rows = con.execute(
+            "SELECT skill_path, scope, last_evolved_at, keywords FROM skill_index"
+        ).fetchall()
         con.close()
-        return row
     except Exception as e:
         _log(f"스킬 조회 실패({keyword}): {e}")
         return None
+
+    matches = []
+    for skill_path, scope, last_evolved_at, kwfield in rows:
+        tokens = split_keywords(kwfield)
+        if token in tokens:
+            matches.append((len(tokens), skill_path, scope, last_evolved_at))
+    if not matches:
+        return None
+    matches.sort(key=lambda x: (x[0], x[1]))
+    _width, skill_path, scope, last_evolved_at = matches[0]
+    return (skill_path, scope, last_evolved_at)
 
 
 def is_in_cooldown(last_evolved_at: str) -> bool:

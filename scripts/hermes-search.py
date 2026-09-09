@@ -182,7 +182,11 @@ def search_db(db_path: str, keywords: list, max_results: int) -> list:
         # 이름이 곧 주제다. 같은 키워드를 가진 스킬이 여럿일 때, 그 키워드를 제목으로
         # 삼은 스킬이 그 질문을 위해 만들어진 것이다 — 동점을 그대로 두면 4위로 밀린다.
         score += _name_bonus(path, matched, df, total)
-        scored.append(((score, helpful, used), path, kwfield, matched[0]))
+        # 동점이면 키워드가 적은 스킬을 앞세운다. 질의어 하나만 맞으면 IDF 가 같아
+        # 수백 개가 동점이 되는데, 그 키워드가 차지하는 비중이 큰 스킬일수록 그
+        # 주제를 실제로 다루는 스킬이다. `hermes-evolve-skill.py` 의 대상 선정과
+        # 같은 기준을 쓴다.
+        scored.append(((score, helpful, used, -len(tokens)), path, kwfield, matched[0]))
 
     scored.sort(key=lambda x: x[0], reverse=True)
     return [

@@ -22,6 +22,13 @@ import subprocess
 import sys
 from datetime import datetime
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from hermes_dream_evolve import (  # noqa: E402  (진화 대상 선정·실행)
+    collect_evolution_hints,
+    run_evolve,
+    skill_name_frequency,
+)
+
 # ───────────────────────── 데이터 접근 경계 ─────────────────────────
 # 모든 SQL 은 이 구역에만 둔다. 향후 Postgres/Neo4j 이전 시 여기만 교체.
 
@@ -370,43 +377,6 @@ def run_cleanup(db, scripts_dir, apply) -> tuple:
         return "", 0
 
 
-_CORRECTION_RE = re.compile(r"(말고|대신|바꿔|수정|틀려|잘못|아니라|아니고)")
-_SKILL_KW_RE = re.compile(
-    r"(pnpm|npm|yarn|poetry|pip|docker|fastapi|svelte|postgres|mysql|redis"
-    r"|pytest|vitest|eslint|prettier|ruff|mypy|버전|version)", re.IGNORECASE)
-
-
-def collect_evolution_hints(summaries) -> list:
-    hints, seen = [], set()
-    for s in summaries:
-        for k in ("open", "next", "decisions"):
-            for item in (s["slots"].get(k) or []):
-                if _CORRECTION_RE.search(item) and _SKILL_KW_RE.search(item):
-                    kw = _SKILL_KW_RE.search(item).group(1).lower()
-                    key = (kw, item[:50])
-                    if key not in seen:
-                        seen.add(key)
-                        hints.append((kw, item[:200]))
-    return hints
-
-
-def run_evolve(hints, db, scripts_dir) -> int:
-    n = 0
-    for kw, feedback in hints:
-        try:
-            result = subprocess.run(
-                ["python3", os.path.join(scripts_dir, "hermes-evolve-skill.py"),
-                 "--db", db, "--keyword", kw, "--feedback", feedback],
-                capture_output=True, text=True, timeout=300,
-                env={**os.environ, "HERMES_DISABLED": "1"},
-            )
-            if "EVOLVED:" in result.stdout:
-                n += 1
-        except Exception as e:
-            _log(f"evolve 오류({kw}): {e}")
-    return n
-
-
 def write_report(project_dir, date, *, summary_count, crystallized_keys,
                  evolved_keywords, delete_report) -> str:
     dreams = os.path.join(project_dir, ".hermes", "dreams")
@@ -449,7 +419,7 @@ def main():
 
     keys, watermark, failed_chunks, skipped_chunks = propose_keys(con, summaries, since)
     crystallized = run_crystallize(keys, args.db, args.project_dir, scripts_dir)
-    hints = collect_evolution_hints(summaries)
+    hints = collect_evolution_hints(summaries, skill_name_frequency(con))
     evolved = run_evolve(hints, args.db, scripts_dir)
     # cleanup 은 같은 DB 에 쓰고 --apply 면 VACUUM 까지 한다. 이쪽 연결을 연 채로
     # 띄우면 두 프로세스가 같은 파일을 두고 경합하고, 그 잠김이 cleanup 안에서
