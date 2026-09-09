@@ -70,7 +70,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PROJECT_DIR}/scripts/hooks/claude-userpromptsubmit-reminders.sh"
+            "command": "${CLAUDE_PROJECT_DIR}/scripts/hooks/claude-userpromptsubmit-dispatch.sh"
           }
         ]
       }

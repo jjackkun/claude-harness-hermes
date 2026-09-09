@@ -129,6 +129,7 @@ for t in \
   update-all-roundtrip-test.sh \
   harness-hooks-smoke.sh \
   hook-prune-test.sh \
+  hook-stdin-dispatch-test.sh \
   windows-smoke.sh \
   hermes-pipeline-test.sh \
   hermes-loop-test.sh \

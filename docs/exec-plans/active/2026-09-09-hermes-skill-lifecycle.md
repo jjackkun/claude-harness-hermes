@@ -83,12 +83,14 @@ _SKILL_KW_RE = re.compile(
 
 ## 2. 목표 (What — 검증 가능한 형태)
 
-- [ ] 목표 1 — **주입이 실사용 세션에서 원장에 남는 이유·안 남는 이유를 확정한다.**
+- [x] 목표 1 — **주입이 실사용 세션에서 원장에 남는 이유·안 남는 이유를 확정한다.**
       검증: `docs/audits/2026-09-09-hermes-injection-gap.md` 에 원인과 재현 절차가
       적혀 있고, 그 원인을 제거한 뒤 zeroday 에서 1일 사용 후
       `select count(*) from skill_injection where injected_at > '<수정일>'` > 0.
-- [ ] 목표 2 — **correlate 가 카운터를 실제로 올린다.**
+      **결과(2026-09-09): 17행 / 실세션 4개.** 디스패처 배포 직후부터 기록된다.
+- [x] 목표 2 — **correlate 가 카운터를 실제로 올린다.**
       검증: 목표 1 이후 `select sum(helpful_count)+sum(noop_count) from skill_index` > 0.
+      **결과(2026-09-09): 3.** 4개월간 0 이던 값이 처음으로 움직였다.
 - [ ] 목표 3 — **도메인 어휘 하드코딩이 사라진다.**
       검증: `grep -c 'pnpm|npm|yarn' scripts/hermes-dream.py` == 0 이고,
       novel-bc 의 실제 요약에서 진화 힌트가 1건 이상 추출된다(드라이런 로그로 확인).
@@ -119,13 +121,22 @@ _SKILL_KW_RE = re.compile(
 - 코드 (수정):
   - `scripts/hermes-dream.py` — `_SKILL_KW_RE` 하드코딩 제거
   - `scripts/hermes-cleanup.py` — junk 판정 확장
-  - `assets/hooks/claude-userpromptsubmit-reminders.sh` — 목표 1 원인에 따라 조건부
+  - `assets/hooks/claude-userpromptsubmit-reminders.sh` — 조용한 실패 봉인 해제(계장)
+  - `presets/workflow/harness.conf` · `presets/workflow/hermes.conf` — 개별 훅 등록을
+    디스패처 하나로 교체
+  - `lib/generate_settings_json.py` — `user_prompt_submit` 중복 제거(디스패처 2중 등록 방지)
   - `scripts/hooks/` 의 대응 사본 (배포본 동기화)
 - **신규 파일 목록 (파일별 책임 1줄)**:
   - `docs/audits/2026-09-09-hermes-injection-gap.md` — 주입 원장이 실사용에서
     비는 원인의 조사 기록. 이 파일의 유일한 책임은 *원인 확정*이며 수정 방법은 담지 않는다.
   - `tests/hermes-lifecycle-test.sh` — 되먹임 체인(주입→correlate→prune)이 끊기면
     차단한다. 가짜 위반으로 각 고리의 실효를 확인하는 것이 유일한 책임.
+  - `assets/hooks/claude-userpromptsubmit-dispatch.sh` — stdin 을 한 번 읽어
+    `claude-userpromptsubmit-*.sh` 하위 훅에 같은 페이로드를 먹인다. 판단·출력은
+    하지 않는다. 하위 훅의 첫 실패 종료코드를 그대로 올리는 것까지가 책임이다.
+  - `tests/hook-stdin-dispatch-test.sh` — 나란히 등록하면 뒤 훅이 0바이트를 받는
+    사고 형태를 재현하고, 디스패처가 그것을 없애는지 검증한다. 차단 신호 전파·
+    재귀 방지·프리셋 등록 규칙까지 막는 것이 유일한 책임.
   - `scripts/hermes-vocab.py` — **조건부**. 목표 3 을 "프로젝트 어휘 추출"로 풀 때만
     만든다. 책임: 해당 프로젝트의 축적 데이터에서 빈출 어휘를 산출한다(판정 없음).
     Step 3 의 측정 결과가 "교정어만으로 충분"으로 나오면 만들지 않는다.
@@ -159,7 +170,7 @@ _SKILL_KW_RE = re.compile(
   zeroday 는 워크트리를 쓴다(포트 7003 분리 관행).
 - 훅이 등록됐으나 실행 중 조기 종료 — 앞 훅의 stdin 소비 등.
 
-### Step 2. 원인 제거 + 실사용 1일 측정 [Impl]
+### Step 2. 원인 제거 + 실사용 1일 측정 [Impl] — **완료**, 2026-09-09
 
 > **확정된 제거 대상**: `UserPromptSubmit` 에서 stdin 을 두 훅이 경쟁한다.
 > `mistake-detect` 는 즉시 `cat`, `reminders` 는 계획 스캔 뒤에 읽어 항상 진다.
@@ -208,6 +219,12 @@ _SKILL_KW_RE = re.compile(
   했다 — "진입했으나 빈손" 은 배제. 기록: `docs/audits/2026-09-09-hermes-injection-gap.md`.
 - 2026-09-09: **`reminders` 가 먼저 읽게 하는 수정은 채택하지 않는다** — 근거: 지는 쪽이
   `mistake-detect` 로 바뀔 뿐이다. 한 이벤트에서 stdin 이 필요한 훅이 둘인 구조를 없앤다.
+- 2026-09-09: **파일을 합치지 않고 디스패처를 둔다** — 근거: 두 훅의 본문을 한 파일로
+  합치면 "한 파일 한 책임" 이 깨진다. 디스패처의 책임은 페이로드 배분 하나뿐이고
+  판단·출력은 하위 훅이 그대로 한다.
+- 2026-09-09: **디스패처가 있으면 같은 네임스페이스의 개별 등록을 생성기가 회수한다** —
+  근거: terminal-shipping 의 `docs-first` 가 개별 등록으로 남아 디스패처 호출과 합쳐
+  두 번 돌았다. 회수하지 않으면 경쟁이 그대로 되살아난다.
 - 2026-09-09: 봉인 해제(계장)를 Step 2 선행 조건으로 넣고 먼저 전파함 — 근거:
   실사용 데이터 없이는 Step 2 의 측정 자체가 시작되지 않는다.
 
@@ -219,6 +236,9 @@ _SKILL_KW_RE = re.compile(
   원장 3행은 전부 `session_id='verify-sess'`(수동 검증)이라 **실사용 주입 기록은
   0건**이고, 트랜스크립트 3,199개 중 주입 문구가 실린 것도 0개다. `used_count` 43의
   출처는 계장 로그를 받아 본 뒤 판단한다.
+- **junk 스킬이 실제로 주입되고 있다** — 되먹임이 살아나자마자 드러났다.
+  `columns.md` `prettier.md` `index.md` `array.md` `shared.md` `stores.md` `백엔드가.md`.
+  목표 4(junk 판정)의 대상이 실물로 확인됐다.
 - **`recall_marker.session_id` 에 프롬프트 문장이 저장되고 있다** (1,574행 중 일부).
   `mistake-detect` 의 2줄 파싱이 여러 줄 프롬프트에서 어긋난다. 원장 공백과 인과가
   없어 별건으로 분리했다 — 섞으면 Step 2 측정이 오염된다. 백로그 후보.

@@ -117,6 +117,61 @@ def _strip_harness_hooks(existing_hooks: dict, inventory: set[str]) -> dict:
     return cleaned
 
 
+_UPS_DIR = "scripts/hooks/"
+_UPS_DISPATCH = _UPS_DIR + "claude-userpromptsubmit-dispatch.sh"
+_UPS_PREFIX = _UPS_DIR + "claude-userpromptsubmit-"
+
+
+def _dispatched_by(cmd: object) -> bool:
+    """True 이면 디스패처가 이 훅을 대신 호출한다 — 개별 등록은 중복이다.
+
+    판정은 **경로**로 한다. basename 만 보면 scripts/hooks/ 밖에 사용자가 같은 이름
+    규칙으로 등록한 훅까지 지우게 되는데, 디스패처는 자기 디렉터리만 훑으므로 그 훅은
+    이후 아무도 부르지 않는다 — 사용자 훅의 조용한 소실이다. 이 파일의 소유권 규약
+    (`_is_harness_hook`) 과 같은 기준을 쓴다.
+    """
+    if not isinstance(cmd, str):
+        return False
+    return _UPS_PREFIX in cmd and _UPS_DISPATCH not in cmd
+
+
+def _drop_dispatched_user_prompt_hooks(merged_hooks: dict) -> None:
+    """디스패처가 등록돼 있으면 디스패처가 부를 개별 등록을 지운다.
+
+    디스패처는 scripts/hooks/claude-userpromptsubmit-*.sh 를 모두 호출한다. 같은
+    파일이 개별로도 등록돼 있으면 두 번 돌고, 그 개별 등록이 stdin 을 먼저 먹어
+    경쟁이 되살아난다 — 이 함수가 막으려는 것이 바로 그 재발이다.
+    근거: docs/audits/2026-09-09-hermes-injection-gap.md
+    """
+    groups = merged_hooks.get("UserPromptSubmit")
+    if not isinstance(groups, list):
+        return
+
+    def _entries(group):
+        for entry in group.get("hooks") or []:
+            if isinstance(entry, dict):
+                yield entry, entry.get("command")
+
+    has_dispatch = any(
+        isinstance(cmd, str) and _UPS_DISPATCH in cmd
+        for group in groups if isinstance(group, dict)
+        for _entry, cmd in _entries(group)
+    )
+    if not has_dispatch:
+        return
+
+    kept_groups = []
+    for group in groups:
+        if not isinstance(group, dict):
+            kept_groups.append(group)
+            continue
+        kept = [entry for entry, cmd in _entries(group) if not _dispatched_by(cmd)]
+        group["hooks"] = kept
+        if kept:
+            kept_groups.append(group)
+    merged_hooks["UserPromptSubmit"] = kept_groups
+
+
 def _merge_hook_groups(existing_groups: list, preset_groups: list) -> list:
     """Merge preset matcher-groups into existing ones for a single event."""
     merged = [dict(g) if isinstance(g, dict) else g for g in existing_groups]
@@ -152,7 +207,9 @@ def main(output_path: str) -> int:
     post_edit = _read_lines(tmpdir, "post_edit")
     stop = _read_lines(tmpdir, "stop")
     deny = _read_lines(tmpdir, "deny")
-    user_prompt_submit = _read_lines(tmpdir, "user_prompt_submit")
+    # 순서를 보존하며 중복 제거 — 여러 preset 이 같은 디스패처를 등록해도 한 번만 돈다.
+    # 중복되면 디스패처가 두 번 돌아 리마인더가 두 벌 출력된다.
+    user_prompt_submit = list(dict.fromkeys(_read_lines(tmpdir, "user_prompt_submit")))
     session_start = _read_lines(tmpdir, "session_start")
     pre_tool_use = _read_lines(tmpdir, "pre_tool_use")
     post_tool_use = _read_lines(tmpdir, "post_tool_use")
@@ -250,6 +307,7 @@ def main(output_path: str) -> int:
         if not isinstance(existing_groups, list):
             existing_groups = []
         merged_hooks[event] = _merge_hook_groups(existing_groups, preset_groups)
+    _drop_dispatched_user_prompt_hooks(merged_hooks)
     if merged_hooks:
         existing["hooks"] = merged_hooks
     else:

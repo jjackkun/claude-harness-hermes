@@ -19,7 +19,7 @@ command -v python3 >/dev/null 2>&1 || { echo "python3 없음" >&2; exit 1; }
 if [[ $# -gt 0 ]]; then
   TARGETS=("$@")
 else
-  TARGETS=(README.md presets/workflow/harness.conf)
+  TARGETS=(README.md CLAUDE.md presets/workflow/harness.conf)
 fi
 
 BODY=$(python3 "$COUNTS" render)
