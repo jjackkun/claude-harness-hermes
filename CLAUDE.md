@@ -48,6 +48,13 @@ PDF 4~5쪽: "AGENTS.md 를 백과사전이 아닌 *목차* 로 취급한다."
   - harness-promote-rule — 반복되는 결함·리뷰 지적·경계 위반을 docs/design-docs/core-beliefs.md 의 R 룰로 승격하고, 대응하는 강제 장치(테스트·린터 규칙)를 스캐폴드한다. Use when the same…
   - structured-file-layout — Use when creating new files, planning features, or writing exec-plans — before any code is written, to ensure each file…
   - run-to-the-end — 오래 걸리는 명령을 돌리기 **직전에** 본다. 내가 "시험을 돌립니다" · "전체 검사를 돌리고" · "검증하겠습니다" · "실측하겠습니다" · "빌드하겠습니다" 라고 말하려는 자리, 또는 사용자가 "검사부터…
+  - hermes-status — Show the overall Hermes engineering status. Use when the user types /hermes-status. Reads the project's .hermes/state.db…
+  - hermes-crystallize — Crystallize repeated conversation patterns into reusable skill files. Triggered automatically by the Hermes learning…
+  - hermes-recall — Recall past conversation context from Hermes rolling summaries. Use when the user types /hermes-recall [keyword]. Reads…
+  - hermes-dream — Run Hermes dreaming — consolidate accumulated rolling summaries into crystallized/evolved skills and propose junk-skill…
+  - hermes-loop — Goal-based autonomous loop for the CURRENT project. Trigger when the user types /hermes-loop (with or without a goal)…
+  - mcp-builder — Guide for creating high-quality MCP (Model Context Protocol) servers that enable LLMs to interact with external services…
+  - skill-creator — Create new skills, modify and improve existing skills, and measure skill performance. Use when users want to create a…
 - **에이전트** (검토·위임): `.claude/agents/` — architect-lite planner-lite architect planner code-reviewer silent-failure-hunter tdd-guide doc-updater docs-lookup performance-optimizer refactor-cleaner
 
 ## 하네스 엔지니어링 (PDF 방법론)
@@ -96,5 +103,58 @@ PDF 11쪽: "이 리포지터리의 특정 구조와 툴링에 따라 크게 달�
 3. 세션 시작 시 `active/` 에 문서가 있으면 먼저 읽고 이어감
 4. 미래 작업 후보는 `backlog/`에 날짜 없이 `<slug>.md`로 보관
 5. `.claude/memory/`의 핸드오프 파일 대신 `docs/exec-plans/`를 사용
+
+## 헤르메스 엔지니어링 (Hermes Engineering)
+
+이 프로젝트는 `hermes` 프리셋으로 자가 진화 러닝 루프가 활성화되어 있다.
+
+**기억 구조:**
+- `[project]/.hermes/state.db` — 프로젝트 전용 SQLite (세션 기억 + 스킬 인덱스)
+- `~/.hermes/global.db` — 전역 SQLite (공통 패턴 + 사용자 성향)
+
+**자동 동작 (Claude Code 세션 훅 기반 — Codex 세션에서는 미동작, 추후 버전업에서 지원 예정):**
+- 세션 종료 시 러닝 루프: 저장 → 롤링 요약 → 결정화(반복 3회+) → 스킬 효용 상관·강등
+- 결정화된 스킬은 `[project]/.hermes/skills/` 에 저장
+- 세션 시작 시(startup/resume): 관련 스킬 자동 검색 주입 + 직전 세션 요약 회상 주입 + 하루 1회 드리밍 자동 실행(throttle 20h, 백그라운드)
+- 작업 도중 Bash 가 터미널 실패(401·permission denied·Traceback·FAILED 등)를 내면 관련 스킬을 그 자리에서 주입 (세션당 최대 3회)
+
+**슬래시 커맨드:**
+- `/hermes-status` — 전체 스킬/규칙/세션 현황 확인
+- `/hermes-crystallize` — 대기 패턴 즉시 결정화 (수동 실행)
+- `/hermes-recall` — 직전 세션 요약 키워드 검색·회상
+- `/hermes-dream` — 드리밍 결정화 수동 실행 (누적 요약 → 승격 + junk 스킬 정리 제안)
+
+**자율 에이전트 (선택):**
+- cron + `scripts/hermes-cron-run.sh` 로 매니저 에이전트 자동 실행 가능
+- 설정 방법: `docs/hermes-cron-guide.md` 참고
+- 테스트: `python3 scripts/hermes-manager.py --db .hermes/state.db --action start --projects <프로젝트명>`
+
+**목표 기반 자율 루프:**
+- 헤드리스: `scripts/hermes-loop-run.sh <프로젝트> "<목표>"` — 완료/안전캡까지 자율 반복
+- 대화형: `/hermes-loop <목표>` — 현재 세션에서 반복 (파괴적 작업은 승인 게이트)
+- 상태/중단: `python3 scripts/hermes-loop.py status` / `... stop <loop-id>`
+- 재개: `scripts/hermes-loop-run.sh <프로젝트> --resume <loop-id>`
+- 가이드: `docs/hermes-loop-guide.md`
+
+**원칙:**
+- 로컬 스킬 진화는 자동, 공통(claude-harness-hermes) 반영은 사용자 승인 후 PR
+- AI가 공통 스킬을 자동으로 수정하는 것은 금지
+- 파괴적 작업(삭제·force push)은 자율 에이전트도 절대 자동 실행하지 않는다
+
+## MCP Server Development
+
+- 새 MCP 서버 또는 기존 서버 확장 시 **mcp-builder 스킬 호출 필수**
+- 도구 이름은 동사+명사로 구체적이게 (`create_issue`, `search_docs`)
+- 도구 설명은 LLM 이 **언제 호출해야 할지** 를 결정하므로 트리거 조건을 명확히
+- 입력 스키마는 JSON Schema 로 엄격하게. Optional 필드에도 description 필수
+- 에러는 구조화된 오브젝트로 반환 (LLM 이 복구 가능하도록)
+- 민감한 작업은 리소스/프롬프트 승인 패턴 활용
+
+## Skill Development
+
+- 새 스킬/기존 스킬 개선 작업 시 **skill-creator 스킬을 반드시 invoke**
+- frontmatter 의 `description` 이 트리거 정확도를 결정한다 — 구체적 키워드 + 조건 명시
+- 스킬 본문은 실제 호출됐을 때만 로드되므로 용량보다 **description 정확도** 에 투자
+- 변경 후 skill-creator 의 평가/벤치마크 도구로 트리거 정확도 검증
 
 <!--===DS:END===-->

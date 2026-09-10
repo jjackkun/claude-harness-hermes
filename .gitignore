@@ -45,4 +45,9 @@ docs/superpowers/plans/
 .harness/
 !.claude/memory/
 !.claude/memory/**
+.hermes/*
+!.hermes/skills/
+!.hermes/skills/**
+!.hermes/history/
+!.hermes/history/**
 # <<< harness-agent-preset <<<
