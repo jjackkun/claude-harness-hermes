@@ -97,7 +97,7 @@ claude-harness-hermes/               ← 이 디렉터리 (private git repo 권�
 │   ├── database/{postgres,mysql,oracle,mongodb,redis}.conf
 │   ├── build/{jpa,mybatis,maven,gradle}.conf
 │   ├── permissions/{git-write,pm2}.conf  ← 추가 권한 화이트리스트
-│   ├── tools/{prettier,terminal-paste-image,understand-anything}.conf
+│   ├── tools/{prettier,terminal-paste-image}.conf
 │   ├── workflow/{harness,hermes,mcp,skill-dev}.conf
 │   └── global/                           ← [global] 스텝: ~/.claude 전역 opt-in 스킬 (현재 비어있음)
 ├── scripts/
@@ -281,7 +281,7 @@ Claude 전용 `CLAUDE.md`, `.claude/settings.json` / `.claude/settings.local.jso
 | database | postgres, mysql, oracle, mongodb, redis | **CLAUDE.md 가이드 섹션 + 권한** 위주. postgres 만 전용 스킬(`postgres-patterns`) 보유, 일부는 공용 자산(`database-migrations` 스킬, `database-reviewer` 에이전트)만 포함 — 나머지 전용 스킬/룰은 TODO |
 | build | jpa, mybatis, maven, gradle | **CLAUDE.md 규칙 섹션** 위주. jpa 만 전용 스킬(`jpa-patterns`) 보유 — 나머지 전용 스킬/룰은 TODO |
 | permissions | git-write, pm2 | 추가 권한 화이트리스트 |
-| tools | prettier, terminal-paste-image, understand-anything | prettier 경고 훅(2026-08-04 harness 에서 분리), VSCode 익스텐션 등 부가 도구 |
+| tools | prettier, terminal-paste-image | prettier 경고 훅(2026-08-04 harness 에서 분리), VSCode 익스텐션 등 부가 도구 |
 | workflow | **harness**, **hermes**, mcp, skill-dev | 작업 방식·도구 프리셋 |
 | global | _(현재 없음)_ | **전역 opt-in 스킬 자리.** `[global]` 스텝에서 선택 시 프로젝트가 아닌 `~/.claude/skills/` 에 한 번 설치되어 모든 프로젝트에서 사용. `~/.claude/presets.global.lock` 에 기록되고 `update-all` 이 유지. `resolve_preset` 대상이 아니라 프로젝트 프리셋으로는 설치 불가. `presets/global/<name>.conf` 추가 시 자동 노출 |
 
@@ -297,7 +297,7 @@ Claude 전용 `CLAUDE.md`, `.claude/settings.json` / `.claude/settings.local.jso
 ### 플러그인 프리셋 (PLUGINS)
 
 프리셋 `.conf` 에 `PLUGINS+=(...)` / `PLUGIN_MARKETPLACES+=(...)` 를 넣으면 Claude Code
-플러그인을 **user scope(전역)** 로 설치합니다 (예: `presets/tools/understand-anything.conf`).
+플러그인을 **user scope(전역)** 로 설치합니다.
 스킬·룰·에이전트(프로젝트별 심볼릭)와 달리 플러그인은 한 번 깔면 모든 프로젝트에서 동작합니다.
 
 - **설치**: 프리셋 선택 시 `claude plugin install <id> --scope user` (idempotent)
