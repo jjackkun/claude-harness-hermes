@@ -318,7 +318,7 @@ Claude 전용 `CLAUDE.md`, `.claude/settings.json` / `.claude/settings.local.jso
 - **에이전트 11종**: `architect-lite`, `planner-lite`, `architect`, `planner`, `code-reviewer`, `silent-failure-hunter`, `tdd-guide`, `doc-updater`, `docs-lookup`, `performance-optimizer`, `refactor-cleaner`
 
 <!--===DS:COUNTS:BEGIN===-->
-- 세션 중 실행 훅 **14종** + 훅이 공유하는 판정 모듈 **10개**
+- 세션 중 실행 훅 **13종** + 훅이 공유하는 판정 모듈 **10개**
 - git pre-commit 게이트 **16종** — 차단 10 / 경고 6
 - 스킬 **5종** · 에이전트 **11종** · 테스트 **49개**
 <!--===DS:COUNTS:END===-->
@@ -348,7 +348,6 @@ Claude 전용 `CLAUDE.md`, `.claude/settings.json` / `.claude/settings.local.jso
 | SessionStart | `claude-sessionstart-mutation-probe.sh` | **R-mut** — 주 1회 변이 점검(백그라운드), 결과는 다음 세션에 보고 |
 | SessionStart | `claude-sessionstart-doc-gardening.sh` | 주간 문서 편차 점검 (CI 미배선 환경에서도 동작, 7일 스로틀) |
 | PostToolUse(Bash) | `claude-posttooluse-output-budget.sh` | **R-out** — 출력 바이트를 실측해 기록, 임계 초과 시에만 경고 |
-| Stop | `claude-stop-perm-prompt-fatigue.sh` | 권한 프롬프트 피로도 감지 |
 
 `iface-guard` 는 이 저장소 최초의 **하드 차단** PreToolUse 훅입니다. 임계 8 은 저장소 운영 코드
 36개의 공개 심볼 분포에서 7이 최빈 고원이고 8부터 상위 사분위라는 실측에서 나왔습니다.

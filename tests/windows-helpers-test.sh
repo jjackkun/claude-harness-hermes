@@ -113,7 +113,7 @@ echo "== wrap_hooks_for_windows =="
 POST_EDIT_HOOKS=('${CLAUDE_PROJECT_DIR}/scripts/hooks/claude-posttooluse-size-warn.sh')
 USER_PROMPT_SUBMIT_HOOKS=('${CLAUDE_PROJECT_DIR}/scripts/hooks/claude-userpromptsubmit-reminders.sh')
 PRE_TOOL_USE_HOOKS=('Bash::${CLAUDE_PROJECT_DIR}/scripts/hooks/claude-pretooluse-bash-guard.sh')
-STOP_HOOKS=('${CLAUDE_PROJECT_DIR}/scripts/hooks/claude-stop-perm-prompt-fatigue.sh')
+STOP_HOOKS=('${CLAUDE_PROJECT_DIR}/scripts/hooks/claude-stop-retrospective.sh')
 
 wrap_hooks_for_windows "/mnt/c/Users/jjack/Projects/foo"
 
@@ -127,7 +127,7 @@ assert "PreToolUse matcher 보존" \
   'Bash::wsl bash "/mnt/c/Users/jjack/Projects/foo/scripts/hooks/claude-pretooluse-bash-guard.sh"' \
   "${PRE_TOOL_USE_HOOKS[0]}"
 assert "Stop hook 래핑" \
-  'wsl bash "/mnt/c/Users/jjack/Projects/foo/scripts/hooks/claude-stop-perm-prompt-fatigue.sh"' \
+  'wsl bash "/mnt/c/Users/jjack/Projects/foo/scripts/hooks/claude-stop-retrospective.sh"' \
   "${STOP_HOOKS[0]}"
 
 # Linux 경로에서는 no-op 확인
