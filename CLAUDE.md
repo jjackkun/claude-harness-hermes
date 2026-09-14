@@ -41,7 +41,7 @@ PDF 4~5쪽: "AGENTS.md 를 백과사전이 아닌 *목차* 로 취급한다."
 ## 설치된 규칙·스킬 목차 (필요할 때 펼쳐 본다)
 
 - **항상 적용되는 규칙**: `.claude/rules/` (및 `~/.claude/rules/common/`) — 코딩 스타일·보안·테스트·git·리뷰 등. 관련 작업 전 해당 규칙을 먼저 확인한다.
-  - 이 프로젝트 룰셋: harness
+  - 이 프로젝트 룰셋: harness adhd
 - **스킬** (아래 발동 조건에 걸리면 호출한다. 작업 크기와 무관하다): `.claude/skills/`
   - harness-boundary-check — 실행 모드(once/scheduled/realtime) 간 경계 위반과 LLM SDK 직접 호출을 감지한다. Use when writing or reviewing code that touches execution…
   - harness-reasoning-sandwich — 비자명한 작업에 계획 → 구현 → 검증 흐름을 적용하고, 큰 변경일 때만 깊은 리뷰로 승격한다. Use when starting a new feature, multi-file change, or any…
