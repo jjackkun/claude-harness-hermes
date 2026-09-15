@@ -25,6 +25,8 @@
 - [ ] 목표 8 — `loop_decisions` 의 결정이 `journal_events` 의 `decision` 이벤트로도 남는다(G-9 흡수). 검증: `tests/hermes-loop-test.sh` 결정 절 + journal 조회. 기존 `loop_decisions` 는 그대로 둔다(보고서가 읽음).
 - [ ] 목표 9 — 스레드 보기: `hermes-journal.py thread <task_id>` 가 시간순 이벤트를, `graph` 가 `parent_task_id` · `caused_by` 간선을 낸다. 검증: 테스트 픽스처 5건.
 - [ ] 목표 10 — 결정화 스킬 `rotate-ephemeral-work-logs` 가 작업 이력을 로테이션 대상에서 제외한다(G-10). 검증: 스킬 본문에 제외 문장 + `hermes-cleanup.py` 가 `journal_events` 를 건드리지 않음(테스트).
+- [ ] 목표 11 — 구버전 스키마 호환(planner-lite 지적): `journal_events` · `loops.started_by` 가 없는 기존 `state.db`(zeroday 포함)에서 Stop · SubagentStop 훅이 죽지 않고 한 줄 알린 뒤 exit 0, 첫 실행 때 지연 생성(`_ensure_injection_source_column` 패턴, `scripts/hermes-search.py:53`). 검증: 현재 스키마 DB 사본으로 훅 2개 실행 → exit 0 + 테이블·칸 생성.
+- [ ] 목표 12 — 롤백 경로(planner-lite 지적): 트리거가 기존 쓰기 경로를 막았을 때 `hermes-journal.py rollback --confirm` 이 트리거 2개와 테이블을 지우지 않고 **이름만 바꿔**(`journal_events_disabled_<ts>`) 훅이 조용히 건너뛰게 한다. 검증: 테스트 — rollback 뒤 훅 exit 0, 이벤트 보존.
 
 ## 3. 비목표 (Out of Scope)
 

@@ -26,7 +26,8 @@
 - [ ] 목표 9 — 기존 테스트 전부 통과. 검증: `bash tests/run-all.sh` 0 실패, `tests/update-all-roundtrip-test.sh` · `tests/uninstall-roundtrip-test.sh` · `tests/windows-helpers-test.sh` 포함.
 - [ ] 목표 10 — zeroday-frontend 이전: 링크 41개가 복사본으로 바뀐 상태를 **사용자가 커밋**한다. 검증: zeroday 에서 `git ls-files -s .claude | grep -c 120000` = 0, `.claude/.factory-manifest.json` 추적됨.
 - [ ] 목표 11 — 제거도 설치 목록 기준이다: `uninstall.sh` 가 manifest 항목만 지우고 소우주 자체 스킬은 남긴다. 검증: `tests/uninstall-roundtrip-test.sh` 통과 + 자체 스킬 폴더 잔존 케이스 추가.
-- [ ] 목표 12 — `is_windows_path` 분기가 설치·정리·백업 세 함수에서 사라지고 한 경로만 남는다. 검증: `grep -c is_windows_path lib/installers.sh` = 0, `tests/windows-helpers-test.sh` · `tests/windows-smoke.sh` 통과.
+- [ ] 목표 12 — `is_windows_path` 분기가 설치·정리·백업 세 함수에서 사라지고 한 경로만 남는다. 검증: `grep -c is_windows_path lib/installers.sh` = 0, `tests/windows-helpers-test.sh` · `tests/windows-smoke.sh` 통과. `lib/harness_installers.sh:719-723` 의 `ln -s` 는 메모리 폴더 링크(E-04, 범위 밖)라 남는다 — 테스트가 "저장소 안 `ln -s` 는 이 한 곳뿐" 을 `grep -n 'ln -s' lib/*.sh` 로 고정.
+- 비목표 추가(planner-lite 지적): 복사 설치로 소우주 저장소가 커진다 — 공장 `assets/skills` 39개 + 규칙 + 에이전트 15개 ≈ 수백 KB 텍스트(설치 전 `du -sh assets/skills assets/rules assets/agents` 로 수치를 이 문서 §7 에 적는다). 줄이는 일은 이번 범위 밖.
 
 ## 3. 비목표 (Out of Scope)
 
@@ -45,7 +46,7 @@
   - `assets/hooks/claude-posttooluse-factory-tamper-warn.sh` — Edit/Write 대상이 설치 목록에 있고 해시가 달라지면 "소우주 확장으로 옮기고 제안하라" 경고를 낸다.
   - `assets/hooks/claude-sessionstart-factory-link-check.sh` — 공장 자기 설치의 상대경로 링크가 깨졌는지 판정해 재설치를 안내한다.
   - `tests/copy-install-test.sh` — 복사 설치·목록 기반 정리·변조 경고·깨진 링크 감지·factory.json 을 임시 프로젝트에서 검증한다.
-  - `docs/hermes-universe/migration/zeroday-frontend-copy-install.md` — zeroday 이전 절차(사용자가 실행할 명령 순서와 커밋 전 확인 목록)만 담는다.
+  - `docs/hermes-universe/migration/copy-install-all-universes.md` — 등록된 모든 소우주의 이전 절차(사용자가 실행할 명령 순서와 저장소별 커밋 전 확인 목록)만 담는다.
 - 게이트 대비: 신규 셸 모듈 `factory_manifest.sh` 는 공개 함수 4개(`manifest_add` · `manifest_read` · `manifest_prune` · `manifest_verify`)로 제한(R-iface 8 미만). 훅 2개는 각 80줄 이내(R-size).
 - 룰: 새 R 룰 후보 "설치물은 저장소 밖 경로를 가리키지 않는다"(E-02). 이번에는 `core-beliefs.md` 에 후보로 적고 강제 장치는 목표 6·7 의 테스트·훅.
 - 데이터: `skill_index` 의 모순 스킬 2행 tombstone(기존 `hermes-prune.py` 경로 사용, 새 스키마 없음).
@@ -87,10 +88,11 @@
 - 산출: `tests/copy-install-test.sh`, `run-all.sh` 등록, `doc_counts` 동기화(`scripts/sync-doc-counts.sh`), SKILL.md 문구.
 - 검증: 목표 9.
 
-### Step 7. zeroday-frontend 이전 [사용자 실행]
+### Step 7. 등록된 모든 소우주 이전 [사용자 실행]
 
-- 산출: `docs/hermes-universe/migration/zeroday-frontend-copy-install.md` — ① zeroday 를 `.installed-projects` 에 등록하거나 `project-claude.sh /home/jjackkun/PROJECT/zeroday-frontend <기존 presets.lock 의 프리셋>` 직접 실행 ② `git status` 로 링크 41개 → 파일 변경 확인 ③ `.claude/.factory-manifest.json` · `.hermes/factory.json` 추적 확인 ④ 사용자 커밋. 자동 커밋 금지.
-- 검증: 목표 10. 다른 컴퓨터에서 pull 후 `.claude/skills/*/SKILL.md` 가 실제 파일로 존재.
+- 대상: zeroday-frontend **와** 이 컴퓨터 `.installed-projects` 의 3곳(ai-create · wonil · terminal-shipping). 후자도 다음 `update-all` 에서 링크→파일 모드 변경(120000→100644) diff 가 각 저장소에 생긴다(planner-lite 지적) — 예고 없이 일어나면 안 된다.
+- 산출: `docs/hermes-universe/migration/copy-install-all-universes.md` — ① zeroday 를 `.installed-projects` 에 **등록한 뒤** `update-all.sh`(직접 실행만 하면 계획 2·4·5 의 마이그레이션이 `hermes-init.py` 경유라 zeroday 에 영영 안 닿는다 — planner-lite 지적) ② 설치기가 "링크 → 복사본 N건" 을 stdout 한 줄로 보고 ③ 각 저장소에서 `git status` 로 변경 확인, `.claude/.factory-manifest.json` · `.hermes/factory.json` 추적 확인 ④ 사용자가 저장소마다 커밋. 자동 커밋 금지.
+- 검증: 목표 10 + `grep -c zeroday-frontend .installed-projects` = 1 + 설치 로그의 변환 건수 = 41(zeroday). 다른 컴퓨터에서 pull 후 `.claude/skills/*/SKILL.md` 가 실제 파일로 존재.
 
 ## 6. 의사결정 로그
 

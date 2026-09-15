@@ -14,7 +14,7 @@
 
 ## 2. 목표 (What — 검증 가능한 형태)
 
-- [ ] 목표 1 — 코드 브랜치 원문 커밋이 멈춘다. 검증: `hermes.conf` 의 `!.hermes/history/**` 제거 후 재설치 → `.gitignore` 마커 블록에 예외 없음, `git check-ignore .hermes/history/x.jsonl` 이 무시로 판정. 이미 커밋된 235+31개는 **손대지 않는다**(T-03).
+- [ ] 목표 1 — 코드 브랜치 원문 커밋이 멈춘다. `hermes.conf:177-178` 의 `!.hermes/history/` **와** `!.hermes/history/**` 두 줄을 지운다(planner-lite 지적). 검증 두 줄: (a) 재설치 후 `git check-ignore .hermes/history/new.jsonl` 이 무시로 판정 — **새 파일만** (b) 이미 추적 중인 평문은 무시 규칙과 무관하게 그대로다 — `git ls-files .hermes/history | wc -l` 이 zeroday 235 · terminal-shipping 31 로 **불변**(T-03. 추적 해제 `git rm --cached` 도 하지 않는다 — 그것은 이력 재작성은 아니지만 동료 clone 의 작업 트리에서 파일을 지우는 부작용이 있어 저장소별 사용자 판단).
 - [ ] 목표 2 — 매 턴 export 가 세션 파일 전량 재작성이 아니라 **턴 단위 조각**(`history/<session_id>/<순번>.enc`)을 만든다. 검증: `tests/hermes-sync-test.sh` — 3턴 후 파일 3개, 기존 조각 바이트 불변.
 - [ ] 목표 3 — 조각은 `age` 로 **마스터 자물쇠 하나**에 잠기고, 마스터 열쇠는 컴퓨터 자물쇠·비상 자물쇠로 감싸 `keys/` 에 놓인다(RV-03). 검증: 테스트에서 자물쇠 두 개 등록 → 조각 헤더 수신자 1개, `keys/<사람>/master.<지문>.age` 2개, 어느 열쇠로도 복호 성공.
 - [ ] 목표 4 — 열쇠 CLI 가 AI 세션 밖 절차를 구현한다: `init`(마스터+컴퓨터 열쇠), `add-computer`(다른 컴퓨터 자물쇠로 마스터 재감싸기), `emergency`(비상 열쇠 생성·한 번 표시·시험 복호·폐기·자물쇠 등록), `revoke`, `rotate-master`(컴퓨터 분실 후 새 마스터 — 새 조각부터, 옛 마스터는 보관, G-4), `doctor`. 검증: `tests/hermes-keys-test.sh` 가 각 명령을 비대화(`--yes` + stdin) 로 돌림. `emergency` 는 시험 복호 실패 시 다음 단계로 못 감. `rotate-master` 뒤 옛 조각은 옛 마스터로만 열린다.
@@ -27,6 +27,8 @@
 - [ ] 목표 11 — 작업 이력 자유 글 칸 3개(`intent` · `lesson` · `decision`)가 원격 사본에서만 암호문이다(J-07). 검증: 원격 `journal/…/<event_id>.json` 의 세 칸은 `age` 헤더로 시작, 기계 칸은 평문.
 - [ ] 목표 12 — 압축(G-1)이 추가 전용과 충돌하지 않는다: 압축은 "요약 조각 추가 + 원 조각 `superseded` 표시 파일" 로 바뀌고, 원 조각을 덮어쓰지 않는다. 검증: 테스트 — 압축 후 원 조각 바이트 불변, 재색인이 요약본을 택함.
 - [ ] 목표 13 — 서버 실측 V-1 · V-2 · V-3 결과가 이 문서 §7 에 기록된다(사용자 실행).
+- [ ] 목표 14 — `age` 미설치 컴퓨터에서 세션 시작·종료 훅이 exit 0 으로 한 줄만 알리고 push · pull 을 건너뛴다(planner-lite 지적 — zeroday 동료 4명 전원이 이 경로를 매 세션 밟는다). 검증: 테스트가 `PATH` 에서 `age` 를 뺀 채 두 훅 실행 → exit 0, `state.db` 변경 0, 알림 1줄.
+- [ ] 목표 15 — 사내 서버가 사용자 정의 참조를 거부하고 폴백 브랜치도 원치 않으면 **그 소우주는 이식을 켜지 않는다**(planner-lite 지적). 폴백 브랜치 `hermes/sync` 는 동료 브랜치 목록에 보이므로 zeroday 는 V-2 결과가 "참조 허용" 일 때만 켠다. 검증: `enable-sync.md` 에 이 분기가 명시되고, `hermes-sync.py status` 가 참조 거부를 감지하면 "이식 불가 — 사람 판단" 을 낸다.
 
 ## 3. 비목표 (Out of Scope)
 
