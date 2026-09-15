@@ -13,7 +13,7 @@
 | 층 | 위치(안) | 누가 고치나 | 키 |
 |---|---|---|---|
 | **우주 공통** | claude-harness-hermes `assets/skills/` → 소우주에 복사 설치 | 사용자 승인 PR | `(공장, 이름, 버전)` |
-| **소우주 공통** | `<소우주>/.hermes/skills/common/` | 소우주 관리자 승인 | `(universe_id, 이름)` |
+| **소우주 공통** | `<소우주>/.hermes/skills/` (기존 자리 그대로 — RV-18, 초안의 `skills/common/` 은 폐기) | 소우주 관리자 승인 | `(universe_id, 이름)` |
 | **조직 단위** | `<소우주>/.hermes/units/<단위 id>/skills/` | 그 조직 단위 | `(universe_id, 단위 id, 이름)` |
 | **개인** | `<소우주>/.hermes/agents/<agent_id>/skills/` | 에이전트 본인 | `(universe_id, agent_id, 이름)` |
 

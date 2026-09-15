@@ -26,11 +26,11 @@
 | V-1 | gitlab.com이 `refs/hermes/sync` push를 받는가 | terminal-shipping 운반 경로. 공식 문서에 금지 목록만 있고 허용 명시가 없다 | 테스트 저장소에 `git push origin HEAD:refs/hermes/sync` |
 | V-2 | zeroday-frontend 사내 서버(`211.206.116.39:3000`)의 소프트웨어 종류 | 포트로 Gitea류라고 **추정**했을 뿐. Gitea/Forgejo는 소스상 허용 확인 | 서버 웹 화면 확인 후 V-1과 같은 push 실측 |
 | V-3 | 서버가 사용자 정의 참조를 광고(hideRefs)하는가 | fetch 가능 여부 | 실측 |
-| V-4 | Claude Code 훅 입력에 하위 에이전트 종류·id가 넘어오는가 | 대화형 세션에서 기계가 `agent:` 행위자를 찍을 수 있는지 | Claude Code 훅 문서 확인 + SubagentStop 훅 입력 덤프 |
-| V-5 | 복사 설치 시 스킬을 하위 폴더로 나눠도 로딩되는가 | 공통 스킬과 소우주 자체 스킬을 폴더로 구분할 수 있는지 | Claude Code 스킬 로딩 규칙 확인 |
+| V-4 | Claude Code 훅 입력에 하위 에이전트 종류·id가 넘어오는가 | 대화형 세션에서 기계가 `agent:` 행위자를 찍을 수 있는지 | **확인됨 (2026-09-15, 공식 문서 hooks.md)**: `SubagentStop` 에 `agent_id`(Claude Code 내부 id) · `agent_type`(예: `code-reviewer`) 이 오고, 모든 훅에 `session_id` · `transcript_path` 가 온다. `agent_type` 은 우리 직무 템플릿에 대응하고, 명부 id 는 소환 토큰(RV-06)으로 찍는다 |
+| V-5 | 복사 설치 시 스킬을 하위 폴더로 나눠도 로딩되는가 | 공통 스킬과 소우주 자체 스킬을 폴더로 구분할 수 있는지 | **확인됨 (2026-09-15, 공식 문서 skills.md)**: `.claude/skills/<이름>/SKILL.md` **직계 폴더만** 읽는다. 하위 폴더 불가, 심링크 폴더는 지원. → 공통/자체 구분은 폴더가 아니라 설치 목록(`.claude/.factory-manifest.json`)으로만 한다 |
 | V-6 | age CLI와 pyrage 중 무엇을 쓸 것인가 | 현재 둘 다 미설치, Python 3.10.12. 설치는 사용자가 WSL에서 직접 | 구현 계획에서 결정 |
 | V-7 | 공장 GitHub 저장소가 공개인가 | 봉투에 이름을 넣지 않는 결정(3절)의 전제 | **확인됨 (2026-09-15)**: `gh repo view jjackkun/claude-harness-hermes --json visibility` → `PUBLIC`. 봉투 본문이 공개 게시물이 된다([skill-proposal-delivery.md](design/world/skill-proposal-delivery.md) 3절) |
-| V-8 | Claude Code 훅 입력에 토큰 사용량이 오는가 | 작업 이력 `evidence.usage` 칸 제안의 전제 | V-4 와 함께 훅 입력 덤프 |
+| V-8 | Claude Code 훅 입력에 토큰 사용량이 오는가 | 작업 이력 `evidence.usage` 칸 제안의 전제 | **확인됨 (2026-09-15, 공식 문서 sessions.md)**: 훅 입력에 없고 transcript 형식은 비공개(버전마다 바뀜). `claude -p --output-format json` 은 usage 를 낸다 → RV-10 의 `usage` 칸은 **헤드리스 러너 경로에서만** 채운다 |
 
 ## 3. 설계 안에서 비어 있는 세부
 
