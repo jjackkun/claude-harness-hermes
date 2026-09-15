@@ -11,6 +11,7 @@ run/resume 은 권한 확인을 건너뛰는 위험 플래그를 절대 사용�
   hermes-loop.py run <loop-id> [--claude-cmd claude] [--iter-timeout SEC]
   hermes-loop.py resume <loop-id>
   hermes-loop.py step <loop-id> --action "..." --verdict V [--signal S]
+                 [--decision "결정 — 이유 — 손해" ...]
   hermes-loop.py status [<loop-id>]
   hermes-loop.py stop <loop-id>
 """
@@ -21,6 +22,7 @@ import subprocess
 import sys
 
 import hermes_loop as core
+import hermes_loop_decisions as decisions
 from hermes_loop_prompt import build_iteration_prompt, parse_report
 
 
@@ -127,6 +129,8 @@ def _drive(args):
         if report is None:                     # 오류 = 무진전 취급 (설계 §7)
             core.record_iteration(db, args.loop_id, iteration,
                                   fail_reason, "continue", "none", False)
+            # 계약 블록이 깨져도 결정 원장에서 조용히 빠지지 않게 누락으로 남긴다
+            decisions.record(db, args.loop_id, iteration, [])
             core.append_progress_log(loop["goal_md_path"], iteration,
                                      fail_reason, "none", "continue")
             continue
@@ -144,6 +148,7 @@ def _drive(args):
             or (signal == "pass" and prev_signal == "fail"))
         core.record_iteration(db, args.loop_id, iteration,    # 7. 기록
                               report["action"], verdict, signal, progressed)
+        decisions.record(db, args.loop_id, iteration, report["decisions"])
         core.append_progress_log(loop["goal_md_path"], iteration,
                                  report["action"], signal, verdict)
         if verdict == "goal-met":              # 8. 종료 판정
@@ -170,6 +175,7 @@ def cmd_step(args):
         else args.signal == "pass"
     core.record_iteration(db, args.loop_id, iteration,
                           args.action, verdict, args.signal, progressed)
+    decisions.record(db, args.loop_id, iteration, args.decision)
     core.append_progress_log(loop["goal_md_path"], iteration,
                              args.action, args.signal, verdict)
     if verdict == "goal-met":
@@ -265,6 +271,9 @@ def main():
     p.add_argument("--verdict", required=True, choices=core.VERDICTS)
     p.add_argument("--signal", default="none", choices=core.SIGNALS)
     p.add_argument("--progressed", type=int, choices=(0, 1), default=None)
+    p.add_argument("--decision", action="append", default=[],
+                   help="묻지 않고 정한 것 '결정 — 이유 — 손해' (반복 지정,"
+                        " 없으면 '없음'. 생략 시 기록 누락으로 표시)")
 
     p = sub.add_parser("status", help="루프 현황")
     p.add_argument("loop_id", nargs="?")

@@ -8,6 +8,7 @@
 import re
 
 from hermes_loop import RECENT_LOG_COUNT, VERDICTS
+from hermes_loop_decisions import parse_decision_lines
 
 ITER_TEMPLATE = """\
 # 헤르메스 루프 에이전트 — 반복 {iteration}/{max_iterations}
@@ -52,10 +53,15 @@ ACTION: <이번 반복에서 한 일 한 줄 요약>
 VERDICT: <continue | goal-met | blocked 중 하나>
 VERIFY: <드라이버가 실행할 검증 셸 명령 1줄, 없으면 none>
 NEXT: <다음 반복 제안 한 줄>
+DECISION: <묻지 않고 정한 것> — <이유> — <틀렸을 때 손해>
 === END REPORT ===
 
 - VERDICT 기준: 모든 완료 조건 충족 → goal-met / 사람 개입 필요 → blocked /
   그 외 → continue.
+- DECISION: 이번 반복에서 사람에게 묻지 않고 정한 판단마다 한 줄씩 쓴다.
+  하나도 없으면 `DECISION: 없음` 한 줄. 빠뜨리면 보고서에 "기록 누락" 으로 남는다.
+  되돌릴 수 없는 일·보안·루프 브랜치 밖 부작용·어느 쪽이든 추측인 경우는
+  정하지 말고 VERDICT: blocked 로 멈춘다.
 - goal-met 이라도 VERIFY 명령이 실패하면 드라이버가 continue 로 강등한다.
 """
 
@@ -97,4 +103,5 @@ def parse_report(text):
         return None
     return {"action": fields.get("action", ""), "verdict": verdict,
             "verify": fields.get("verify", "none") or "none",
-            "next": fields.get("next", "")}
+            "next": fields.get("next", ""),
+            "decisions": parse_decision_lines(blocks[-1])}

@@ -81,6 +81,11 @@ emit() { # emit <verdict> <verify>
   echo "VERDICT: $1"
   echo "VERIFY: $2"
   echo "NEXT: 다음 단계"
+  # MOCK_DECISIONS="결정1|결정2" — 비우면 DECISION 줄을 빠뜨린다(누락 시나리오)
+  if [[ -n "${MOCK_DECISIONS:-}" ]]; then
+    IFS='|' read -ra decs <<< "$MOCK_DECISIONS"
+    for d in "${decs[@]}"; do echo "DECISION: $d"; done
+  fi
   echo "=== END REPORT ==="
 }
 case "${plan[$idx]}" in
@@ -244,7 +249,13 @@ VERIFY: pytest -q
 NEXT: 경계 테스트
 === END REPORT ===''')
 assert r == {'action': '라우터 수정', 'verdict': 'continue',
-             'verify': 'pytest -q', 'next': '경계 테스트'}, r
+             'verify': 'pytest -q', 'next': '경계 테스트', 'decisions': []}, r
+rd = parse_report('''=== HERMES-LOOP REPORT ===
+VERDICT: continue
+DECISION: 가 — 나 — 다
+DECISION: 없음
+=== END REPORT ===''')
+assert rd['decisions'] == ['가 — 나 — 다', '없음'], rd
 assert parse_report('리포트 없음') is None
 assert parse_report('=== HERMES-LOOP REPORT ===\nVERDICT: maybe\n=== END REPORT ===') is None
 print('OK')
@@ -256,7 +267,7 @@ check "래퍼도 dangerously-skip 미사용 (G9)" bash -c "! grep -q 'dangerousl
 echo ""
 echo "== 14. 설치·제거 매니페스트 정합성 (G10·G13·§8) =="
 CONF="$REPO_ROOT/presets/workflow/hermes.conf"
-for f in hermes_loop.py hermes_loop_prompt.py hermes_loop_report.py hermes-loop.py hermes-loop-run.sh; do
+for f in hermes_loop.py hermes_loop_prompt.py hermes_loop_report.py hermes_loop_decisions.py hermes-loop.py hermes-loop-run.sh; do
   check "hermes.conf 매니페스트: $f" bash -c "grep -q '$f' '$CONF'"
 done
 check "SKILLS 에 hermes-loop 등록 (G10)" bash -c "grep -qE '^  hermes-loop$' '$CONF'"
@@ -324,6 +335,41 @@ check "report 서브커맨드 재생성 + REPORT_HTML 출력" bash -c "echo '$ro
 IDRK=$(new_loop)
 MOCK_ACTION_EXTRA="ghp_abcdefghijklmnopqrstuvwxyz0123456789" run_loop "$IDRK" "goalmet-pass" >/dev/null
 check "보고서에 원문 토큰 미노출 (G12→G15)" bash -c "! grep -q 'ghp_abcdef' '$PROJ/.hermes/loops/$IDRK/report.html'"
+
+echo ""
+echo "== 18. 내가 대신 결정한 것 — 결정·없음·누락 구분 (decision-ledger) =="
+dsql() { sql "SELECT COUNT(*) FROM loop_decisions WHERE loop_id='$1' AND kind='$2'"; }
+IDD=$(new_loop)
+MOCK_DECISIONS="A 방식 선택 — 기존 코드와 일치 — 틀리면 B 로 재작업|테스트 생략 — 문서만 변경 — 누락 회귀" \
+  run_loop "$IDD" "goalmet-pass" >/dev/null
+check "헤드리스: 결정 2줄 저장" test "$(dsql "$IDD" ruling)" = "2"
+RPD="$PROJ/.hermes/loops/$IDD/report.html"
+check "보고서에 「내가 대신 결정한 것」 섹션" grep -q "내가 대신 결정한 것" "$RPD"
+check "보고서에 결정 원문이 정한 순서대로" bash -c "grep -o 'A 방식 선택\|테스트 생략' '$RPD' | tr '\n' ',' | grep -q '^A 방식 선택,테스트 생략,$'"
+IDN=$(new_loop)
+MOCK_DECISIONS="없음" run_loop "$IDN" "goalmet-pass" >/dev/null
+check "헤드리스: '없음' 은 none 1행" test "$(dsql "$IDN" none)" = "1"
+check "없음 루프 보고서에 누락 경고 없음" bash -c "! grep -q '기록 누락' '$PROJ/.hermes/loops/$IDN/report.html'"
+IDM=$(new_loop)
+run_loop "$IDM" "goalmet-pass" >/dev/null
+check "헤드리스: DECISION 줄 누락은 missing 1행" test "$(dsql "$IDM" missing)" = "1"
+check "누락 루프도 반복은 정상 완료 (파싱 실패 아님)" test "$(sql "SELECT status FROM loops WHERE id='$IDM'")" = "done"
+check "누락 루프 보고서에 기록 누락 경고" grep -q "기록 누락" "$PROJ/.hermes/loops/$IDM/report.html"
+IDP=$(new_loop)
+MOCK_DECISIONS="없음" run_loop "$IDP" "noreport,goalmet-pass" >/dev/null
+check "파싱 실패 반복도 missing 으로 기록 (리뷰 MEDIUM)" test "$(dsql "$IDP" missing)" = "1"
+check "파싱 실패 반복이 보고서에 누락으로 표시" grep -q "반복 1 이(가)" "$PROJ/.hermes/loops/$IDP/report.html"
+IDG=$(new_loop)
+MOCK_DECISIONS="없음" run_loop "$IDG" "continue,goalmet-pass" >/dev/null
+python3 -c "import sqlite3; c=sqlite3.connect('$DB'); c.execute(\"DELETE FROM loop_decisions WHERE loop_id='$IDG' AND iteration=1\"); c.commit()"
+loop_cli report "$IDG" >/dev/null
+check "결정 행이 없는 반복도 loop_steps 대조로 누락 표시 (리뷰 LOW)" grep -q "반복 1 이(가)" "$PROJ/.hermes/loops/$IDG/report.html"
+IDS=$(new_loop)
+loop_cli step "$IDS" --action "대화형" --verdict continue --decision "브랜치명 유지 — 규칙 기본값 — 이름 충돌 시 수동 변경" >/dev/null
+loop_cli step "$IDS" --action "대화형2" --verdict continue >/dev/null
+check "대화형 step --decision → ruling 저장" test "$(dsql "$IDS" ruling)" = "1"
+check "대화형 step 생략 → missing 저장" test "$(dsql "$IDS" missing)" = "1"
+check "규칙 파일이 harness 규칙 세트에 존재" test -f "$REPO_ROOT/assets/rules/harness/decision-ledger.md"
 
 echo ""
 echo "PASS=$pass FAIL=$fail"

@@ -12,6 +12,7 @@ import os
 import subprocess
 
 import hermes_loop as core
+import hermes_loop_decisions as decisions
 
 GIT_CMD_TIMEOUT = 10   # 로컬 git 로그 조회 상한(초) — 원격 접근 없음
 
@@ -63,6 +64,7 @@ tr:last-child td{border-bottom:none}
 .num{font-family:var(--mono);color:var(--faint);font-variant-numeric:tabular-nums}
 .sha{font-family:var(--mono);font-size:.8rem;color:var(--acck);font-weight:600}
 .empty{color:var(--faint);font-size:.88rem}
+.miss{color:var(--bad);font-size:.88rem;font-weight:600;margin:.7rem 0 0}
 footer{margin-top:3rem;padding-top:1.2rem;border-top:1px solid var(--line);font-family:var(--mono);font-size:.76rem;color:var(--faint)}
 """
 
@@ -125,6 +127,50 @@ def _step_rows(db_path, loop_id):
     return "".join(out)
 
 
+def _missing_iterations(db_path, loop_id, rows):
+    """결정 칸을 쓰지 않은 반복 번호(정렬)."""
+    missing = {it for it, kind, _ in rows if kind == "missing"}
+    if rows:
+        # 반복 기록은 있는데 결정 행이 없는 반복(기록 사이 강제 종료 등)도 누락이다.
+        # 결정 행이 전혀 없으면 이 기능 이전 루프라 대조하지 않는다.
+        con = core.connect_db(db_path)
+        steps = {r[0] for r in con.execute(
+            "SELECT iteration FROM loop_steps WHERE loop_id=?", (loop_id,))}
+        con.close()
+        missing |= steps - {it for it, _, _ in rows}
+    return sorted(missing)
+
+
+def _decision_body(rows, rulings, missing):
+    """결정 표 또는 빈 상태 문구 — 셋 중 하나."""
+    if rulings:
+        body = "".join(f'<tr><td class="num">{it}</td><td>{_esc(t)}</td></tr>'
+                       for it, t in rulings)
+        return ('<div class="tw"><table><thead><tr><th>#</th>'
+                '<th>결정 — 이유 — 틀렸을 때 손해</th></tr></thead>'
+                f'<tbody>{body}</tbody></table></div>')
+    if not rows:
+        return ('<div class="goal"><p class="empty">결정 기록 없음 '
+                '(반복 기록이 없거나 이 기능 이전 루프)</p></div>')
+    if not missing:
+        return ('<div class="goal"><p class="empty">없음 — 모든 반복이 '
+                '"결정 없음" 으로 기록했습니다</p></div>')
+    return ""
+
+
+def _decision_block(db_path, loop_id):
+    """「내가 대신 결정한 것」 — 결정은 정한 순서대로, 누락 반복은 경고로."""
+    rows = decisions.fetch(db_path, loop_id)
+    rulings = [(it, text) for it, kind, text in rows if kind == "ruling"]
+    missing = _missing_iterations(db_path, loop_id, rows)
+    parts = [_decision_body(rows, rulings, missing)]
+    if missing:
+        its = ", ".join(str(i) for i in missing)
+        parts.append(f'<p class="miss">기록 누락 — 반복 {its} 이(가) 결정 칸을 '
+                     '쓰지 않았습니다. 해당 반복의 판단은 보이지 않습니다.</p>')
+    return "".join(parts)
+
+
 def _commit_block(commits):
     if not commits:
         return ('<div class="goal"><p class="empty">루프 브랜치에 커밋이 없습니다 '
@@ -170,6 +216,8 @@ def render(db_path, project_dir, loop_id):
 <h2>반복 기록</h2>
 <div class="tw"><table><thead><tr><th>#</th><th>판정</th><th>신호</th><th>진전</th><th>한 일</th></tr></thead>
 <tbody>{_step_rows(db_path, loop_id)}</tbody></table></div>
+<h2>내가 대신 결정한 것</h2>
+{_decision_block(db_path, loop_id)}
 <h2>루프 브랜치 커밋</h2>
 {_commit_block(commits)}
 <footer>브랜치 {_esc(loop['branch'] or '(없음)')} · 자체완결 HTML (외부 연결 없음)</footer>

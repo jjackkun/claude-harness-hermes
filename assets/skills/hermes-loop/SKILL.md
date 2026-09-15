@@ -84,8 +84,12 @@ git 저장소가 아니면 생략한다. 커밋은 이 브랜치에서만 하고
    python3 scripts/hermes-loop.py step <LOOP_ID> \
      --action "<한 일 한 줄>" \
      --verdict <continue|goal-met|blocked> \
-     --signal <pass|fail|none>
+     --signal <pass|fail|none> \
+     --decision "<묻지 않고 정한 것> — <이유> — <틀렸을 때 손해>"
    ```
+   `--decision` 은 이번 반복에서 사람에게 묻지 않고 정한 판단마다 반복 지정한다.
+   하나도 없으면 `--decision 없음`. 생략하면 보고서에 "기록 누락" 으로 남는다
+   (규칙: `.claude/rules/harness/decision-ledger.md`).
 6. 출력이 `DECISION:continue` 면 1 로 돌아가고, `DECISION:stop:<이유>` 면 반복을 멈춘다.
 
 ### 6단계 — 종료 보고 + 보고서 게시
@@ -94,6 +98,8 @@ git 저장소가 아니면 생략한다. 커밋은 이 브랜치에서만 하고
   루프 브랜치명(`loop/<LOOP_ID>`)을 사용자에게 보고한다. 머지 여부는 사용자가 diff
   검토 후 결정함을 안내한다. blocked/no-progress 면 무엇이 막혔고 사람이 무엇을
   결정해야 하는지 명시한다.
+- 보고 끝에 **「내가 대신 결정한 것」** 칸을 둔다 — 전 반복의 `--decision` 을 정한 순서대로
+  빠짐없이 옮기고(`결정 — 이유 — 틀렸을 때 손해`), 하나도 없으면 "없음" 이라고 쓴다.
 - 종료 시 CLI 가 `.hermes/loops/<LOOP_ID>/report.html` 을 생성하고 `REPORT_HTML:<경로>`
   를 출력한다. 그 HTML 파일을 읽어 **아티팩트로 게시**해 사용자가 웹에서 결과를 검토하고
   머지 여부를 판단하게 한다. (필요 시 `python3 scripts/hermes-loop.py report <LOOP_ID>` 로 재생성.)
