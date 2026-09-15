@@ -56,6 +56,8 @@
 
 - 승인되지 않은 채 오래 방치된 수습 에이전트의 은퇴 기간은 근거 있는 값이 없어 미정이다.
 
+> ✅ 리뷰 확정 (2026-09-15, RV-17) — 은퇴와 복직 (근거: cumora K-8). 은퇴(`retired`)는 소프트 상태다: 명부에 남고, 기억 · 이력 · 개인 스킬은 지우지 않으며, 소환 대상과 담당 매칭에서만 빠진다. 사람 승인으로 `active` 에 복귀할 수 있고 id · 기억 · 이력이 그대로 이어진다. cumora 는 오프보딩을 `departed_at` 표시로만 하고 `rehire` 하면 기억과 기록이 그대로 돌아온다(`server/src/api/router.ts` `DELETE /agents/:id`, `POST /agents/:id/rehire`). "은퇴한 이름은 같은 소우주에서 재사용하지 않는다"([identity.md](identity.md) 2절)는 복직을 가능하게 하는 규칙이기도 하다 — 이름이 새 에이전트에게 갔으면 돌아올 자리가 없다.
+
 ## 5. 일을 시켰을 때 담당을 찾는 흐름 (확정)
 
 zeroday-frontend의 실제 구조(도메인은 `src/features/<도메인>/`, 공통 컴포넌트는 `src/components/shared/`의

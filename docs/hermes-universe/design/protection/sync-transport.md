@@ -59,6 +59,22 @@ refs/hermes/sync   (그 소우주 원격, 코드 브랜치와 무관)
 | 받기 | 세션 시작 훅 | `git fetch origin refs/hermes/sync:refs/hermes/sync` (기본 refspec 밖이라 명시 필요) → 새 조각만 복호화 → `state.db` 재색인 |
 | 실패 | 오프라인·인증 오류 | 로컬에 남기고 다음 세션에 재시도 |
 
+### 참조 갱신 경쟁 — 두 컴퓨터가 같은 참조에 push 할 때
+
+> ✅ 리뷰 확정 (2026-09-15, RV-01) — 근거: [2026-09-15 리뷰](../../../audits/2026-09-15-hermes-universe-design-review.md) R-1
+
+"파일 이름이 겹치지 않아 충돌이 없다" 는 **파일** 이야기다. `refs/hermes/sync` 는 참조 하나라서, 컴퓨터 A 가 올린 뒤 컴퓨터 B 가 옛 커밋 위에 만든 커밋을 push 하면 non-fast-forward 로 거부된다. 규칙이 없으면 B 의 조각은 다음 세션에도 계속 거부된다.
+
+| 단계 | 처리 |
+|---|---|
+| push 전 | `git fetch origin refs/hermes/sync` 로 원격 최신을 받는다 |
+| 원격이 앞서 있으면 | 로컬 sync 커밋과 원격 sync 커밋을 **3-way 병합**해 두 커밋을 부모로 하는 커밋을 만들고 `refs/hermes/sync` 를 그 커밋으로 `update-ref` 한다. 같은 경로가 양쪽에 있으면 내용도 같아야 정상이다(이벤트 id 가 곧 파일 이름). 병합 충돌이 나면 올리지 않고 세션에 알린다 |
+| push 거부 | 다시 fetch 부터 반복. 상한(예: 3회) 넘으면 로컬에 두고 다음 세션에 재시도 |
+| `--force` | **절대 쓰지 않는다.** 남의 컴퓨터 조각을 지운다 |
+
+- `git merge` 는 브랜치가 아니라 임의의 커밋에 동작한다. 못 쓰는 것이 아니라 **코드 작업 트리를 건드리지 않으려고** 다음 순서로 고른다(2026-09-15 리뷰 후속): ① `git merge-tree --write-tree A B`(git 2.38+, 작업 트리 없이 병합 결과 트리를 냄) → `commit-tree -p A -p B`. ② git 이 낮으면(이 컴퓨터는 2.25.1) 임시 worktree(`git worktree add --detach <tmp> refs/hermes/sync`)에서 `git merge` 하고 결과 커밋으로 `update-ref` 한 뒤 worktree 를 지운다. ③ 둘 다 못 쓰면 `mktree` 로 트리 합집합을 직접 만든다. 세부는 G-27.
+- 두 컴퓨터가 같은 세션 id 로 조각을 만들 수는 없으므로(세션 id 는 컴퓨터 안에서 발급) 원문 조각은 겹치지 않는다. 작업 이력·기억 이벤트는 UUIDv7 이라 겹치지 않는다.
+
 ### git 저수준 커밋을 쓰는 이유
 
 - 작업 중인 파일과 브랜치를 전혀 건드리지 않는다.

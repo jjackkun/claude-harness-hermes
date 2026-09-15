@@ -43,6 +43,16 @@
 - 하네스 표기 대응: `result:` → `success`, `failed:` → `failure`, `needs input:` → `blocked`.
 - **`claimed=success`인데 `verified=fail`인 줄이 가장 값진 기록이다.** 에이전트가 틀리게 판단한 지점이고, 에이전트 성적의 기준이 된다(G-12).
 
+> ✅ 리뷰 확정 (2026-09-15, RV-09) — `verified: none` 은 에이전트가 고르는 값이 아니다 (근거: 리뷰 R-9, cumora K-1)
+>
+> `none` 을 에이전트가 쓸 수 있으면 검증 층이 무력해진다 — "검증 수단 없음" 이라고 적고 `success` 를 주장하면 된다. cumora 는 공짜 우회 플래그(`--send-anyway`)가 선제 사용으로 게이트를 없애는 것을 겪었고, 고친 방법은 "책임감 있게 쓰라" 는 프롬프트가 아니라 서버가 실제로 보여 준 상태에만 유효한 1회성 토큰이었다(`docs/COORDINATION.md` §5d).
+>
+> | 규칙 | 내용 |
+> |---|---|
+> | `none` 은 기계만 찍는다 | 봉투의 `done_when` 이 기계가 검증할 수 있는 형식(G-21: 테스트 이름 · 파일 존재 · 게이트 판정 · 커밋 존재)이 아닐 때만 |
+> | `done_when` 없이 시작 불가 | 이미 확정(H-02). 따라서 `none` 은 "형식은 있으나 기계가 못 재는 경우" 로 좁혀진다 |
+> | `none` 비율은 성적 | `none` 이 많은 에이전트 · 봉투 작성자는 검증 가능한 `done_when` 을 쓰지 않는다는 뜻이다. 보기에서 드러낸다 |
+
 ## 4. 칸 구성
 
 ```json
@@ -77,6 +87,11 @@
 |---|---|
 | 기계 | `event_id`, `ts`, `kind`, `universe_id`, `actor`, `requested_by`, `verified`, `evidence` |
 | 에이전트 | `claimed`, `intent`, `lesson`, `decision` |
+
+> ✅ 리뷰 확정 (2026-09-15, RV-10) — heartbeat 는 확정, `usage` 칸은 V-8(훅 입력에 토큰 수가 오는가)이 예일 때만 (근거: cumora K-9)
+>
+> - `evidence.usage`: `{input_tokens, output_tokens, cached_input_tokens, model}` — 기계 칸, 평문. cumora 는 클라우드·로컬을 가리지 않고 한 원장 `llm_calls` 에 적어 비교한다. 우리는 작업 단위로 붙이면 "이 작업에 얼마가 들었나" 가 스레드에서 바로 나온다. 백로그 `platform-cost-performance-levers` 의 실측 근거가 된다. Claude Code 훅 입력에 토큰 수가 오는지는 V-4 와 함께 확인한다.
+> - `step` 을 **heartbeat** 로도 쓴다: 긴 작업은 N분마다 `step` 을 남겨 살아 있음을 보인다. `task.started` 뒤 heartbeat 가 끊기면 8절의 누락 감지가 세션 종료를 기다리지 않고 잡는다. cumora 의 run 은 60초마다 heartbeat 를 보내고 90초 없으면 오프라인으로 본다.
 
 ## 5. 원문을 담지 않는 허용목록 스키마 (합의)
 

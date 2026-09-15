@@ -101,21 +101,39 @@
 | Entire의 `refs/entire/checkpoints` | 사용자 정의 참조 운반의 실사용 선례 |
 | Gitea·Forgejo 소스 확인, GitLab 미확인 | 실측 항목 V-1~V-3 |
 
-## 6. Cumora 조사 (2026-09-15, 로컬 저장소 `/home/jjackkun/PROJECT/cumora-main/cumora-main`)
+## 6. Cumora 조사 (2026-09-15, 로컬 저장소 `/home/jjackkun/PROJECT/cumora`, v0.11.1 커밋 `65625b0`)
 
 Cumora는 AI 에이전트가 사람과 함께 팀 채팅에 참여하는 제품이다(에이전트가 페르소나 · 기억을 갖고 여러 방에 참여, 클라우드 pod 또는 로컬 데몬 BYOA). 우리 겸직 · 기억 범위 · 다중 기기 논점과 비교했다.
 
+> 경로 갱신(2026-09-15 리뷰): 처음 조사한 `cumora-main/cumora-main` 사본은 사라졌고 `/home/jjackkun/PROJECT/cumora` 가 현재 저장소다. 줄 번호도 현재 저장소 기준으로 다시 맞췄다.
+
 | 논점 | Cumora | 우리 결정 | 근거 파일 |
 |---|---|---|---|
-| 에이전트의 소속 | **1 에이전트 = 1 워크스페이스.** 처음엔 복합 PK로 다중 테넌트를 허용했다가 id만으로 조회하는 코드가 다른 테넌트 데이터를 돌려주는 버그를 겪고 전역 유일 id로 되돌림 | 1 에이전트 = 1 소우주, 복제만 | `server/src/db/migrate.ts:2076-2093` |
-| 기억 범위 | 에이전트 소유, **전역 / 프로젝트** 두 스코프. 정체성 · 스킬 · 고정 기억은 전역, 작업 사실은 프로젝트. 애매하면 전역(추측 귀속 금지) | 기억은 전부 그 소우주 것 (스코프 구분 폐기) | `server/src/agents/memory-scope.ts:1-29` |
+| 에이전트의 소속 | **1 에이전트 = 1 워크스페이스.** 처음엔 복합 PK로 다중 테넌트를 허용했다가 id만으로 조회하는 코드가 다른 테넌트 데이터를 돌려주는 버그를 겪고 전역 유일 id로 되돌림 | 1 에이전트 = 1 소우주, 복제만 | `server/src/db/migrate.ts:2123` (부분 유일 인덱스), `server/src/agents/personas.ts:1-12` |
+| 기억 범위 | 에이전트 소유, **전역 / 프로젝트** 두 스코프. 정체성 · 스킬 · 고정 기억은 전역, 작업 사실은 프로젝트. 애매하면 전역(추측 귀속 금지), 옛 기억을 프로젝트로 옮기지 않음("fake isolation") | 기억은 전부 그 소우주 것 (스코프 구분 폐기). 옛 자산을 옮기지 않는 점은 같음(L-01·L-02) | `server/src/agents/memory-scope.ts:1-29, 95-138` |
 | 스코프 도입 동기 | 한 활동에서 배운 규칙이 다른 활동을 오염시킨 운영 사고 | 격리 원칙의 근거와 같음 | `docs/COORDINATION.md:725-740` |
-| 여러 기기 | **1 에이전트 = 1 기기.** 기기 토큰(영구) + 에이전트 토큰(2시간) 2단 | 다중 컴퓨터 허용, 컴퓨터별 열쇠 | `migrate.ts:1466-1467`, `registry.ts:428-444` |
-| 첫 페어링 안내 | UI 코드 → 터미널 명령 → 엔진 CLI 없으면 설치 안내 → `--doctor` 점검 | 열쇠 없음 안내 절차와 점검 명령에 참고 | `agent-cli/src/daemon.ts:640-693, 3142-3152` |
+| 여러 기기 | **1 에이전트 = 1 기기.** 기기 토큰(영구, 서버에는 해시만) + 에이전트 토큰(2시간) 2단. 기기 "제거" 가 곧 kill switch | 다중 컴퓨터 허용, 컴퓨터별 열쇠. 자물쇠 폐기가 kill switch 에 해당 | `docs/BYOA.md` "Auth & pairing", `server/src/agents/computer/registry.ts:232, 514` |
+| 첫 페어링 안내 | UI 코드 → 터미널 명령 → 엔진 CLI 없으면 설치 안내 → `--doctor` 점검 | 열쇠 없음 안내 절차와 점검 명령에 참고 | `server/src/agents/computer/daemon.ts:663-673, 3910-3975` |
 | 인계 | 전용 형식 없음. @멘션 · DM · 칸반 카드 배정. 채팅에 잠금 없이 서버 HOLD로 늦은 답을 붙잡음 | 봉투(`goal` · `done_when`) — 채팅이 아닌 작업 단위라 다름 | `docs/COORDINATION.md:178-222` |
-| 생성 | owner/admin 즉시 생성, 수습 없음, 삭제 대신 소프트 오프보딩(`departed_at`)과 재고용 | 수습 기간 있음. 은퇴를 표시로 두는 점은 같음 | `router.ts:2372-2397, 2535-2566` |
+| 생성 | owner/admin 즉시 생성, 수습 없음, 삭제 대신 소프트 오프보딩(`departed_at`)과 재고용(기억 · 이력 그대로 복귀) | 수습 기간 있음. 은퇴를 표시로 두는 점은 같음. 복직 경로는 리뷰 제안(§6-2 K-8) | `server/src/api/router.ts:2617-2660, 2803-2830` |
 
 미확인: 세션 컴팩션의 방별 분리, 같은 hostname 두 기기의 토큰 상호 무효화.
+
+### 6-2. 설계에 옮겨 적은 cumora 교훈 (2026-09-15 리뷰)
+
+장치(HOLD · 시퀀스 커서 · 트리아지)는 채팅방 동시 발화 문제라 옮기지 않았다. 옮긴 것은 장치를 만들게 한 **원리** 다. 각 항목이 들어간 설계 문서에는 `✅ 리뷰 확정 (2026-09-15, RV-xx)` 표시가 있다(사용자 위임 판정, [decision-log.md](../decision-log.md) 12절). 상세는 [`docs/audits/2026-09-15-hermes-universe-design-review.md`](../../audits/2026-09-15-hermes-universe-design-review.md).
+
+| # | 교훈 | 출처 | 들어간 자리 |
+|---|---|---|---|
+| K-1 | 우회 플래그는 서버가 보여 준 상태의 1회성 확인이어야 한다. 공짜 플래그는 선제 사용으로 게이트를 없앤다 | `COORDINATION.md` §5d, "Don't ship an override flag without a cost" | work-journal §3, handoff §3 |
+| K-2 | 기억 파일은 상태다. 잘못된 교훈을 스스로 써서 안전망을 무력화한다 | `COORDINATION.md` T6, "Memory files are state too" | memory-events §4 |
+| K-3 | 결석한 구성원은 고칠 대상이 아니라 정상 조건이다 | `COORDINATION.md` "Don't treat absent members as a failure mode" | handoff §3 |
+| K-4 | 시나리오 나열을 쌓지 않는다. 형태 수준 규칙만 남긴다 | `COORDINATION.md` "Don't accrete scenario examples" | skill-layers §5 |
+| K-5 | 스킬은 이름+설명만 넣고 본문은 필요할 때 읽는다 | `server/src/agents/skills.ts:1-20` | skill-layers §1 |
+| K-6 | 신원은 요청 본문이 아니라 서명 토큰에서 고정한다. 모델 프로세스는 토큰을 받지 않는다 | `SECURITY.md` "The trust model", `docs/BYOA.md` "Authentication is shared; tool authority is not" | identity §7 |
+| K-7 | 에이전트가 목적지 URL 을 고르지 못한다 | `server/src/agents/skills.ts:150-155` | skill-proposal-delivery §5 |
+| K-8 | 오프보딩은 소프트 삭제, 복직하면 기억·이력이 돌아온다 | `server/src/api/router.ts:2803` | creation-and-organization §4 |
+| K-9 | 실행 단위마다 heartbeat 와 비용 원장 | `docs/BYOA.md` "Observability", `migrate.ts:164-200, 262-282` | work-journal §2·§4 |
 
 ## 7. 출처 (조사 에이전트가 연 페이지)
 

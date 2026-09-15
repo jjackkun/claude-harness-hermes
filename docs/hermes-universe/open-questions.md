@@ -8,6 +8,7 @@
 - **1절**은 사용자와 이어서 논의하기로 한 큰 주제다.
 - **2절**은 설계 문서가 전제로 삼았지만 아직 확인하지 않은 사실이다. 구현 계획을 쓰기 전에 닫아야 한다.
 - **3절**은 설계 안에서 세부가 비어 있는 항목이다.
+- **4절**은 2026-09-15 리뷰에서 나온 보강 제안과 그 판정이다. 사용자가 판정을 위임해 전부 확정(위임)됐다 — [decision-log.md](decision-log.md) 12절 RV-01~RV-17.
 
 ## 1. 큰 주제
 
@@ -28,6 +29,8 @@
 | V-4 | Claude Code 훅 입력에 하위 에이전트 종류·id가 넘어오는가 | 대화형 세션에서 기계가 `agent:` 행위자를 찍을 수 있는지 | Claude Code 훅 문서 확인 + SubagentStop 훅 입력 덤프 |
 | V-5 | 복사 설치 시 스킬을 하위 폴더로 나눠도 로딩되는가 | 공통 스킬과 소우주 자체 스킬을 폴더로 구분할 수 있는지 | Claude Code 스킬 로딩 규칙 확인 |
 | V-6 | age CLI와 pyrage 중 무엇을 쓸 것인가 | 현재 둘 다 미설치, Python 3.10.12. 설치는 사용자가 WSL에서 직접 | 구현 계획에서 결정 |
+| V-7 | 공장 GitHub 저장소가 공개인가 | 봉투에 이름을 넣지 않는 결정(3절)의 전제 | **확인됨 (2026-09-15)**: `gh repo view jjackkun/claude-harness-hermes --json visibility` → `PUBLIC`. 봉투 본문이 공개 게시물이 된다([skill-proposal-delivery.md](design/world/skill-proposal-delivery.md) 3절) |
+| V-8 | Claude Code 훅 입력에 토큰 사용량이 오는가 | 작업 이력 `evidence.usage` 칸 제안의 전제 | V-4 와 함께 훅 입력 덤프 |
 
 ## 3. 설계 안에서 비어 있는 세부
 
@@ -59,3 +62,35 @@
 | G-24 | 구현 순서: 복사 설치 전환을 가장 앞에 둔다 (zeroday-frontend가 공장 없는 컴퓨터에서 동작해야 함) | [copy-install.md](design/world/copy-install.md) |
 | G-25 | 결정화가 폐기된 결정을 규칙으로 굳히지 않게 하는 장치 (백로그) | [decision-log.md](decision-log.md) |
 | G-26 | Claude Code 자체 메모리(`.claude/memory`, `install_memory_symlink`)와 새 설계 에이전트 기억 이벤트의 관계 | [memory-events.md](design/agent/memory-events.md) |
+| G-27 | `refs/hermes/sync` 트리 합집합 커밋의 구현(`mktree` · `commit-tree`)과 같은 경로 다른 내용일 때의 처리 | [sync-transport.md](design/protection/sync-transport.md) 4절 |
+| G-28 | 마스터 열쇠 감싸기를 채택하면 비상 열쇠 절차(3절)가 "마스터 풀기 → 조각 풀기" 두 단계가 된다. 절차 문서 갱신 | [encryption-keys.md](design/protection/encryption-keys.md) 2절 |
+| G-29 | 소환 러너(`hermes-summon`)의 형식과, 에이전트가 `claude -p` 를 직접 띄우는 것을 막는 훅의 판정 규칙 | [identity.md](design/agent/identity.md) 7절 |
+| G-30 | 봉투 만료 판정을 세션 시작 훅이 돌린다(RV-08 로 확정, 기본 시간 없음). 남은 것: 훅이 "미착수" 를 판정하는 조회와 알림 문구 | [handoff-contract.md](design/agent/handoff-contract.md) 3절 |
+| G-31 | 기억이 규칙과 모순되는지 찾는 기계 탐지의 범위(같은 `about` 키 대조로 충분한가) | [memory-events.md](design/agent/memory-events.md) 4절 |
+| G-32 | `skill_index` 에 `universe_id` · 층 · 단위 id · `agent_id` 칸을 더하는 스키마 변경과, 주입 필터가 소환된 에이전트를 아는 방법(V-4 의존) | [skill-layers.md](design/world/skill-layers.md) 1절 |
+| G-33 | 확장 파일 `extends: <skill_id>@<version>` 머리말 형식과 설치기의 어긋남 알림 | [skill-layers.md](design/world/skill-layers.md) 2절, [copy-install.md](design/world/copy-install.md) 5절 |
+| G-34 | `factory.json` 을 설치 목록(변조 감지)에 넣는 방법과 배달 스크립트의 주소 인자 차단 | [skill-proposal-delivery.md](design/world/skill-proposal-delivery.md) 5절 |
+
+## 4. 리뷰 제안 — 판정 완료 (2026-09-15, 사용자 위임)
+
+2026-09-15 설계 리뷰([docs/audits/2026-09-15-hermes-universe-design-review.md](../audits/2026-09-15-hermes-universe-design-review.md))에서 나온 보강이다. 사용자가 "올바르고, 정상 동작하며, zeroday-frontend 에 문제를 주지 않는 방향" 으로 판정을 위임했고, 그 기준으로 17건 전부 확정(위임)했다. 설계 문서 안에는 `✅ 리뷰 확정 (2026-09-15, RV-xx)` 표시로 있고, 결정·이유·손해는 [decision-log.md](decision-log.md) 12절에 있다. 판정 열의 "조건" 은 zeroday 를 위해 붙인 제약이다.
+
+| # | 제안 | 한 줄 | 문서 | 판정 |
+|---|---|---|---|---|
+| P-01 | 참조 갱신 경쟁 | 두 컴퓨터 push 는 fetch → 트리 합집합 두-부모 커밋 → 재시도, `--force` 금지 | sync-transport 4절 | 확정 (RV-01) |
+| P-02 | 컴퓨터 id = 자물쇠 지문 | hostname 대신 공개키 지문 | encryption-keys 2절 | 확정 (RV-02) |
+| P-03 | 마스터 열쇠 감싸기 | 조각은 마스터 자물쇠 하나로, 컴퓨터 추가는 마스터 열쇠 파일 재감싸기만 | encryption-keys 2절 | 확정 (RV-03) |
+| P-04 | 훅 차단의 Codex 한계 명시 | 열쇠 차단 · 사칭 방지는 Claude Code 세션에서만 | encryption-keys 4절, identity 7절 | 확정 (RV-04) |
+| P-05 | 사람 없는 세션의 지시자 | 루프 = 시작한 사람, cron = `system:hermes-cron` | identity 4절 | 확정 (RV-05) |
+| P-06 | 사칭 방지 | 소환은 러너만, `requested_by` 는 호출 세션의 actor | identity 7절 | 확정 — 조건: 공장 러너 스크립트 경유는 허용 목록(헤드리스 루프 보호) (RV-06) |
+| P-07 | 규칙 위반 지시는 막힘 | `claimed: blocked` + `rule:<이름>` | handoff 1절 | 확정 (RV-07) |
+| P-08 | 응답 없음 처리 | `expires_at` → `handoff.expired` → 대체 수행 기본 경로, 되묻기 남용 제한 | handoff 3절 | 확정 — 조건: 기본 시간 없음, 만료 판정은 세션 시작 훅 (RV-08) |
+| P-09 | `verified: none` 은 기계만 | `done_when` 형식이 기계 검증 불가일 때만 | work-journal 3절 | 확정 (RV-09) |
+| P-10 | 비용 칸 · heartbeat | `evidence.usage`, `step` 을 heartbeat 로 | work-journal 4절 | 확정 — usage 칸은 V-8 예일 때만 (RV-10) |
+| P-11 | 기억은 규칙 아래 | 규칙 충돌 표시, 단일 사례 표시, 철회 흔적 | memory-events 4절 | 확정 (RV-11) |
+| P-12 | 층별 스킬 주입 경로 | 소환된 에이전트 기준 필터, 이름+설명만 주입 | skill-layers 1절 | 확정 — 조건: 이름+설명 주입은 description 있는 스킬만, 1088개는 현행 스니펫 유지 (RV-12) |
+| P-13 | 확장 기준 버전 | `extends: skill_id@version`, 설치기 어긋남 알림 | skill-layers 2절, copy-install 5절 | 확정 (RV-13) |
+| P-14 | 사례 나열 판단 항목 | 우주 판단 기준에 "형태 규칙인가 시나리오 목록인가" 추가 | skill-layers 5절 | 확정 — 조건: 승격 심사에만, 기존 스킬 삭제·재분류 금지(L-01) (RV-14) |
+| P-15 | 봉투 공개 전제 | 공장 PUBLIC 확인, 일반화 · 게이트 필수, 사내 소우주는 사람 재검토 | skill-proposal-delivery 3절 | 확정 — 조건: 배달은 사람 명령으로만, 자동 배달 없음 (RV-15) |
+| P-16 | `remote_url` 보호 | 설치기만 쓰고 변조 감지 대상, 배달 스크립트 주소 인자 없음 | skill-proposal-delivery 5절 | 확정 (RV-16) |
+| P-17 | 은퇴 → 복직 | 소프트 상태, 사람 승인으로 복귀, id · 기억 · 이력 유지 | creation-and-organization 4절 | 확정 (RV-17) |
