@@ -18,18 +18,18 @@
 - [x] 목표 2 — 입사·은퇴·복직 CLI: `hermes-agent.py hire <이름> --org … [--template …]`(사람만, 수습으로) · `promote`(→ active) · `retire` · `rehire`(RV-17). 검증: 테스트 상태 전이 6경로 + 폴더 `.hermes/agents/<agent_id>/{SOUL.md,MEMORY.md,skills/}` 생성.
 - [x] 목표 3 — 조직 정의 `.hermes/organization.yaml` 스키마(G-14)와 공장 템플릿 3종(제품 개발 · 사무 · 빈 조직, G-15). 검증: 세 템플릿이 스키마 검증 통과, `unit` 마다 불변 `unit_id`(UUIDv7) 부여, 수직 축 맨 위 `human` 은 기계가 고정.
 - [x] 목표 4 — 담당 매칭(C-11): 요청의 `discipline` · `unit` 값으로 명부를 찾고 더 많은 축이 맞는 쪽 우선, 없으면 "문의" 결과. 검증: 테스트 픽스처 — users 기획자 vs 공통 기획자, 없음 → `ask`.
-- [ ] 목표 5 — 소환 러너 `hermes-summon.py` 가 `summons`(nonce · agent_id · requested_by · expires_at · used) 를 INSERT 하고 `HERMES_AGENT_ID` · `HERMES_SUMMON_NONCE` 를 넣어 `claude -p` 를 띄우며 `task.assigned` 를 남긴다(RV-06). 검증: 테스트 모의 `claude` 로 환경변수·이벤트·nonce 사용 표시 확인.
-- [ ] 목표 6 — 세션 시작 훅이 nonce 를 검증한다: 짝 없음·재사용·만료면 행위자를 `system:unverified-session` 으로 바꾸고 경고. 검증: 테스트 4케이스. 세션은 멈추지 않는다.
-- [ ] 목표 7 — PreToolUse 훅이 세션 안 Bash 의 `claude -p` 직접 호출을 막되, 허용 목록(`hermes-loop-run.sh` · `hermes-cron-run.sh` · `hermes-summon.py`)은 통과 — 판정은 명령줄이 아니라 **러너가 남긴 nonce 파일 존재**로. 검증: `tests/hermes-summon-guard-test.sh` — 직접 호출 차단, 러너 경유 통과, `bash -c 'exec hermes-loop-run.sh …'` 흉내는 nonce 없어 차단.
+- [x] 목표 5 — 소환 러너 `hermes-summon.py` 가 `summons`(nonce · agent_id · requested_by · expires_at · used) 를 INSERT 하고 `HERMES_AGENT_ID` · `HERMES_SUMMON_NONCE` 를 넣어 `claude -p` 를 띄우며 `task.assigned` 를 남긴다(RV-06). 검증: 테스트 모의 `claude` 로 환경변수·이벤트·nonce 사용 표시 확인.
+- [x] 목표 6 — 세션 시작 훅이 nonce 를 검증한다: 짝 없음·재사용·만료면 행위자를 `system:unverified-session` 으로 바꾸고 경고. 검증: 테스트 4케이스. 세션은 멈추지 않는다.
+- [x] 목표 7 — PreToolUse 훅이 세션 안 Bash 의 `claude -p` 직접 호출을 막되, 허용 목록(`hermes-loop-run.sh` · `hermes-cron-run.sh` · `hermes-summon.py`)은 통과 — 판정은 명령줄이 아니라 **러너가 남긴 nonce 파일 존재**로. 검증: `tests/hermes-summon-guard-test.sh` — 직접 호출 차단, 러너 경유 통과, `bash -c 'exec hermes-loop-run.sh …'` 흉내는 nonce 없어 차단.
 - [x] 목표 8 — 기억 이벤트 `memory_events`(UUIDv7 PK, `kind` · `about` · `revises` · `content_hash` · `source_event` · `body`)가 INSERT 전용이고, `MEMORY.md` 는 이벤트에서 계산한 보기다. 검증: `tests/hermes-memory-events-test.sh` — 갈라짐(같은 `revises` 둘)·같은 `about` 모순·`content_hash` 중복이 각각 "충돌"·"충돌"·"합침" 으로 표시, 최신이 자동 승리하지 않음.
 - [x] 목표 9 — 규칙 충돌 표시(RV-11): 기억 `about` 키가 SOUL.md 또는 `assets/rules/**` 의 규칙 키와 겹치고 본문이 부정형이면 보기에 "규칙 충돌", `source_event` 하나면 "단일 사례". 검증: 테스트 픽스처 2건.
 - [x] 목표 10 — 인계 봉투 검증기: `goal` · `done_when` 없으면 시작 불가(기계 차단), `inputs` 는 참조만(경로·이벤트 id 형식), `expires_at` 선택. 되돌아오는 네 방식이 이벤트로 남는다. 검증: `tests/hermes-handoff-test.sh`.
 - [x] 목표 11 — 만료 판정은 세션 시작 훅(RV-08): 기한 지났는데 `task.started` · `handoff.question` 없는 봉투 → `handoff.expired` + 알림. 규칙 위반 지시는 `claimed: blocked` + `evidence.reason = rule:<이름>`(RV-07). 검증: 테스트 2케이스.
 - [x] 목표 12 — `done_when` 허용 형식(G-21) 첫 판: `test:<이름>` · `file:<경로>` · `gate:<규칙>` · `commit:<해시|HEAD>` · `manual` 다섯 가지. `manual` 만 `verified: none`. 검증: 각 형식의 기계 검증 함수 테스트.
-- [ ] 목표 13 — 자연어 입사·소환이 스킬로 연결된다: `assets/skills/hermes-agent/SKILL.md` 가 "users 담당 입사시켜" · "이 일 QA 한테 넘겨" 를 위 CLI 로 안내. 검증: 스킬 description 트리거 평가(skill-creator 벤치) + 문서.
+- [x] 목표 13 — 자연어 입사·소환이 스킬로 연결된다: `assets/skills/hermes-agent/SKILL.md` 가 "users 담당 입사시켜" · "이 일 QA 한테 넘겨" 를 위 CLI 로 안내. 검증: 스킬 description 트리거 평가(skill-creator 벤치) + 문서.
 - [x] 목표 14 — 정체성 자산이 git 을 탄다(자체 리뷰 발견, planner-lite 정정): 현행 규칙은 `.hermes/*` 로 **내용물을** 무시하므로 하위 예외는 **디렉터리 단계마다** 풀어야 한다(`presets/workflow/hermes.conf:171-178` 의 `!.hermes/skills/` + `!.hermes/skills/**` 두 줄 패턴과 같은 이유). 마커에 순서대로: `!.hermes/agents/` · `!.hermes/agents/*/` · `!.hermes/agents/*/SOUL.md` · `!.hermes/agents/*/skills/` · `!.hermes/agents/*/skills/**` · `!.hermes/organization.yaml`, 그 **뒤에** 재무시 `.hermes/agents/*/MEMORY.md` · `.hermes/summons/`. 검증: 테스트가 `git check-ignore -v` 로 6경로를 고정 — SOUL·개인 스킬·organization.yaml 은 추적, MEMORY.md·summons·agents/*/ 의 그 밖 파일은 무시. 이 예외가 없으면 개인 스킬·SOUL 이 다른 컴퓨터로 가지 않는다.
 - [x] 목표 15 — 은퇴 에이전트는 주입·매칭에서 빠진다(planner-lite 지적, RV-17 손해 직결): `retire` 뒤 그 에이전트의 개인 스킬·SOUL 은 파일로 남되 `hermes-search.py` 결과와 담당 매칭에서 0건. `rehire` 뒤 복귀. 검증: `tests/hermes-roster-test.sh` 은퇴/복직 전후 주입 결과 대조.
-- [ ] 목표 16 — 구버전 스키마 호환(planner-lite 지적): `summons` · `memory_events` 테이블이 없는 기존 `state.db` 에서 세션 훅이 죽지 않고 한 줄 알린 뒤 exit 0. 지연 마이그레이션은 `_ensure_injection_source_column`(`scripts/hermes-search.py:53`) 패턴을 따라 훅이 첫 실행 때 만든다. 검증: 계획 2 이전 스키마 DB 사본으로 훅 실행 → exit 0 + 테이블 생성.
+- [x] 목표 16 — 구버전 스키마 호환(planner-lite 지적): `summons` · `memory_events` 테이블이 없는 기존 `state.db` 에서 세션 훅이 죽지 않고 한 줄 알린 뒤 exit 0. 지연 마이그레이션은 `_ensure_injection_source_column`(`scripts/hermes-search.py:53`) 패턴을 따라 훅이 첫 실행 때 만든다. 검증: 계획 2 이전 스키마 DB 사본으로 훅 실행 → exit 0 + 테이블 생성.
 
 ## 3. 비목표 (Out of Scope)
 
@@ -131,8 +131,15 @@
 - 세션 시작 훅이 계획 1 · 3 · 4 · 5 에서 각 1개씩 **4개 늘어난다**(`factory-link-check` · `sync-pull` · `summons-verify` · `outbox-status`). 계획 3 의 `sync-pull` 은 기존 `history-reindex` 교체라 순증은 fetch 한 번이지만, 나머지 셋은 순증이다. 이 계획의 Step 2 에서 **세션 시작 지연 총량을 실측**해 §8 에 적는다(기존 훅 전부 + 새 훅 4개, `time` 으로 SessionStart 훅 체인 1회 실행). 지연이 늘면 nonce 검증 · 만료 판정 · outbox 조회를 훅 하나로 합치는 것이 후속 후보 — 근거 없이 미리 합치지 않는다.
 - SOUL.md 는 "사람 승인으로만 수정"(identity.md §5)인데 세션 안 편집을 막는 장치가 이 계획에 없다. 계획 1 의 변조 경고 훅(`claude-posttooluse-factory-tamper-warn.sh`)이 설치 목록 기준이라 SOUL 은 대상이 아니다 → 백로그 `docs/exec-plans/backlog/soul-edit-guard.md` 후보(이 계획에서 파일만 만들지 않고 §8 룰 후보로 남김).
 
-## 8. 회고 (완료 시 작성)
+## 8. 회고 (2026-09-16 완료)
 
-- 잘된 것:
-- 잘못된 것:
-- 다음 룰 후보: RV-06 · RV-11 을 R 룰로.
+- **잘된 것:**
+  - 목표 16개를 5 스텝으로 쪼개고 각 스텝을 테스트로 닫았다. 최종 전체 스위트 63/63.
+  - 파일 1책임 분리가 R-cx·R-iface 를 대부분 미리 피했다(`hermes_yaml_subset` 를 `hermes_org` 에서 뗀 것, `hermes_done_when` 을 `hermes_handoff` 에서 뗀 것). 남은 복잡도 위반은 헬퍼 추출로 그 자리에서 해소.
+  - 인증(nonce)·인계 봉투를 모델이 손대지 못하게 **CLI·모듈 경유**로만 열었다. 스킬은 그 CLI 를 안내만 한다.
+- **잘못된 것:**
+  - 인계 만료 테스트 2개가 처음 실패했다. 원인은 만료 훅이 `$project/scripts` 를 PYTHONPATH 로 쓰는데 테스트 임시 프로젝트에 모듈 사본이 없던 것 — 테스트가 설치본을 흉내내도록 `scripts/*.py` 사본을 넣어 해결. 훅의 PYTHONPATH 전제를 테스트가 늦게 반영한 셈.
+  - `validate_envelope` 가 복잡도 13 으로 커밋에서 막혔다. 검증 3분기를 `_check_goal`·`_check_done_when`·`_check_inputs` 로 나눠 해소.
+  - key-guard·summon-guard 가 자기 커밋 메시지의 `age-keygen`·`claude -p` 문자열에 걸린 이력(계획 3·4). 인용 문자열 제외 + `git commit -F` 로 회피.
+- **세션 시작 지연 실측(§7 약속):** 전체 SessionStart 훅 체인 11개 = **약 0.24–0.26초**(3회 실측 0.239·0.262·0.240). 계획 4가 더한 훅 2개 기여분은 `summons-verify` 2ms · `handoff-expiry` 28ms 로 **30ms 이하**. 훅을 하나로 합칠 근거(지연)는 아직 없다 — 합치지 않는다.
+- **다음 룰 후보:** RV-06(행위자 id 는 러너가 발급, 에이전트가 못 고른다) · RV-11(기억은 규칙 아래) 를 `core-beliefs.md` 의 R 룰로 승격 — 강제 장치는 이미 summon-guard(RV-06)·규칙 충돌 표시(RV-11)로 존재하므로 문장화만 남았다. 백로그 후보: `soul-edit-guard`(SOUL 세션 편집 차단, §7).

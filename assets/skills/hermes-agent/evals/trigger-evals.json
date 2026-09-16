@@ -1,0 +1,27 @@
+{
+  "skill_name": "hermes-agent",
+  "note": "발동 정확도 근거. should_trigger 는 입사·담당배정·인계·조회 의도, should_not 은 키워드가 겹치지만 다른 일(코드 수정·git·일반 QA 실행 등)인 근접 사례.",
+  "evals": [
+    {"query": "users 도메인 백엔드 담당 한 명 입사시켜줘. 이름은 유저스담당으로.", "should_trigger": true},
+    {"query": "이 로그인 리다이렉트 깨진 거 프론트 담당한테 지금 넘겨줘", "should_trigger": true},
+    {"query": "이 결제 리팩터 QA 한테 인계할게. 회귀 테스트 통과하면 끝이고 금요일까지야.", "should_trigger": true},
+    {"query": "이 결제 버그 누가 맡는 게 맞지? payments 담당 있어?", "should_trigger": true},
+    {"query": "프론트 담당 이제 은퇴 처리하자", "should_trigger": true},
+    {"query": "명부에 지금 누구누구 있어? 목록 보여줘", "should_trigger": true},
+    {"query": "지금 이 세션 나 누구로 되어 있어?", "should_trigger": true},
+    {"query": "이 스프린트 백엔드 일들 담당별로 배정해줘", "should_trigger": true},
+    {"query": "QA 한 명 새로 뽑아서 이 회귀 스위트 넘기고 싶어", "should_trigger": true},
+    {"query": "이 태스크 다른 에이전트한테 위임해서 지금 돌려", "should_trigger": true},
+
+    {"query": "결제 회귀 테스트 지금 직접 돌려서 결과 보여줘", "should_trigger": false},
+    {"query": "이 로그인 리다이렉트 버그 네가 지금 고쳐줘", "should_trigger": false},
+    {"query": "QA 환경 배포 스크립트가 자꾸 깨지는데 원인 좀 봐줘", "should_trigger": false},
+    {"query": "organization.yaml 파일 문법이 맞는지 검사해줘", "should_trigger": false},
+    {"query": "이 브랜치 main 에 머지하고 푸시해줘", "should_trigger": false},
+    {"query": "users 테이블 스키마에 컬럼 하나 추가하는 마이그레이션 써줘", "should_trigger": false},
+    {"query": "이 함수 담당하는 모듈이 어디야? 코드에서 찾아줘", "should_trigger": false},
+    {"query": "회사 조직도 그려주는 다이어그램 만들어줘", "should_trigger": false},
+    {"query": "hermes-status 로 현황 좀 보여줘", "should_trigger": false},
+    {"query": "이 PR 리뷰 좀 해줘. 백엔드 변경이 큰데.", "should_trigger": false}
+  ]
+}
