@@ -184,7 +184,8 @@ con.commit(); con.close()
 PY
 (cd "$PROJ" && python3 "$SCRIPTS/hermes-export-history.py" \
   --db "$DB" --project "$PROJ" --session sess1 >/dev/null 2>&1)
-JSONL=$(cat "$PROJ"/.hermes/history/*-sess1.jsonl 2>/dev/null)
+# 턴 조각 형식(.hermes/history/<세션>/<순번>.jsonl) — 2026-09-16 계획 3 Step 1
+JSONL=$(cat "$PROJ"/.hermes/history/sess1/*.jsonl 2>/dev/null)
 echo "$JSONL" | grep -q 'Fakepw11aa'
 assert "export 된 파일에 원문 없음 (다층 방어)" "1" "$?"
 echo "$JSONL" | grep -q 'REDACTED'

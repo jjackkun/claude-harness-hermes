@@ -44,6 +44,10 @@ import sqlite3
 import subprocess
 import sys
 import tempfile
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from hermes_history_fragments import (  # noqa: E402
+    active_fragments, count_active_lines, mark_superseded, write_fragment)
 from datetime import datetime
 
 # compaction_log 자가수리 DDL — 정본은 hermes-init.py. init.py 만 고치면
@@ -134,7 +138,14 @@ def local_only_commits(root: str) -> int:
 
 # ───────────────────────── 요약본 생성·교체 ─────────────────────────
 
+def _dir_parts(path: str):
+    """조각 폴더 경로 → (history 루트, session_id)."""
+    return os.path.dirname(path), os.path.basename(path)
+
+
 def count_lines(path: str) -> int:
+    if os.path.isdir(path):              # 조각 폴더 — 대체되지 않은 조각들의 줄 합
+        return count_active_lines(path)
     try:
         with open(path, encoding="utf-8") as f:
             return sum(1 for line in f if line.strip())
@@ -164,7 +175,22 @@ def _session_meta(con, sid: str, path: str):
         row = None
     if row and (row[0] or row[1]):
         return row[0] or "", row[1] or ""
-    try:                                   # DB 에 없으면 파일 첫 줄에서
+    return _meta_from_file(_first_source(path))
+
+
+def _first_source(path: str) -> str:
+    """메타를 읽을 파일 — 조각 폴더면 첫 활성 조각, 아니면 그 파일."""
+    if not os.path.isdir(path):
+        return path
+    frags = active_fragments(*_dir_parts(path))
+    return frags[0] if frags else ""
+
+
+def _meta_from_file(path: str):
+    """(project_id, timestamp) — 첫 줄에서. 읽을 수 없으면 빈 값."""
+    if not path:
+        return "", ""
+    try:
         with open(path, encoding="utf-8") as f:
             obj = json.loads(f.readline() or "{}")
         return obj.get("project_id") or "", obj.get("timestamp") or ""
@@ -189,12 +215,45 @@ def summary_record(sid: str, project_id: str, timestamp: str,
     }
 
 
+def _compact_fragments(con: sqlite3.Connection, path: str, record: dict) -> None:
+    """조각 세션 압축 — 원 조각을 **덮어쓰지 않고** 요약 조각을 더한 뒤 대체 표시를 남긴다.
+
+    순서: DB 트랜잭션 커밋 → 요약 조각 쓰기 → 대체 표시. 표시가 마지막이라 도중에 죽어도
+    원 조각이 살아 있고(추가 전용), 다음 실행이 다시 시도한다.
+    계획: 2026-09-15-sync-transport-encryption 목표 12
+    """
+    hist_dir, sid = _dir_parts(path)
+    before = [os.path.basename(f) for f in active_fragments(hist_dir, sid)]
+    cur = con.cursor()
+    cur.execute("BEGIN IMMEDIATE")
+    try:
+        cur.execute("DELETE FROM session_history WHERE session_id = ?", (record["session_id"],))
+        cur.execute(
+            "INSERT INTO session_history "
+            "(content, role, timestamp, project_id, session_id) VALUES (?,?,?,?,?)",
+            (record["content"], record["role"], record["timestamp"],
+             record["project_id"], record["session_id"]),
+        )
+        cur.execute("COMMIT")
+    except Exception:
+        try:
+            cur.execute("ROLLBACK")
+        except sqlite3.OperationalError:
+            pass
+        raise
+    write_fragment(hist_dir, sid, [record])
+    mark_superseded(hist_dir, sid, before)
+
+
 def replace_session(con: sqlite3.Connection, path: str, record: dict) -> None:
     """파일·DB 원자적 동시 교체.
 
     순서: tmp 파일 선작성 → DB 트랜잭션 커밋 → 파일 원자적 os.replace.
     DB 실패 시 파일은 미교체(tmp 폐기), 파일 교체 실패 시 발산을 명시적으로 알린다.
     """
+    if os.path.isdir(path):
+        _compact_fragments(con, path, record)
+        return
     line = json.dumps(record, ensure_ascii=False) + "\n"
     fd, tmp = tempfile.mkstemp(dir=os.path.dirname(path) or ".",
                                prefix=".compact-", suffix=".jsonl")
@@ -246,20 +305,24 @@ def _apply_session(con, root: str, sid: str, path: str, cluster: dict,
                    result: dict, report_path: str):
     """한 세션 적용. 가드 통과 시 (원문 라인수), 스킵·발산이면 None."""
     skipped = result["skipped"]
-    if not path or not os.path.isfile(path):
+    if not path or not os.path.exists(path):
         skipped.append(sid)
         _log("%s: history 파일 없음 — 스킵" % sid)
         return None
-    rel = os.path.relpath(path, root).replace(os.sep, "/")
-    if not head_blob_exists(root, rel):
-        skipped.append(sid)
-        _log("%s: HEAD 에 원문 blob 없음(커밋 0회) — 스킵. "
-             "먼저 .hermes/history 를 커밋하세요" % sid)
-        return None
-    if not worktree_clean(root, rel):
-        skipped.append(sid)
-        _log("%s: 워킹트리에 미커밋 변경 있음 — 스킵. 먼저 커밋하세요" % sid)
-        return None
+    # git 게이트는 **커밋되는 레거시 평문 파일**에만 건다. 조각은 2026-09-16 부터
+    # gitignore 대상이라 HEAD 에 blob 이 있을 수 없고, 복구 경로는 git 이 아니라
+    # 원 조각 보존이다(계획 3 목표 1·12).
+    if os.path.isfile(path):
+        rel = os.path.relpath(path, root).replace(os.sep, "/")
+        if not head_blob_exists(root, rel):
+            skipped.append(sid)
+            _log("%s: HEAD 에 원문 blob 없음(커밋 0회) — 스킵. "
+                 "먼저 .hermes/history 를 커밋하세요" % sid)
+            return None
+        if not worktree_clean(root, rel):
+            skipped.append(sid)
+            _log("%s: 워킹트리에 미커밋 변경 있음 — 스킵. 먼저 커밋하세요" % sid)
+            return None
 
     before = count_lines(path)
     db_rows = db_row_count(con, sid)

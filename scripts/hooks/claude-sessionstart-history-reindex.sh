@@ -50,8 +50,9 @@ hist_dir="$project_dir/.hermes/history"
 [[ -d "$hist_dir" ]] || { _log "action=skip:no-history"; exit 0; }
 
 # 텍스트 세션 파일 수 — 배열 글롭(파이프 없음: ugrep/SIGPIPE 회피). D3 이 세션당 파일 1개 보장.
+# 레거시 평평한 파일과 턴 조각(<세션>/<순번>.jsonl)을 함께 센다 (계획 3 Step 1)
 shopt -s nullglob
-hist_files=("$hist_dir"/*.jsonl)
+hist_files=("$hist_dir"/*.jsonl "$hist_dir"/*/*.jsonl)
 shopt -u nullglob
 text_count=${#hist_files[@]}
 [[ "$text_count" -eq 0 ]] && { _log "action=skip:no-jsonl"; exit 0; }
@@ -72,7 +73,21 @@ text_count=${#hist_files[@]}
 #   증가가 없어 need=0 이지만 "동기화됨"이 아니므로 in-sync 와 분리해 기록한다.
 gate="$(python3 -c "
 import sqlite3, sys, glob, os, json
-files = glob.glob(os.path.join(sys.argv[1], '*.jsonl'))
+# 조각 폴더가 있는 세션은 레거시 평평한 파일을 세지 않는다 — 둘을 합치면 같은 대화를
+# 두 번 세어 발산 경보가 고착된다(2026-09-16 실측). 재색인의 규칙과 같다.
+frag_files = glob.glob(os.path.join(sys.argv[1], '*', '*.jsonl'))
+frag_sids = {os.path.basename(os.path.dirname(f)) for f in frag_files}
+superseded = set()
+for sid in frag_sids:
+    try:
+        with open(os.path.join(sys.argv[1], sid, '.superseded'), encoding='utf-8') as fh:
+            superseded |= {os.path.join(sys.argv[1], sid, l.strip()) for l in fh if l.strip()}
+    except OSError:
+        pass
+frag_files = [f for f in frag_files if f not in superseded]
+flat = [f for f in glob.glob(os.path.join(sys.argv[1], '*.jsonl'))
+        if not any(f.endswith('-%s.jsonl' % sid) for sid in frag_sids)]
+files = flat + frag_files
 tl = 0
 fmeta = {}
 for f in files:

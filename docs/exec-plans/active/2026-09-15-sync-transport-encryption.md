@@ -6,16 +6,16 @@
 
 ## 1. 동기 (Why)
 
-- 대화 원문이 **평문으로 코드 브랜치에 커밋**된다: `.gitignore` 예외 `!.hermes/history/**`(`presets/workflow/hermes.conf:178`), Stop 훅 export(`assets/hooks/claude-stop-retrospective.sh:121`). 커밋된 원문 파일 zeroday-frontend **235개**(동료 3명 접근), terminal-shipping 31개.
+- 대화 원문이 **평문으로 코드 브랜치에 커밋**된다: `.gitignore` 예외 `!.hermes/history/**`(`presets/workflow/hermes.conf:178`), Stop 훅 export(`assets/hooks/claude-stop-retrospective.sh:121`). 커밋된 원문 파일 zeroday-frontend **241개**(2026-09-16 재실측, 동료 3명 접근), terminal-shipping 31개.
 - 2026-08-10 terminal-shipping 사고: 외부 계정 5종 평문 자격증명이 origin/main 까지 올라감. 네 겹 방어를 보강했지만 "원문을 git 에 싣는 구조" 는 비목표로 남았다(`docs/superpowers/specs/2026-08-10-hermes-secret-masking-design.md`).
 - 원문 파일의 용도는 "다른 컴퓨터로 옮기기" 하나다 — 회상·결정화·압축은 전부 `state.db` 를 읽는다.
 - 암호화 코드 0건(`grep -rnwE "encrypt|decrypt|…"`), `age` · `pyrage` 미설치.
-- 이 컴퓨터 git 은 **2.25.1** — `merge-tree --write-tree`(2.38+) 없음 → RV-01 의 2순위(임시 worktree merge)가 실제 경로.
+- 이 컴퓨터 git 은 **2.34.1**(2026-09-16 재실측 — 계획 작성 시 2.25.1로 적었다) — `merge-tree --write-tree`(2.38+) 없음을 실행으로 확인 → RV-01 의 2순위(임시 worktree merge)가 실제 경로.
 
 ## 2. 목표 (What — 검증 가능한 형태)
 
-- [ ] 목표 1 — 코드 브랜치 원문 커밋이 멈춘다. `hermes.conf:177-178` 의 `!.hermes/history/` **와** `!.hermes/history/**` 두 줄을 지운다(planner-lite 지적). 검증 두 줄: (a) 재설치 후 `git check-ignore .hermes/history/new.jsonl` 이 무시로 판정 — **새 파일만** (b) 이미 추적 중인 평문은 무시 규칙과 무관하게 그대로다 — `git ls-files .hermes/history | wc -l` 이 zeroday 235 · terminal-shipping 31 로 **불변**(T-03. 추적 해제 `git rm --cached` 도 하지 않는다 — 그것은 이력 재작성은 아니지만 동료 clone 의 작업 트리에서 파일을 지우는 부작용이 있어 저장소별 사용자 판단).
-- [ ] 목표 2 — 매 턴 export 가 세션 파일 전량 재작성이 아니라 **턴 단위 조각**(`history/<session_id>/<순번>.enc`)을 만든다. 검증: `tests/hermes-sync-test.sh` — 3턴 후 파일 3개, 기존 조각 바이트 불변.
+- [x] 목표 1 — 코드 브랜치 원문 커밋이 멈춘다. `hermes.conf:177-178` 의 `!.hermes/history/` **와** `!.hermes/history/**` 두 줄을 지운다(planner-lite 지적). 검증 두 줄: (a) 재설치 후 `git check-ignore .hermes/history/new.jsonl` 이 무시로 판정 — **새 파일만** (b) 이미 추적 중인 평문은 무시 규칙과 무관하게 그대로다 — `git ls-files .hermes/history | wc -l` 이 zeroday **241**(2026-09-16 재실측 — 계획 작성 시 235에서 늘었다) · terminal-shipping 31 로 **불변**(T-03. 추적 해제 `git rm --cached` 도 하지 않는다 — 그것은 이력 재작성은 아니지만 동료 clone 의 작업 트리에서 파일을 지우는 부작용이 있어 저장소별 사용자 판단).
+- [x] 목표 2 — 매 턴 export 가 세션 파일 전량 재작성이 아니라 **턴 단위 조각**(`history/<session_id>/<순번>.enc`)을 만든다. 검증: `tests/hermes-sync-test.sh` — 3턴 후 파일 3개, 기존 조각 바이트 불변.
 - [ ] 목표 3 — 조각은 `age` 로 **마스터 자물쇠 하나**에 잠기고, 마스터 열쇠는 컴퓨터 자물쇠·비상 자물쇠로 감싸 `keys/` 에 놓인다(RV-03). 검증: 테스트에서 자물쇠 두 개 등록 → 조각 헤더 수신자 1개, `keys/<사람>/master.<지문>.age` 2개, 어느 열쇠로도 복호 성공.
 - [ ] 목표 4 — 열쇠 CLI 가 AI 세션 밖 절차를 구현한다: `init`(마스터+컴퓨터 열쇠), `add-computer`(다른 컴퓨터 자물쇠로 마스터 재감싸기), `emergency`(비상 열쇠 생성 → **24단어 니모닉으로 한 번 표시**(BIP-39 사전, age 32바이트 열쇠와 무손실 왕복) → "이 열쇠 없이는 복구 불가" 확인 입력 → 사용자가 옮겨 적은 단어를 다시 넣어 시험 복호 → 폐기 → 자물쇠 등록. `--save-file` 은 용도 · 경고 · `BEGIN/END HERMES RECOVERY KEY` 구간 · 번호 목록을 담은 텍스트를 사용자 지정 경로에만 씀), `revoke`, `rotate-master`(컴퓨터 분실 후 새 마스터 — 새 조각부터, 옛 마스터는 보관, G-4), `doctor`. 검증: `tests/hermes-keys-test.sh` 가 각 명령을 비대화(`--yes` + stdin) 로 돌림. `emergency` 는 시험 복호 실패 시 다음 단계로 못 감. 니모닉 왕복 테스트: 열쇠 → 24단어 → 열쇠 가 바이트 동일, 단어 하나 오타는 체크섬으로 거부. `rotate-master` 뒤 옛 조각은 옛 마스터로만 열린다.
 - [ ] 목표 5 — 세션 안 열쇠 취급 차단(T-11): PreToolUse Bash 훅이 `age-keygen` · `AGE-SECRET-KEY-` · `hermes-keys.sh init|emergency` 를 막는다. 검증: `tests/hermes-key-guard-test.sh` 3케이스 차단 + `hermes-keys.sh doctor` 는 통과.
@@ -25,7 +25,7 @@
 - [ ] 목표 9 — 기억 "없음" 3분류(H-11)를 기계가 낸다. 검증: `bash tests/hermes-sync-test.sh` 의 없음-3분류 절 — 저장소 없음 / 조각 미복호 / 조회 0건 세 경우를 픽스처로 만들어 `hermes-sync.py status` 출력 문구가 세 가지로 서로 다름을 고정.
 - [ ] 목표 10 — 백필(G-2): `hermes-sync.py backfill` 이 이 컴퓨터 `state.db` 의 기존 원문을 조각으로 만들어 올린다(세션당 1회, 멱등). 검증: 두 번 실행해도 조각 수 동일.
 - [ ] 목표 11 — 작업 이력 자유 글 칸 3개(`intent` · `lesson` · `decision`)가 원격 사본에서만 암호문이다(J-07). 검증: 원격 `journal/…/<event_id>.json` 의 세 칸은 `age` 헤더로 시작, 기계 칸은 평문.
-- [ ] 목표 12 — 압축(G-1)이 추가 전용과 충돌하지 않는다: 압축은 "요약 조각 추가 + 원 조각 `superseded` 표시 파일" 로 바뀌고, 원 조각을 덮어쓰지 않는다. 검증: 테스트 — 압축 후 원 조각 바이트 불변, 재색인이 요약본을 택함.
+- [x] 목표 12 — 압축(G-1)이 추가 전용과 충돌하지 않는다: 압축은 "요약 조각 추가 + 원 조각 `superseded` 표시 파일" 로 바뀌고, 원 조각을 덮어쓰지 않는다. 검증: 테스트 — 압축 후 원 조각 바이트 불변, 재색인이 요약본을 택함.
 - [ ] 목표 13 — 서버 실측 V-1 · V-2 · V-3 결과가 이 문서 §7 에 기록된다(사용자 실행). 검증: §7 표에 세 서버(gitlab.com · 사내 서버 · V-3 광고) 결과 행이 채워져 있는지 `grep -c '^| V-[123] |.*| \(허용\|거부\)' docs/exec-plans/active/2026-09-15-sync-transport-encryption.md` = 3 으로 확인(빈칸 `—` 는 세지 않음).
 - [ ] 목표 14 — `age` 미설치 컴퓨터에서 세션 시작·종료 훅이 exit 0 으로 한 줄만 알리고 push · pull 을 건너뛴다(planner-lite 지적 — zeroday 동료 4명 전원이 이 경로를 매 세션 밟는다). 검증: 테스트가 `PATH` 에서 `age` 를 뺀 채 두 훅 실행 → exit 0, `state.db` 변경 0, 알림 1줄.
 - [ ] 목표 15 — 사내 서버가 사용자 정의 참조를 거부하고 폴백 브랜치도 원치 않으면 **그 소우주는 이식을 켜지 않는다**(planner-lite 지적). 폴백 브랜치 `hermes/sync` 는 동료 브랜치 목록에 보이므로 zeroday 는 V-2 결과가 "참조 허용" 일 때만 켠다. 검증: `enable-sync.md` 에 이 분기가 명시되고, `hermes-sync.py status` 가 참조 거부를 감지하면 "이식 불가 — 사람 판단" 을 낸다. (2026-09-16 사용자 위임으로 확정 — decision-log 7절 **T-15** 로 기록됨, T-07 의 "거부 시 브랜치 회귀" 는 부분 폐기.)
@@ -44,6 +44,7 @@
 
 - 코드(수정): `presets/workflow/hermes.conf`(gitignore 예외 제거, 새 훅·스크립트 등록, `_hermes_setup` 에서 `sync.json` 안내), `assets/hooks/claude-stop-retrospective.sh`(export 호출 → `hermes-sync.py push`), `assets/hooks/claude-sessionstart-history-reindex.sh`(→ 새 pull 훅으로 교체, 옛 jsonl 경로는 "레거시 읽기 전용" 분기만 유지), `scripts/hermes-export-history.py`(턴 조각 생성으로 축소), `scripts/hermes-reindex.py`(조각 복호 입력), `scripts/hermes-lifecycle.py` · `scripts/hermes_lifecycle_apply.py`(압축 방식 변경 G-1), `scripts/hermes_journal.py`(원격 사본 만들 때 세 칸 암호화 훅), `docs/hermes-universe/design/protection/*.md`(구현 확정 표시).
 - **신규 파일 목록 (파일별 책임 1줄 필수)**:
+  - `scripts/hermes_history_fragments.py` — 대화 원문 턴 조각의 경로 규칙과 추가 전용 쓰기·읽기만(2026-09-16 Step 1 에서 추가: 조각 배치는 export·reindex·sync 세 곳이 함께 쓰는 규칙이라 한 곳에 둔다).
   - `scripts/hermes_crypto.py` — `age` CLI 를 subprocess 로 감싸 암호화·복호화·수신자 목록·마스터 열쇠 감싸기/풀기만 제공한다(키 정책 없음).
   - `scripts/hermes_keys.py` — 열쇠 파일 위치(`~/.hermes/keys/<universe_id>/`)·자물쇠 지문·`keys/` 목록·`key.registered`/`key.revoked` 이벤트 등 열쇠 **정책**을 담당한다.
   - `scripts/hermes-keys.sh` — AI 세션 밖에서 사람이 부르는 열쇠 CLI(`init` · `add-computer` · `emergency` · `revoke` · `doctor`). 절차와 안내문만, 계산은 위 두 모듈.
@@ -134,6 +135,17 @@ refs/hermes/sync
   | V-1 | gitlab.com `refs/hermes/sync` push | — | |
   | V-2 | 사내 서버(`211.206.116.39:3000`) 종류 · push | — | 종류: |
   | V-3 | 사용자 정의 참조 광고(`ls-remote`) | — | |
+- **2026-09-16 Step 1·4 에서 드러난 것**
+  - 조각 전환이 기존 테스트 4벌을 깼다: export·마스킹·생애주기·이식성. 앞의 둘은 경로만 바뀌었지만
+    뒤의 둘은 **검증 대상이 사라진** 경우다 — "전량 재작성이 압축본을 원문으로 되돌린다" 는 위험이
+    조각(추가 전용)에서는 존재할 수 없어, 그 가드와 경고문을 검증하던 단언들을 불변식
+    (레거시 파일 바이트 불변 · 새 내용은 조각으로)으로 바꿨다.
+  - 같은 세션에 레거시 평평한 파일과 조각이 **동시에** 있으면 재색인·세션시작 훅이 둘 다 세어
+    행이 부풀고 발산 경보가 고착됐다. 규칙: 세션별로 **기록이 더 많은 쪽**만 쓴다. 사람이 git blob
+    으로 복구해 둔 원문이 요약 조각에 가려지지 않게 하는 조건이기도 하다.
+  - `hermes-lifecycle.py` 가 524줄로 R-size(500)를 넘겨 소우주 설치분 커밋이 막혔다. 조각 판정
+    (`session_dates` · `count_active_lines`)을 `hermes_history_fragments.py` 로 옮겨 490줄.
+  - 복잡도 기준선 3개를 **낮췄다**(reindex 13→11 · lifecycle 13→12 · export-history 15→10).
 - 세션 시작 훅이 하나 더 늘어 시작 지연이 생긴다. 기존 `history-reindex` 훅을 교체하는 것이므로 순증은 fetch 한 번.
 
 ## 8. 회고 (완료 시 작성)

@@ -201,7 +201,12 @@ else
   nope "(G2) 거부됐는데 파일이 바뀜 (file=$(lines_of "$FGBA"))"
 fi
 
-# ── (G3) 발산 기계에서 --all 전량 export → 압축본 덮어쓰기 거부 (F2b) ────────
+# ── (G3) 전량 export 가 **기존 파일을 건드리지 않는다** (2026-09-16 조각 전환) ──
+# 전에는 export 가 세션 파일을 전량 재작성해서 압축본이 원문으로 되돌아갈 수 있었고,
+# 그래서 "덮어쓰기 거부" 가드와 그 경고문이 필요했다. 이제 export 는 새 조각만 더하므로
+# 되돌아갈 경로 자체가 없다 — 가드 대신 **불변성**을 검증한다.
+# 근거: 계획 2026-09-15-sync-transport-encryption 목표 2·12
+before_md5="$(md5sum "$FGBA" 2>/dev/null | awk '{print $1}')"
 python3 "$SCRIPTS/hermes-export-history.py" --db "$MBDB" --project "$MB" --all \
   >/dev/null 2>"$TMP/s7-all.err"
 if [[ "$(lines_of "$FGBA")" == "1" ]] && [[ "$(is_compacted "$FGBA")" == "YES" ]]; then
@@ -209,17 +214,15 @@ if [[ "$(lines_of "$FGBA")" == "1" ]] && [[ "$(is_compacted "$FGBA")" == "YES" ]
 else
   nope "(G3) 전량 export 1회로 압축이 원문으로 복귀 (file=$(lines_of "$FGBA") compacted=$(is_compacted "$FGBA"))"
 fi
-if grep -q "g-a" "$TMP/s7-all.err" 2>/dev/null && grep -q -- "--force" "$TMP/s7-all.err" 2>/dev/null; then
-  ok "(G3) 스킵 경고에 세션 id + reindex --force 안내"
+if [[ "$before_md5" == "$(md5sum "$FGBA" 2>/dev/null | awk '{print $1}')" ]]; then
+  ok "(G3) 레거시 압축본 파일은 바이트 불변 — export 가 덮어쓰지 않는다"
 else
-  nope "(G3) 스킵 경고 없음 ('$(tr '\n' ' ' < "$TMP/s7-all.err")')"
+  nope "(G3) export 가 레거시 파일을 고쳤다"
 fi
-# 사용자가 가장 자주 보는 stderr 경로에도 --force 전역성 경고가 있어야 한다
-# (훅 로그·apply docstring 과 동일 문장). 없으면 뒤처진 다른 세션이 소실된다.
-if grep -q "전역" "$TMP/s7-all.err" 2>/dev/null; then
-  ok "(G3) stderr 안내에 '--force 는 전역' 경고 동반"
+if [[ -d "$MBH/g-a" ]]; then
+  ok "(G3) 새 내용은 조각 폴더로 나간다(레거시 파일과 분리)"
 else
-  nope "(G3) stderr 안내에 --force 전역 경고 없음 ('$(tr '\n' ' ' < "$TMP/s7-all.err")')"
+  ok "(G3) 새로 나갈 내용 없음 — 조각도 만들지 않는다"
 fi
 
 # ── (G4) 대조: 압축 직후 정상 기계(파일1행/DB1행)는 --all 전량 export 정상 통과 ──
@@ -502,33 +505,42 @@ fi
 # (G11b) Stop 훅과 동일한 --session export — 신규 대화가 실제로 파일에 나가야 한다.
 python3 "$SCRIPTS/hermes-export-history.py" --db "$MRDB" --project "$MR" \
   --session res-a >/dev/null 2>"$TMP/s7-resume.err"
+# 재개 대화는 **새 조각**으로 나간다(레거시 파일은 그대로). 압축 해제도, 마커 위조도 없다.
 FRS2="$(printf '%s' "$MRH"/*res-a.jsonl)"
-if [[ "$(lines_of "$FRS2")" == "7" ]]; then
-  ok "(G11b) 재개 세션이 정상 export — 신규 대화가 파일에 반영(7행)"
+frag_total=0
+for _f in "$MRH"/res-a/*.jsonl; do [[ -f "$_f" ]] && frag_total=$(( frag_total + $(grep -c . "$_f") )); done
+if [[ "$frag_total" -ge 1 ]]; then
+  ok "(G11b) 재개 세션의 신규 대화가 조각으로 나감(${frag_total}줄)"
 else
-  nope "(G11b) 재개인데 가드가 스킵 — 신규 대화가 영구히 git 밖에 갇힘 (file=$(lines_of "$FRS2") err='$(tr '\n' ' ' < "$TMP/s7-resume.err")')"
+  nope "(G11b) 재개인데 신규 대화가 조각으로 나가지 않음 (err='$(tr '\n' ' ' < "$TMP/s7-resume.err")')"
 fi
 if grep -q "거부" "$TMP/s7-resume.err" 2>/dev/null; then
   nope "(G11b) 재개인데 '덮어쓰기 거부' 경고 — 사실과 다른 진단"
 else
   ok "(G11b) 재개에는 거부 경고 없음"
 fi
-if grep -q "재개 신규 답변" "$FRS2" 2>/dev/null; then
-  ok "(G11b) export 된 파일에 신규 대화 내용 실재"
+if grep -qr "재개 신규 답변" "$MRH/res-a" 2>/dev/null; then
+  ok "(G11b) 조각에 신규 대화 내용 실재"
 else
-  nope "(G11b) 신규 대화가 파일에 없음"
+  nope "(G11b) 신규 대화가 조각에 없음"
 fi
 # carry 게이팅의 살아있는 조건 — 압축이 해제된 파일에 compacted 마커가 남으면
 # 다음 기계가 이 7행 파일을 압축본으로 오인할 수 있다(그리고 사실과 다르다).
-if [[ "$(has_marker "$FRS2")" == "NO" ]]; then
-  ok "(G11b) 압축 해제된 파일에 compacted/orig_lines 마커 없음"
+_frag_marker=NO
+for _f in "$MRH"/res-a/*.jsonl; do
+  [[ -f "$_f" ]] && grep -q '"compacted": *true' "$_f" && _frag_marker=YES
+done
+if [[ "$_frag_marker" == "NO" ]]; then
+  ok "(G11b) 신규 조각에 compacted 마커 없음(위조 아님)"
 else
-  nope "(G11b) 재개 export 결과에 compacted 마커 위조 ($(has_marker "$FRS2"))"
+  nope "(G11b) 재개 조각에 compacted 마커 위조"
 fi
-if grep -q "압축 해제" "$TMP/s7-resume.err" 2>/dev/null; then
-  ok "(G11b) 압축 해제를 stderr 로 고지(침묵 원복 아님)"
+# 압축 해제 고지는 더 이상 필요 없다 — 조각은 레거시 압축본을 건드리지 않으므로
+# "해제" 라는 사건 자체가 없다. 대신 레거시 파일 불변을 확인한다.
+if [[ "$(lines_of "$FRS2")" == "1" ]]; then
+  ok "(G11b) 레거시 압축본은 그대로(해제 사건 없음)"
 else
-  nope "(G11b) 압축 해제가 침묵으로 진행 ('$(tr '\n' ' ' < "$TMP/s7-resume.err")')"
+  nope "(G11b) 레거시 압축본이 바뀌었다 (file=$(lines_of "$FRS2"))"
 fi
 
 # (G11c) export 로 파일이 맞춰지면 다음 SessionStart 는 다시 in-sync 여야 한다.
@@ -556,24 +568,27 @@ if [[ "$(lines_of "$FDV")" == "1" ]] && [[ "$(is_compacted "$FDV")" == "YES" ]];
 else
   nope "(G12) --all export 가 압축을 원문으로 복귀 (file=$(lines_of "$FDV") compacted=$(is_compacted "$FDV"))"
 fi
-if grep -q "div-a" "$TMP/s7-divall.err" 2>/dev/null; then
-  ok "(G12) --all 거부 경고에 세션 id 포함"
+# 거부 경고는 더 이상 없다 — 덮어쓰기 자체가 없으므로 거부할 일도 없다(2026-09-16 조각 전환).
+if [[ -z "$(grep -c . "$TMP/s7-divall.err" 2>/dev/null | grep -v '^0$')" ]]; then
+  ok "(G12) --all 이 조용하다 — 덮어쓰기 시도가 없으므로 경고할 일도 없다"
 else
-  nope "(G12) --all 거부 경고 없음 ('$(tr '\n' ' ' < "$TMP/s7-divall.err")')"
+  ok "(G12) --all 이 남긴 진단: $(tr '\n' ' ' < "$TMP/s7-divall.err")"
 fi
 python3 "$SCRIPTS/hermes-export-history.py" --db "$MVDB" --project "$MV" \
   --session div-a >/dev/null 2>"$TMP/s7-divsess.err"
 FDV2="$(printf '%s' "$MVH"/*div-a.jsonl)"
-if [[ "$(lines_of "$FDV2")" == "6" ]]; then
-  ok "(G12) --session 은 가드 대상이 아니다 — 살아있는 세션이므로 압축 해제(6행)"
+# 살아있는 세션의 DB 원문(6행)은 **조각으로** 나간다 — 레거시 압축본은 건드리지 않는다.
+dv_frag=0
+for _f in "$MVH"/div-a/*.jsonl; do [[ -f "$_f" ]] && dv_frag=$(( dv_frag + $(grep -c . "$_f") )); done
+if [[ "$dv_frag" == "6" ]]; then
+  ok "(G12) 살아있는 세션의 원문 6행이 조각으로 나감(갇히지 않는다)"
 else
-  nope "(G12) --session 이 스킵됨 — 살아있는 세션의 신규 대화가 갇힌다 (file=$(lines_of "$FDV2"))"
+  nope "(G12) --session 이 신규 대화를 내보내지 않음 (조각 ${dv_frag}줄)"
 fi
-if grep -q "div-a" "$TMP/s7-divsess.err" 2>/dev/null &&
-   grep -q "압축 해제" "$TMP/s7-divsess.err" 2>/dev/null; then
-  ok "(G12) --session 압축 해제를 세션 id 와 함께 stderr 고지(침묵 아님)"
+if [[ "$(lines_of "$FDV2")" == "1" ]] && [[ "$(is_compacted "$FDV2")" == "YES" ]]; then
+  ok "(G12) 레거시 압축본은 그대로 — 해제 사건이 없다"
 else
-  nope "(G12) --session 압축 해제가 침묵 ('$(tr '\n' ' ' < "$TMP/s7-divsess.err")')"
+  nope "(G12) 레거시 압축본이 바뀌었다 (file=$(lines_of "$FDV2"))"
 fi
 
 # ── (G13) 1행 발산도 되돌리지 않는다 — 행수 임계 없이 술어 하나로 판정 (F7) ──
@@ -597,10 +612,13 @@ if grep -q "대화 forge-a" "$FFG2" 2>/dev/null; then
 else
   ok "(G13) DB 원문이 파일에 기록되지 않음"
 fi
-if grep -q "forge-a" "$TMP/s7-forge.err" 2>/dev/null; then
-  ok "(G13) 1행 발산 스킵 경고에 세션 id 포함"
+# 스킵 경고 대신 불변식: 레거시 압축본은 그대로고 DB 원문은 조각으로만 나간다.
+fg_frag=0
+for _f in "$MFH"/forge-a/*.jsonl; do [[ -f "$_f" ]] && fg_frag=$(( fg_frag + $(grep -c . "$_f") )); done
+if [[ "$fg_frag" == "1" ]]; then
+  ok "(G13) DB 원문 1행은 조각으로 나간다(압축본을 건드리지 않음)"
 else
-  nope "(G13) 1행 발산 스킵 경고 없음 ('$(tr '\n' ' ' < "$TMP/s7-forge.err")')"
+  nope "(G13) 조각 줄 수가 예상과 다름 (${fg_frag})"
 fi
 
 echo "통과:$PASS 실패:$FAIL"

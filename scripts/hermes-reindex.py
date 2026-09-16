@@ -23,6 +23,10 @@ import os
 import sqlite3
 import sys
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from hermes_history_fragments import (  # noqa: E402
+    active_fragments, exported_line_count, write_fragment)
+
 UNKNOWN_DATE = "unknown-date"
 
 
@@ -45,6 +49,40 @@ def _date_prefix(timestamp: str) -> str:
     return UNKNOWN_DATE
 
 
+def _history_inputs(hist_dir: str):
+    """(레거시 평평한 파일들, 조각 파일들). 압축이 대체한 조각은 빼고 돌려준다(목표 12)."""
+    flat = sorted(glob.glob(os.path.join(hist_dir, "*.jsonl")))
+    frag_files = []
+    for d in sorted(glob.glob(os.path.join(hist_dir, "*"))):
+        if os.path.isdir(d):
+            frag_files.extend(active_fragments(hist_dir, os.path.basename(d)))
+    return flat, frag_files
+
+
+def _read_jsonl(path: str):
+    """(레코드들, 손상 여부). session_id 없는 줄도 손상으로 본다(귀속 불가)."""
+    records, bad = [], False
+    try:
+        with open(path, "r", encoding="utf-8") as fh:
+            for line in fh:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    obj = json.loads(line)
+                except json.JSONDecodeError:
+                    bad = True
+                    continue
+                if not obj.get("session_id"):
+                    bad = True
+                    continue
+                records.append(obj)
+    except OSError as e:
+        print(f"[hermes] history 파일 읽기 실패: {path}: {e}", file=sys.stderr)
+        return None, False
+    return records, bad
+
+
 def collect_sessions(hist_dir: str) -> dict:
     """.hermes/history/*.jsonl 을 세션 단위로 수집한다.
 
@@ -55,38 +93,29 @@ def collect_sessions(hist_dir: str) -> dict:
     반환: {session_id: {"records": [obj, ...], "tainted": bool}}
     """
     sessions = {}
-    for path in sorted(glob.glob(os.path.join(hist_dir, "*.jsonl"))):
-        file_records = []
-        had_parse_error = False
-        try:
-            with open(path, "r", encoding="utf-8") as f:
-                for line in f:
-                    line = line.strip()
-                    if not line:
-                        continue
-                    try:
-                        obj = json.loads(line)
-                    except json.JSONDecodeError:
-                        had_parse_error = True
-                        continue
-                    sid = obj.get("session_id")
-                    if not sid:
-                        # session_id 없는 라인도 손상으로 간주(귀속 불가)
-                        had_parse_error = True
-                        continue
-                    file_records.append(obj)
-        except OSError as e:
-            print(f"[hermes] history 파일 읽기 실패: {path}: {e}", file=sys.stderr)
+    by_source = {}          # {sid: {"flat": [...], "frag": [...], "tainted": bool}}
+    # 평평한 레거시 파일(`<날짜>-<세션>.jsonl`)과 턴 조각(`<세션>/<순번>.jsonl`)을 함께 읽는다.
+    # 조각이 새 형식이고 레거시는 읽기 전용으로 남는다(계획 3 Step 1).
+    flat, frag_files = _history_inputs(hist_dir)
+    for path in flat + frag_files:
+        file_records, had_parse_error = _read_jsonl(path)
+        if file_records is None:
             continue
-
-        # 이 파일이 기여한 세션들. 파싱 실패가 있으면 해당 세션 전부 tainted.
-        sids_in_file = {r["session_id"] for r in file_records}
-        for sid in sids_in_file:
-            s = sessions.setdefault(sid, {"records": [], "tainted": False})
-            s["records"].extend(r for r in file_records if r["session_id"] == sid)
+        source = "flat" if path in flat else "frag"
+        for sid in {r["session_id"] for r in file_records}:
+            bucket = by_source.setdefault(sid, {"flat": [], "frag": [], "tainted": False})
+            bucket[source].extend(r for r in file_records if r["session_id"] == sid)
             if had_parse_error:
-                s["tainted"] = True
+                bucket["tainted"] = True
         # 남은 좋은 라인이 전혀 없으면(전부 손상) 귀속할 세션이 없어 무동작 — 안전.
+
+    # 한 세션이 레거시 파일과 조각 양쪽에 있으면 **기록이 더 많은 쪽**을 택한다.
+    # 둘을 합치면 같은 대화가 두 번 들어가고, 적은 쪽을 택하면 사람이 복구해 둔 원문
+    # (git blob → 레거시 파일)이 요약 조각에 가려 사라진다. 재색인의 기존 태도(행을
+    # 잃지 않는다, 행수감소 가드)와 같은 규칙이다. 2026-09-16 실측으로 드러났다.
+    for sid, bucket in by_source.items():
+        chosen = bucket["frag"] if len(bucket["frag"]) >= len(bucket["flat"]) else bucket["flat"]
+        sessions[sid] = {"records": chosen, "tainted": bucket["tainted"]}
     return sessions
 
 
@@ -139,7 +168,7 @@ def _reindex_session(con: sqlite3.Connection, session_id: str,
 
 
 def _export_db_session(con: sqlite3.Connection, hist_dir: str, session_id: str) -> int:
-    """DB 에만 있는 세션을 JSONL 로 역-export 한다(hermes-export-history.py 로직 복제, D5)."""
+    """DB 에만 있는 세션을 턴 조각으로 역-export 한다(hermes-export-history.py 와 같은 규칙, D5)."""
     rows = con.execute(
         "SELECT content, role, timestamp, project_id FROM session_history "
         "WHERE session_id = ?",
@@ -147,20 +176,20 @@ def _export_db_session(con: sqlite3.Connection, hist_dir: str, session_id: str) 
     ).fetchall()
     if not rows:
         return 0
-    for old in glob.glob(os.path.join(hist_dir, "*-%s.jsonl" % session_id)):
-        os.remove(old)
-    path = os.path.join(hist_dir, "%s-%s.jsonl" % (_date_prefix(rows[0][2]), session_id))
-    with open(path, "w", encoding="utf-8") as f:
-        for seq, (content, role, timestamp, project_id) in enumerate(rows):
-            f.write(json.dumps({
-                "seq": seq,
-                "session_id": session_id,
-                "project_id": project_id,
-                "role": role,
-                "timestamp": timestamp,
-                "content": content,
-            }, ensure_ascii=False) + "\n")
-    return len(rows)
+    # 조각으로 내보낸다(추가 전용). 이미 내보낸 줄은 건너뛰므로 기존 조각을 지우지 않는다.
+    already = exported_line_count(hist_dir, session_id)
+    fresh = rows[already:]
+    if not fresh:
+        return 0
+    write_fragment(hist_dir, session_id, [{
+        "seq": already + i,
+        "session_id": session_id,
+        "project_id": project_id,
+        "role": role,
+        "timestamp": timestamp,
+        "content": content,
+    } for i, (content, role, timestamp, project_id) in enumerate(fresh)])
+    return len(fresh)
 
 
 def reindex(db_path: str, project_dir: str, backfill: bool = False,

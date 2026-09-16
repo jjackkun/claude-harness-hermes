@@ -19,12 +19,12 @@ scripts/hermes_save_session_signals.py 17
 scripts/hermes_skills.py 16
 scripts/hermes_loop.py 16
 scripts/hermes-correlate.py 16
-scripts/hermes-export-history.py 15
+scripts/hermes-export-history.py 10
 scripts/hermes-cleanup.py 12
 lib/generate_codex_hooks.py 14
 assets/skills/mcp-builder/scripts/evaluation.py 14
-scripts/hermes-reindex.py 13
-scripts/hermes-lifecycle.py 13
+scripts/hermes-reindex.py 11
+scripts/hermes-lifecycle.py 12
 scripts/hermes-dream.py 13
 assets/rules/harness/examples/python/test_sdk_ban.py 13
 assets/hooks/plan_state.py 8

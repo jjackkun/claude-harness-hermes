@@ -26,6 +26,9 @@ import sys
 from datetime import datetime
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from hermes_history_fragments import (  # noqa: E402
+    count_active_lines, session_dates)
+
 try:
     from hermes_reuse import get_tracking_epoch
 except ImportError:  # 헬퍼 미복사 — 추적 미도입으로 간주해 후보 0
@@ -149,21 +152,21 @@ def select_candidates(con, hist_dir: str, now: datetime, age_days: int):
 
     reused = _reused_ids(con)
     compacted = _compacted_ids(con)
-    out = []
-    for name in os.listdir(hist_dir):
-        d, sid = parse_history_name(name)
-        if d is None or not sid:
-            continue                     # ① 날짜 불명 — 제외
-        if (now - d).days < age_days:
-            continue                     # ① 아직 안 오래됨
-        if sid in compacted:
-            continue                     # 이미 압축됨 — 재압축은 정보 퇴화뿐(멱등)
-        if sid in reused:
-            continue                     # ② 재활용된 적 있음
-        if not _is_crystallized(con, sid):
-            continue                     # ③ 미결정화
-        out.append(sid)
-    return sorted(out)
+    blocked = reused | compacted
+    return sorted({
+        sid for d, sid in _dated_sessions(hist_dir)
+        if d is not None and sid                      # ① 날짜 불명 — 제외
+        and (now - d).days >= age_days                # ① 오래됨
+        and sid not in blocked                        # ② 재활용 · 이미 압축(멱등)
+        and _is_crystallized(con, sid)                # ③ 결정화됨
+    })
+
+
+def _dated_sessions(hist_dir: str):
+    """(날짜, session_id) 목록 — 레거시 평평한 파일과 조각 폴더를 함께 본다."""
+    out = [parse_history_name(name) for name in os.listdir(hist_dir)]
+    out += [(date, sid) for sid, (date, _) in session_dates(hist_dir).items()]
+    return out
 
 
 # ───────────────── 압축 제안(dry-run) — LLM 주제 클러스터링 ─────────────────
@@ -189,10 +192,14 @@ def _history_paths(hist_dir: str) -> dict:
         _, sid = parse_history_name(name)
         if sid:
             out[sid] = os.path.join(hist_dir, name)
+    for sid, (_date, path) in session_dates(hist_dir).items():
+        out[sid] = path                  # 조각 폴더는 파일이 아니라 폴더 경로다
     return out
 
 
 def _count_lines(path: str) -> int:
+    if os.path.isdir(path):              # 조각 폴더 — 대체되지 않은 조각들의 줄 합
+        return count_active_lines(path)
     try:
         with open(path, encoding="utf-8") as f:
             return sum(1 for _ in f)
