@@ -34,12 +34,32 @@ def resolve_actor(hook_input: dict = None) -> tuple:
     지시자(requested_by)는 러너가 넣은 값, 없으면 git user.name 인 사람.
     """
     hook_input = hook_input or {}
-    actor = os.environ.get("HERMES_ACTOR")
+    actor = os.environ.get("HERMES_ACTOR") or _summoned_actor()
     if not actor:
         agent_id = hook_input.get("agent_id")
         actor = f"agent:{agent_id}" if agent_id else _DEFAULT_AGENT
     requested_by = os.environ.get("HERMES_REQUESTED_BY") or _git_user()
     return actor, requested_by
+
+
+def _summoned_actor():
+    """소환된 세션(HERMES_SUMMON_NONCE)이면 시작 훅의 판정을 따른다(RV-06, 계획 4 목표 6).
+
+    판정이 ok 가 아니면 `system:unverified-session` — 세션은 계속되지만 이력에는 출처 불명으로
+    남는다. 판정 파일이 없어도(훅이 안 돌았어도) 믿지 않는다.
+    """
+    nonce = os.environ.get("HERMES_SUMMON_NONCE")
+    if not nonce:
+        return None
+    project = os.environ.get("HERMES_PROJECT_DIR") or os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd()
+    try:
+        from hermes_summons import read_verdict
+        verdict = read_verdict(project, nonce)
+    except Exception:                      # noqa: BLE001 — 모듈 부재도 "믿지 않음"
+        verdict = "unverified:no-module"
+    if verdict == "ok" and os.environ.get("HERMES_AGENT_ID"):
+        return f"agent:{os.environ['HERMES_AGENT_ID']}"
+    return "system:unverified-session"
 
 
 def _git_user() -> str:

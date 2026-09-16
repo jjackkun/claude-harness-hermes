@@ -154,6 +154,7 @@ for t in \
   hermes-key-guard-test.sh \
   hermes-sync-test.sh \
   hermes-roster-test.sh \
+  hermes-summon-guard-test.sh \
   memory-symlink-roundtrip-test.sh \
   hermes-history-export-test.sh \
   hermes-lifecycle-test.sh \

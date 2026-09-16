@@ -36,6 +36,16 @@ db_path="$project_dir/.hermes/state.db"
 # cron 이 시작한 일은 사람이 지시한 것이 아니다 (계획 2 목표 7).
 export HERMES_REQUESTED_BY="${HERMES_REQUESTED_BY:-system:hermes-cron}"
 export HERMES_ACTOR="${HERMES_ACTOR:-system:hermes-cron}"
+# cron 세션도 main 으로 소환된다(토큰 없이 도는 세션을 남기지 않는다, 계획 4 목표 5).
+if [[ -f "$scripts_dir/hermes-summon.py" && -z "${HERMES_SUMMON_NONCE:-}" ]]; then
+  if grep -q '"name": *"main"' "$project_dir/.hermes/agents.json" 2>/dev/null; then
+    if _issued="$(python3 "$scripts_dir/hermes-summon.py" --project "$project_dir" issue main 2>&1)"; then
+      export HERMES_AGENT_ID="${_issued%% *}" HERMES_SUMMON_NONCE="${_issued##* }"
+    else
+      echo "[hermes-cron] 소환 토큰 발급 실패 — 실행하지 않습니다: $_issued" >&2; exit 1
+    fi
+  fi
+fi
 
 log_dir="$project_dir/.hermes/logs"
 mkdir -p "$log_dir"
