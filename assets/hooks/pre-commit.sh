@@ -97,7 +97,8 @@ PLAN_STATE_OK=1
 #     맞출 수 없으므로 제외한다. core-beliefs.md 는 빈 줄 하나였고 모든 프로젝트에
 #     통하는 수정이라 원천에서 고쳤다 — 문제가 다르면 답도 다르다.
 #   .hermes/ — 결정화 스킬 등 런타임 산출물이지 손으로 쓰는 파일이 아니다.
-GENERATED_RE='^(CLAUDE\.md|AGENTS\.md|\.claude/(settings(\.local)?\.json|\.dev-setting-manifest\.json)|\.codex/settings(\.local)?\.json)$|^\.claude/memory/|^lint-configs/|^\.hermes/'
+# .claude/{skills,rules,agents}/ 와 .factory-manifest.json 은 복사 설치된 공장 사본(2026-09-16) — 서식의 주인은 공장이다.
+GENERATED_RE='^(CLAUDE\.md|AGENTS\.md|\.claude/(settings(\.local)?\.json|\.dev-setting-manifest\.json|\.factory-manifest\.json)|\.codex/settings(\.local)?\.json)$|^\.claude/(memory|skills|rules|agents)/|^lint-configs/|^\.hermes/'
 PRETTIER_FILES=$(filter_files '\.(js|jsx|ts|tsx|svelte|json|css|scss|md|yaml|yml)$' \
   | grep -vE "$GENERATED_RE" || true)
 

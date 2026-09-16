@@ -53,6 +53,7 @@ EXCLUDE_RE = re.compile(
     # 면제됐는지 목록으로 남고, 소비 프로젝트에 없는 경로는 그냥 no-op 이다.
     r"|^tests/"                        # 테스트 fixture (비밀 형태를 일부러 만든다)
     r"|^assets/(rules|skills)/"        # 교육용 예제 문서 ("이렇게 하지 마라")
+    r"|^\.claude/(rules|skills|agents)/"  # 위 문서의 소우주 복사본(2026-09-16 복사 설치). 원본은 공장이 검사한다
     r"|^docs/superpowers/specs/"       # 설계 문서 (관측된 유출 형태를 그대로 인용)
 )
 

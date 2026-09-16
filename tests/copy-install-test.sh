@@ -129,6 +129,19 @@ assert "깨진 링크 → [factory-link WARN]" "1" "$(CLAUDE_PROJECT_DIR="$SANDB
 assert "소우주(복사 설치)에서는 링크 훅 조용함" "0" "$(CLAUDE_PROJECT_DIR="$PROJ" bash "$LINKHOOK" 2>&1 | wc -c)"
 
 echo ""
+echo "== 6-b. 복사된 사본을 스테이징해도 소우주 커밋 게이트에 막히지 않는다 (2026-09-16 발견) =="
+# 심링크 시절엔 링크 하나만 추적돼 안의 .md/.py 가 R-fmt·P9·R-cx 밖이었다. 복사본은 실제 파일이라
+# 게이트에 잡힌다 — 사본은 공장이 검사하므로 pre-commit 이 제외해야 한다.
+git -C "$PROJ" -c user.name=t -c user.email=t@t commit -q --allow-empty -m init 2>/dev/null || true
+git -C "$PROJ" add -A .claude .hermes/factory.json .gitignore scripts 2>/dev/null
+GATE_OUT=$(cd "$PROJ" && .git/hooks/pre-commit 2>&1); GATE_RC=$?
+assert "사본 전체 스테이징 시 pre-commit 통과" "0" "$GATE_RC"
+assert "R-fmt 가 사본을 보고하지 않음" "0" "$(echo "$GATE_OUT" | grep -c '\[R-fmt\]')"
+assert "P9 가 사본 예제 자격증명을 보고하지 않음" "0" "$(echo "$GATE_OUT" | grep -c '\[P9\]')"
+assert "R-cx 가 사본 규칙 예시를 보고하지 않음" "0" "$(echo "$GATE_OUT" | grep -c '\[R-cx\]')"
+git -C "$PROJ" reset -q
+
+echo ""
 echo "== 7. 제거도 목록 기준 (목표 11) =="
 printf 'y\nn\n' | bash "$SANDBOX/uninstall.sh" "$PROJ" >"$TMP/uninstall.log" 2>&1
 assert "uninstall 종료 코드 0" "0" "$?"
