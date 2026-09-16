@@ -28,6 +28,12 @@ tier: 1  scripts/hermes_keys.py
 tier: 0  scripts/hermes_sync_ref.py
 tier: 2  scripts/hermes_sync_fragments.py
 tier: 3  scripts/hermes-sync.py
+# 명부·조직(계획 2026-09-15-agent-identity): yaml_subset 은 표준 모듈만, org 는 uuid7·yaml_subset,
+# roster 는 org·uuid7, CLI 는 roster·org.
+tier: 0  scripts/hermes_yaml_subset.py
+tier: 1  scripts/hermes_org.py
+tier: 2  scripts/hermes_roster.py
+tier: 3  scripts/hermes-agent.py
 tier: 1  assets/hooks/check-secrets.py scripts/hermes-crystallize.py scripts/hermes-index-skills.py
 tier: 1  scripts/hermes-search.py scripts/hermes_redact.py scripts/hermes_search_fallback.py
 tier: 1  scripts/hermes_dream_evolve.py scripts/hermes_journal.py

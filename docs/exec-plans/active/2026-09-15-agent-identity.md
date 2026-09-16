@@ -14,10 +14,10 @@
 
 ## 2. 목표 (What — 검증 가능한 형태)
 
-- [ ] 목표 1 — 명부 `.hermes/agents.json` 형식이 확정되고 검증기가 있다: `agent_id`(UUIDv7) · `name`(소우주 안 유일, 은퇴 이름 재사용 금지) · `status`(`probation|active|retired`) · `org`(`discipline` · `rank` · `unit`) · `template` · `created_at` · `approved_by`. 검증: `tests/hermes-roster-test.sh` — 중복 이름·은퇴 이름 재사용·모르는 상태값 거부.
-- [ ] 목표 2 — 입사·은퇴·복직 CLI: `hermes-agent.py hire <이름> --org … [--template …]`(사람만, 수습으로) · `promote`(→ active) · `retire` · `rehire`(RV-17). 검증: 테스트 상태 전이 6경로 + 폴더 `.hermes/agents/<agent_id>/{SOUL.md,MEMORY.md,skills/}` 생성.
-- [ ] 목표 3 — 조직 정의 `.hermes/organization.yaml` 스키마(G-14)와 공장 템플릿 3종(제품 개발 · 사무 · 빈 조직, G-15). 검증: 세 템플릿이 스키마 검증 통과, `unit` 마다 불변 `unit_id`(UUIDv7) 부여, 수직 축 맨 위 `human` 은 기계가 고정.
-- [ ] 목표 4 — 담당 매칭(C-11): 요청의 `discipline` · `unit` 값으로 명부를 찾고 더 많은 축이 맞는 쪽 우선, 없으면 "문의" 결과. 검증: 테스트 픽스처 — users 기획자 vs 공통 기획자, 없음 → `ask`.
+- [x] 목표 1 — 명부 `.hermes/agents.json` 형식이 확정되고 검증기가 있다: `agent_id`(UUIDv7) · `name`(소우주 안 유일, 은퇴 이름 재사용 금지) · `status`(`probation|active|retired`) · `org`(`discipline` · `rank` · `unit`) · `template` · `created_at` · `approved_by`. 검증: `tests/hermes-roster-test.sh` — 중복 이름·은퇴 이름 재사용·모르는 상태값 거부.
+- [x] 목표 2 — 입사·은퇴·복직 CLI: `hermes-agent.py hire <이름> --org … [--template …]`(사람만, 수습으로) · `promote`(→ active) · `retire` · `rehire`(RV-17). 검증: 테스트 상태 전이 6경로 + 폴더 `.hermes/agents/<agent_id>/{SOUL.md,MEMORY.md,skills/}` 생성.
+- [x] 목표 3 — 조직 정의 `.hermes/organization.yaml` 스키마(G-14)와 공장 템플릿 3종(제품 개발 · 사무 · 빈 조직, G-15). 검증: 세 템플릿이 스키마 검증 통과, `unit` 마다 불변 `unit_id`(UUIDv7) 부여, 수직 축 맨 위 `human` 은 기계가 고정.
+- [x] 목표 4 — 담당 매칭(C-11): 요청의 `discipline` · `unit` 값으로 명부를 찾고 더 많은 축이 맞는 쪽 우선, 없으면 "문의" 결과. 검증: 테스트 픽스처 — users 기획자 vs 공통 기획자, 없음 → `ask`.
 - [ ] 목표 5 — 소환 러너 `hermes-summon.py` 가 `summons`(nonce · agent_id · requested_by · expires_at · used) 를 INSERT 하고 `HERMES_AGENT_ID` · `HERMES_SUMMON_NONCE` 를 넣어 `claude -p` 를 띄우며 `task.assigned` 를 남긴다(RV-06). 검증: 테스트 모의 `claude` 로 환경변수·이벤트·nonce 사용 표시 확인.
 - [ ] 목표 6 — 세션 시작 훅이 nonce 를 검증한다: 짝 없음·재사용·만료면 행위자를 `system:unverified-session` 으로 바꾸고 경고. 검증: 테스트 4케이스. 세션은 멈추지 않는다.
 - [ ] 목표 7 — PreToolUse 훅이 세션 안 Bash 의 `claude -p` 직접 호출을 막되, 허용 목록(`hermes-loop-run.sh` · `hermes-cron-run.sh` · `hermes-summon.py`)은 통과 — 판정은 명령줄이 아니라 **러너가 남긴 nonce 파일 존재**로. 검증: `tests/hermes-summon-guard-test.sh` — 직접 호출 차단, 러너 경유 통과, `bash -c 'exec hermes-loop-run.sh …'` 흉내는 nonce 없어 차단.
@@ -27,8 +27,8 @@
 - [ ] 목표 11 — 만료 판정은 세션 시작 훅(RV-08): 기한 지났는데 `task.started` · `handoff.question` 없는 봉투 → `handoff.expired` + 알림. 규칙 위반 지시는 `claimed: blocked` + `evidence.reason = rule:<이름>`(RV-07). 검증: 테스트 2케이스.
 - [ ] 목표 12 — `done_when` 허용 형식(G-21) 첫 판: `test:<이름>` · `file:<경로>` · `gate:<규칙>` · `commit:<해시|HEAD>` · `manual` 다섯 가지. `manual` 만 `verified: none`. 검증: 각 형식의 기계 검증 함수 테스트.
 - [ ] 목표 13 — 자연어 입사·소환이 스킬로 연결된다: `assets/skills/hermes-agent/SKILL.md` 가 "users 담당 입사시켜" · "이 일 QA 한테 넘겨" 를 위 CLI 로 안내. 검증: 스킬 description 트리거 평가(skill-creator 벤치) + 문서.
-- [ ] 목표 14 — 정체성 자산이 git 을 탄다(자체 리뷰 발견, planner-lite 정정): 현행 규칙은 `.hermes/*` 로 **내용물을** 무시하므로 하위 예외는 **디렉터리 단계마다** 풀어야 한다(`presets/workflow/hermes.conf:171-178` 의 `!.hermes/skills/` + `!.hermes/skills/**` 두 줄 패턴과 같은 이유). 마커에 순서대로: `!.hermes/agents/` · `!.hermes/agents/*/` · `!.hermes/agents/*/SOUL.md` · `!.hermes/agents/*/skills/` · `!.hermes/agents/*/skills/**` · `!.hermes/organization.yaml`, 그 **뒤에** 재무시 `.hermes/agents/*/MEMORY.md` · `.hermes/summons/`. 검증: 테스트가 `git check-ignore -v` 로 6경로를 고정 — SOUL·개인 스킬·organization.yaml 은 추적, MEMORY.md·summons·agents/*/ 의 그 밖 파일은 무시. 이 예외가 없으면 개인 스킬·SOUL 이 다른 컴퓨터로 가지 않는다.
-- [ ] 목표 15 — 은퇴 에이전트는 주입·매칭에서 빠진다(planner-lite 지적, RV-17 손해 직결): `retire` 뒤 그 에이전트의 개인 스킬·SOUL 은 파일로 남되 `hermes-search.py` 결과와 담당 매칭에서 0건. `rehire` 뒤 복귀. 검증: `tests/hermes-roster-test.sh` 은퇴/복직 전후 주입 결과 대조.
+- [x] 목표 14 — 정체성 자산이 git 을 탄다(자체 리뷰 발견, planner-lite 정정): 현행 규칙은 `.hermes/*` 로 **내용물을** 무시하므로 하위 예외는 **디렉터리 단계마다** 풀어야 한다(`presets/workflow/hermes.conf:171-178` 의 `!.hermes/skills/` + `!.hermes/skills/**` 두 줄 패턴과 같은 이유). 마커에 순서대로: `!.hermes/agents/` · `!.hermes/agents/*/` · `!.hermes/agents/*/SOUL.md` · `!.hermes/agents/*/skills/` · `!.hermes/agents/*/skills/**` · `!.hermes/organization.yaml`, 그 **뒤에** 재무시 `.hermes/agents/*/MEMORY.md` · `.hermes/summons/`. 검증: 테스트가 `git check-ignore -v` 로 6경로를 고정 — SOUL·개인 스킬·organization.yaml 은 추적, MEMORY.md·summons·agents/*/ 의 그 밖 파일은 무시. 이 예외가 없으면 개인 스킬·SOUL 이 다른 컴퓨터로 가지 않는다.
+- [x] 목표 15 — 은퇴 에이전트는 주입·매칭에서 빠진다(planner-lite 지적, RV-17 손해 직결): `retire` 뒤 그 에이전트의 개인 스킬·SOUL 은 파일로 남되 `hermes-search.py` 결과와 담당 매칭에서 0건. `rehire` 뒤 복귀. 검증: `tests/hermes-roster-test.sh` 은퇴/복직 전후 주입 결과 대조.
 - [ ] 목표 16 — 구버전 스키마 호환(planner-lite 지적): `summons` · `memory_events` 테이블이 없는 기존 `state.db` 에서 세션 훅이 죽지 않고 한 줄 알린 뒤 exit 0. 지연 마이그레이션은 `_ensure_injection_source_column`(`scripts/hermes-search.py:53`) 패턴을 따라 훅이 첫 실행 때 만든다. 검증: 계획 2 이전 스키마 DB 사본으로 훅 실행 → exit 0 + 테이블 생성.
 
 ## 3. 비목표 (Out of Scope)
@@ -107,6 +107,15 @@
 
 ## 7. 발견·예외
 
+- **2026-09-16 Step 1 에서 드러난 것**
+  - `!.hermes/agents/*/` 로 폴더 예외를 풀면 **폴더 안 전부**가 추적된다. 계획의 "그 밖 파일은 무시"
+    를 지키려면 그 뒤에 `.hermes/agents/*/*` 로 내용물을 도로 무시하고 SOUL·skills 만 다시 풀어야
+    했다. 재무시 줄 `MEMORY.md` 는 이 규칙에 흡수됐다. 테스트가 7경로를 고정한다.
+  - `match_agents` 가 복잡도 19 로 시작해 세 번 쪼갰다(`_score` · `_candidates`). 컴프리헨션 안의
+    `for`/`if` 도 분기로 센다는 것을 이때 확인했다.
+  - YAML 부분집합 파서는 미종결 흐름 목록(`[1,`)을 스칼라로 통과시켰다 — 닫힘 검사를 넣었다.
+  - 설치기가 `organization.yaml` 이 없을 때만 `empty.yaml` 을 복사하고, 있으면 `unit_id` 만 채운다.
+    공장 자신에게도 `.hermes/organization.yaml`(빈 조직)이 생겼다.
 - 계획 2 가 만든 `agents.json` 의 `main` 항목은 `org` 가 비어 있다. 이 계획에서 `empty.yaml` 조직(수직 `human → main`)에 맞춰 채운다.
 - `assets/agents/*.md` 15개는 그대로 **직무 템플릿**으로 남고, `template: <이름>@factory` 로 참조된다. 옮기지 않는다.
 - 세션 시작 훅이 계획 1 · 3 · 4 · 5 에서 각 1개씩 **4개 늘어난다**(`factory-link-check` · `sync-pull` · `summons-verify` · `outbox-status`). 계획 3 의 `sync-pull` 은 기존 `history-reindex` 교체라 순증은 fetch 한 번이지만, 나머지 셋은 순증이다. 이 계획의 Step 2 에서 **세션 시작 지연 총량을 실측**해 §8 에 적는다(기존 훅 전부 + 새 훅 4개, `time` 으로 SessionStart 훅 체인 1회 실행). 지연이 늘면 nonce 검증 · 만료 판정 · outbox 조회를 훅 하나로 합치는 것이 후속 후보 — 근거 없이 미리 합치지 않는다.
