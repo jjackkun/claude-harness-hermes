@@ -22,11 +22,12 @@
 - [ ] 목표 5 — 결과 3층이 기록된다: `claimed` 는 에이전트, `verified` 는 기계(`none` 은 `done_when` 형식이 기계 검증 불가일 때만, RV-09), `accepted` 는 사람. 검증: 테스트에서 에이전트 입력으로 `verified` 를 넘기면 무시되고 기계 값이 남는다.
 - [ ] 목표 6 — Stop 훅이 세션 종료 시 `task.started` 만 있고 `task.finished` 없는 작업에 `system:claude-stop-journal-gap` 누락 이벤트를 붙인다. 검증: 테스트에서 모의 훅 입력으로 확인.
 - [ ] 목표 7 — 행위자가 기계로 찍힌다: 대화형 = `agent:<main id>` + `requested_by: human:<git user.name>`, 헤드리스 루프 = `requested_by` 루프 시작자, cron = `system:hermes-cron`, 하위 에이전트 = `evidence.template = <agent_type>`(V-4). 검증: 테스트 4경로.
-- [ ] 목표 8 — `loop_decisions` 의 결정이 `journal_events` 의 `decision` 이벤트로도 남는다(G-9 흡수). 검증: `tests/hermes-loop-test.sh` 결정 절 + journal 조회. 기존 `loop_decisions` 는 그대로 둔다(보고서가 읽음).
+- [ ] 목표 8 — `loop_decisions` 의 결정이 `journal_events` 의 `decision` 이벤트로도 남는다(G-9 — J-05 는 "흡수" 가 아니라 **병기 후 단계적 흡수**). 검증: `tests/hermes-loop-test.sh` 결정 절 + journal 조회. 기존 `loop_decisions` 는 그대로 둔다(`hermes_loop_report.py` 가 읽음).
 - [ ] 목표 9 — 스레드 보기: `hermes-journal.py thread <task_id>` 가 시간순 이벤트를, `graph` 가 `parent_task_id` · `caused_by` 간선을 낸다. 검증: 테스트 픽스처 5건.
 - [ ] 목표 10 — 결정화 스킬 `rotate-ephemeral-work-logs` 가 작업 이력을 로테이션 대상에서 제외한다(G-10). 검증: 스킬 본문에 제외 문장 + `hermes-cleanup.py` 가 `journal_events` 를 건드리지 않음(테스트).
 - [ ] 목표 11 — 구버전 스키마 호환(planner-lite 지적): `journal_events` · `loops.started_by` 가 없는 기존 `state.db`(zeroday 포함)에서 Stop · SubagentStop 훅이 죽지 않고 한 줄 알린 뒤 exit 0, 첫 실행 때 지연 생성(`_ensure_injection_source_column` 패턴, `scripts/hermes-search.py:53`). 검증: 현재 스키마 DB 사본으로 훅 2개 실행 → exit 0 + 테이블·칸 생성.
 - [ ] 목표 12 — 롤백 경로(planner-lite 지적): 트리거가 기존 쓰기 경로를 막았을 때 `hermes-journal.py rollback --confirm` 이 트리거 2개와 테이블을 지우지 않고 **이름만 바꿔**(`journal_events_disabled_<ts>`) 훅이 조용히 건너뛰게 한다. 검증: 테스트 — rollback 뒤 훅 exit 0, 이벤트 보존.
+- [ ] 목표 13 — heartbeat(RV-10, 2026-09-16 사용자 위임 확정): 진행 중 작업은 `step` 이벤트를 N분마다 남기고, `task.started` 뒤 heartbeat 가 간격을 넘겨 끊기면 **Stop 훅을 기다리지 않고** 누락 이벤트(`system:claude-stop-journal-gap` 과 같은 형식, `evidence.reason = heartbeat-timeout`)를 붙인다. N 은 `.hermes/journal.json` 에서 설정 가능하고 **기본값은 구현 시 실측 후** 정한다(근거 없는 고정값 금지 — 이 저장소의 루프 `loop_steps` 간격 분포를 재서 적는다). 검증: `tests/hermes-journal-test.sh` — heartbeat 간격 초과 픽스처(`task.started` 뒤 마지막 `step` 시각이 N 을 넘김) → `gap-check` 가 누락 이벤트 1건, 간격 안이면 0건.
 
 ## 3. 비목표 (Out of Scope)
 
@@ -110,8 +111,8 @@ CREATE TRIGGER IF NOT EXISTS journal_no_delete BEFORE DELETE ON journal_events B
 
 ### Step 5. 누락 감지 + 결정 흡수 + 로테이션 제외 [Impl]
 
-- 산출: `claude-stop-journal-gap.sh`, `hermes_loop_decisions.py` 에서 `decision` 이벤트 병기, `rotate-ephemeral-work-logs.md` 제외 문장, `hermes-cleanup.py` 확인.
-- 검증: 목표 6·8·10.
+- 산출: `claude-stop-journal-gap.sh`, `hermes-journal.py gap-check` 의 heartbeat 간격 판정(목표 13, N 은 `.hermes/journal.json`), `hermes_loop_decisions.py` 에서 `decision` 이벤트 병기, `rotate-ephemeral-work-logs.md` 제외 문장, `hermes-cleanup.py` 확인.
+- 검증: 목표 6·8·10·13.
 
 ### Step 6. 테스트·복사 목록·문서 [Impl]
 
@@ -124,11 +125,13 @@ CREATE TRIGGER IF NOT EXISTS journal_no_delete BEFORE DELETE ON journal_events B
 - 2026-09-15: UUIDv7 은 자체 구현(`hermes_uuid7.py`) — 근거: 이 환경 Python 3.10(WSL 시스템)·3.12(pyenv) 어느 쪽에도 `uuid.uuid7` 이 없다. 틀렸을 때 손해: 표준이 들어오면 교체(함수 하나).
 - 2026-09-15: 대화형 세션의 기본 행위자는 설치 시 만든 `main` 의 id — 근거: A-05. 명부 전체는 계획 4 지만 id 없이는 이력을 찍을 수 없다. 틀렸을 때 손해: 계획 4 에서 명부 형식이 바뀌면 `agents.json` 마이그레이션(한 항목).
 - 2026-09-15: `usage` 칸은 러너 경로만 — 근거: V-8. 틀렸을 때 손해: 대화형 비용은 실측 불가로 남음(백로그 `platform-cost-performance-levers` 에 표기).
+- 2026-09-16: 설계 문서 갱신으로 계획서와 설계가 일치 — 근거: 대조 77건.
+- 2026-09-16: heartbeat 간격 N 의 기본값을 문서에서 정하지 않는다 — 근거: 근거 있는 값이 없다. 구현 시 이 저장소·zeroday 의 `loop_steps` 간격을 실측해 적고 설정 가능하게 둔다. 틀렸을 때 손해: 첫 실측 전까지 heartbeat 누락 감지가 꺼진 상태(Stop 훅 감지만 동작).
 - 2026-09-15: `verified` 계산은 이번에 `exit_code`(러너·Bash 훅) · 커밋 존재 · 게이트 판정 세 가지만 — 근거: `done_when` 형식(G-21)은 계획 4 봉투와 함께 정한다. 그 전까지 `done_when` 없는 작업은 `verified: none` 이 정상.
 
 ## 7. 발견·예외
 
-- `loop_decisions` 를 journal 로 완전히 대체하지 않고 병기한다 — `hermes_loop_report.py` 가 `loop_decisions` 를 읽어 report.html 을 만든다. 대체는 계획 5 이후 별도.
+- `loop_decisions` 를 journal 로 완전히 대체하지 않고 병기한다 — `hermes_loop_report.py` 가 `loop_decisions` 를 읽어 report.html 을 만든다. 대체(단계적 흡수)는 계획 5 이후 별도. decision-log J-05 를 이 내용으로 정정했다(2026-09-16).
 - 기존 `messages` 테이블(`hermes-message.py`)은 설계상 폐기 대상(skill-proposal-delivery §4)이나 이번 범위 밖 — 계획 5 에서 정리.
 
 ## 8. 회고 (완료 시 작성)

@@ -14,7 +14,7 @@
 | 기록 | 칸 | 한계 |
 |---|---|---|
 | `loop_steps` | `action_summary`, `verdict`, `objective_signal`, `progressed` | 헤르메스 루프 안에서만 쌓인다. 이 저장소에는 0행 |
-| `loop_decisions` (`scripts/hermes_loop_decisions.py`, 진행 중) | `loop_id`, `iteration`, `kind`, `text` | 위와 같음 |
+| `loop_decisions` (`scripts/hermes_loop_decisions.py`, 진행 중) | `loop_id`, `iteration`, `kind`, `text` | 위와 같음. `hermes_loop_report.py` 가 이 테이블을 읽어 보고서를 만들므로 **유지**한다(2절 `decision` 참고) |
 | `.harness/gate-events.jsonl` | `ts`, `rule`, `verdict`, `stage` | 게이트 장치의 관측 기록이지 작업 이력이 아니다. 따로 둔다 |
 
 하네스는 이미 작업 결과를 `result:` / `failed:` / `needs input:`으로 표기한다. 이 어휘를 이어받는다.
@@ -26,11 +26,17 @@
 | `task.assigned` | 누가(`requested_by`) 누구에게(`actor`) 일을 맡김 |
 | `task.started` | 수행 시작 |
 | `step` | 의미 있는 중간 행동(선택) |
-| `decision` | `결정 — 이유 — 손해`. **decision-ledger를 이 이벤트로 흡수한다**(G-9) |
+| `decision` | `결정 — 이유 — 손해`. decision-ledger 는 **병기 후 단계적 흡수**(G-9): 루프 결정은 기존 `loop_decisions` 에도 그대로 남기고(`hermes_loop_report.py` 가 읽음) 같은 내용을 이 이벤트로도 기록한다. 완전 대체는 별도 계획 |
 | `task.handoff` | 다른 에이전트에게 넘김 → 상대 쪽에 새 `task.assigned` |
 | `task.finished` | 결과 |
 | `correction` | 앞선 이벤트를 정정. 원래 이벤트는 고치지 않는다 |
-| `tombstone` | 비상 삭제 표시(6절) |
+| `tombstone` | 비상 삭제 표시(9절) |
+| `handoff.declined` | 받는 쪽이 협업 · 요청을 사유와 함께 거절([handoff-contract.md](handoff-contract.md) 3절) |
+| `handoff.question` | 봉투가 불충분해 되물음. 답이 올 때까지 시작하지 않음 |
+| `handoff.expired` | 기한이 지났는데 `task.started` 도 `handoff.question` 도 없음. 세션 시작 훅이 남김 |
+| `handoff.external` | 다른 소우주에 있는 일을 사람에게 문의([handoff-contract.md](handoff-contract.md) 4절) |
+
+- `step` 은 **heartbeat** 로도 쓴다. 긴 작업은 N분마다 `step` 을 남겨 살아 있음을 보이고, 끊기면 8절의 누락 감지가 세션 종료를 기다리지 않고 잡는다. N 은 근거 있는 값이 없어 미정이다(cumora 는 60초 heartbeat · 90초 부재 판정).
 
 ## 3. 결과는 세 층 (합의)
 
@@ -41,6 +47,15 @@
 | 수용 | `accepted` | 사람(`human:`) | 나중에 받아들임 또는 되돌림 |
 
 - 하네스 표기 대응: `result:` → `success`, `failed:` → `failure`, `needs input:` → `blocked`.
+- 에이전트 입력으로 `verified` 를 넘기면 기록기가 무시하고 기계 값을 남긴다.
+
+| `verified` 근거 (이번 범위) | 기계가 보는 것 |
+|---|---|
+| `exit_code` | 러너 · Bash 훅이 받은 종료 코드 |
+| 커밋 존재 | `done_when` 의 `commit:<해시\|HEAD>` 가 저장소에 있는가 |
+| 게이트 판정 | `.harness/gate-events.jsonl` 의 해당 규칙 결과 |
+
+- `done_when` 이 `manual` 이면 `verified: none` 이 **정상**이다 — 사람이 재는 조건이라 기계가 잴 것이 없다. 봉투 없이 시작한 대화형 세션의 직접 작업도 같다. 허용 형식은 [handoff-contract.md](handoff-contract.md) 2절.
 - **`claimed=success`인데 `verified=fail`인 줄이 가장 값진 기록이다.** 에이전트가 틀리게 판단한 지점이고, 에이전트 성적의 기준이 된다(G-12).
 
 > ✅ 리뷰 확정 (2026-09-15, RV-09) — `verified: none` 은 에이전트가 고르는 값이 아니다 (근거: 리뷰 R-9, cumora K-1)
@@ -76,6 +91,48 @@
 }
 ```
 
+### 확정 스키마 (`state.db`)
+
+```sql
+CREATE TABLE IF NOT EXISTS journal_events (
+  event_id        TEXT PRIMARY KEY,          -- UUIDv7
+  ts              TEXT NOT NULL,             -- ISO-8601 UTC
+  kind            TEXT NOT NULL CHECK (kind IN ('task.assigned','task.started','step','decision',
+                                                'task.handoff','task.finished','correction','tombstone',
+                                                'handoff.declined','handoff.question','handoff.expired','handoff.external')),
+  universe_id     TEXT NOT NULL,
+  task_id         TEXT NOT NULL,
+  parent_task_id  TEXT,
+  caused_by       TEXT,                      -- JSON 배열(event_id)
+  actor           TEXT NOT NULL,             -- human:|agent:|system:
+  requested_by    TEXT,
+  session_id      TEXT,                      -- 참조만
+  claimed         TEXT CHECK (claimed IN ('success','failure','partial','blocked','abandoned') OR claimed IS NULL),
+  verified        TEXT CHECK (verified IN ('pass','fail','none') OR verified IS NULL),
+  accepted        TEXT,
+  evidence        TEXT,                      -- 허용목록 JSON: exit_code, commit, files[], command(이름만), bytes, template, usage, reason
+  intent          TEXT, lesson TEXT, decision TEXT   -- 한 줄. 원격 사본만 암호화(7절)
+);
+CREATE TRIGGER IF NOT EXISTS journal_no_update BEFORE UPDATE ON journal_events BEGIN SELECT RAISE(ABORT,'journal_events is append-only'); END;
+CREATE TRIGGER IF NOT EXISTS journal_no_delete BEFORE DELETE ON journal_events BEGIN SELECT RAISE(ABORT,'journal_events is append-only'); END;
+```
+
+- `kind` · `claimed` · `verified` 의 값 집합은 `CHECK` 로 DB 가 강제한다. 모르는 값은 INSERT 자체가 실패한다.
+- `evidence` 는 허용목록 JSON 이다(5절). `usage` 는 헤드리스 러너 경로에서만 채워진다 — 훅 입력에 토큰 수가 오지 않는다(V-8 확인).
+- `evidence.template` 은 하위 에이전트의 직무 템플릿 이름(`SubagentStop` 의 `agent_type`, V-4 확인).
+
+### CLI
+
+사람 대면 진입점은 `hermes-journal.py` 하나다.
+
+| 명령 | 하는 일 |
+|---|---|
+| `emit` | 이벤트 한 건을 허용목록으로 검증해 INSERT (훅 · 러너가 부름) |
+| `thread <task_id>` | 같은 `task_id` 의 이벤트를 시간순으로 |
+| `graph` | `parent_task_id` · `caused_by` 간선 |
+| `gap-check` | `task.started` 만 있고 `task.finished` 없는 작업 찾기(8절) |
+| `mismatch` | `claimed=success` 인데 `verified=fail` 인 줄 목록 |
+
 ### 스레드와 그래프
 
 - **스레드:** 같은 `task_id`의 이벤트를 시간순으로 나열한다.
@@ -88,10 +145,10 @@
 | 기계 | `event_id`, `ts`, `kind`, `universe_id`, `actor`, `requested_by`, `verified`, `evidence` |
 | 에이전트 | `claimed`, `intent`, `lesson`, `decision` |
 
-> ✅ 리뷰 확정 (2026-09-15, RV-10) — heartbeat 는 확정, `usage` 칸은 V-8(훅 입력에 토큰 수가 오는가)이 예일 때만 (근거: cumora K-9)
+> ✅ 리뷰 확정 (2026-09-15, RV-10) — heartbeat 는 확정(2절 · 8절 본문), `usage` 칸은 V-8 이 예일 때만 (근거: cumora K-9)
 >
-> - `evidence.usage`: `{input_tokens, output_tokens, cached_input_tokens, model}` — 기계 칸, 평문. cumora 는 클라우드·로컬을 가리지 않고 한 원장 `llm_calls` 에 적어 비교한다. 우리는 작업 단위로 붙이면 "이 작업에 얼마가 들었나" 가 스레드에서 바로 나온다. 백로그 `platform-cost-performance-levers` 의 실측 근거가 된다. Claude Code 훅 입력에 토큰 수가 오는지는 V-4 와 함께 확인한다.
-> - `step` 을 **heartbeat** 로도 쓴다: 긴 작업은 N분마다 `step` 을 남겨 살아 있음을 보인다. `task.started` 뒤 heartbeat 가 끊기면 8절의 누락 감지가 세션 종료를 기다리지 않고 잡는다. cumora 의 run 은 60초마다 heartbeat 를 보내고 90초 없으면 오프라인으로 본다.
+> - `evidence.usage`: `{input_tokens, output_tokens, cached_input_tokens, model}` — 기계 칸, 평문. cumora 는 클라우드·로컬을 가리지 않고 한 원장 `llm_calls` 에 적어 비교한다. 우리는 작업 단위로 붙이면 "이 작업에 얼마가 들었나" 가 스레드에서 바로 나온다. 백로그 `platform-cost-performance-levers` 의 실측 근거가 된다.
+> - V-8 확인 결과(2026-09-15): Claude Code 훅 입력에 토큰 수는 **없다**. 그래서 `usage` 는 러너가 `claude -p --output-format json` 의 값을 받는 헤드리스 경로에서만 채운다. 대화형 비용은 실측 불가로 남는다.
 
 ## 5. 원문을 담지 않는 허용목록 스키마 (합의)
 
@@ -127,6 +184,13 @@
                      └──▶ 보기 (파생, 언제든 재생성): 에이전트별 이력 · 작업 스레드 · 그래프
 ```
 
+### 구버전 DB 호환과 롤백 (확정)
+
+| 상황 | 동작 |
+|---|---|
+| `journal_events` · `loops.started_by` 가 없는 기존 `state.db`(zeroday 포함) | 훅(Stop · SubagentStop · 세션 시작)은 죽지 않고 한 줄 알린 뒤 **exit 0**. 첫 실행 때 `CREATE TABLE IF NOT EXISTS` · `ALTER TABLE … ADD COLUMN` 으로 지연 생성한다(`hermes-search.py` 의 `_ensure_injection_source_column` 패턴). 기존 행은 건드리지 않는다 |
+| 트리거가 기존 쓰기 경로를 막았을 때 | `hermes-journal.py rollback --confirm` — 테이블 · 트리거를 **지우지 않고** `journal_events_disabled_<ts>` 로 이름만 바꾼다. 이후 훅은 테이블 없음으로 보고 조용히 건너뛴다(exit 0). 이벤트는 보존되므로 되돌릴 수 있다 |
+
 ### 폐기된 안 — 작업 트리 안 jsonl을 원본으로
 
 | 위험 | 설명 |
@@ -156,13 +220,20 @@
 
 ## 8. 누락 감지 (합의)
 
-세션이 끝났는데 `task.started`만 있고 `task.finished`가 없으면, 훅이 `actor: system:<훅 이름>`,
+세션이 끝났는데 `task.started`만 있고 `task.finished`가 없으면, Stop 훅이 `actor: system:claude-stop-journal-gap`,
 `claimed: null`, `verified: none`인 "기록 누락" 이벤트를 붙인다. 적히지 않은 작업이 조용히 사라지지 않게 한다.
+
+| 감지 시점 | 조건 | 누가 |
+|---|---|---|
+| 세션 종료 | `task.started` 있음 · `task.finished` 없음 | Stop 훅 (`hermes-journal.py gap-check`) |
+| 세션 도중 (heartbeat) | `task.started` 뒤 N분마다 오던 `step` 이 끊김 | 다음 훅 실행 시 `gap-check` — 세션 종료를 기다리지 않는다 |
+
+- heartbeat 간격 N 은 2절과 같이 미정이다. 값이 정해지면 두 곳을 함께 고친다.
 
 ## 9. 보존 규칙
 
 - **로테이션·truncate 금지.** 작업 이력은 원본이다. 결정화 스킬 `rotate-ephemeral-work-logs`("jsonl 로그는 로테이션한다")에서 명시적으로 제외한다(G-10).
 - **비상 삭제:** 비밀값이 새어 들어간 경우에만 쓴다.
   1. `tombstone` 이벤트를 남긴다.
-  2. 사람(`human:`) 승인을 받아 해당 파일을 물리적으로 지우고 `refs/hermes/sync`만 재작성한다. 코드 이력은 건드리지 않는다.
-  - 세부 절차는 G-5.
+  2. 사람(`human:`)이 AI 세션 **밖**에서 `hermes-sync.py tombstone` 을 실행한다. 이 명령은 로컬 트리거를 잠시 내려 해당 이벤트를 지우고, 원격 조각을 물리적으로 지운 뒤 `refs/hermes/sync` 만 재작성한다. 코드 이력은 건드리지 않는다.
+  - `hermes-sync.py tombstone` 은 열쇠 가드(`hermes-keys.sh init|emergency`)와 **같은 차단 목록**에 있어 AI 세션 안 Bash 에서는 부를 수 없다(G-5 닫힘). 급할 때 세션 밖으로 나가야 하는 것은 의도된 마찰이다.

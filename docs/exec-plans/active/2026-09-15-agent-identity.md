@@ -42,7 +42,7 @@
 
 ## 4. 영향 영역
 
-- 코드(수정): `presets/workflow/hermes.conf`(복사 목록 · 훅 등록 · 템플릿 설치), `scripts/hermes_journal.py`(행위자 결정에 nonce 검증 결과 반영), `scripts/hermes-loop-run.sh` · `scripts/hermes-cron-run.sh`(러너 경유 표시 = nonce 발급 호출), `scripts/hermes-init.py`(`summons` · `memory_events` 스키마), `assets/hooks/claude-sessionstart-sync-pull.sh`(계획 3)와 같은 자리에서 nonce·만료 판정 훅 순서 조정, `docs/hermes-universe/design/agent/*.md`(확정 표시).
+- 코드(수정): `presets/workflow/hermes.conf`(복사 목록 · 훅 등록 · 템플릿 설치), `scripts/hermes_journal.py`(행위자 결정에 nonce 검증 결과 반영), `scripts/hermes-loop-run.sh` · `scripts/hermes-cron-run.sh`(러너 경유 표시 = nonce 발급 호출), `scripts/hermes-init.py`(`summons` · `memory_events` 스키마), `assets/hooks/claude-sessionstart-sync-pull.sh`(계획 3)와 같은 자리에서 nonce·만료 판정 훅 순서 조정, `docs/hermes-universe/design/agent/*.md`(확정 표시). 세션 시작 훅은 계획 1(`factory-link-check`) · 3(`sync-pull`) · 4(`summons-verify`) · 5(`outbox-status`)로 **4개가 늘어난다** — 순서와 지연 총량은 §7.
 - **신규 파일 목록 (파일별 책임 1줄 필수)**:
   - `scripts/hermes_roster.py` — 명부 `agents.json` 의 스키마 검증·조회·상태 전이 규칙(이름 유일, 은퇴 이름 재사용 금지)만.
   - `scripts/hermes_yaml_subset.py` — `organization.yaml` 이 쓰는 YAML 부분집합(스칼라 · 평면 목록 · 2단 맵)의 파서만(planner-lite 지적으로 `hermes_org.py` 에서 분리).
@@ -101,12 +101,15 @@
 - 2026-09-15: nonce 검증 실패는 세션 차단이 아니라 `system:unverified-session` 표시 — 근거: 리뷰 후속 결정. 훅 오류 하나로 zeroday 루프 전체가 멈추면 안 된다. 틀렸을 때 손해: 출처 불명 이력이 쌓임(보기에서 드러남).
 - 2026-09-15: 소환 가드의 허용 판정은 명령줄이 아니라 nonce 파일(`.hermes/summons/<nonce>.pending`) 존재 — 근거: 리뷰 주의 항목(명령줄 흉내). 틀렸을 때 손해: 러너가 nonce 파일을 못 만들면 정상 소환도 막힘 → 러너는 파일 생성 실패 시 소환을 중단하고 사람에게 알린다.
 - 2026-09-15: `done_when` 형식 다섯 가지로 시작 — 근거: G-21 은 열려 있었고, 하네스가 이미 쓰는 신호(테스트 이름 · 파일 · 게이트 · 커밋)가 이 넷이다. `manual` 은 사람 검증. 틀렸을 때 손해: 형식이 부족하면 `manual` 이 늘어 `none` 비율이 오른다 — 그 비율이 곧 다음 형식을 추가할 신호.
+- 2026-09-16: 설계 문서 갱신으로 계획서와 설계가 일치 — 근거: 대조 77건.
+- 2026-09-16: 설치 시 `organization.yaml` 이 없으면 `empty.yaml` 을 자동 복사한다(C-18, 사용자 위임 확정) — 근거: 설치 직후에도 `main` 의 조직 값과 담당 매칭이 동작해야 한다. 고르기는 사람이 나중에. 틀렸을 때 손해: 빈 조직을 잊고 두면 매칭이 항상 "문의".
 - 2026-09-15: 문장 판별(G-16) 은 이번에 하지 않고 스킬 안내로 에이전트가 축 값을 인자로 채운다 — 근거: 모델 호출을 훅에 넣으면 세션 시작이 느려지고 R3(LLM 경로) 문제가 생긴다. 틀렸을 때 손해: 담당 찾기가 에이전트 판단에 기대어 오매칭 가능 — 매칭 결과를 `task.assigned` 에 남겨 나중에 대조.
 
 ## 7. 발견·예외
 
 - 계획 2 가 만든 `agents.json` 의 `main` 항목은 `org` 가 비어 있다. 이 계획에서 `empty.yaml` 조직(수직 `human → main`)에 맞춰 채운다.
 - `assets/agents/*.md` 15개는 그대로 **직무 템플릿**으로 남고, `template: <이름>@factory` 로 참조된다. 옮기지 않는다.
+- 세션 시작 훅이 계획 1 · 3 · 4 · 5 에서 각 1개씩 **4개 늘어난다**(`factory-link-check` · `sync-pull` · `summons-verify` · `outbox-status`). 계획 3 의 `sync-pull` 은 기존 `history-reindex` 교체라 순증은 fetch 한 번이지만, 나머지 셋은 순증이다. 이 계획의 Step 2 에서 **세션 시작 지연 총량을 실측**해 §8 에 적는다(기존 훅 전부 + 새 훅 4개, `time` 으로 SessionStart 훅 체인 1회 실행). 지연이 늘면 nonce 검증 · 만료 판정 · outbox 조회를 훅 하나로 합치는 것이 후속 후보 — 근거 없이 미리 합치지 않는다.
 - SOUL.md 는 "사람 승인으로만 수정"(identity.md §5)인데 세션 안 편집을 막는 장치가 이 계획에 없다. 계획 1 의 변조 경고 훅(`claude-posttooluse-factory-tamper-warn.sh`)이 설치 목록 기준이라 SOUL 은 대상이 아니다 → 백로그 `docs/exec-plans/backlog/soul-edit-guard.md` 후보(이 계획에서 파일만 만들지 않고 §8 룰 후보로 남김).
 
 ## 8. 회고 (완료 시 작성)

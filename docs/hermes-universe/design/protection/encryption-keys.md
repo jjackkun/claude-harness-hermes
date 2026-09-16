@@ -41,16 +41,16 @@ Python `cryptography`(Fernet)는 대칭키만 있어 사람별 자물쇠 구조�
 작업 트리 필터 방식인 git-crypt·transcrypt는 우리 저수준 커밋 경로에서 암호화가 조용히 빠질 수 있어
 부적합하다([existing-tools-research.md](../../evidence/existing-tools-research.md)).
 
-### 설치 상태 (2026-09-15)
+### 설치 상태 (2026-09-15) 와 호출 방식 (V-6 확정)
 
 | 항목 | 상태 |
 |---|---|
-| `age` CLI | 없음 |
-| Python `pyrage` (age 바인딩) | 없음 |
-| Python | 3.10.12 (pyrage 요구 3.10 이상) |
+| `age` CLI | 없음 → **채택.** 사용자가 WSL 에 설치(`apt install age` 또는 GitHub 릴리스 바이너리) |
+| Python `pyrage` (age 바인딩) | 없음 → 채택 안 함 |
+| Python | 3.10.12 (WSL) · 3.12 (pyenv) 두 벌 |
 
-- 설치는 WSL 환경 규칙에 따라 **사용자가 직접** 한다.
-- CLI를 subprocess로 부를지(기존 헤르메스 스크립트 방식과 같음), pyrage를 쓸지는 구현 계획에서 정한다(V-6).
+- **`age` CLI 를 subprocess 로 부른다**(V-6 확정). 근거: 기존 헤르메스 스크립트가 모두 subprocess·표준 모듈만 쓰고 pip 의존이 없다. pyrage 는 Python 두 벌 양쪽에 깔아야 하고, `age` 는 단일 바이너리다. 손해: 컴퓨터마다 바이너리 설치 한 번.
+- 설치는 WSL 환경 규칙에 따라 **사용자가 직접** 한다. `hermes-keys.sh doctor` 와 세션 시작 훅이 부재를 알리고, 부재 시 세션 훅은 exit 0 으로 push·pull 을 건너뛴다([sync-transport.md](sync-transport.md) 4절).
 
 ## 2. 열쇠 단위 (확정·합의)
 
@@ -68,8 +68,21 @@ jjackkun 이 zeroday-frontend 에서 만든 턴 조각 하나에 거는 자물�
 동료 choijh15 의 자물쇠는 걸지 않는다 → 동료는 이 조각을 못 연다
 ```
 
-- 열쇠 파일 위치(안): `~/.hermes/keys/<universe_id>/` 아래. 저장소 밖이며 git에 절대 올리지 않는다.
-- 자물쇠 목록을 어디에 둘지는 미정이다(G-3). 자물쇠는 공개돼도 안전하다.
+- 열쇠 파일 위치(확정): `~/.hermes/keys/<universe_id>/` 아래. 마스터 열쇠 평문은 `~/.hermes/keys/<universe_id>/master.key`(권한 0600)에만 있고, 원격에는 **감싼 형태만** 올라간다. 저장소 밖이며 git에 절대 올리지 않는다.
+- 자물쇠 목록(G-3, 닫힘): `refs/hermes/sync` 안 `keys/<사람 id>/<자물쇠 지문>.pub` 파일이 목록이고, 등록·폐기는 `key.registered` · `key.revoked` 이벤트(기계 칸 평문)로 남는다. 자물쇠는 공개돼도 안전하다.
+
+### 사람이 부르는 열쇠 명령 — `hermes-keys.sh` (AI 세션 밖 전용)
+
+| 명령 | 하는 일 |
+|---|---|
+| `init` | 이 소우주의 마스터 열쇠 + 이 컴퓨터 열쇠를 만들고 마스터를 컴퓨터 자물쇠로 감싸 `keys/` 에 올린다 |
+| `add-computer` | 다른 컴퓨터의 자물쇠로 마스터 열쇠를 다시 감싼다(조각 재암호화 없음, RV-03) |
+| `emergency` | 비상 열쇠 절차(3절) |
+| `revoke` | 자물쇠를 목록에서 뺀다(`key.revoked`) |
+| `rotate-master` | 컴퓨터 분실 후 새 마스터(6절) |
+| `doctor` | `age` 설치·열쇠 파일·권한·자물쇠 목록 점검. 세션 안에서도 허용되는 유일한 명령 |
+
+- 열쇠 파일 권한은 0600, 마스터 열쇠 평문은 `~/.hermes/keys/` 밖으로 나가지 않는다 — 테스트로 고정한다.
 
 ### 컴퓨터 id 와 재암호화 비용
 
@@ -114,7 +127,7 @@ jjackkun 이 zeroday-frontend 에서 만든 턴 조각 하나에 거는 자물�
 ### 받는 절차 — 소우주마다 이식을 처음 켤 때 한 번
 
 ```text
-사용자가 AI 세션 밖 터미널에서 이식 켜기 명령 실행 (명령 이름 미정)
+사용자가 AI 세션 밖 터미널에서 실행: hermes-keys.sh init → hermes-keys.sh emergency
   │
   ① 비상 열쇠 생성          age-keygen. 파일로 저장하지 않고 메모리에만 둔다
   ② 화면에 한 번만 표시      **24단어 니모닉**(번호 목록). 74자 AGE-SECRET-KEY 문자열이 아니다
@@ -129,7 +142,8 @@ jjackkun 이 zeroday-frontend 에서 만든 턴 조각 하나에 거는 자물�
 이식 켜짐
 ```
 
-- ④가 핵심이다. "적었다"만 믿으면 오타 난 열쇠를 보관하다가 정작 필요할 때 못 연다.
+- ④가 핵심이다. "적었다"만 믿으면 오타 난 열쇠를 보관하다가 정작 필요할 때 못 연다. 시험 복호에 실패하면 다음 단계로 갈 수 없다.
+- 이식을 켜는 전체 절차(열쇠 생성 → 비상 열쇠 → `sync.json` → 백필 → 첫 push)와 서버 실측 명령은 `docs/hermes-universe/migration/enable-sync.md` 에 둔다(구현 계획 3 산출물, 아직 없음).
 
 > ✅ 반영 (2026-09-16) — **니모닉 표기.** Aside Vault 의 복구 키(12단어 + 이해 확인 + 저장 파일)를 관찰하고 가져왔다. 우리는 age 열쇠 32바이트를 파생 없이 그대로 담기 위해 **24단어**(256비트, BIP-39 사전)를 쓴다. 단어 ↔ 열쇠는 무손실 왕복이고 체크섬이 오타를 잡는다. 저장 파일 형식은 용도 3줄 · 경고 3줄 · `BEGIN/END HERMES RECOVERY KEY` 구간 · 번호 목록이다. 계획: `2026-09-15-sync-transport-encryption.md` 목표 4.
 
@@ -160,7 +174,16 @@ AI 세션 안에서 열쇠를 만들거나 붙여넣으면 그 글자가 대화 
 | 요약·결정화 | 모델로 전송될 수 있음 |
 
 - 열쇠 생성과 붙여넣기는 **AI 세션이 아닌 별도 터미널 창에서 사용자가 직접** 한다. 세션 안 `!` 접두어 실행도 출력이 대화에 남으므로 안 된다.
-- **기계 강제:** 훅이 AI 세션 안의 `age-keygen` 실행이나 `AGE-SECRET-KEY-` 글자를 발견하면 차단한다.
+- **기계 강제:** PreToolUse Bash 훅이 AI 세션 안에서 아래를 발견하면 차단한다.
+
+| 차단 | 이유 |
+|---|---|
+| `age-keygen` 실행 | 열쇠가 출력에 남는다 |
+| `AGE-SECRET-KEY-` 글자 | 열쇠 붙여넣기 |
+| `hermes-keys.sh init` · `emergency` | 열쇠 생성·표시 절차 |
+| `hermes-sync.py tombstone` | 물리 삭제는 사람 승인(G-5) — 의도된 마찰 |
+
+`hermes-keys.sh doctor` 는 통과한다(열쇠를 보이지 않는다).
 
 > ✅ 리뷰 확정 (2026-09-15, RV-04) — 한계 명시: 이 차단은 **Claude Code 훅**이다. Codex 세션에서는 헤르메스 훅이 돌지 않으므로(CLAUDE.md "Codex 세션에서는 미동작") 이 규칙은 사람 규율로만 남는다. cumora 도 Codex 를 `--ignore-user-config --ignore-rules` 로 띄워 훅·규칙 층을 아예 뺀다(`docs/BYOA.md` "Secure default"). Codex 지원이 들어오기 전까지 열쇠 취급은 "AI 세션 밖" 이 유일한 방어다.
 
@@ -191,4 +214,4 @@ AI 세션 안에서 열쇠를 만들거나 붙여넣으면 그 글자가 대화 
 - age에는 교체 명령이 없다. 열쇠를 바꾸면 **새 조각부터 새 자물쇠**로 잠근다.
 - 옛 조각은 옛 열쇠로만 열리므로 옛 열쇠를 버리면 안 된다.
 - 이미 원격에 올라간 옛 암호문은 옛 열쇠를 가진 사람이 계속 풀 수 있다. 모든 도구에 공통인 한계다.
-- 세부 절차는 미정이다(G-4).
+- 절차(G-4, 닫힘): 컴퓨터를 잃으면 `hermes-keys.sh revoke` 로 그 자물쇠를 빼고 `hermes-keys.sh rotate-master` 로 새 마스터 열쇠를 만든다. **새 조각부터 새 마스터**로 잠그고, 새 마스터를 남은 컴퓨터·비상 자물쇠로 다시 감싸 올린다. **옛 마스터는 보관**한다 — 옛 조각은 옛 마스터로만 열린다. 조각 재암호화는 없다.

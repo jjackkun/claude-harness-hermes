@@ -11,7 +11,7 @@
 - 소우주에서 공통 스킬을 고치면 **허가 없이 공장 원본이 바뀌고 전 소우주에 즉시 퍼진다**(뒷문). 2026-09-15 세션 시작 시점에 미커밋 `assets/skills/hermes-loop/SKILL.md` 수정이 링크로 전 소우주에 반영된 상태였다.
 - 소우주가 어느 공장 버전을 보는지 기록이 없어 제안 봉투의 `base`(계획 5)를 채울 수 없다.
 - 공장 자기 설치도 절대경로 링크 25개가 커밋돼 있어 다른 경로에서 clone 하면 공장 자체가 깨진다.
-- 2026-09-15 실측: 이 컴퓨터의 `.installed-projects` 에는 3곳(ai-create · wonil · terminal-shipping)만 등록돼 있고 **zeroday-frontend 는 없다**. zeroday 이전은 `update-all` 이 아니라 명시 실행이 필요하다.
+- 2026-09-16 실측(2026-09-15 의 "3곳, zeroday 미등록" 은 오류였다): 이 컴퓨터의 `.installed-projects` 에는 **12곳**이 등록돼 있고 **zeroday-frontend 도 포함**된다. 따라서 링크→복사 전환은 `update-all` 한 번으로 12곳 전부에 일어난다 — 예고 없이 12개 저장소에 diff 가 생기므로 Step 7 의 절차가 필요하다.
 
 ## 2. 목표 (What — 검증 가능한 형태)
 
@@ -26,7 +26,7 @@
 - [ ] 목표 9 — 기존 테스트 전부 통과. 검증: `bash tests/run-all.sh` 0 실패, `tests/update-all-roundtrip-test.sh` · `tests/uninstall-roundtrip-test.sh` · `tests/windows-helpers-test.sh` 포함.
 - [ ] 목표 10 — zeroday-frontend 이전: 링크 41개가 복사본으로 바뀐 상태를 **사용자가 커밋**한다. 검증: zeroday 에서 `git ls-files -s .claude | grep -c 120000` = 0, `.claude/.factory-manifest.json` 추적됨.
 - [ ] 목표 11 — 제거도 설치 목록 기준이다: `uninstall.sh` 가 manifest 항목만 지우고 소우주 자체 스킬은 남긴다. 검증: `tests/uninstall-roundtrip-test.sh` 통과 + 자체 스킬 폴더 잔존 케이스 추가.
-- [ ] 목표 12 — `is_windows_path` 분기가 설치·정리·백업 세 함수에서 사라지고 한 경로만 남는다. 검증: `grep -c is_windows_path lib/installers.sh` = 0, `tests/windows-helpers-test.sh` · `tests/windows-smoke.sh` 통과. `lib/harness_installers.sh:719-723` 의 `ln -s` 는 메모리 폴더 링크(E-04, 범위 밖)라 남는다 — 테스트가 "저장소 안 `ln -s` 는 이 한 곳뿐" 을 `grep -n 'ln -s' lib/*.sh` 로 고정.
+- [ ] 목표 12 — `is_windows_path` 분기가 설치·정리·백업 세 함수에서 사라지고 한 경로만 남는다. 검증: `grep -c is_windows_path lib/installers.sh` = 0, `tests/windows-helpers-test.sh` · `tests/windows-smoke.sh` 통과. `lib/harness_installers.sh` 의 `install_memory_symlink()`(667행 함수) 안 `ln -s` 는 메모리 폴더 링크(E-04, 범위 밖)라 남는다 — 테스트가 "저장소 안 `ln -s` 는 이 한 곳뿐" 을 `grep -n 'ln -s' lib/*.sh` 로 고정.
 - 비목표 추가(planner-lite 지적): 복사 설치로 소우주 저장소가 커진다 — 공장 `assets/skills` 39개 + 규칙 + 에이전트 15개 ≈ 수백 KB 텍스트(설치 전 `du -sh assets/skills assets/rules assets/agents` 로 수치를 이 문서 §7 에 적는다). 줄이는 일은 이번 범위 밖.
 
 ## 3. 비목표 (Out of Scope)
@@ -54,11 +54,11 @@
 
 ## 5. 단계 (Steps)
 
-### Step 1. V-5 결과를 배치에 반영 [단순]
+### Step 1. V-5 결과를 배치에 반영 [단순] — **완료됨 (2026-09-16 설계 문서 갱신)**
 
 - 입력: V-5 확인됨 — 직계 폴더만 로딩.
 - 산출: 이 계획 §3 첫 항목. 설계 문서 `copy-install.md` §5 "폴더를 나누는 방법은 확인 필요" 문장을 "불가 — 목록으로 구분" 으로 갱신.
-- 검증: 문서 diff.
+- 검증: 문서 diff — 반영 확인.
 
 ### Step 2. 설치 목록 모듈 + 복사 전환 [Plan/Impl/Review]
 
@@ -90,8 +90,8 @@
 
 ### Step 7. 등록된 모든 소우주 이전 [사용자 실행]
 
-- 대상: zeroday-frontend **와** 이 컴퓨터 `.installed-projects` 의 3곳(ai-create · wonil · terminal-shipping). 후자도 다음 `update-all` 에서 링크→파일 모드 변경(120000→100644) diff 가 각 저장소에 생긴다(planner-lite 지적) — 예고 없이 일어나면 안 된다.
-- 산출: `docs/hermes-universe/migration/copy-install-all-universes.md` — ① zeroday 를 `.installed-projects` 에 **등록한 뒤** `update-all.sh`(직접 실행만 하면 계획 2·4·5 의 마이그레이션이 `hermes-init.py` 경유라 zeroday 에 영영 안 닿는다 — planner-lite 지적) ② 설치기가 "링크 → 복사본 N건" 을 stdout 한 줄로 보고 ③ 각 저장소에서 `git status` 로 변경 확인, `.claude/.factory-manifest.json` · `.hermes/factory.json` 추적 확인 ④ 사용자가 저장소마다 커밋. 자동 커밋 금지.
+- 대상: 이 컴퓨터 `.installed-projects` 의 **12곳 전부**(zeroday-frontend 포함, 2026-09-16 실측). 다음 `update-all` 에서 링크→파일 모드 변경(120000→100644) diff 가 12개 저장소 각각에 생긴다(planner-lite 지적) — 예고 없이 일어나면 안 된다.
+- 산출: `docs/hermes-universe/migration/copy-install-all-universes.md` — ① `grep -c zeroday-frontend .installed-projects` = 1 로 **등록을 확인**한 뒤 `update-all.sh`(등록되지 않은 소우주가 있다면 그곳은 계획 2·4·5 의 마이그레이션이 `hermes-init.py` 경유라 영영 안 닿는다 — planner-lite 지적. 실측상 12곳 모두 등록돼 있어 새로 등록할 곳은 없다) ② 설치기가 "링크 → 복사본 N건" 을 stdout 한 줄로 보고 ③ 각 저장소에서 `git status` 로 변경 확인, `.claude/.factory-manifest.json` · `.hermes/factory.json` 추적 확인 ④ 사용자가 저장소마다 커밋. 자동 커밋 금지.
 - 검증: 목표 10 + `grep -c zeroday-frontend .installed-projects` = 1 + 설치 로그의 변환 건수 = 41(zeroday). 다른 컴퓨터에서 pull 후 `.claude/skills/*/SKILL.md` 가 실제 파일로 존재.
 
 ## 6. 의사결정 로그
@@ -99,11 +99,12 @@
 - 2026-09-15: `.claude/.factory-manifest.json` 은 **커밋한다**(`.dev-setting-manifest.json` 과 달리) — 근거: 다른 컴퓨터의 clone 도 어느 파일이 공장 것인지 알아야 변조 감지·정리가 동작한다. 틀렸을 때 손해: 설치마다 manifest diff 가 커밋에 섞인다(공장 커밋 해시가 바뀔 때만이라 드묾).
 - 2026-09-15: 폴더 분리 대신 목록으로 공통/자체를 구분 — 근거: V-5(직계 폴더만 로딩). 틀렸을 때 손해: 없음(대안이 없다).
 - 2026-09-15: 첫 재설치에 "링크 → manifest 이행 분기" 를 둔다 — 근거: 없으면 목록 기준 정리가 첫 실행에서 아무것도 못 지우거나(목록 비어 있음) 전부 지운다. 틀렸을 때 손해: 이행 분기 코드가 한 번 쓰고 남는다 — 3개월 뒤 제거 후보.
+- 2026-09-16: 설계 문서 갱신으로 계획서와 설계가 일치 — 근거: 대조 77건.
 - 2026-09-15: 변조 감지는 **경고**지 차단이 아니다 — 근거: 소우주에서 급히 고쳐야 할 때 막으면 우회(`--no-verify` 류)를 유도한다(cumora K-1 의 반대 방향 교훈). 틀렸을 때 손해: 경고를 무시하고 공통 스킬을 고쳐 다음 `update-all` 에 덮어써진다 — 그때 manifest 해시 불일치를 설치기가 "사용자 수정 백업" 으로 남긴다.
 
 ## 7. 발견·예외
 
-- 이 컴퓨터 `.installed-projects` 에 zeroday-frontend 가 없다(3곳만). 설계 근거 문서의 "등록 12곳" 은 다른 컴퓨터 기준으로 보인다 — Step 7 에서 명시 실행.
+- 2026-09-15 에 적었던 "이 컴퓨터 `.installed-projects` 에 zeroday-frontend 가 없다(3곳만)" 는 **틀린 관측**이었다. 2026-09-16 재실측: 12곳 등록, zeroday-frontend 포함(`wc -l < .installed-projects` = 12, `grep -c zeroday-frontend` = 1). 설계 근거 문서의 "등록 12곳" 과 일치한다 — Step 7 은 등록 확인 후 `update-all`.
 - 공장 자기 설치의 상대경로 링크는 `assets/` 이름이나 `.claude/` 깊이가 바뀌면 깨진다(E-02 손해). 훅이 잡는다.
 
 ## 8. 회고 (완료 시 작성)

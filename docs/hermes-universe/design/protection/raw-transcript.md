@@ -160,6 +160,8 @@
 ## 8. 이미 올라간 평문 (확정)
 
 - 이미 커밋·push된 평문 원문(zeroday-frontend 235개, terminal-shipping 31개)은 **손대지 않는다.** 이력 재작성은 되돌릴 수 없고 모든 이력을 뒤흔든다.
+- 추적 해제(`git rm --cached`)도 **하지 않는다.** 이력 재작성은 아니지만 동료 clone 의 작업 트리에서 파일을 지우는 부작용이 있다. 저장소별 사용자 판단으로 남긴다.
+- 검증 기준: 무시 규칙을 바꾼 뒤에도 `git ls-files .hermes/history | wc -l` 이 zeroday-frontend **235** · terminal-shipping **31** 로 불변이다. 추적 중인 파일은 `.gitignore` 와 무관하므로 "새 파일이 무시되는가" 와 "기존 파일이 그대로인가" 를 따로 검증한다.
 - zeroday-frontend의 235개는 동료 3명도 접근할 수 있는 상태다.
 - 그 안에 지금도 유효한 자격증명이 있다면, 해당 비밀번호·토큰 **교체**로 노출값을 무력화할 수 있다. 이것은 저장소별 사용자 판단이다.
 
@@ -167,6 +169,6 @@
 
 | 변경 | 내용 |
 |---|---|
-| `.gitignore` | 소우주마다 `!.hermes/history/` 예외 제거 |
-| export | 매 턴 세션 파일 전량 재작성 → 턴 단위 조각 추가 + 암호화 ([sync-transport.md](sync-transport.md)) |
-| 재색인 | git 파일이 아닌 `refs/hermes/sync`의 새 조각을 복호화해 채움 |
+| `.gitignore` | 설치기 마커에서 예외 **두 줄**(`!.hermes/history/` 와 `!.hermes/history/**`, `presets/workflow/hermes.conf:177-178`)을 지운다. `.hermes/*` 무시 아래서는 디렉터리와 내용물을 따로 풀었기 때문에 한 줄만 지우면 남는다. 재설치 후 `git check-ignore .hermes/history/new.jsonl` 이 무시로 판정돼야 한다(새 파일만). 각 소우주의 `.gitignore` 변경 커밋은 사용자가 한다 |
+| export | 매 턴 세션 파일 전량 재작성 → 턴 단위 조각 `history/<session_id>/<순번>.enc` 추가 + 암호화 ([sync-transport.md](sync-transport.md)). 암호 조각은 `hermes-sync.py tombstone` 경로로만 지운다. `hermes-scrub-history.py`(평문 소급 제거 도구)는 레거시 jsonl 전용으로 남기고 조각에 맞게 고치지 않는다 |
+| 재색인 | git 파일이 아닌 `refs/hermes/sync`의 새 조각을 복호화해 채움. 옛 jsonl 경로는 "레거시 읽기 전용" 분기만 남긴다 |

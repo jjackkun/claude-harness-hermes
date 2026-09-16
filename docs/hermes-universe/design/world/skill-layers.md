@@ -10,28 +10,46 @@
 
 ## 1. 네 층 (확정)
 
-| 층 | 위치(안) | 누가 고치나 | 키 |
-|---|---|---|---|
-| **우주 공통** | claude-harness-hermes `assets/skills/` → 소우주에 복사 설치 | 사용자 승인 PR | `(공장, 이름, 버전)` |
-| **소우주 공통** | `<소우주>/.hermes/skills/` (기존 자리 그대로 — RV-18, 초안의 `skills/common/` 은 폐기) | 소우주 관리자 승인 | `(universe_id, 이름)` |
-| **조직 단위** | `<소우주>/.hermes/units/<단위 id>/skills/` | 그 조직 단위 | `(universe_id, 단위 id, 이름)` |
-| **개인** | `<소우주>/.hermes/agents/<agent_id>/skills/` | 에이전트 본인 | `(universe_id, agent_id, 이름)` |
+| 층 | 위치 (확정) | `layer` 값 | 누가 고치나 | 키 |
+|---|---|---|---|---|
+| **우주 공통** | claude-harness-hermes `assets/skills/` → 소우주 `.claude/skills/<이름>/` 에 복사 설치(설치 목록에 있음) | `universe` | 사용자 승인 PR | `(공장, 이름, 버전)` |
+| **소우주 공통** | `<소우주>/.hermes/skills/` (기존 자리 그대로 — RV-18, 초안의 `skills/common/` 은 폐기) | `common` | 소우주 관리자 승인 | `(universe_id, 이름)` |
+| **조직 단위** | `<소우주>/.hermes/units/<unit_id>/skills/` | `unit` | 그 조직 단위 | `(universe_id, unit_id, 이름)` |
+| **개인** | `<소우주>/.hermes/agents/<agent_id>/skills/` | `agent` | 에이전트 본인 | `(universe_id, agent_id, 이름)` |
 
 - 이름과 별개로 **층을 옮겨도 변하지 않는 `skill_id`**를 둔다. 이름은 층을 옮기며 바뀔 수 있고, 같은
   이름이 다른 층에 이미 있을 수 있다.
 - 개인 스킬 경로는 이름이 아니라 `agent_id` 기준이다(이름은 바뀔 수 있음, [identity.md](../agent/identity.md)).
 - 예: 기본 코드리뷰 스킬은 우주 공통이다. zeroday-frontend의 프론트엔드 코드리뷰어는 이를 상속한 개인이다.
+- **git 추적:** 단위 층 스킬이 다른 컴퓨터로 가려면 `.hermes/*` 무시 아래서 디렉터리 단계마다 풀어야 한다 — `.gitignore` 마커에 `!.hermes/units/` · `!.hermes/units/*/` · `!.hermes/units/*/skills/` · `!.hermes/units/*/skills/**` 네 줄. 개인 스킬·SOUL 의 예외는 [identity.md](../agent/identity.md) 쪽 계획(`!.hermes/agents/*/skills/**` 등)이 담당한다. `.hermes/outbox/` 는 무시 그대로(봉투는 배달로 나간다).
+
+### 색인 칸 — `skill_index` (확정)
+
+`state.db` 의 `skill_index` 에 칸 5개를 더한다(`ALTER TABLE … ADD COLUMN`, 기존 DB 무손실).
+
+| 칸 | 값 |
+|---|---|
+| `universe_id` | 소우주 키([universe-isolation.md](universe-isolation.md)) |
+| `layer` | `universe` \| `common` \| `unit` \| `agent` |
+| `unit_id` | 단위 층일 때만 |
+| `agent_id` | 개인 층일 때만 |
+| `skill_id` | 층을 옮겨도 불변 |
+
+- **기존 행 이전:** zeroday-frontend 의 1088행은 `layer='common'`, `universe_id` = 현 소우주, 나머지 NULL 로 채운다(7절 "소우주 공통(미배정)", L-01). 행 수는 불변이다.
+- **구버전 DB 호환:** 새 칸이 없는 기존 `state.db` 에서 검색기가 죽지 않고 첫 실행 때 칸을 지연 추가한다(`_ensure_injection_source_column` 패턴).
+- 색인기는 위 표의 네 자리를 모두 훑는다.
 
 ### 층별 스킬을 읽는 경로
 
 > ✅ 리뷰 확정 (2026-09-15, RV-12) — 근거: 리뷰 R-11, cumora K-5
 
-위 표의 위치 중 Claude Code 가 스스로 읽는 자리는 `.claude/skills/`(우주 공통 설치본)뿐이다. `.hermes/skills/common/` · `units/` · `agents/<id>/skills/` 는 **헤르메스 주입 경로**(`scripts/hermes-search.py`, 세션 시작 · 실패 시 훅)로만 읽힌다. 그러므로:
+위 표의 위치 중 Claude Code 가 스스로 읽는 자리는 `.claude/skills/`(우주 공통 설치본)뿐이다. `.hermes/skills/` · `units/` · `agents/<id>/skills/` 는 **헤르메스 주입 경로**(`scripts/hermes-search.py`, 세션 시작 · 실패 시 훅)로만 읽힌다. 그러므로:
 
 | 규칙 | 내용 |
 |---|---|
-| 주입은 소환된 에이전트 기준으로 거른다 | 검색 대상은 `(universe_id, 그 에이전트의 unit, agent_id)` 에 속한 층 + 소우주 공통 + 우주 공통. 다른 단위 · 다른 에이전트의 개인 스킬은 검색 자체에서 뺀다. 지금 `skill_index` 에 소우주 칸도 층 칸도 없다([current-state-audit.md](../../evidence/current-state-audit.md) §1) |
-| 이름 + 설명만 넣고 본문은 필요할 때 | cumora 는 스킬당 `name` + `description` 만(~100 토큰) 프롬프트에 넣고, 본문은 에이전트가 `skills read <name>` 으로 그 턴에 끌어온다(`server/src/agents/skills.ts`). 지금 헤르메스는 `read_skill_snippet` 로 앞 10줄을 넣는다. **하위 호환(RV-12):** 이름+설명 주입은 `description` 머리말이 있는 스킬에만 적용한다. 머리말이 없는 스킬(zeroday-frontend 의 패턴 키 이름 1088개)은 현행 10줄 스니펫을 유지한다 — 바꾸면 `agg_xxx.md` 가 빈칸으로 주입돼 나빠진다 |
+| 주입은 소환된 에이전트 기준으로 거른다 | 소환된 에이전트(`HERMES_AGENT_ID`, 없으면 `main`)의 `unit` · `agent_id` 로 검색 대상을 `(universe_id, 그 에이전트의 unit, agent_id)` 에 속한 층 + 소우주 공통 + 우주 공통으로 좁힌다. 다른 단위 · 다른 에이전트의 개인 스킬은 검색 자체에서 뺀다. 필터는 **두 검색 경로 모두**에 건다 — DB 검색(`search_db`)뿐 아니라 파일시스템 직접 스캔(`search_skills_dir`)도 층·단위·에이전트를 판정한다. 아니면 색인 전 스킬이 단위 경계를 넘어 주입된다. 칸은 위 "색인 칸" 절 |
+| 은퇴한 에이전트는 빠진다 | `retired` 에이전트의 개인 스킬과 SOUL 은 파일로 남되 주입 결과와 담당 매칭에서 0건이다. `rehire` 로 복귀하면 다시 잡힌다([creation-and-organization.md](../agent/creation-and-organization.md), RV-17) |
+| 이름 + 설명만 넣고 본문은 필요할 때 | cumora 는 스킬당 `name` + `description` 만(~100 토큰) 프롬프트에 넣고, 본문은 에이전트가 그 턴에 끌어온다(`server/src/agents/skills.ts`). 헤르메스에서는 `hermes-skill.py read <이름>` 이 그 경로다(부가 명령 `layers` · `where <이름>`). 읽은 사실은 `skill_injection` 에 `source='read'` 로 남긴다. 지금 헤르메스는 `read_skill_snippet` 로 앞 10줄을 넣는다. **하위 호환(RV-12):** 이름+설명 주입(`이름 — 설명` 한 줄)은 `description` 머리말이 있는 스킬에만 적용한다. 머리말이 없는 스킬(zeroday-frontend 의 패턴 키 이름 1088개)은 현행 10줄 스니펫을 유지한다 — 바꾸면 `agg_xxx.md` 가 빈칸으로 주입돼 나빠진다 |
 | 층 우선순위는 주입 순서 | 개인 → 단위 → 소우주 공통 → 우주 공통 순으로 넣는다(2절). 같은 `skill_id` 의 아래 층 확장이 있으면 위 층 본문 뒤에 "확장" 으로 붙인다 |
 
 ### 세 번째 층은 "팀"이 아니라 소우주가 지정한 조직 단위 (확정)
@@ -54,7 +72,7 @@
 - **아래 층이 위 층을 대체하지 않고 덧붙인다.** 프론트 리뷰어는 "우주 공통 코드리뷰 + 프론트 추가 항목"을 받는다.
 - 아래 층이 같은 이름으로 위 층을 몰래 덮으면, 위 층을 고쳐도 덮은 쪽에는 전달되지 않는다. 그래서 덮어쓰기는 금지한다.
 
-> ✅ 리뷰 확정 (2026-09-15, RV-13) — 확장은 기준 버전을 적는다 (근거: 리뷰 R-10). 확장 파일 머리말에 `extends: <skill_id>@<version>` 을 둔다. `update-all` 로 위 층이 새 버전으로 바뀌면 설치기가 기준 버전이 다른 확장을 찾아 "기준이 바뀌었다 — 확장 다시 확인" 을 알린다. 적지 않으면 어긋남을 기계가 모르고, 위 층 수정이 아래로 전달된다는 3절의 전제가 조용히 깨진다. 봉투의 `base` 칸([skill-proposal-delivery.md](skill-proposal-delivery.md) 3절)과 같은 값이다.
+> ✅ 리뷰 확정 (2026-09-15, RV-13) — 확장은 기준 버전을 적는다 (근거: 리뷰 R-10). 확장 파일 머리말에 `extends: <skill_id>@<version>` 을 둔다. `update-all` 로 위 층이 새 버전으로 바뀌면 설치기가 기준 버전이 다른 확장을 찾아 `[extends WARN]` 으로 "기준이 바뀌었다 — 확장 다시 확인" 을 알린다. 적지 않으면 어긋남을 기계가 모르고, 위 층 수정이 아래로 전달된다는 3절의 전제가 조용히 깨진다. 봉투의 `base` 칸([skill-proposal-delivery.md](skill-proposal-delivery.md) 3절)과 같은 값이다.
 
 ## 3. 승격 — 일반화 (합의)
 
@@ -123,7 +141,7 @@
 - "조용히 안 쓰이는 스킬"은 켠/끈 비교(필요 없음)와 발동 정확도 평가(설명 부실)로 우주 안에서 가려진다.
 - 그래서 소우주가 사용 횟수를 우주에 올리는 경로는 두지 않는다.
 
-`hermes_mesh_gate.py`(신원·맥락 마커를 탈락시키는 게이트)는 자동 승격기가 아니라 **허가자의 1차 검사 도구**로 쓴다. 현재는 테스트에서만 호출된다.
+`hermes_mesh_gate.py`(신원·맥락 마커를 탈락시키는 게이트)는 자동 승격기가 아니라 **허가자의 1차 검사 도구**로 쓴다. 현재는 테스트에서만 호출되며, CLI 로 노출해 "사례 나열"(`scenario-list`) 판정을 항목으로 더한다 — 승격 심사에만 쓰고 기존 스킬은 어떤 처리도 받지 않는다.
 
 ## 6. 강등 (합의)
 
@@ -148,4 +166,5 @@
 | 이름 | 패턴 키에서 기계적으로 생성(`active.md`, `agg_xxx.md`). 본문은 멀쩡함 |
 
 - 도움 판정 신호가 주입 여부와 거의 같아서 좋은 스킬과 나쁜 스킬을 가르지 못한다. 층 이동 판단에 쓰기 전에 고쳐야 한다([open-questions.md](../../open-questions.md) G-8).
-- 기존 1088개는 작성자를 기계적으로 알 수 없다. **그대로 두고 "소우주 공통(미배정)"으로 읽는다**(Q-3 확정). 지우거나 분류하지 않으며, 도움 신호를 고친 뒤 강등 판정으로 줄인다.
+- 기존 1088개는 작성자를 기계적으로 알 수 없다. **그대로 두고 "소우주 공통(미배정)"으로 읽는다**(Q-3 확정). 색인에서는 `layer='common'`, `universe_id` = 현 소우주, `unit_id` · `agent_id` NULL 이다(1절 "색인 칸"). 파일은 옮기지 않는다 — 옮기면 zeroday 커밋에 rename 1088건이 생긴다. 지우거나 분류하지 않으며, 도움 신호를 고친 뒤 강등 판정으로 줄인다.
+- `~/.hermes/global.db` 의 `harness_rules` 쓰기는 중단한다(L-05, 읽는 코드 없음). 기존 1142행은 그대로 둔다.

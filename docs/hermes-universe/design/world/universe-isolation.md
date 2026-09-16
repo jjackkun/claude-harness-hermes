@@ -49,8 +49,17 @@ claude-harness-hermes (우주, 설계도 공장)
 
 ### 결정
 
-- 설치할 때 한 번 만드는 UUID를 `<소우주>/.hermes/universe.id` 파일에 두고 **git으로 추적**한다.
+- 설치할 때 한 번 만드는 UUID(v4, 한 줄)를 `<소우주>/.hermes/universe.id` 파일에 두고 **git으로 추적**한다. 없을 때만 만들고 재설치해도 바뀌지 않는다.
+- git 추적에는 `.gitignore` 마커 예외가 필요하다. 소우주 `.gitignore` 는 `.hermes/*` 로 내용물을 무시하므로 마커에 `!.hermes/universe.id` 를 둔다(같은 자리에서 만드는 명부 `.hermes/agents.json` 도 `!.hermes/agents.json`). 예외가 없으면 다른 컴퓨터의 clone 이 다른 키를 만들어 같은 소우주가 둘로 갈라진다.
 - 모든 기록 행(세션, 스킬, 작업 이력, 결정)에 `universe_id`를 붙인다.
+
+### 기존 기록의 이전 정책
+
+| 대상 | 처리 |
+|---|---|
+| `session_summary.project_id` | 칸 이름은 그대로 두고 **값만** `universe_id` 로 바꾼다. 이름을 바꾸면 읽는 코드 7곳을 고쳐야 하는데 얻는 것이 없다. 이름이 뜻과 어긋나는 손해는 주석으로 표기 |
+| 기존 행 | basename 값 그대로 둔다(L-02 — 옛 자산은 옮기지 않는다) |
+| `skill_index` | `universe_id` 칸을 더하고 기존 행은 현 소우주로 채운다([skill-layers.md](skill-layers.md) 1절 "색인 칸") |
 
 ### 폴더 이름을 키로 쓰지 않는 이유
 
@@ -71,6 +80,12 @@ claude-harness-hermes (우주, 설계도 공장)
 | 전역 그물망 `~/.hermes/mesh/skills/`는 비어 있으나(0개) 매 세션 검색 대상이다 | `scripts/hermes-search.py`, 훅 2곳 |
 
 세부 수치와 확인 명령은 [current-state-audit.md](../../evidence/current-state-audit.md).
+
+### 전환 후 동작 (확정)
+
+- 위 세 스크립트의 `project_id` 는 `universe.id` 값을 읽는다. 모든 스크립트가 같은 읽기 함수를 거친다.
+- `universe.id` 가 없으면 basename 으로 **폴백**하고 `[hermes] universe.id 없음` 경고를 낸다. 세션을 멈추지 않는다 — 계획 1 의 이전을 아직 받지 않은 소우주가 이 경로를 밟는다.
+- `global.db` `harness_rules` 쓰기는 중단한다(읽는 코드가 없다). 기존 1142행은 그대로.
 
 ## 6. 이 원칙에서 따라 나오는 설계
 
