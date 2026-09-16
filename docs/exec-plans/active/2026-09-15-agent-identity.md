@@ -21,8 +21,8 @@
 - [ ] 목표 5 — 소환 러너 `hermes-summon.py` 가 `summons`(nonce · agent_id · requested_by · expires_at · used) 를 INSERT 하고 `HERMES_AGENT_ID` · `HERMES_SUMMON_NONCE` 를 넣어 `claude -p` 를 띄우며 `task.assigned` 를 남긴다(RV-06). 검증: 테스트 모의 `claude` 로 환경변수·이벤트·nonce 사용 표시 확인.
 - [ ] 목표 6 — 세션 시작 훅이 nonce 를 검증한다: 짝 없음·재사용·만료면 행위자를 `system:unverified-session` 으로 바꾸고 경고. 검증: 테스트 4케이스. 세션은 멈추지 않는다.
 - [ ] 목표 7 — PreToolUse 훅이 세션 안 Bash 의 `claude -p` 직접 호출을 막되, 허용 목록(`hermes-loop-run.sh` · `hermes-cron-run.sh` · `hermes-summon.py`)은 통과 — 판정은 명령줄이 아니라 **러너가 남긴 nonce 파일 존재**로. 검증: `tests/hermes-summon-guard-test.sh` — 직접 호출 차단, 러너 경유 통과, `bash -c 'exec hermes-loop-run.sh …'` 흉내는 nonce 없어 차단.
-- [ ] 목표 8 — 기억 이벤트 `memory_events`(UUIDv7 PK, `kind` · `about` · `revises` · `content_hash` · `source_event` · `body`)가 INSERT 전용이고, `MEMORY.md` 는 이벤트에서 계산한 보기다. 검증: `tests/hermes-memory-events-test.sh` — 갈라짐(같은 `revises` 둘)·같은 `about` 모순·`content_hash` 중복이 각각 "충돌"·"충돌"·"합침" 으로 표시, 최신이 자동 승리하지 않음.
-- [ ] 목표 9 — 규칙 충돌 표시(RV-11): 기억 `about` 키가 SOUL.md 또는 `assets/rules/**` 의 규칙 키와 겹치고 본문이 부정형이면 보기에 "규칙 충돌", `source_event` 하나면 "단일 사례". 검증: 테스트 픽스처 2건.
+- [x] 목표 8 — 기억 이벤트 `memory_events`(UUIDv7 PK, `kind` · `about` · `revises` · `content_hash` · `source_event` · `body`)가 INSERT 전용이고, `MEMORY.md` 는 이벤트에서 계산한 보기다. 검증: `tests/hermes-memory-events-test.sh` — 갈라짐(같은 `revises` 둘)·같은 `about` 모순·`content_hash` 중복이 각각 "충돌"·"충돌"·"합침" 으로 표시, 최신이 자동 승리하지 않음.
+- [x] 목표 9 — 규칙 충돌 표시(RV-11): 기억 `about` 키가 SOUL.md 또는 `assets/rules/**` 의 규칙 키와 겹치고 본문이 부정형이면 보기에 "규칙 충돌", `source_event` 하나면 "단일 사례". 검증: 테스트 픽스처 2건.
 - [ ] 목표 10 — 인계 봉투 검증기: `goal` · `done_when` 없으면 시작 불가(기계 차단), `inputs` 는 참조만(경로·이벤트 id 형식), `expires_at` 선택. 되돌아오는 네 방식이 이벤트로 남는다. 검증: `tests/hermes-handoff-test.sh`.
 - [ ] 목표 11 — 만료 판정은 세션 시작 훅(RV-08): 기한 지났는데 `task.started` · `handoff.question` 없는 봉투 → `handoff.expired` + 알림. 규칙 위반 지시는 `claimed: blocked` + `evidence.reason = rule:<이름>`(RV-07). 검증: 테스트 2케이스.
 - [ ] 목표 12 — `done_when` 허용 형식(G-21) 첫 판: `test:<이름>` · `file:<경로>` · `gate:<규칙>` · `commit:<해시|HEAD>` · `manual` 다섯 가지. `manual` 만 `verified: none`. 검증: 각 형식의 기계 검증 함수 테스트.
@@ -116,6 +116,13 @@
   - YAML 부분집합 파서는 미종결 흐름 목록(`[1,`)을 스칼라로 통과시켰다 — 닫힘 검사를 넣었다.
   - 설치기가 `organization.yaml` 이 없을 때만 `empty.yaml` 을 복사하고, 있으면 `unit_id` 만 채운다.
     공장 자신에게도 `.hermes/organization.yaml`(빈 조직)이 생겼다.
+- **2026-09-16 Step 3 에서 드러난 것**
+  - 설계 문서가 `memory.added`(3절 형식 표)와 `memory.learned`(다른 절)를 섞어 썼다. 3절 형식
+    표를 원천으로 삼아 `memory.added`·`memory.revised`·`memory.retracted` 로 갔다.
+  - 부정형 판정 정규식이 `쓰지\u0020않는다`(공백 없이 붙은 `않는다`)를 놓쳤다. `않는다|않다` 를
+    추가해 잡았다. 이 판정은 모델 없이 어휘로만 하므로(R3 회피) 틀리면 표시가 과할 뿐 데이터는 안전하다.
+  - install-receipt-test 가 전체 러너에서만 간헐 실패(단독 18/18). 영수증이 '표식 이후 ctime
+    변경' 으로 파일을 잡는데 러너 부하로 같은 초에 설치가 겹치면 드물게 누락된다. 플레이크로 판정.
 - 계획 2 가 만든 `agents.json` 의 `main` 항목은 `org` 가 비어 있다. 이 계획에서 `empty.yaml` 조직(수직 `human → main`)에 맞춰 채운다.
 - `assets/agents/*.md` 15개는 그대로 **직무 템플릿**으로 남고, `template: <이름>@factory` 로 참조된다. 옮기지 않는다.
 - 세션 시작 훅이 계획 1 · 3 · 4 · 5 에서 각 1개씩 **4개 늘어난다**(`factory-link-check` · `sync-pull` · `summons-verify` · `outbox-status`). 계획 3 의 `sync-pull` 은 기존 `history-reindex` 교체라 순증은 fetch 한 번이지만, 나머지 셋은 순증이다. 이 계획의 Step 2 에서 **세션 시작 지연 총량을 실측**해 §8 에 적는다(기존 훅 전부 + 새 훅 4개, `time` 으로 SessionStart 훅 체인 1회 실행). 지연이 늘면 nonce 검증 · 만료 판정 · outbox 조회를 훅 하나로 합치는 것이 후속 후보 — 근거 없이 미리 합치지 않는다.

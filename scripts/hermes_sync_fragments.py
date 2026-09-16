@@ -58,6 +58,7 @@ def outgoing(con, project: str, universe_id: str, person: str) -> dict:
     out.update(_outgoing_keys(universe_id, person, done))
     out.update(_outgoing_history(project, lock, done))
     out.update(_outgoing_journal(con, lock, done))
+    out.update(_outgoing_memory(con, lock, done))
     return out
 
 
@@ -110,6 +111,49 @@ def _outgoing_journal(con, lock: str, done: set) -> dict:
                 event[field] = crypto.encrypt_to([lock], event[field].encode(), armor=True).decode()
         out[remote] = json.dumps(event, ensure_ascii=False, sort_keys=True).encode()
     return out
+
+
+def _outgoing_memory(con, lock: str, done: set) -> dict:
+    """기억 이벤트를 memory/<agent_id>/<memory_id>.json 으로. body 만 암호문(6절)."""
+    out = {}
+    try:
+        rows = con.execute("SELECT * FROM memory_events ORDER BY ts, memory_id").fetchall()
+        names = [d[0] for d in con.execute("SELECT * FROM memory_events LIMIT 0").description]
+    except sqlite3.OperationalError:
+        return out
+    for row in rows:
+        event = dict(zip(names, row))
+        remote = f"memory/{event['agent_id']}/{event['memory_id']}.json"
+        if remote in done:
+            continue
+        if event.get("body"):
+            event["body"] = crypto.encrypt_to([lock], event["body"].encode(), armor=True).decode()
+        out[remote] = json.dumps(event, ensure_ascii=False, sort_keys=True).encode()
+    return out
+
+
+def import_memory(con, universe_id: str, remote: str, data: bytes, when: str) -> bool:
+    """memory/*.json 을 복호해 memory_events 에 넣는다. 같은 memory_id 면 건너뛴다."""
+    try:
+        event = json.loads(data.decode("utf-8"))
+    except (ValueError, UnicodeDecodeError):
+        return False
+    if event.get("body"):
+        event["body"] = crypto.decrypt_with(key_path(universe_id, "master"), event["body"].encode()).decode()
+    try:
+        from hermes_memory_events import ensure_memory_schema, record
+        ensure_memory_schema(con)
+        exists = con.execute("SELECT 1 FROM memory_events WHERE memory_id = ?",
+                             (event.get("memory_id"),)).fetchone()
+        if not exists:
+            record(con, event)
+    except Exception as exc:               # noqa: BLE001
+        import sys
+        print(f"[hermes-sync] 기억 적재 실패 {remote}: {exc}", file=sys.stderr)
+        return False
+    con.execute("INSERT OR REPLACE INTO sync_cursor (path, imported_at) VALUES (?, ?)", (remote, when))
+    con.commit()
+    return True
 
 
 def mark_pushed(con, paths, when: str) -> None:

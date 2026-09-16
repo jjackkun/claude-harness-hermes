@@ -25,7 +25,8 @@ import hermes_crypto as crypto  # noqa: E402
 import hermes_sync_ref as ref  # noqa: E402
 from hermes_keys import key_path  # noqa: E402
 from hermes_sync_fragments import (  # noqa: E402
-    ensure_sync_tables, import_fragment, import_journal, incoming_paths, mark_pushed, outgoing)
+    ensure_sync_tables, import_fragment, import_journal, import_memory, incoming_paths,
+    mark_pushed, outgoing)
 from hermes_universe import universe_id  # noqa: E402
 
 NO_STORE = "원격에 기억 저장소(refs/hermes/sync)가 없습니다"
@@ -158,6 +159,8 @@ def _import_all(con, project: str, uid: str, paths) -> int:
             got += import_fragment(con, project, uid, path, data, _now())
         elif path.startswith("journal/"):
             got += import_journal(con, uid, path, data, _now())
+        elif path.startswith("memory/"):
+            got += import_memory(con, uid, path, data, _now())
     return got
 
 
