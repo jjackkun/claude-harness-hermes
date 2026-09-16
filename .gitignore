@@ -48,6 +48,8 @@ docs/superpowers/plans/
 !.hermes/skills/
 !.hermes/skills/**
 !.hermes/factory.json
+!.hermes/universe.id
+!.hermes/agents.json
 !.hermes/history/
 !.hermes/history/**
 # <<< harness-agent-preset <<<

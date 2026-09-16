@@ -15,19 +15,19 @@
 
 ## 2. 목표 (What — 검증 가능한 형태)
 
-- [ ] 목표 1 — 설치 시 `<소우주>/.hermes/universe.id`(UUID v4 한 줄)가 생기고 git 추적된다. 재설치해도 바뀌지 않는다. 검증: `tests/hermes-universe-test.sh` — 두 번 설치 후 값 동일, `.gitignore` 마커에 `!.hermes/universe.id`.
-- [ ] 목표 2 — 세 스크립트의 `project_id` 가 `universe.id` 값을 읽는다(없으면 basename 으로 폴백하고 `[hermes] universe.id 없음` 경고). 검증: 테스트에서 폴더 이름을 바꿔도 `session_summary.project_id` 가 같은 값.
-- [ ] 목표 3 — `journal_events` 테이블이 INSERT 만 허용한다. 검증: 테스트에서 `UPDATE` · `DELETE` 가 트리거로 실패(`sqlite3.IntegrityError`).
-- [ ] 목표 4 — 이벤트 기록기가 **허용목록 스키마**로만 받는다. 검증: 모르는 칸(`raw_text`) 을 넣으면 거부, `evidence.command` 에 인자가 붙으면(`curl -H …`) 명령 이름만 남김, `intent` 에 줄바꿈이면 거부.
-- [ ] 목표 5 — 결과 3층이 기록된다: `claimed` 는 에이전트, `verified` 는 기계(`none` 은 `done_when` 형식이 기계 검증 불가일 때만, RV-09), `accepted` 는 사람. 검증: 테스트에서 에이전트 입력으로 `verified` 를 넘기면 무시되고 기계 값이 남는다.
-- [ ] 목표 6 — Stop 훅이 세션 종료 시 `task.started` 만 있고 `task.finished` 없는 작업에 `system:claude-stop-journal-gap` 누락 이벤트를 붙인다. 검증: 테스트에서 모의 훅 입력으로 확인.
-- [ ] 목표 7 — 행위자가 기계로 찍힌다: 대화형 = `agent:<main id>` + `requested_by: human:<git user.name>`, 헤드리스 루프 = `requested_by` 루프 시작자, cron = `system:hermes-cron`, 하위 에이전트 = `evidence.template = <agent_type>`(V-4). 검증: 테스트 4경로.
-- [ ] 목표 8 — `loop_decisions` 의 결정이 `journal_events` 의 `decision` 이벤트로도 남는다(G-9 — J-05 는 "흡수" 가 아니라 **병기 후 단계적 흡수**). 검증: `tests/hermes-loop-test.sh` 결정 절 + journal 조회. 기존 `loop_decisions` 는 그대로 둔다(`hermes_loop_report.py` 가 읽음).
-- [ ] 목표 9 — 스레드 보기: `hermes-journal.py thread <task_id>` 가 시간순 이벤트를, `graph` 가 `parent_task_id` · `caused_by` 간선을 낸다. 검증: 테스트 픽스처 5건.
-- [ ] 목표 10 — 결정화 스킬 `rotate-ephemeral-work-logs` 가 작업 이력을 로테이션 대상에서 제외한다(G-10). 검증: 스킬 본문에 제외 문장 + `hermes-cleanup.py` 가 `journal_events` 를 건드리지 않음(테스트).
-- [ ] 목표 11 — 구버전 스키마 호환(planner-lite 지적): `journal_events` · `loops.started_by` 가 없는 기존 `state.db`(zeroday 포함)에서 Stop · SubagentStop 훅이 죽지 않고 한 줄 알린 뒤 exit 0, 첫 실행 때 지연 생성(`_ensure_injection_source_column` 패턴, `scripts/hermes-search.py:53`). 검증: 현재 스키마 DB 사본으로 훅 2개 실행 → exit 0 + 테이블·칸 생성.
-- [ ] 목표 12 — 롤백 경로(planner-lite 지적): 트리거가 기존 쓰기 경로를 막았을 때 `hermes-journal.py rollback --confirm` 이 트리거 2개와 테이블을 지우지 않고 **이름만 바꿔**(`journal_events_disabled_<ts>`) 훅이 조용히 건너뛰게 한다. 검증: 테스트 — rollback 뒤 훅 exit 0, 이벤트 보존.
-- [ ] 목표 13 — heartbeat(RV-10, 2026-09-16 사용자 위임 확정): 진행 중 작업은 `step` 이벤트를 N분마다 남기고, `task.started` 뒤 heartbeat 가 간격을 넘겨 끊기면 **Stop 훅을 기다리지 않고** 누락 이벤트(`system:claude-stop-journal-gap` 과 같은 형식, `evidence.reason = heartbeat-timeout`)를 붙인다. N 은 `.hermes/journal.json` 에서 설정 가능하고 **기본값은 구현 시 실측 후** 정한다(근거 없는 고정값 금지 — 이 저장소의 루프 `loop_steps` 간격 분포를 재서 적는다). 검증: `tests/hermes-journal-test.sh` — heartbeat 간격 초과 픽스처(`task.started` 뒤 마지막 `step` 시각이 N 을 넘김) → `gap-check` 가 누락 이벤트 1건, 간격 안이면 0건.
+- [x] 목표 1 — 설치 시 `<소우주>/.hermes/universe.id`(UUID v4 한 줄)가 생기고 git 추적된다. 재설치해도 바뀌지 않는다. 검증: `tests/hermes-universe-test.sh` — 두 번 설치 후 값 동일, `.gitignore` 마커에 `!.hermes/universe.id`.
+- [x] 목표 2 — 세 스크립트의 `project_id` 가 `universe.id` 값을 읽는다(없으면 basename 으로 폴백하고 `[hermes] universe.id 없음` 경고). 검증: 테스트에서 폴더 이름을 바꿔도 `session_summary.project_id` 가 같은 값.
+- [x] 목표 3 — `journal_events` 테이블이 INSERT 만 허용한다. 검증: 테스트에서 `UPDATE` · `DELETE` 가 트리거로 실패(`sqlite3.IntegrityError`).
+- [x] 목표 4 — 이벤트 기록기가 **허용목록 스키마**로만 받는다. 검증: 모르는 칸(`raw_text`) 을 넣으면 거부, `evidence.command` 에 인자가 붙으면(`curl -H …`) 명령 이름만 남김, `intent` 에 줄바꿈이면 거부.
+- [x] 목표 5 — 결과 3층이 기록된다: `claimed` 는 에이전트, `verified` 는 기계(`none` 은 `done_when` 형식이 기계 검증 불가일 때만, RV-09), `accepted` 는 사람. 검증: 테스트에서 에이전트 입력으로 `verified` 를 넘기면 무시되고 기계 값이 남는다.
+- [x] 목표 6 — Stop 훅이 세션 종료 시 `task.started` 만 있고 `task.finished` 없는 작업에 `system:claude-stop-journal-gap` 누락 이벤트를 붙인다. 검증: 테스트에서 모의 훅 입력으로 확인.
+- [x] 목표 7 — 행위자가 기계로 찍힌다: 대화형 = `agent:<main id>` + `requested_by: human:<git user.name>`, 헤드리스 루프 = `requested_by` 루프 시작자, cron = `system:hermes-cron`, 하위 에이전트 = `evidence.template = <agent_type>`(V-4). 검증: 테스트 4경로.
+- [x] 목표 8 — `loop_decisions` 의 결정이 `journal_events` 의 `decision` 이벤트로도 남는다(G-9 — J-05 는 "흡수" 가 아니라 **병기 후 단계적 흡수**). 검증: `tests/hermes-loop-test.sh` 결정 절 + journal 조회. 기존 `loop_decisions` 는 그대로 둔다(`hermes_loop_report.py` 가 읽음).
+- [x] 목표 9 — 스레드 보기: `hermes-journal.py thread <task_id>` 가 시간순 이벤트를, `graph` 가 `parent_task_id` · `caused_by` 간선을 낸다. 검증: 테스트 픽스처 5건.
+- [x] 목표 10 — 결정화 스킬 `rotate-ephemeral-work-logs` 가 작업 이력을 로테이션 대상에서 제외한다(G-10). 검증: 스킬 본문에 제외 문장 + `hermes-cleanup.py` 가 `journal_events` 를 건드리지 않음(테스트).
+- [x] 목표 11 — 구버전 스키마 호환(planner-lite 지적): `journal_events` · `loops.started_by` 가 없는 기존 `state.db`(zeroday 포함)에서 Stop · SubagentStop 훅이 죽지 않고 한 줄 알린 뒤 exit 0, 첫 실행 때 지연 생성(`_ensure_injection_source_column` 패턴, `scripts/hermes-search.py:53`). 검증: 현재 스키마 DB 사본으로 훅 2개 실행 → exit 0 + 테이블·칸 생성.
+- [x] 목표 12 — 롤백 경로(planner-lite 지적): 트리거가 기존 쓰기 경로를 막았을 때 `hermes-journal.py rollback --confirm` 이 트리거 2개와 테이블을 지우지 않고 **이름만 바꿔**(`journal_events_disabled_<ts>`) 훅이 조용히 건너뛰게 한다. 검증: 테스트 — rollback 뒤 훅 exit 0, 이벤트 보존.
+- [x] 목표 13 — heartbeat(RV-10, 2026-09-16 사용자 위임 확정): 진행 중 작업은 `step` 이벤트를 N분마다 남기고, `task.started` 뒤 heartbeat 가 간격을 넘겨 끊기면 **Stop 훅을 기다리지 않고** 누락 이벤트(`system:claude-stop-journal-gap` 과 같은 형식, `evidence.reason = heartbeat-timeout`)를 붙인다. N 은 `.hermes/journal.json` 에서 설정 가능하고 **기본값은 구현 시 실측 후** 정한다(근거 없는 고정값 금지 — 이 저장소의 루프 `loop_steps` 간격 분포를 재서 적는다). 검증: `tests/hermes-journal-test.sh` — heartbeat 간격 초과 픽스처(`task.started` 뒤 마지막 `step` 시각이 N 을 넘김) → `gap-check` 가 누락 이벤트 1건, 간격 안이면 0건.
 
 ## 3. 비목표 (Out of Scope)
 
@@ -133,9 +133,31 @@ CREATE TRIGGER IF NOT EXISTS journal_no_delete BEFORE DELETE ON journal_events B
 
 - `loop_decisions` 를 journal 로 완전히 대체하지 않고 병기한다 — `hermes_loop_report.py` 가 `loop_decisions` 를 읽어 report.html 을 만든다. 대체(단계적 흡수)는 계획 5 이후 별도. decision-log J-05 를 이 내용으로 정정했다(2026-09-16).
 - 기존 `messages` 테이블(`hermes-message.py`)은 설계상 폐기 대상(skill-proposal-delivery §4)이나 이번 범위 밖 — 계획 5 에서 정리.
+- **같은 커널 틱에서는 "이후" 가 없다**(Step 1 여파): 설치 영수증에서 겪은 것과 같은 문제를
+  이 계획에서도 만날 뻔했다. 시각 비교로 "그 뒤에 일어난 일" 을 고를 때는 틱을 넘겼는지 확인해야 한다.
+- **설치기에 `SubagentStop` 훅 지원이 아예 없었다**(Step 4): 계획 §4 는 이 훅이 있다고 전제했으나
+  `lib/settings_gen.sh` · `lib/generate_settings_json.py` 어디에도 없었다. 훅 종류를 하나 더하자
+  `generate_settings_json` 복잡도가 기준선 48을 넘어 50이 됐고, if 4개를 표 하나로 접어 46으로
+  **낮춘 뒤** 기준선도 46으로 내렸다(회피가 아니라 개선).
+- **기본값 판정이 기존 테스트를 깼다**(Step 5): heartbeat 기본값을 120분으로 넣자
+  `gap-check` 가 "방금 시작한 작업" 을 더 이상 누락으로 보지 않게 되어, 그 전에 쓴 단언 3개가
+  실패했다. 세션 종료용 `--all` 을 따로 두는 것이 맞는 설계였고 테스트를 그에 맞게 고쳤다.
+- `hermes_loop_decisions.py` 가 `.deprc` 의 어느 계층에도 없었다(R-dep-4 경고). 새 모듈 6개와 함께
+  실측 import 그래프로 tier 를 계산해 등록했다(0·1·2·3).
 
-## 8. 회고 (완료 시 작성)
+## 8. 회고
 
-- 잘된 것:
-- 잘못된 것:
-- 다음 룰 후보: "작업 이력은 원문을 담지 않는다(허용목록)" → R 룰 + 검증기.
+- **잘된 것 — 기계가 믿지 않게 만든 것.** `verified` 를 입력으로 받지 않고 기록기가 다시 계산하게
+  한 덕에, 에이전트가 `verified: pass` 를 주장해도 증거가 없으면 `none` 으로 남는다. "주장 성공 ·
+  기계 실패"(`mismatch`) 보기가 그 자리에서 공짜로 나온다.
+- **잘된 것 — 허용목록이 원문 유입을 실제로 막는다.** `evidence.command` 를 이름만 남기게 해서
+  `curl -H "Authorization: Bearer …"` 를 넣어도 `curl` 만 저장된다(테스트로 고정). 모르는 칸은
+  조용히 버리지 않고 거부한다 — 버리면 기록자가 계속 같은 실수를 한다.
+- **잘못된 것 — 계획서가 설치기의 실제 능력을 확인하지 않았다.** `SubagentStop` 훅이 있다고
+  전제했으나 없었다. 계획 §4 "영향 영역" 을 쓸 때 훅 배열 이름을 실측했더라면 Step 4 범위가
+  처음부터 정확했을 것이다.
+- **잘못된 것 — 기존 테스트를 깨는 기본값.** 값을 정하는 변경은 그 값을 전제하던 단언을 깬다.
+  실측으로 값을 정한 것은 맞았지만, 정하기 전에 어떤 단언이 "값 없음" 에 기대고 있는지 먼저
+  봤어야 했다.
+- **다음 룰 후보:** "작업 이력은 원문을 담지 않는다(허용목록)" → `hermes_journal_schema.validate`
+  가 강제 장치이고 `tests/hermes-journal-test.sh` §3 이 검증한다. R 룰로 승격할 만하다.

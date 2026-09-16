@@ -1,0 +1,10 @@
+{
+  "agents": [
+    {
+      "agent_id": "01a0a8ef-92d3-7074-8e48-2f9855564d01",
+      "name": "main",
+      "status": "active",
+      "created_by": "system:installer"
+    }
+  ]
+}

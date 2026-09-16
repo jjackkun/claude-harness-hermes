@@ -93,6 +93,11 @@
 
 ### 확정 스키마 (`state.db`)
 
+> ✅ **구현 완료 (2026-09-16, 계획 2 Step 3)** — 이 스키마는 `scripts/hermes_journal_schema.py`
+> 의 `SCHEMA_SQL` 이 유일한 원천이고, 아래 블록은 그 사본이다. 인덱스 두 개
+> (`journal_task_idx` · `journal_universe_idx`)가 추가됐다. 검증: `tests/hermes-journal-test.sh`.
+
+
 ```sql
 CREATE TABLE IF NOT EXISTS journal_events (
   event_id        TEXT PRIMARY KEY,          -- UUIDv7
@@ -228,11 +233,19 @@ CREATE TRIGGER IF NOT EXISTS journal_no_delete BEFORE DELETE ON journal_events B
 | 세션 종료 | `task.started` 있음 · `task.finished` 없음 | Stop 훅 (`hermes-journal.py gap-check`) |
 | 세션 도중 (heartbeat) | `task.started` 뒤 N분마다 오던 `step` 이 끊김 | 다음 훅 실행 시 `gap-check` — 세션 종료를 기다리지 않는다 |
 
-- heartbeat 간격 N 은 2절과 같이 미정이다. 값이 정해지면 두 곳을 함께 고친다.
+- heartbeat 간격 N = **120분** (2026-09-16 실측으로 확정, 계획 2 Step 5).
+  근거: zeroday-frontend 의 `loop_steps` 9구간에서 중앙 5.7분 · 정상 최대 13.4분 ·
+  이상치 1건 79.7분(사람이 자리를 비운 구간). "끊겼다" 고 부르려면 정상 구간을 넘어야 하므로
+  관측 최대의 1.5배로 잡았다. 표본이 9구간뿐이라 소우주마다 `.hermes/journal.json` 의
+  `heartbeat_minutes` 로 바꾼다. 표본이 쌓이면 다시 잰다.
+- 두 감지는 명령이 다르다: 세션 종료는 `gap-check --all`(간격 무관, 사유 `session-end`),
+  heartbeat 는 `gap-check`(간격 초과만, 사유 `heartbeat-timeout`). 플래그를 잘못 쓰면
+  진행 중인 작업이 버려진 것으로 기록된다.
 
 ## 9. 보존 규칙
 
 - **로테이션·truncate 금지.** 작업 이력은 원본이다. 결정화 스킬 `rotate-ephemeral-work-logs`("jsonl 로그는 로테이션한다")에서 명시적으로 제외한다(G-10).
+  ✅ 2026-09-16 반영: 스킬 본문에 제외 문장을 넣고, `hermes-cleanup.py` 실행 후 이력이 남는 것을 실측했다(1건 → 1건).
 - **비상 삭제:** 비밀값이 새어 들어간 경우에만 쓴다.
   1. `tombstone` 이벤트를 남긴다.
   2. 사람(`human:`)이 AI 세션 **밖**에서 `hermes-sync.py tombstone` 을 실행한다. 이 명령은 로컬 트리거를 잠시 내려 해당 이벤트를 지우고, 원격 조각을 물리적으로 지운 뒤 `refs/hermes/sync` 만 재작성한다. 코드 이력은 건드리지 않는다.
