@@ -15,8 +15,8 @@
 
 ## 2. 목표 (What — 검증 가능한 형태)
 
-- [ ] 목표 1 — `skill_index` 에 `universe_id` · `layer`(`universe|common|unit|agent`) · `unit_id` · `agent_id` · `skill_id`(층을 옮겨도 불변) 칸이 있고, 기존 1088행은 `layer='common'`, `universe_id` = 현 소우주, 나머지 NULL 로 채워진다(L-01 "소우주 공통(미배정)"). 검증: (a) `tests/hermes-skill-layers-test.sh` 합성 픽스처 — 행 수 불변, 값 분포 (b) **실제 사본 리허설**: `cp /home/jjackkun/PROJECT/zeroday-frontend/.hermes/state.db /tmp/zd.db && python3 scripts/hermes-init.py --db /tmp/zd.db && python3 -c "import sqlite3;c=sqlite3.connect('/tmp/zd.db');print(c.execute('select count(*),sum(layer=\"common\") from skill_index').fetchone())"` → `(1088, 1088)`.
-- [ ] 목표 2 — 층별 저장 위치가 코드로 고정된다: 우주 `.claude/skills/<이름>/`(설치 목록에 있음), 소우주 공통 `.hermes/skills/`(기존 자리 유지 — 옮기지 않는다), 단위 `.hermes/units/<unit_id>/skills/`, 개인 `.hermes/agents/<agent_id>/skills/`. 검증: `hermes_skill_layers.py` 경로 함수 테스트 + 색인기가 네 자리를 모두 훑음.
+- [x] 목표 1 — `skill_index` 에 `universe_id` · `layer`(`universe|common|unit|agent`) · `unit_id` · `agent_id` · `skill_id`(층을 옮겨도 불변) 칸이 있고, 기존 1088행은 `layer='common'`, `universe_id` = 현 소우주, 나머지 NULL 로 채워진다(L-01 "소우주 공통(미배정)"). 검증: (a) `tests/hermes-skill-layers-test.sh` 합성 픽스처 — 행 수 불변, 값 분포 (b) **실제 사본 리허설**: `cp /home/jjackkun/PROJECT/zeroday-frontend/.hermes/state.db /tmp/zd.db && python3 scripts/hermes-init.py --db /tmp/zd.db && python3 -c "import sqlite3;c=sqlite3.connect('/tmp/zd.db');print(c.execute('select count(*),sum(layer=\"common\") from skill_index').fetchone())"` → `(1088, 1088)`.
+- [x] 목표 2 — 층별 저장 위치가 코드로 고정된다: 우주 `.claude/skills/<이름>/`(설치 목록에 있음), 소우주 공통 `.hermes/skills/`(기존 자리 유지 — 옮기지 않는다), 단위 `.hermes/units/<unit_id>/skills/`, 개인 `.hermes/agents/<agent_id>/skills/`. 검증: `hermes_skill_layers.py` 경로 함수 테스트 + 색인기가 네 자리를 모두 훑음.
 - [ ] 목표 3 — 주입 필터(RV-12): `hermes-search.py` 가 소환된 에이전트(`HERMES_AGENT_ID`, 없으면 `main`)의 `unit` · `agent_id` 에 맞는 층만 검색한다. 검증: 테스트 — 다른 단위의 스킬이 결과에 0건.
 - [ ] 목표 4 — 주입 형식 하위 호환(RV-12): `description` 머리말이 있는 스킬은 `이름 — 설명` 한 줄로, 없는 스킬은 현행 `read_skill_snippet` 10줄로 주입된다. 검증: 테스트 두 종류 픽스처 + zeroday 스킬 1088개를 픽스처로 돌려 주입 형식이 전부 스니펫임을 확인(회귀 보호).
 - [ ] 목표 5 — 스킬 본문 요청 경로: 에이전트가 `hermes-skill.py read <이름>` 으로 본문을 그 턴에 끌어온다(진행적 공개). 검증: CLI 출력 = 파일 본문, `skill_injection` 에 `source='read'` 기록.
@@ -102,6 +102,10 @@
 
 - 설계 문서 `skill-layers.md` §1 표의 소우주 공통 위치(`.hermes/skills/common/`)는 이 계획의 결정(위 첫 항목)으로 `.hermes/skills/` 로 바뀐다 — 2026-09-16 현재 §1 표와 decision-log(RV-18)는 반영됐고, 본문 29행 한 곳만 남았으며 설계 문서 갱신 작업에서 처리한다.
 - 우주 승격 후 "소우주 확장분 제거" 는 자동이 아니라 안내다 — 소우주가 우주판을 `update-all` 로 받은 뒤 사람이 확장 파일을 지운다.
+- **2026-09-17 Step 1 리뷰(code-reviewer + database-reviewer)에서 드러난 것:**
+  - `layer_of_path` 의 unit/agent 판정식이 `parts[:3] == [".hermes","units",parts[2]]` 로 자기 자신과 비교(tautology)라 얕은 경로 입력에서 IndexError 위험 → 길이·값을 먼저 확인하도록 고쳤다. 실사용 경로(`--project`)는 이 함수를 안 타지만 하위호환 `--skills-dir` 경로가 탄다.
+  - `ensure_layer_columns` 의 `PRAGMA table_info` → `ALTER` 사이 TOCTOU 경합(두 세션 동시 첫 설치 시 `duplicate column name` 예외)을 `try/except sqlite3.OperationalError` 로 방어했다. ALTER 는 즉시 자체 커밋되므로 경합 패자는 그 칸이 이미 있는 상태.
+  - **skill_id 신원의 한계(후속):** 현재 `skill_id=COALESCE(...)` 는 **같은 경로 재색인**만 보존한다. 층 이동(agent→common 승격 등)은 경로가 바뀌어 `ON CONFLICT(skill_path)` 가 안 걸리고 새 행+새 skill_id 로 들어가며 옛 행이 고아로 남는다. 이 계획에 **층 이동 연산 자체가 없어**(승격은 Step 4 제안·배달, 실제 파일 이동은 사람) 지금 이관 로직을 넣는 건 YAGNI 다. Step 4(또는 스킬 이동 연산이 생기는 시점)에서 "옛 경로 skill_id 읽어 새 INSERT 에 명시 + 옛 행 DELETE 를 한 트랜잭션" + `skill_id` 부분 UNIQUE 인덱스(`WHERE skill_id IS NOT NULL`)를 함께 넣는다. 주석은 이 한계를 정직하게 반영하도록 고쳤다.
 
 ## 8. 회고 (완료 시 작성)
 

@@ -14,6 +14,8 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from hermes_journal_schema import ensure_schema, schema_disabled  # noqa: E402  (작업 이력 스키마)
+from hermes_skill_layers import ensure_layer_columns  # noqa: E402  (스킬 4층 칸)
+from hermes_universe import read_universe_id  # noqa: E402  (소우주 키)
 
 
 GLOBAL_DB_DIR = os.path.expanduser("~/.hermes")
@@ -45,11 +47,30 @@ def init_project_db(project_path: str):
     os.makedirs(os.path.join(db_dir, "skills"), exist_ok=True)
     con = connect_db(db_path)
     _apply_schema(con, scope="project")
+    # 스킬 4층 칸(계획 5 목표 1) — 기존 행은 layer='common', 소우주 키가 있으면 backfill.
+    ensure_layer_columns(con, read_universe_id(project_path))
     # 작업 이력(추가 전용). 이미 있으면 그대로 두고, rollback 으로 꺼 둔 DB 는 되살리지 않는다.
     if not schema_disabled(con):
         ensure_schema(con)
+    con.commit()
     con.close()
     print(f"[hermes] project DB initialized: {db_path}")
+
+
+def migrate_db_file(db_path: str):
+    """단일 state.db 파일에 스키마·층 칸 마이그레이션만 적용한다(사본 리허설·수동 이전용).
+
+    소우주 키는 파일 옆 `.hermes/universe.id` 가 있으면 읽고, 없으면 NULL 로 둔다.
+    """
+    con = connect_db(db_path)
+    _apply_schema(con, scope="project")
+    project = os.path.dirname(os.path.dirname(os.path.abspath(db_path)))
+    ensure_layer_columns(con, read_universe_id(project))
+    if not schema_disabled(con):
+        ensure_schema(con)
+    con.commit()
+    con.close()
+    print(f"[hermes] db migrated: {db_path}")
 
 
 def _apply_schema(con: sqlite3.Connection, scope: str):
@@ -246,6 +267,8 @@ def main():
                        help="[PATH]/.hermes/state.db 초기화")
     group.add_argument("--both", metavar="PATH",
                        help="global + project 둘 다 초기화")
+    group.add_argument("--db", metavar="PATH",
+                       help="단일 state.db 파일에 스키마·층 마이그레이션만 적용(사본 리허설)")
     args = parser.parse_args()
 
     if args.init_global:
@@ -255,6 +278,8 @@ def main():
     elif args.both:
         init_global_db()
         init_project_db(os.path.abspath(args.both))
+    elif args.db:
+        migrate_db_file(os.path.abspath(args.db))
 
 
 if __name__ == "__main__":
