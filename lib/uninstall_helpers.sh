@@ -146,27 +146,41 @@ PYEOF
   fi
 }
 
-# ── .claude/{skills,agents,rules} 하네스 symlink 정리 ────────────────────────
-# claude-harness-hermes/assets 를 가리키는 symlink 만 제거. 사용자 실파일/타 symlink 보존.
+# ── .claude/{skills,agents,rules} 하네스 설치물 정리 ───────────────────────
+# 설치 목록(.claude/.factory-manifest.json)에 등재된 항목만 제거. 목록에 없는 실디렉터리(소우주
+# 자체 스킬)와 타 symlink 는 보존. 목록이 없는 구버전 설치는 assets 를 가리키는 symlink 만 제거.
+# 설계: docs/hermes-universe/design/world/copy-install.md §4 #9 (계획 1 목표 11).
 uninstall_asset_symlinks() {
   local project_path="$1"
   local assets_dir="$DEV_SETTING_DIR/assets"
-  local sub dir entry target
+  local manifest="$project_path/.claude/.factory-manifest.json"
+  local sub dir entry target name
   for sub in skills agents rules; do
     dir="$project_path/.claude/$sub"
     [[ -d "$dir" ]] || continue
-    for entry in "$dir"/*; do
-      [[ -L "$entry" ]] || continue
-      target="$(readlink "$entry")"
-      [[ "$target" == "$assets_dir"* ]] || continue
-      _rm_path file "$entry" ".claude/$sub/$(basename "$entry") (symlink)"
-    done
+    if [[ -f "$manifest" ]]; then
+      while IFS= read -r name; do
+        [[ -n "$name" ]] || continue
+        entry="$dir/$name"; [[ "$sub" == agents ]] && entry="$entry.md"
+        [[ -e "$entry" || -L "$entry" ]] || continue
+        _rm_path "$([[ -d "$entry" && ! -L "$entry" ]] && echo dir || echo file)" "$entry" ".claude/$sub/$(basename "$entry") (설치 목록)"
+      done < <(manifest_read "$project_path/.claude" "$sub")
+    else
+      for entry in "$dir"/*; do
+        [[ -L "$entry" ]] || continue
+        target="$(readlink "$entry")"
+        [[ "$target" == "$assets_dir"* || "$target" == ../../assets/* ]] || continue
+        _rm_path file "$entry" ".claude/$sub/$(basename "$entry") (symlink)"
+      done
+    fi
     # 비었으면 디렉터리 제거
     if [[ $DRY_RUN -eq 0 && -d "$dir" ]] && [[ -z "$(ls -A "$dir" 2>/dev/null)" ]]; then
       rmdir "$dir"
       echo -e "  ${GREEN}✔${RESET} 삭제: .claude/$sub/ (비어있어 제거)"
     fi
   done
+  [[ -f "$manifest" ]] && _rm_path file "$manifest" ".claude/.factory-manifest.json"
+  return 0
 }
 
 # ── .git/hooks/pre-commit + check-component-structure.mjs ───────────────────

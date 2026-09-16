@@ -29,6 +29,9 @@ source "$_DS_LIB/windows.sh"
 source "$_DS_LIB/logging.sh"
 # shellcheck source=lib/preset.sh
 source "$_DS_LIB/preset.sh"
+# factory_manifest 는 installers 가 쓰므로 먼저.
+# shellcheck source=lib/factory_manifest.sh
+source "$_DS_LIB/factory_manifest.sh"
 # shellcheck source=lib/installers.sh
 source "$_DS_LIB/installers.sh"
 # shellcheck source=lib/plugins.sh

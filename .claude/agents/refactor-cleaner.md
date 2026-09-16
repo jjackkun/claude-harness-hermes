@@ -1,1 +1,1 @@
-/home/jjackkun/PROJECT/claude-harness-hermes/assets/agents/refactor-cleaner.md
+../../assets/agents/refactor-cleaner.md

@@ -1,0 +1,121 @@
+#!/usr/bin/env bash
+# lib/factory_manifest.sh
+# Responsibility: 설치 목록(.claude/.factory-manifest.json) 의 기록·읽기·정리·해시 대조만 담당.
+# 설계: docs/hermes-universe/design/world/copy-install.md §4 #2·#3, 결정 I-02.
+#
+# 목록 항목: {name, kind(skills|agents|rules), factory_commit, sha256}
+# 목록은 git 에 커밋된다 — 다른 컴퓨터의 clone 도 어느 파일이 공장 것인지 알아야
+# 변조 감지·정리가 동작한다. (.dev-setting-manifest.json 과 다른 점)
+#
+# 공개 함수 4개: manifest_add · manifest_read · manifest_prune · manifest_verify
+
+_MANIFEST_NAME=".factory-manifest.json"
+
+_manifest_path() { printf '%s/%s' "$1" "$_MANIFEST_NAME"; }
+
+# 디렉터리·파일 내용 해시. 파일 순서를 고정해 컴퓨터가 달라도 같은 값.
+_manifest_sha() {
+  local target="$1"
+  if [[ -d "$target" ]]; then
+    (cd "$target" && find . -type f | LC_ALL=C sort | xargs -r sha256sum) | sha256sum | awk '{print $1}'
+  else
+    sha256sum "$target" | awk '{print $1}'
+  fi
+}
+
+# manifest_add <claude_dir> <kind> <name> <installed_path>
+# 항목을 추가하거나(같은 kind+name 이면) 교체한다.
+manifest_add() {
+  local claude_dir="$1" kind="$2" name="$3" path="$4"
+  local sha commit
+  sha="$(_manifest_sha "$path")"
+  commit="$(git -C "${DEV_SETTING_DIR:-$ASSETS_DIR/..}" rev-parse HEAD 2>/dev/null || echo unknown)"
+  M_KIND="$kind" M_NAME="$name" M_SHA="$sha" M_COMMIT="$commit" \
+    python3 - "$(_manifest_path "$claude_dir")" <<'PYEOF'
+import json, os, sys
+p = sys.argv[1]
+items = []
+if os.path.isfile(p):
+    try:
+        items = json.load(open(p, encoding="utf-8")).get("items", [])
+    except (json.JSONDecodeError, AttributeError):
+        print("[factory-manifest WARN] 설치 목록이 손상돼 새로 만든다: " + p, file=sys.stderr)
+        items = []
+k, n = os.environ["M_KIND"], os.environ["M_NAME"]
+items = [i for i in items if not (i.get("kind") == k and i.get("name") == n)]
+items.append({"name": n, "kind": k,
+              "factory_commit": os.environ["M_COMMIT"], "sha256": os.environ["M_SHA"]})
+items.sort(key=lambda i: (i["kind"], i["name"]))
+tmp = p + ".tmp"
+with open(tmp, "w", encoding="utf-8") as f:
+    json.dump({"version": 1, "items": items}, f, ensure_ascii=False, indent=2)
+os.replace(tmp, p)   # 원자적 교체 — 도중에 죽어도 목록이 잘린 채 남지 않는다
+PYEOF
+}
+
+# manifest_read <claude_dir> <kind>  → 그 kind 의 이름을 한 줄씩 출력
+manifest_read() {
+  local p; p="$(_manifest_path "$1")"
+  [[ -f "$p" ]] || return 0
+  M_KIND="$2" python3 - "$p" <<'PYEOF'
+import json, os, sys
+try:
+    items = json.load(open(sys.argv[1], encoding="utf-8")).get("items", [])
+except (json.JSONDecodeError, AttributeError):
+    print("[factory-manifest WARN] 설치 목록이 손상됨: " + sys.argv[1], file=sys.stderr)
+    items = []
+for i in items:
+    if i.get("kind") == os.environ["M_KIND"]:
+        print(i["name"])
+PYEOF
+}
+
+# manifest_prune <claude_dir> <kind> <keep_names...>
+# 목록에 있으나 keep 에 없는 항목을 목록에서 뺀다. 뺀 이름을 한 줄씩 출력한다(호출측이 파일을 지운다).
+manifest_prune() {
+  local claude_dir="$1" kind="$2"; shift 2
+  local p; p="$(_manifest_path "$claude_dir")"
+  [[ -f "$p" ]] || return 0
+  M_KIND="$kind" M_KEEP="$(printf '%s\n' "$@")" python3 - "$p" <<'PYEOF'
+import json, os, sys
+p = sys.argv[1]
+try:
+    data = json.load(open(p, encoding="utf-8"))
+except json.JSONDecodeError:
+    print("[factory-manifest WARN] 설치 목록이 손상돼 정리를 건너뛴다: " + p, file=sys.stderr)
+    sys.exit(0)
+keep = set(l for l in os.environ["M_KEEP"].split("\n") if l)
+k = os.environ["M_KIND"]
+kept, removed = [], []
+for i in data.get("items", []):
+    if i.get("kind") == k and i["name"] not in keep:
+        removed.append(i["name"])
+    else:
+        kept.append(i)
+data["items"] = kept
+tmp = p + ".tmp"
+with open(tmp, "w", encoding="utf-8") as f:
+    json.dump(data, f, ensure_ascii=False, indent=2)
+os.replace(tmp, p)
+for n in removed:
+    print(n)
+PYEOF
+}
+
+# manifest_verify <claude_dir> <kind> <name> <installed_path>
+# 목록의 sha256 과 현재 내용이 같으면 0, 다르면 1, 목록에 없으면 2.
+manifest_verify() {
+  local claude_dir="$1" kind="$2" name="$3" path="$4"
+  local p; p="$(_manifest_path "$claude_dir")"
+  [[ -f "$p" && -e "$path" ]] || return 2
+  local recorded
+  recorded="$(M_KIND="$kind" M_NAME="$name" python3 - "$p" <<'PYEOF'
+import json, os, sys
+for i in json.load(open(sys.argv[1], encoding="utf-8")).get("items", []):
+    if i.get("kind") == os.environ["M_KIND"] and i.get("name") == os.environ["M_NAME"]:
+        print(i.get("sha256", "")); break
+PYEOF
+)"
+  [[ -n "$recorded" ]] || return 2
+  [[ "$recorded" == "$(_manifest_sha "$path")" ]]
+}

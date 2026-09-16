@@ -49,6 +49,8 @@ EOF
   esac
 done
 
+# shellcheck source=lib/factory_manifest.sh
+source "$DEV_SETTING_DIR/lib/factory_manifest.sh"
 # shellcheck source=lib/uninstall_helpers.sh
 source "$DEV_SETTING_DIR/lib/uninstall_helpers.sh"
 

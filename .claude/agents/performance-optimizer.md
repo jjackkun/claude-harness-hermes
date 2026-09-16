@@ -1,1 +1,1 @@
-/home/jjackkun/PROJECT/claude-harness-hermes/assets/agents/performance-optimizer.md
+../../assets/agents/performance-optimizer.md

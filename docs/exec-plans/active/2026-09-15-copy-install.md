@@ -15,19 +15,19 @@
 
 ## 2. 목표 (What — 검증 가능한 형태)
 
-- [ ] 목표 1 — 설치기가 OS 와 무관하게 **복사**한다. 검증: 임시 프로젝트에 `project-claude.sh <tmp> harness hermes` 후 `find <tmp>/.claude/{skills,rules,agents} -type l | wc -l` = 0.
-- [ ] 목표 2 — 설치 목록 `.claude/.factory-manifest.json` 이 생기고 항목 수가 SKILLS+AGENTS+RULES 와 같으며 각 항목에 `name · kind · factory_commit · sha256` 이 있다. 검증: `tests/copy-install-test.sh` 의 manifest 절.
-- [ ] 목표 3 — 낡은 항목 정리가 **링크 여부가 아니라 설치 목록 기준**이다. 검증: 소우주 자체 스킬 폴더(`<tmp>/.claude/skills/my-own/`)를 두고 프리셋에서 스킬 하나를 뺀 뒤 재설치 → 뺀 스킬은 지워지고 `my-own` 은 남는다(테스트).
-- [ ] 목표 4 — 설치 목록에 있는 파일을 세션 안에서 편집하면 훅이 경고한다. 검증: `tests/copy-install-test.sh` 의 tamper 절 — PostToolUse 입력을 흉내 내 `[factory-tamper WARN]` 출력.
-- [ ] 목표 5 — `.hermes/factory.json` 에 `remote_url` · `installed_version`(공장 HEAD 해시)이 기록된다. 검증: 설치 후 `python3 -c "import json;d=json.load(open('.hermes/factory.json'));assert d['remote_url'] and len(d['installed_version'])==40"`.
-- [ ] 목표 6 — 공장 자기 설치는 **저장소 안 상대경로 링크**다. 검증: 공장에서 `find .claude -type l -exec readlink {} \; | grep -c '^/'` = 0, 그리고 `git ls-files -s .claude | grep -c 120000` 의 링크가 모두 `../../assets/...` 형태.
-- [ ] 목표 7 — 세션 시작 훅이 깨진 링크를 감지해 재설치를 안내한다. 검증: 테스트에서 링크 대상을 지운 뒤 훅 실행 → `[factory-link WARN]` 출력.
-- [ ] 목표 8 — 공장의 모순 결정화 스킬 2개(`.hermes/skills/repository-isolation-principle.md`, `unified-hook-deployment.md`)가 삭제되고 `skill_index` 에서 tombstone 된다. 검증: 파일 없음 + `hermes-search.py` 가 주입하지 않음.
-- [ ] 목표 9 — 기존 테스트 전부 통과. 검증: `bash tests/run-all.sh` 0 실패, `tests/update-all-roundtrip-test.sh` · `tests/uninstall-roundtrip-test.sh` · `tests/windows-helpers-test.sh` 포함.
+- [x] 목표 1 — 설치기가 OS 와 무관하게 **복사**한다. 검증: 임시 프로젝트에 `project-claude.sh <tmp> harness hermes` 후 `find <tmp>/.claude/{skills,rules,agents} -type l | wc -l` = 0.
+- [x] 목표 2 — 설치 목록 `.claude/.factory-manifest.json` 이 생기고 항목 수가 SKILLS+AGENTS+RULES 와 같으며 각 항목에 `name · kind · factory_commit · sha256` 이 있다. 검증: `tests/copy-install-test.sh` 의 manifest 절.
+- [x] 목표 3 — 낡은 항목 정리가 **링크 여부가 아니라 설치 목록 기준**이다. 검증: 소우주 자체 스킬 폴더(`<tmp>/.claude/skills/my-own/`)를 두고 프리셋에서 스킬 하나를 뺀 뒤 재설치 → 뺀 스킬은 지워지고 `my-own` 은 남는다(테스트).
+- [x] 목표 4 — 설치 목록에 있는 파일을 세션 안에서 편집하면 훅이 경고한다. 검증: `tests/copy-install-test.sh` 의 tamper 절 — PostToolUse 입력을 흉내 내 `[factory-tamper WARN]` 출력.
+- [x] 목표 5 — `.hermes/factory.json` 에 `remote_url` · `installed_version`(공장 HEAD 해시)이 기록된다. 검증: 설치 후 `python3 -c "import json;d=json.load(open('.hermes/factory.json'));assert d['remote_url'] and len(d['installed_version'])==40"`.
+- [x] 목표 6 — 공장 자기 설치는 **저장소 안 상대경로 링크**다. 검증: 공장에서 `find .claude -type l -exec readlink {} \; | grep -c '^/'` = 0, 그리고 `git ls-files -s .claude | grep -c 120000` 의 링크가 모두 `../../assets/...` 형태.
+- [x] 목표 7 — 세션 시작 훅이 깨진 링크를 감지해 재설치를 안내한다. 검증: 테스트에서 링크 대상을 지운 뒤 훅 실행 → `[factory-link WARN]` 출력.
+- [x] 목표 8 — 공장의 모순 결정화 스킬 2개(`.hermes/skills/repository-isolation-principle.md`, `unified-hook-deployment.md`)가 삭제되고 `skill_index` 에서 tombstone 된다. 검증: 파일 없음 + `hermes-search.py` 가 주입하지 않음.
+- [x] 목표 9 — 기존 테스트 전부 통과. 검증: `bash tests/run-all.sh` 0 실패, `tests/update-all-roundtrip-test.sh` · `tests/uninstall-roundtrip-test.sh` · `tests/windows-helpers-test.sh` 포함.
 - [ ] 목표 10 — zeroday-frontend 이전: 링크 41개가 복사본으로 바뀐 상태를 **사용자가 커밋**한다. 검증: zeroday 에서 `git ls-files -s .claude | grep -c 120000` = 0, `.claude/.factory-manifest.json` 추적됨.
-- [ ] 목표 11 — 제거도 설치 목록 기준이다: `uninstall.sh` 가 manifest 항목만 지우고 소우주 자체 스킬은 남긴다. 검증: `tests/uninstall-roundtrip-test.sh` 통과 + 자체 스킬 폴더 잔존 케이스 추가.
-- [ ] 목표 12 — `is_windows_path` 분기가 설치·정리·백업 세 함수에서 사라지고 한 경로만 남는다. 검증: `grep -c is_windows_path lib/installers.sh` = 0, `tests/windows-helpers-test.sh` · `tests/windows-smoke.sh` 통과. `lib/harness_installers.sh` 의 `install_memory_symlink()`(667행 함수) 안 `ln -s` 는 메모리 폴더 링크(E-04, 범위 밖)라 남는다 — 테스트가 "저장소 안 `ln -s` 는 이 한 곳뿐" 을 `grep -n 'ln -s' lib/*.sh` 로 고정.
-- 비목표 추가(planner-lite 지적): 복사 설치로 소우주 저장소가 커진다 — 공장 `assets/skills` 39개 + 규칙 + 에이전트 15개 ≈ 수백 KB 텍스트(설치 전 `du -sh assets/skills assets/rules assets/agents` 로 수치를 이 문서 §7 에 적는다). 줄이는 일은 이번 범위 밖.
+- [x] 목표 11 — 제거도 설치 목록 기준이다: `uninstall.sh` 가 manifest 항목만 지우고 소우주 자체 스킬은 남긴다. 검증: `tests/uninstall-roundtrip-test.sh` 통과 + 자체 스킬 폴더 잔존 케이스 추가.
+- [x] 목표 12 — `is_windows_path` 분기가 설치·정리·백업 세 함수에서 사라지고 한 경로만 남는다. 검증: `grep -c is_windows_path lib/installers.sh` = 0, `tests/windows-helpers-test.sh` · `tests/windows-smoke.sh` 통과. `lib/harness_installers.sh` 의 `install_memory_symlink()`(667행 함수) 안 `ln -s` 는 메모리 폴더 링크(E-04, 범위 밖)라 남는다 — 테스트가 "저장소 안 `ln -s` 는 이 한 곳뿐" 을 `grep -n 'ln -s' lib/*.sh` 로 고정.
+- 비목표 추가(planner-lite 지적): 복사 설치로 소우주 저장소가 커진다 — 2026-09-16 실측 `du -sh`: `assets/skills` 1.3M · `assets/rules` 276K · `assets/agents` 84K(프리셋에 따라 일부만 복사). 줄이는 일은 이번 범위 밖.
 
 ## 3. 비목표 (Out of Scope)
 
@@ -104,11 +104,15 @@
 
 ## 7. 발견·예외
 
+- 2026-09-16 구현 중: 복사 설치가 되자 `cx-baseline-distribution-test.sh` 가 실패했다 — `.claude/rules/harness/examples/python/*.py` 가 심링크 시절에는 링크 하나로만 추적돼 R-cx 밖이었는데, 복사본은 실제 파일로 스테이징돼 복잡도 12·13 이 잡혔다. 규칙 예시집은 프로젝트 코드가 아니므로 `pre-commit.sh` 의 `HARNESS_MANAGED_RE` 에 `.claude/(skills|rules|agents)/` 를 더해 구조 검사(R-cx·R-dep·R-plan-missing)에서 뺐다. 원본은 공장이 검사한다.
+- 2026-09-16: `hermes-prune.py` 는 시간 기준 자동 tombstone 만 있어 즉시 tombstone 경로가 없다. 목표 8 은 `skill_index.state='tombstoned'` 직접 갱신으로 처리했다. 수동 tombstone CLI 는 계획 5(스킬 4층) 에서 다룬다.
+- 2026-09-16: `claude-harness-hermes-install` 스킬은 `assets/skills/` 에 없고 공장 `.claude/skills/` 에만 있는 로컬 스킬이었다. 거기서 고쳤다.
+
 - 2026-09-15 에 적었던 "이 컴퓨터 `.installed-projects` 에 zeroday-frontend 가 없다(3곳만)" 는 **틀린 관측**이었다. 2026-09-16 재실측: 12곳 등록, zeroday-frontend 포함(`wc -l < .installed-projects` = 12, `grep -c zeroday-frontend` = 1). 설계 근거 문서의 "등록 12곳" 과 일치한다 — Step 7 은 등록 확인 후 `update-all`.
 - 공장 자기 설치의 상대경로 링크는 `assets/` 이름이나 `.claude/` 깊이가 바뀌면 깨진다(E-02 손해). 훅이 잡는다.
 
-## 8. 회고 (완료 시 작성)
+## 8. 회고 (Step 7 사용자 실행 뒤 완료)
 
-- 잘된 것:
-- 잘못된 것:
-- 다음 룰 후보: "설치물은 저장소 밖 경로를 가리키지 않는다"(E-02) → `core-beliefs.md` R 룰 + `tests/copy-install-test.sh` 가 강제 장치.
+- 잘된 것: 세 설치 함수를 `_install_kind` 하나로 접어 `is_windows_path` 분기가 자연히 사라졌다. 이행 분기 덕에 기존 소우주 첫 재설치가 목록 없이도 안전했다(테스트 4절).
+- 잘못된 것: 복사 설치의 부작용(규칙 예시 .py 가 게이트에 잡힘)을 계획 단계에서 못 봤다 — 심링크가 "git 이 안을 보지 않게" 하던 효과를 설계 문서 어디에도 적지 않았기 때문이다.
+- 다음 룰 후보: "설치물은 저장소 밖 경로를 가리키지 않는다"(E-02) → `core-beliefs.md` **P10 등록 완료(Provisional)** + `tests/copy-install-test.sh` 8절이 강제 장치.

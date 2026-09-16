@@ -1,119 +1,116 @@
 #!/usr/bin/env bash
 # dev-setting/lib/installers.sh
 # Responsibility: 범용 에셋 installer — assets/{skills,agents,rules} 를 프로젝트의
-# .claude/ 아래로 심볼릭. 이미 사라진 preset 의 잔존 심볼릭 정리 포함.
+# .claude/ 아래로 **복사**하고 설치 목록(.factory-manifest.json)에 기록. 이미 사라진
+# preset 의 잔존 항목 정리는 목록 기준.
+# 설계: docs/hermes-universe/design/world/copy-install.md (I-01·I-02). 심링크 설치는 폐지.
 
-# _cleanup_stale_symlinks <dir> <ext> <current_names...>
-# claude-harness-hermes/assets 를 가리키는 심볼릭 중 현재 preset에 없는 것을 제거.
-# Windows 경로(NTFS)에는 WSL symlink 가 없으므로 early-return.
-_cleanup_stale_symlinks() {
-  local dir="$1" ext="$2"
-  shift 2
-  # Windows NTFS 마운트에는 WSL symlink 가 존재하지 않음 — 스킵
-  is_windows_path "$dir" && return 0
-
-  local -A keep=()
-  for name in "$@"; do keep["$name"]=1; done
-
+# _migrate_legacy_symlinks <dir> <kind> <ext>
+# 첫 재설치 이행 분기: 목록이 없던 시절의 심링크(대상이 $ASSETS_DIR 아래)를 목록에 옮겨 적는다.
+# 두 번째 실행부터는 목록이 있으므로 아무것도 하지 않는다. 3개월 뒤 제거 후보(계획 §6).
+_migrate_legacy_symlinks() {
+  local dir="$1" kind="$2" ext="$3"
   [[ -d "$dir" ]] || return 0
+  local entry target name n=0
   for entry in "$dir"/*; do
     [[ -L "$entry" ]] || continue
-    local target; target="$(readlink "$entry")"
-    [[ "$target" == "$ASSETS_DIR"* ]] || continue  # 로컬 파일은 건드리지 않음
-    local name; name="$(basename "$entry" "$ext")"
-    if [[ -z "${keep[$name]:-}" ]]; then
-      rm -rf "$entry"
-      log_info "  removed → $name"
-    fi
+    target="$(readlink "$entry")"
+    [[ "$target" == "$ASSETS_DIR"* ]] || continue
+    name="$(basename "$entry" "$ext")"
+    manifest_add "$(dirname "$dir")" "$kind" "$name" "$entry"
+    n=$((n+1))
   done
+  [[ $n -gt 0 ]] && log_info "  이행: 기존 심링크 ${n}건을 설치 목록에 옮겨 적음 ($kind)"
+  return 0
 }
 
-# _backup_user_asset <dst> <label>
-# preset 과 같은 이름의 *사용자 자체* 에셋(non-symlink 실디렉터리)이 있으면
-# 삭제하지 않고 <name>.backup-<타임스탬프> 로 이동 후 경고하고 설치를 계속한다.
-# Windows(NTFS) 타깃은 preset 설치 자체가 실디렉터리 복사라 구분 불가 → 호출측에서 스킵.
+# _cleanup_stale_assets <dir> <kind> <ext> <current_names...>
+# 설치 목록에 있으나 현재 preset 에 없는 항목만 제거. 목록에 없는 실디렉터리는 사용자 자산 — 건드리지 않음.
+_cleanup_stale_assets() {
+  local dir="$1" kind="$2" ext="$3"
+  shift 3
+  [[ -d "$dir" ]] || return 0
+  _migrate_legacy_symlinks "$dir" "$kind" "$ext"
+  local name
+  while IFS= read -r name; do
+    [[ -n "$name" ]] || continue
+    rm -rf "$dir/$name$ext"
+    log_info "  removed → $name"
+  done < <(manifest_prune "$(dirname "$dir")" "$kind" "$@")
+}
+
+# _backup_user_asset <claude_dir> <kind> <name> <dst> <label>
+# 지우지 않고 <name>.backup-<타임스탬프> 로 옮긴 뒤 교체하는 경우 둘:
+#   rc=2 목록에 없는 실디렉터리 — 사용자 자체 에셋이 preset 과 이름이 겹침
+#   rc=1 목록에 있으나 내용이 다름 — 공장 설치물을 로컬에서 고쳤음 (훅 경고를 놓쳤거나 세션 밖 편집).
+#        덮어쓰면 편집 내용이 완전히 사라지므로 백업한다(리뷰 2026-09-16 MEDIUM).
+#   rc=0 목록과 같음 — 그냥 교체.
 _backup_user_asset() {
-  local dst="$1" label="$2"
+  local claude_dir="$1" kind="$2" name="$3" dst="$4" label="$5"
   [[ -e "$dst" && ! -L "$dst" ]] || return 0
-  local backup
+  local rc=0
+  manifest_verify "$claude_dir" "$kind" "$name" "$dst" || rc=$?   # set -e 아래서도 종료 코드를 받는다
+  [[ $rc -ne 0 ]] || return 0
+  local backup why
   backup="${dst}.backup-$(date +%Y%m%d-%H%M%S)"
   mv "$dst" "$backup"
-  log_warn "  ${label} '$(basename "$dst")' 는 사용자 로컬 항목 → $(basename "$backup") 로 백업 후 preset 설치"
+  [[ $rc -eq 2 ]] && why="사용자 로컬 항목" || why="공장 설치물이 로컬에서 수정됨"
+  log_warn "  ${label} '$name' 는 ${why} → $(basename "$backup") 로 백업 후 preset 설치"
 }
+
+# _install_asset <claude_dir> <kind> <ext> <label> <name>
+# 한 항목을 복사하고 목록에 기록한다. 심링크였다면 복사본으로 바뀐 건수를 센다.
+_install_asset() {
+  local claude_dir="$1" kind="$2" ext="$3" label="$4" name="$5"
+  local src="$ASSETS_DIR/$kind/$name$ext" dst="$claude_dir/$kind/$name$ext"
+  if [[ ! -e "$src" ]]; then
+    log_warn "$label missing in assets: $name$ext (skipped)"
+    return 0
+  fi
+  _backup_user_asset "$claude_dir" "$kind" "$name" "$dst" "$label"
+  if [[ -L "$dst" ]] && ! _is_factory_self "$claude_dir"; then
+    _CONVERTED_LINKS=$((_CONVERTED_LINKS+1))
+  fi
+  rm -rf "$dst"
+  if _is_factory_self "$claude_dir"; then
+    # 공장 자기 설치(E-02): 대상이 저장소 안이므로 상대경로 링크. 두 벌 관리 없이 clone 에서도 안 깨진다.
+    ln -s "../../assets/$kind/$name$ext" "$dst"
+  else
+    cp -r "$src" "$dst"
+  fi
+  manifest_add "$claude_dir" "$kind" "$name" "$dst"
+  log_info "  $label → $name"
+}
+
+# _is_factory_self <claude_dir> — 설치 대상이 공장 저장소 자신인가
+_is_factory_self() {
+  [[ "$(cd "$1/.." 2>/dev/null && pwd -P)" == "$(cd "${DEV_SETTING_DIR:-$ASSETS_DIR/..}" && pwd -P)" ]]
+}
+
+# _install_kind <claude_dir> <kind> <ext> <label> <names...>
+_install_kind() {
+  local claude_dir="$1" kind="$2" ext="$3" label="$4"
+  shift 4
+  mkdir -p "$claude_dir/$kind"
+  _cleanup_stale_assets "$claude_dir/$kind" "$kind" "$ext" "$@"
+  local name
+  for name in "$@"; do
+    [[ -n "$name" ]] && _install_asset "$claude_dir" "$kind" "$ext" "$label" "$name"
+  done
+  return 0
+}
+
+_CONVERTED_LINKS=0
 
 # install_skills <target_claude_dir>
-install_skills() {
-  local target="$1"
-  mkdir -p "$target/skills"
-  _cleanup_stale_symlinks "$target/skills" "" "${SKILLS[@]+"${SKILLS[@]}"}"
-  [[ ${#SKILLS[@]} -eq 0 ]] && return 0
-  local skill src dst
-  for skill in "${SKILLS[@]}"; do
-    [[ -z "$skill" ]] && continue
-    src="$ASSETS_DIR/skills/$skill"
-    dst="$target/skills/$skill"
-    if [[ ! -d "$src" ]]; then
-      log_warn "skill missing in assets: $skill (skipped)"
-      continue
-    fi
-    is_windows_path "$target" || _backup_user_asset "$dst" "skill"
-    rm -rf "$dst"
-    if is_windows_path "$target"; then
-      cp -r "$src" "$dst"
-    else
-      ln -s "$src" "$dst"
-    fi
-    log_info "  skill   → $skill"
-  done
-}
-
+install_skills() { _install_kind "$1" skills ""    "skill  " "${SKILLS[@]+"${SKILLS[@]}"}"; }
 # install_agents <target_claude_dir>
-install_agents() {
-  local target="$1"
-  mkdir -p "$target/agents"
-  _cleanup_stale_symlinks "$target/agents" ".md" "${AGENTS[@]+"${AGENTS[@]}"}"
-  [[ ${#AGENTS[@]} -eq 0 ]] && return 0
-  local agent src dst
-  for agent in "${AGENTS[@]}"; do
-    [[ -z "$agent" ]] && continue
-    src="$ASSETS_DIR/agents/$agent.md"
-    dst="$target/agents/$agent.md"
-    if [[ ! -f "$src" ]]; then
-      log_warn "agent missing in assets: $agent.md (skipped)"
-      continue
-    fi
-    rm -f "$dst"
-    if is_windows_path "$target"; then
-      cp "$src" "$dst"
-    else
-      ln -s "$src" "$dst"
-    fi
-    log_info "  agent   → $agent"
-  done
-}
-
+install_agents() { _install_kind "$1" agents ".md" "agent  " "${AGENTS[@]+"${AGENTS[@]}"}"; }
 # install_rules <target_claude_dir>
-install_rules() {
-  local target="$1"
-  mkdir -p "$target/rules"
-  _cleanup_stale_symlinks "$target/rules" "" "${RULES[@]+"${RULES[@]}"}"
-  [[ ${#RULES[@]} -eq 0 ]] && return 0
-  local rule src dst
-  for rule in "${RULES[@]}"; do
-    [[ -z "$rule" ]] && continue
-    src="$ASSETS_DIR/rules/$rule"
-    dst="$target/rules/$rule"
-    if [[ ! -d "$src" ]]; then
-      log_warn "rule set missing in assets: $rule (skipped)"
-      continue
-    fi
-    is_windows_path "$target" || _backup_user_asset "$dst" "rule"
-    rm -rf "$dst"
-    if is_windows_path "$target"; then
-      cp -r "$src" "$dst"
-    else
-      ln -s "$src" "$dst"
-    fi
-    log_info "  rules   → $rule"
-  done
+install_rules()  { _install_kind "$1" rules  ""    "rules  " "${RULES[@]+"${RULES[@]}"}"; }
+
+# report_converted_links — 이번 설치에서 심링크 → 복사본으로 바뀐 건수를 한 줄 보고 (계획 Step 7 ②)
+report_converted_links() {
+  [[ $_CONVERTED_LINKS -gt 0 ]] && log_info "링크 → 복사본 ${_CONVERTED_LINKS}건 (설치 목록 기준으로 전환됨)"
+  return 0
 }

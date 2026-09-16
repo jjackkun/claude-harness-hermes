@@ -18,6 +18,10 @@
           {
             "type": "command",
             "command": "${CLAUDE_PROJECT_DIR}/scripts/hooks/claude-posttooluse-dead-file-warn.sh"
+          },
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/scripts/hooks/claude-posttooluse-factory-tamper-warn.sh"
           }
         ]
       },
@@ -65,6 +69,10 @@
           {
             "type": "command",
             "command": "${CLAUDE_PROJECT_DIR}/scripts/hooks/claude-sessionstart-mutation-probe.sh"
+          },
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/scripts/hooks/claude-sessionstart-factory-link-check.sh"
           },
           {
             "type": "command",

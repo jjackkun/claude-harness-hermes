@@ -1,1 +1,1 @@
-/home/jjackkun/PROJECT/claude-harness-hermes/assets/agents/architect.md
+../../assets/agents/architect.md

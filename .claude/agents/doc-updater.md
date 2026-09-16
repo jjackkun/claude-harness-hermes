@@ -1,1 +1,1 @@
-/home/jjackkun/PROJECT/claude-harness-hermes/assets/agents/doc-updater.md
+../../assets/agents/doc-updater.md

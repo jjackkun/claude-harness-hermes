@@ -149,6 +149,7 @@ log_info "Installing assets…"
 install_skills "$CLAUDE_DIR"
 install_agents "$CLAUDE_DIR"
 install_rules  "$CLAUDE_DIR"
+report_converted_links
 
 # Hermes — preset(workflow/hermes.conf)이 정의한 setup 을 설치 단계에서 호출.
 # 반드시 install_skills 이후여야 스킬 인덱싱이 동작하고,

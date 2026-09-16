@@ -1,1 +1,1 @@
-/home/jjackkun/PROJECT/claude-harness-hermes/assets/agents/planner-lite.md
+../../assets/agents/planner-lite.md

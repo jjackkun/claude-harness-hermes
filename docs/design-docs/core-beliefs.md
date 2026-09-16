@@ -460,6 +460,27 @@ R-plan 은 *스테이징된* 계획서만 검사한다 — "갱신하지 않는 
 마스킹(`hermes_redact.py`). 회귀 고정: `tests/hermes-secret-masking-test.sh`.
 소급 정리: `scripts/hermes-scrub-history.py`. 상세: `docs/superpowers/specs/2026-08-10-hermes-secret-masking-design.md`.
 
+## P10 — 설치물은 저장소 밖 경로를 가리키지 않는다 {#p10}
+
+**원칙**: 소우주에 설치된 스킬·규칙·에이전트는 **복사본**이다. 공장(`claude-harness-hermes`)의
+절대경로를 가리키는 링크를 두지 않는다. 공장 자기 설치만 저장소 **안**을 가리키는 상대경로
+링크를 허용한다.
+
+**왜**: 2026-09-15 실측 — zeroday-frontend 에 공장 절대경로 심링크 41개가 커밋돼 있었다. 다른
+컴퓨터·동료 clone 에서는 존재하지 않는 경로라 스킬·규칙·에이전트가 전부 깨진다. 같은 링크는
+소우주에서 공통 스킬을 고치면 허가 없이 공장 원본을 바꾸는 뒷문이고, 공장의 미커밋 수정이
+그 즉시 전 소우주에 퍼지는 통로였다.
+
+**따르는 규칙 셋**:
+- 정리·제거는 링크 여부가 아니라 **설치 목록**(`.claude/.factory-manifest.json`) 기준이다.
+  목록에 없는 실디렉터리는 소우주 자산이므로 건드리지 않는다.
+- 설치 목록은 커밋한다. 다른 컴퓨터의 clone 도 어느 파일이 공장 것인지 알아야 한다.
+- 공통 설치물 편집은 **경고**(`[factory-tamper WARN]`)로 알리고 차단하지 않는다.
+
+**기계 강제**: `tests/copy-install-test.sh`(링크 0 · 목록 기준 정리 · 이행 분기 · 변조 경고 ·
+공장 상대 링크 · 깨진 링크 훅). 상태: Provisional — 설계
+`docs/hermes-universe/design/world/copy-install.md`, 결정 I-01 · E-02.
+
 <!--===HARNESS-RULES:BEGIN===-->
 
 ## 하네스 공통 룰

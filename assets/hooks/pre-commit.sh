@@ -52,7 +52,11 @@ PY_FILES=$(filter_files '\.py$')
 # 하네스 생성물은 뺀다: 재설치가 scripts/hooks/ 를 덮어쓰므로 포함하면
 # 하네스 갱신 커밋 자체가 자기 게이트에 걸린다(아래 R-fmt 주석의 prettier 사고와 같은 종류).
 # .md 는 넣지 않는다 — 문서 수정마다 계획서를 요구하면 오탈자에도 걸려 우회가 상시화된다.
-HARNESS_MANAGED_RE='^scripts/(hooks|codex-hooks)/'
+# .claude/{skills,rules,agents}/ 는 복사 설치(2026-09-16, copy-install.md)된 공장 자산의 사본이다.
+# 심링크였을 때는 git 이 링크 하나만 추적해 안의 .py 예시가 검사에 걸리지 않았지만, 복사본은
+# 실제 파일로 스테이징되므로 규칙 예시집(rules/harness/examples/*.py)이 R-cx 에 잡힌다.
+# 원본은 공장 저장소가 검사한다.
+HARNESS_MANAGED_RE='^(scripts/(hooks|codex-hooks)|\.claude/(skills|rules|agents))/'
 WORK_FILES=$(filter_files '\.(py|js|jsx|ts|tsx|svelte|vue|sh|mjs|go|rs|java|rb|php)$' \
   | grep -vE "$HARNESS_MANAGED_RE" || true)
 
