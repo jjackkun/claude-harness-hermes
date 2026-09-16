@@ -23,6 +23,7 @@ from datetime import datetime, timezone
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from hermes_skills import extract_keywords  # noqa: E402  (본문 키워드 추출 공유 헬퍼)
+from hermes_universe import universe_id  # noqa: E402  (소우주 키 — 폴더 이름 대체)
 
 
 def connect_db(db_path: str) -> sqlite3.Connection:
@@ -390,7 +391,8 @@ def record_global_summary(key: str, skill_path: str, project_id: str) -> None:
 def crystallize(db_path: str, keys: list[str], project_dir: str) -> None:
     skills_dir = os.path.join(os.path.dirname(db_path), "skills")
     os.makedirs(skills_dir, exist_ok=True)
-    project_id = os.path.basename(os.path.abspath(project_dir)) if project_dir else ""
+    # 소우주 키. 폴더 이름을 쓰면 같은 이름의 다른 저장소와 겹치고 이름을 바꾸면 기록이 끊긴다.
+    project_id = universe_id(project_dir) if project_dir else ""
 
     for key in keys:
         is_fallback = key not in CATEGORY_METADATA

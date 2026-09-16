@@ -22,6 +22,7 @@ from datetime import datetime
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from hermes_redact import redact  # noqa: E402  (민감정보 마스킹 공유 헬퍼)
+from hermes_universe import universe_id  # noqa: E402  (소우주 키 — 폴더 이름 대체)
 
 SLOT_KEYS = ["decisions", "open", "prefs", "facts", "next"]
 SLOT_HEADINGS = [
@@ -245,7 +246,8 @@ def main():
         print("[hermes-summary] transcript 비어있음 — 스킵")
         return
 
-    project_id = args.project_id or os.path.basename(os.path.dirname(args.db))
+    project_id = args.project_id or universe_id(
+        args.project_dir or os.path.dirname(os.path.dirname(args.db)))
     session_id = args.session_id or os.path.splitext(
         os.path.basename(args.transcript))[0]
     project_dir = args.project_dir or os.path.dirname(os.path.dirname(args.db))

@@ -30,6 +30,7 @@ from hermes_save_session_signals import (  # noqa: E402
     detect_objective_signals,
     record_signal_context,
 )
+from hermes_universe import universe_id  # noqa: E402  (소우주 키 — 폴더 이름 대체)
 from hermes_save_session_storage import (  # noqa: E402
     load_transcript,
     save_session,
@@ -54,7 +55,8 @@ def main():
         print("[hermes] transcript empty or not found — skipped")
         sys.exit(0)
 
-    project_id = args.project_id or os.path.basename(os.path.dirname(args.db))
+    # .hermes/state.db 의 부모가 소우주 루트다. 폴더 이름 대신 universe.id 를 키로 쓴다.
+    project_id = args.project_id or universe_id(os.path.dirname(os.path.dirname(args.db)))
     # session_id 부재 시 transcript 경로 기반으로 안정적인 ID 를 만든다
     # (타임스탬프를 쓰면 매 턴 새 세션으로 저장돼 DB가 폭증한다 — C2)
     session_id = args.session_id or os.path.splitext(
