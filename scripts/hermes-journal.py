@@ -22,7 +22,11 @@ from hermes_journal import JournalRejected, emit  # noqa: E402
 from hermes_journal_schema import ensure_schema, schema_disabled  # noqa: E402
 from hermes_journal_views import gaps, graph, mismatch, thread  # noqa: E402
 
-_DEFAULT_STALE_MIN = None  # 실측 전까지 heartbeat 판정은 꺼 둔다(계획 §6, 목표 13)
+# heartbeat 기본 간격(분). 2026-09-16 실측: zeroday-frontend 의 loop_steps 9구간에서
+# 중앙 5.7분 · 정상 최대 13.4분 · 이상치 1건 79.7분(사람이 자리를 비운 구간).
+# "끊겼다" 고 부르려면 정상 구간을 넘어야 하므로 관측된 최대(79.7분)의 1.5배로 잡았다.
+# 표본이 9구간뿐이라 소우주마다 .hermes/journal.json 의 heartbeat_minutes 로 바꾼다.
+_DEFAULT_STALE_MIN = 120
 
 
 def _db(args) -> str:
@@ -72,8 +76,10 @@ def _cmd_gap_check(args) -> int:
     con = _connect(args)
     if schema_disabled(con):
         return 0
-    stale = args.stale_minutes if args.stale_minutes is not None else _stale_minutes(args.project)
-    reason = "heartbeat-timeout" if stale is not None else "session-end"
+    # --all(세션 종료): 간격과 무관하게 미완료 전부. 그 밖에는 heartbeat 간격을 넘긴 것만.
+    stale = None if args.all else (
+        args.stale_minutes if args.stale_minutes is not None else _stale_minutes(args.project))
+    reason = "session-end" if stale is None else "heartbeat-timeout"
     found = gaps(con, stale_minutes=stale)
     con.close()
     for gap in found:
@@ -117,7 +123,9 @@ def main() -> int:
     for name in ("thread", "graph"):
         q = sub.add_parser(name); q.add_argument("task_id", nargs="?" if name == "graph" else None)
     sub.add_parser("mismatch")
-    g = sub.add_parser("gap-check"); g.add_argument("--stale-minutes", type=int)
+    g = sub.add_parser("gap-check")
+    g.add_argument("--stale-minutes", type=int)
+    g.add_argument("--all", action="store_true", help="세션 종료 — 미완료 전부")
     r = sub.add_parser("rollback"); r.add_argument("--confirm", action="store_true")
     args = ap.parse_args()
 

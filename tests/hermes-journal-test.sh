@@ -33,7 +33,7 @@ from hermes_universe import ensure_universe_id; ensure_universe_id('$PROJ')"
 UNI="$(cat "$PROJ/.hermes/universe.id")"
 DB="$PROJ/.hermes/state.db"
 mkdir -p "$PROJ/scripts"
-for m in hermes-journal.py hermes_journal.py hermes_journal_schema.py hermes_journal_views.py hermes_universe.py hermes_uuid7.py; do cp "$S/$m" "$PROJ/scripts/"; done
+for m in hermes-journal.py hermes_journal.py hermes_journal_schema.py hermes_journal_views.py hermes_universe.py hermes_uuid7.py hermes_loop_decisions.py; do cp "$S/$m" "$PROJ/scripts/"; done
 J() { python3 "$S/hermes-journal.py" --project "$PROJ" --db "$DB" "$@"; }
 q() { python3 -c "
 import sqlite3,sys;print(sqlite3.connect('$DB').execute(sys.argv[1]).fetchone()[0])" "$1" 2>/dev/null; }
@@ -110,10 +110,14 @@ import json,sys;print(sum(1 for e in json.load(sys.stdin)['edges'] if e['type']=
 
 echo ""
 echo "== 6. 미완료 작업 (목표 6 의 바탕) =="
-assert "끝나지 않은 작업 2건(t1 · child)" "2" "$(J gap-check)"
+# 세션 종료(--all)는 간격과 무관하게 미완료 전부를 닫는다
+assert "끝나지 않은 작업 2건(t1 · child)" "2" "$(J gap-check --all)"
 assert "누락 이벤트가 붙었다" "2" "$(q "select count(*) from journal_events where actor='system:claude-stop-journal-gap'")"
 assert "누락 이벤트의 claimed 는 abandoned" "2" "$(q "select count(*) from journal_events where claimed='abandoned'")"
-assert "다시 돌려도 중복으로 붙지 않음" "0" "$(J gap-check)"
+assert "다시 돌려도 중복으로 붙지 않음" "0" "$(J gap-check --all)"
+# 기본(간격 판정)은 방금 시작한 작업을 끊긴 것으로 보지 않는다
+J emit --json '{"kind":"task.started","task_id":"fresh-default"}' >/dev/null
+assert "기본 간격(120분) 안이면 누락 0" "0" "$(J gap-check)"
 
 echo ""
 echo "== 6-b. 행위자 4경로 (목표 7) =="
@@ -141,6 +145,46 @@ import sqlite3,sys;sys.path.insert(0,'$S')
 from hermes_loop import ensure_schema
 ensure_schema('$DB')
 print(sum(1 for r in sqlite3.connect('$DB').execute('PRAGMA table_info(loops)') if r[1]=='started_by'))")"
+
+echo ""
+echo "== 6-c. heartbeat 간격 판정 (목표 13) =="
+# 간격 안: 방금 시작한 작업은 끊긴 것이 아니다
+J emit --json '{"kind":"task.started","task_id":"hb-fresh"}' >/dev/null
+assert "간격 안이면 누락 0" "0" "$(J gap-check --stale-minutes 60)"
+# 간격 초과: 마지막 이벤트가 오래된 작업
+python3 -c "
+import sqlite3,sys;sys.path.insert(0,'$S')
+from hermes_uuid7 import uuid7_str
+c=sqlite3.connect('$DB')
+c.execute(\"insert into journal_events (event_id,ts,kind,universe_id,task_id,actor)\"
+          \" values (?,?,?,?,?,?)\",
+          (uuid7_str(),'2020-01-01T00:00:00Z','task.started','$UNI','hb-stale','agent:main'))
+c.commit()"
+assert "간격 넘긴 작업은 누락 1건" "1" "$(J gap-check --stale-minutes 60)"
+assert "누락 사유가 heartbeat-timeout" "1" "$(q "select count(*) from journal_events where task_id='hb-stale' and evidence like '%heartbeat-timeout%'")"
+BEFORE_ALL="$(q "select count(*) from journal_events where kind='task.started' and task_id not in (select task_id from journal_events where kind='task.finished')")"
+SE_BEFORE="$(q "select count(*) from journal_events where evidence like '%session-end%'")"
+assert "--all 은 미완료 전부를 닫는다" "$BEFORE_ALL" "$(J gap-check --all)"
+assert "--all 뒤 미완료 0" "0" "$(q "select count(*) from journal_events where kind='task.started' and task_id not in (select task_id from journal_events where kind='task.finished')")"
+assert "--all 의 사유는 session-end" "$BEFORE_ALL" "$(( $(q "select count(*) from journal_events where evidence like '%session-end%'") - SE_BEFORE ))"
+echo '{"heartbeat_minutes": 5}' > "$PROJ/.hermes/journal.json"
+J emit --json '{"kind":"task.started","task_id":"hb-cfg"}' >/dev/null
+assert "설정 파일의 간격을 읽는다(5분 — 방금 것은 안 걸림)" "0" "$(J gap-check)"
+rm -f "$PROJ/.hermes/journal.json"
+
+echo ""
+echo "== 6-d. 결정 병기 (목표 8) =="
+python3 -c "
+import sys;sys.path.insert(0,'$S')
+import hermes_loop_decisions as d
+d.record('$DB','loop-x',1,['DECISION: 사본을 쓴다 — 링크가 깨진다 — 저장소가 커진다'])" 2>/dev/null
+assert "loop_decisions 에 남는다" "1" "$(q "select count(*) from loop_decisions where loop_id='loop-x'")"
+assert "journal 에도 decision 이벤트로 남는다" "1" "$(q "select count(*) from journal_events where kind='decision' and task_id='loop-x'")"
+
+echo ""
+echo "== 6-e. 로테이션 제외 (목표 10) =="
+assert "rotate 스킬에 제외 문장" "1" "$(grep -c 'journal_events.*로테이션 대상이 아니다' "$REPO_ROOT/.hermes/skills/rotate-ephemeral-work-logs.md")"
+assert "cleanup 이 journal_events 를 지우지 않음" "0" "$(grep -c 'DELETE FROM journal_events' "$REPO_ROOT/scripts/hermes-cleanup.py")"
 
 echo ""
 echo "== 7. rollback 은 지우지 않는다 (목표 12) =="

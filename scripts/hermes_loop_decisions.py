@@ -67,6 +67,29 @@ def record(db_path, loop_id, iteration, entries):
          for kind, text in classify(entries)])
     con.commit()
     con.close()
+    _mirror_to_journal(db_path, loop_id, iteration, entries)
+
+
+def _mirror_to_journal(db_path, loop_id, iteration, entries):
+    """같은 결정을 작업 이력에도 남긴다(G-9 — 흡수가 아니라 병기).
+
+    loop_decisions 는 report.html 이 읽으므로 그대로 두고, 대화형·헤드리스를 한자리에서
+    보려면 journal 에도 있어야 한다. 이력이 없거나 거부돼도 루프를 멈추지 않는다.
+    """
+    try:
+        import os
+        import sys
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        from hermes_journal import emit
+        project = os.path.dirname(os.path.dirname(os.path.abspath(db_path)))
+        for kind, text in classify(entries):
+            emit(db_path, project, {
+                "kind": "decision", "task_id": loop_id,
+                "evidence": {"reason": kind},
+                "decision": (redact(text) if text else None),
+            })
+    except Exception as exc:                      # noqa: BLE001 — 이력은 루프를 막지 않는다
+        print(f"[hermes-loop] 결정을 작업 이력에 남기지 못했다: {exc}", file=__import__("sys").stderr)
 
 
 def fetch(db_path, loop_id):
