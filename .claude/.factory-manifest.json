@@ -4,151 +4,151 @@
     {
       "name": "architect",
       "kind": "agents",
-      "factory_commit": "9112fb3ae6a2ec2f09f7ff8d486416c72531ed2d",
+      "factory_commit": "fcb350f962dbfcd6e055ffbb7d06598952093061",
       "sha256": "b264a074bc500d9decbd1370de48ce05aaf86905bc2428d425903255ac39d39d"
     },
     {
       "name": "architect-lite",
       "kind": "agents",
-      "factory_commit": "9112fb3ae6a2ec2f09f7ff8d486416c72531ed2d",
+      "factory_commit": "fcb350f962dbfcd6e055ffbb7d06598952093061",
       "sha256": "e780dcbed0ed7732cdede2768234fd3fefce948f2e325573f3769a6151b45576"
     },
     {
       "name": "code-reviewer",
       "kind": "agents",
-      "factory_commit": "9112fb3ae6a2ec2f09f7ff8d486416c72531ed2d",
+      "factory_commit": "fcb350f962dbfcd6e055ffbb7d06598952093061",
       "sha256": "380a36e2e197fcffe417ebbb0668b4914f68a6890323f4c8554b2d902057f27c"
     },
     {
       "name": "doc-updater",
       "kind": "agents",
-      "factory_commit": "9112fb3ae6a2ec2f09f7ff8d486416c72531ed2d",
+      "factory_commit": "fcb350f962dbfcd6e055ffbb7d06598952093061",
       "sha256": "29262e5b1c486fc253c117d63a831be1d4c0fdf70401bded314238b5051e6c5b"
     },
     {
       "name": "docs-lookup",
       "kind": "agents",
-      "factory_commit": "9112fb3ae6a2ec2f09f7ff8d486416c72531ed2d",
+      "factory_commit": "fcb350f962dbfcd6e055ffbb7d06598952093061",
       "sha256": "c9f8880280235a4766e568d2ae629586248a06b416ae2a943b5dd794ef1a97ff"
     },
     {
       "name": "performance-optimizer",
       "kind": "agents",
-      "factory_commit": "9112fb3ae6a2ec2f09f7ff8d486416c72531ed2d",
+      "factory_commit": "fcb350f962dbfcd6e055ffbb7d06598952093061",
       "sha256": "11c4943d7257bd18e987213baf319a3fe0dd10dd1d839277a16c8cbb78ec21ed"
     },
     {
       "name": "planner",
       "kind": "agents",
-      "factory_commit": "9112fb3ae6a2ec2f09f7ff8d486416c72531ed2d",
+      "factory_commit": "fcb350f962dbfcd6e055ffbb7d06598952093061",
       "sha256": "da038a853aee5f3601106346ff61d2abcf3491b86179394b3782ba1e8d72c088"
     },
     {
       "name": "planner-lite",
       "kind": "agents",
-      "factory_commit": "9112fb3ae6a2ec2f09f7ff8d486416c72531ed2d",
+      "factory_commit": "fcb350f962dbfcd6e055ffbb7d06598952093061",
       "sha256": "1102f19228045238b575966a6613ac018a5d7650824a9c680279dbed0c2825a7"
     },
     {
       "name": "refactor-cleaner",
       "kind": "agents",
-      "factory_commit": "9112fb3ae6a2ec2f09f7ff8d486416c72531ed2d",
+      "factory_commit": "fcb350f962dbfcd6e055ffbb7d06598952093061",
       "sha256": "ef854d892793527d0ff86808f9b818f9c4fb8cb0eae47fa23be5d2af5aed4f71"
     },
     {
       "name": "silent-failure-hunter",
       "kind": "agents",
-      "factory_commit": "9112fb3ae6a2ec2f09f7ff8d486416c72531ed2d",
+      "factory_commit": "fcb350f962dbfcd6e055ffbb7d06598952093061",
       "sha256": "3871daea5357fb0d3d8dbeec9eb0826d2177bba3be4b4c37a7d0f4911d095f0b"
     },
     {
       "name": "tdd-guide",
       "kind": "agents",
-      "factory_commit": "9112fb3ae6a2ec2f09f7ff8d486416c72531ed2d",
+      "factory_commit": "fcb350f962dbfcd6e055ffbb7d06598952093061",
       "sha256": "36b6e8ba2418c0340a7b50ee41250e9b8755580374758fe3b2ea92938f4ff359"
     },
     {
       "name": "adhd",
       "kind": "rules",
-      "factory_commit": "9112fb3ae6a2ec2f09f7ff8d486416c72531ed2d",
+      "factory_commit": "fcb350f962dbfcd6e055ffbb7d06598952093061",
       "sha256": "32ae2a62a5e0fcdbcc6bb6fa1b9aa538eb1c9763eeac66ebc403ee9895ed796b"
     },
     {
       "name": "harness",
       "kind": "rules",
-      "factory_commit": "9112fb3ae6a2ec2f09f7ff8d486416c72531ed2d",
+      "factory_commit": "fcb350f962dbfcd6e055ffbb7d06598952093061",
       "sha256": "e312ff388f587810be39768ee51e666eac7dfb6f48a0dcc78505146af0e14b50"
     },
     {
       "name": "harness-boundary-check",
       "kind": "skills",
-      "factory_commit": "9112fb3ae6a2ec2f09f7ff8d486416c72531ed2d",
+      "factory_commit": "fcb350f962dbfcd6e055ffbb7d06598952093061",
       "sha256": "4d123d155fdf816123916e3f276aa4c7e023cb30b282ab54d37661494fc9b814"
     },
     {
       "name": "harness-promote-rule",
       "kind": "skills",
-      "factory_commit": "9112fb3ae6a2ec2f09f7ff8d486416c72531ed2d",
+      "factory_commit": "fcb350f962dbfcd6e055ffbb7d06598952093061",
       "sha256": "a33b14b9a03b6b9c01ab8eee304892dd9c80c00ef84c3f115fa7f004d7993fad"
     },
     {
       "name": "harness-reasoning-sandwich",
       "kind": "skills",
-      "factory_commit": "9112fb3ae6a2ec2f09f7ff8d486416c72531ed2d",
+      "factory_commit": "fcb350f962dbfcd6e055ffbb7d06598952093061",
       "sha256": "b61ab73611dc71f5386ed265cf0da9a4cd3dc8d2cb2488ba8d03e686232f1eb3"
     },
     {
       "name": "hermes-crystallize",
       "kind": "skills",
-      "factory_commit": "9112fb3ae6a2ec2f09f7ff8d486416c72531ed2d",
+      "factory_commit": "fcb350f962dbfcd6e055ffbb7d06598952093061",
       "sha256": "237db0fd1ae92c23bb1a61280bcfc5a871b45300e462bfb41e2775dc4af5197e"
     },
     {
       "name": "hermes-dream",
       "kind": "skills",
-      "factory_commit": "9112fb3ae6a2ec2f09f7ff8d486416c72531ed2d",
+      "factory_commit": "fcb350f962dbfcd6e055ffbb7d06598952093061",
       "sha256": "0f9e0edaa9325eaba1abb5b912ac5a60d013ff74ad80099fa4602cfd4fc24a71"
     },
     {
       "name": "hermes-loop",
       "kind": "skills",
-      "factory_commit": "9112fb3ae6a2ec2f09f7ff8d486416c72531ed2d",
+      "factory_commit": "fcb350f962dbfcd6e055ffbb7d06598952093061",
       "sha256": "db02717197ecd5a2be6d343cc13b1f679667cc3f7a1ad22ea9d240dfdb07a8ae"
     },
     {
       "name": "hermes-recall",
       "kind": "skills",
-      "factory_commit": "9112fb3ae6a2ec2f09f7ff8d486416c72531ed2d",
+      "factory_commit": "fcb350f962dbfcd6e055ffbb7d06598952093061",
       "sha256": "034bc2c7e9341a5f8b396a497f1986d7383e9773ab36e971c0b65ef73c7954ba"
     },
     {
       "name": "hermes-status",
       "kind": "skills",
-      "factory_commit": "9112fb3ae6a2ec2f09f7ff8d486416c72531ed2d",
+      "factory_commit": "fcb350f962dbfcd6e055ffbb7d06598952093061",
       "sha256": "c5ea2e8b667ec4b9832a75d0ff2f36956851124466931ed19742aee794173d70"
     },
     {
       "name": "mcp-builder",
       "kind": "skills",
-      "factory_commit": "9112fb3ae6a2ec2f09f7ff8d486416c72531ed2d",
+      "factory_commit": "fcb350f962dbfcd6e055ffbb7d06598952093061",
       "sha256": "5471952028dbccf773eb1a1c7ddde65222b7e413becd8741d34cc6164b1dc5d6"
     },
     {
       "name": "run-to-the-end",
       "kind": "skills",
-      "factory_commit": "9112fb3ae6a2ec2f09f7ff8d486416c72531ed2d",
+      "factory_commit": "fcb350f962dbfcd6e055ffbb7d06598952093061",
       "sha256": "973a6cfe1927c33b055fda0b7398937304e9569cc111e5fcd217f25608783c7c"
     },
     {
       "name": "skill-creator",
       "kind": "skills",
-      "factory_commit": "9112fb3ae6a2ec2f09f7ff8d486416c72531ed2d",
+      "factory_commit": "fcb350f962dbfcd6e055ffbb7d06598952093061",
       "sha256": "b685157054be22a0e9bdcadf80a1ae3f8af1926e81eb0a17e7c15b9fe057542e"
     },
     {
       "name": "structured-file-layout",
       "kind": "skills",
-      "factory_commit": "9112fb3ae6a2ec2f09f7ff8d486416c72531ed2d",
+      "factory_commit": "fcb350f962dbfcd6e055ffbb7d06598952093061",
       "sha256": "309afa5a8621d69b34c5fbe10a2119792e4cd564cc702768197486ea03bd0304"
     }
   ]

@@ -125,6 +125,14 @@ setsid bash -c '
       >>"$HERMES_LOG" 2>&1 || true
   fi
 
+  # 7. 기억 운반 — 정책이 켜진 소우주만 refs/hermes/sync 로 push (계획 3 목표 6·14).
+  #    sync.json 이 없으면 로컬 전용이라 hermes-sync.py 가 한 줄만 남기고 끝난다.
+  #    age 가 없는 컴퓨터도 같은 자리에서 한 줄 알림 뒤 건너뛴다.
+  if [[ -f "$HERMES_PROJECT_DIR/.hermes/sync.json" && -f "$HERMES_SCRIPTS_DIR/hermes-sync.py" ]]; then
+    timeout "${HERMES_SYNC_TIMEOUT:-60}" python3 "$HERMES_SCRIPTS_DIR/hermes-sync.py" \
+      --project "$HERMES_PROJECT_DIR" push >>"$HERMES_LOG" 2>&1 || true
+  fi
+
   # 완료 마커 — 진단 및 테스트의 완료 대기용
   echo "[hermes] hook done: session=$HERMES_SESSION_ID $(date -Iseconds)" >>"$HERMES_LOG"
 ' </dev/null >/dev/null 2>&1 &

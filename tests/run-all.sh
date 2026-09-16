@@ -152,6 +152,7 @@ for t in \
   hermes-journal-test.sh \
   hermes-keys-test.sh \
   hermes-key-guard-test.sh \
+  hermes-sync-test.sh \
   memory-symlink-roundtrip-test.sh \
   hermes-history-export-test.sh \
   hermes-lifecycle-test.sh \

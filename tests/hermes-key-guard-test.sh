@@ -40,6 +40,8 @@ assert "따옴표 안 비밀열쇠도 차단" 2 "$(run_hook Bash "echo \"$REAL_L
 assert "hermes-keys.sh init 차단" 2 "$(run_hook Bash 'bash scripts/hermes-keys.sh init --yes')"
 assert "hermes-keys.sh emergency 차단" 2 "$(run_hook Bash 'scripts/hermes-keys.sh emergency')"
 assert "hermes-keys.sh rotate-master 차단" 2 "$(run_hook Bash 'bash scripts/hermes-keys.sh rotate-master --yes')"
+assert "hermes-sync.py tombstone 차단(G-5)" 2 "$(run_hook Bash 'python3 scripts/hermes-sync.py --project . tombstone history/s/0000.enc --confirm')"
+assert "hermes-sync.py push 는 통과" 0 "$(run_hook Bash 'python3 scripts/hermes-sync.py push')"
 assert "경로가 앞에 붙어도 차단" 2 "$(run_hook Bash '/usr/local/bin/age-keygen')"
 assert "파이프 뒤에 있어도 차단" 2 "$(run_hook Bash 'true && age-keygen')"
 

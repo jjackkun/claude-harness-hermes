@@ -63,12 +63,15 @@ def public_key(identity_path: str) -> str:
     return out
 
 
-def encrypt_to(recipients, data: bytes) -> bytes:
-    """수신자(자물쇠) 목록으로 암호화한다. 수신자가 없으면 거부한다."""
+def encrypt_to(recipients, data: bytes, armor: bool = False) -> bytes:
+    """수신자(자물쇠) 목록으로 암호화한다. 수신자가 없으면 거부한다.
+
+    armor=True 면 PEM 형식 텍스트로 낸다 — JSON 칸 안에 넣을 때(작업 이력 자유 글 3칸).
+    """
     locks = [r for r in (recipients or []) if r]
     if not locks:
         raise CryptoError("수신자가 없다 — 아무도 열 수 없는 파일을 만들지 않는다")
-    args = ["age", "--encrypt"]
+    args = ["age", "--encrypt"] + (["--armor"] if armor else [])
     for lock in locks:
         args += ["-r", lock]
     return _run(args, stdin=data)

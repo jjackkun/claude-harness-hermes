@@ -41,6 +41,8 @@ if re.search(r"(^|[^A-Za-z0-9_./-])age-keygen(?![A-Za-z0-9_-])", bare) or re.sea
     print("age-keygen 으로 열쇠를 만드는 명령"); sys.exit(0)
 if re.search(r"hermes-keys\.sh\s+(init|emergency|rotate-master)(?![A-Za-z0-9-])", bare):
     print("hermes-keys.sh 의 열쇠 생성 명령"); sys.exit(0)
+if re.search(r"hermes-sync\.py\b[^;&|]*\btombstone(?![A-Za-z0-9-])", bare):
+    print("hermes-sync.py tombstone(기억 물리 삭제, G-5)"); sys.exit(0)
 ' 2>/dev/null)"
 [[ -n "$reason" ]] || exit 0
 
