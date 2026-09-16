@@ -32,6 +32,8 @@ PYTHONPATH="$S" python3 -c "
 from hermes_universe import ensure_universe_id; ensure_universe_id('$PROJ')"
 UNI="$(cat "$PROJ/.hermes/universe.id")"
 DB="$PROJ/.hermes/state.db"
+mkdir -p "$PROJ/scripts"
+for m in hermes-journal.py hermes_journal.py hermes_journal_schema.py hermes_journal_views.py hermes_universe.py hermes_uuid7.py; do cp "$S/$m" "$PROJ/scripts/"; done
 J() { python3 "$S/hermes-journal.py" --project "$PROJ" --db "$DB" "$@"; }
 q() { python3 -c "
 import sqlite3,sys;print(sqlite3.connect('$DB').execute(sys.argv[1]).fetchone()[0])" "$1" 2>/dev/null; }
@@ -112,6 +114,33 @@ assert "끝나지 않은 작업 2건(t1 · child)" "2" "$(J gap-check)"
 assert "누락 이벤트가 붙었다" "2" "$(q "select count(*) from journal_events where actor='system:claude-stop-journal-gap'")"
 assert "누락 이벤트의 claimed 는 abandoned" "2" "$(q "select count(*) from journal_events where claimed='abandoned'")"
 assert "다시 돌려도 중복으로 붙지 않음" "0" "$(J gap-check)"
+
+echo ""
+echo "== 6-b. 행위자 4경로 (목표 7) =="
+# (1) 대화형 기본 — agent:main + git user.name
+assert "대화형: actor=agent:main" "agent:main" "$(q "select actor from journal_events where task_id='t1' limit 1")"
+# (2) 헤드리스 루프 — 러너가 넣은 지시자
+HERMES_REQUESTED_BY="human:runner" J emit --json '{"kind":"step","task_id":"r1"}' >/dev/null
+assert "루프: requested_by 를 환경에서 받는다" "human:runner" "$(q "select requested_by from journal_events where task_id='r1'")"
+# (3) cron — 사람이 아니라 시스템
+HERMES_ACTOR="system:hermes-cron" HERMES_REQUESTED_BY="system:hermes-cron" \
+  J emit --json '{"kind":"step","task_id":"c1"}' >/dev/null
+assert "cron: actor=system:hermes-cron" "system:hermes-cron" "$(q "select actor from journal_events where task_id='c1'")"
+# (4) 하위 에이전트 — 훅이 template 을 남긴다
+echo '{"agent_id":"sub-9","agent_type":"code-reviewer","session_id":"s9"}' \
+  | CLAUDE_PROJECT_DIR="$PROJ" bash "$REPO_ROOT/assets/hooks/claude-subagentstop-journal.sh" 2>/dev/null
+assert "하위 에이전트: evidence.template 에 직무" "code-reviewer" "$(python3 -c "
+import sqlite3,json
+row=sqlite3.connect('$DB').execute(
+  \"select evidence from journal_events where task_id='sub-9'\").fetchone()
+print(json.loads(row[0])['template'] if row else 'none')" 2>/dev/null)"
+assert "하위 에이전트도 지시자가 채워짐" "1" "$(q "select count(*) from journal_events where task_id='sub-9' and requested_by is not null")"
+# (5) loops.started_by — 루프를 시작한 사람이 남는다
+assert "loops 에 started_by 칸" "1" "$(python3 -c "
+import sqlite3,sys;sys.path.insert(0,'$S')
+from hermes_loop import ensure_schema
+ensure_schema('$DB')
+print(sum(1 for r in sqlite3.connect('$DB').execute('PRAGMA table_info(loops)') if r[1]=='started_by'))")"
 
 echo ""
 echo "== 7. rollback 은 지우지 않는다 (목표 12) =="

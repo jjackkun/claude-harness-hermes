@@ -55,7 +55,8 @@ LOOP_SCHEMA_STATEMENTS = (
       created_at        TEXT NOT NULL,
       updated_at        TEXT NOT NULL,
       finished_at       TEXT,
-      finish_reason     TEXT
+      finish_reason     TEXT,
+      started_by        TEXT
     )
     """,
     """
@@ -85,8 +86,19 @@ def ensure_schema(db_path):
     con = connect_db(db_path)
     for ddl in LOOP_SCHEMA_STATEMENTS:
         con.execute(ddl)
+    _ensure_started_by_column(con)
     con.commit()
     con.close()
+
+
+def _ensure_started_by_column(con) -> None:
+    """구 스키마(started_by 없음) 자가수리 — 재설치 없이 복구(멱등).
+
+    누가 이 루프를 시작했는지 적을 칸이 없으면 작업 이력의 requested_by 를 채울 수 없다.
+    """
+    cols = [r[1] for r in con.execute("PRAGMA table_info(loops)")]
+    if "started_by" not in cols:
+        con.execute("ALTER TABLE loops ADD COLUMN started_by TEXT")
 
 
 def default_max_iterations(condition_count):
@@ -127,7 +139,7 @@ def goal_md_path(project_dir, loop_id):
 
 def create_loop(db_path, project_dir, goal, title=None, conditions=None,
                 verify_cmd=None, max_iterations=None,
-                no_progress_limit=NO_PROGRESS_LIMIT):
+                no_progress_limit=NO_PROGRESS_LIMIT, started_by=None):
     """GOAL.md 생성 + loops 행 INSERT (G1). (loop_id, goal_md_path) 반환."""
     ensure_schema(db_path)
     conditions = conditions or []
@@ -155,10 +167,11 @@ def create_loop(db_path, project_dir, goal, title=None, conditions=None,
     con = connect_db(db_path)
     con.execute(
         "INSERT INTO loops (id, title, goal_md_path, mode, status,"
-        " max_iterations, no_progress_limit, created_at, updated_at)"
-        " VALUES (?,?,?,?,?,?,?,?,?)",
+        " max_iterations, no_progress_limit, created_at, updated_at, started_by)"
+        " VALUES (?,?,?,?,?,?,?,?,?,?)",
         (loop_id, title, path, "goal", "running",
-         max_iterations, no_progress_limit, _now(), _now()))
+         max_iterations, no_progress_limit, _now(), _now(),
+         started_by or os.environ.get("HERMES_REQUESTED_BY")))
     con.commit()
     con.close()
     return loop_id, path

@@ -211,6 +211,7 @@ def main(output_path: str) -> int:
     # 중복되면 디스패처가 두 번 돌아 리마인더가 두 벌 출력된다.
     user_prompt_submit = list(dict.fromkeys(_read_lines(tmpdir, "user_prompt_submit")))
     session_start = _read_lines(tmpdir, "session_start")
+    subagent_stop = _read_lines(tmpdir, "subagent_stop")
     pre_tool_use = _read_lines(tmpdir, "pre_tool_use")
     post_tool_use = _read_lines(tmpdir, "post_tool_use")
     permissions_allow = _read_lines(tmpdir, "permissions_allow")
@@ -256,28 +257,23 @@ def main(output_path: str) -> int:
             )
     if post_tool_use_entries:
         hooks["PostToolUse"] = post_tool_use_entries
-    if stop:
-        hooks["Stop"] = [
-            {
-                "hooks": [
-                    # Hook timeout is in seconds (not ms).
-                    {"type": "command", "command": cmd, "timeout": 30}
-                    for cmd in stop
-                ]
-            }
-        ]
-    if session_start:
-        hooks["SessionStart"] = [
-            {
-                "hooks": [{"type": "command", "command": cmd} for cmd in session_start]
-            }
-        ]
-    if user_prompt_submit:
-        hooks["UserPromptSubmit"] = [
-            {
-                "hooks": [{"type": "command", "command": cmd} for cmd in user_prompt_submit]
-            }
-        ]
+    # matcher 가 없는 단순 훅은 표로 돈다 — 종류가 늘 때마다 if 를 더하면 이 함수의
+    # 복잡도만 오른다(2026-09-16 SubagentStop 추가 때 기준선 라쳇에 걸렸다).
+    # SubagentStop: 입력에 agent_id · agent_type 이 와서 누가 무엇을 맡았는지 기계가 찍는다.
+    # timeout 은 초 단위(ms 아님).
+    for key, cmds, timeout in (
+        ("Stop", stop, 30),
+        ("SubagentStop", subagent_stop, 30),
+        ("SessionStart", session_start, None),
+        ("UserPromptSubmit", user_prompt_submit, None),
+    ):
+        if not cmds:
+            continue
+        entry = {"type": "command"}
+        hooks[key] = [{"hooks": [
+            dict(entry, command=cmd, **({"timeout": timeout} if timeout else {}))
+            for cmd in cmds
+        ]}]
     if pre_tool_use:
         pre_by_matcher: dict[str, list[str]] = {}
         for entry in pre_tool_use:

@@ -84,9 +84,11 @@ def emit(db_path: str, project_path: str, event: dict, hook_input: dict = None) 
         row.setdefault("ts", _now())
         row.setdefault("universe_id", universe_id(project_path))
         row.setdefault("task_id", row["event_id"])
-        if not row.get("actor"):
-            row["actor"], requested = resolve_actor(hook_input)
-            row.setdefault("requested_by", requested)
+        # 행위자는 주어졌으면 존중하고, 지시자는 비어 있으면 언제나 환경에서 채운다
+        # (하위 에이전트 이벤트는 actor 를 스스로 알지만 지시자는 모른다).
+        actor, requested = resolve_actor(hook_input)
+        row["actor"] = row.get("actor") or actor
+        row["requested_by"] = row.get("requested_by") or requested
         # verified 는 입력을 믿지 않는다 — 기계가 다시 계산해 덮어쓴다(RV-09).
         row["verified"] = machine_verified(event.get("evidence"), row.get("claimed"))
         row.pop("accepted", None)   # 사람만 쓴다

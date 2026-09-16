@@ -29,6 +29,14 @@ scripts_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 db_path="$project_dir/.hermes/state.db"
 [[ ! -f "$db_path" ]] && { echo "[hermes-loop] DB 없음: $db_path (hermes-init.py 먼저 실행)" >&2; exit 1; }
 
+# 이 루프를 시작한 사람. 작업 이력의 requested_by 와 loops.started_by 가 이 값을 쓴다
+# (계획 2026-09-15-universe-id-journal 목표 7). 이미 정해져 있으면 존중한다.
+if [[ -z "${HERMES_REQUESTED_BY:-}" ]]; then
+  _git_user="$(git -C "$project_dir" config user.name 2>/dev/null || true)"
+  export HERMES_REQUESTED_BY="${_git_user:+human:$_git_user}"
+  export HERMES_REQUESTED_BY="${HERMES_REQUESTED_BY:-system:unknown}"
+fi
+
 log_dir="$project_dir/.hermes/logs"
 mkdir -p "$log_dir"
 

@@ -30,6 +30,7 @@ _settings_gen_write_arrays() {
   _write_array "$tmpdir/env"       "${ENV_VARS[@]:-}"
   _write_array "$tmpdir/deny"      "${DENY_AGENTS[@]:-}"
   _write_array "$tmpdir/session_start"      "${SESSION_START_HOOKS[@]:-}"
+  _write_array "$tmpdir/subagent_stop"      "${SUBAGENT_STOP_HOOKS[@]:-}"
   _write_array "$tmpdir/user_prompt_submit" "${USER_PROMPT_SUBMIT_HOOKS[@]:-}"
   _write_array "$tmpdir/pre_tool_use"       "${PRE_TOOL_USE_HOOKS[@]:-}"
   _write_array "$tmpdir/post_tool_use"      "${POST_TOOL_USE_HOOKS[@]:-}"
