@@ -181,10 +181,16 @@ log_info "Saved presets → .claude/presets.lock"
 
 
 # 머신 로컬 레지스트리에 등록 (dry-run 제외, 중복 방지)
+# 임시 디렉터리(/tmp, $TMPDIR) 아래 프로젝트와 HERMES_NO_REGISTER=1 은 등록하지 않는다 —
+# 2026-09-16 스모크 테스트가 실 레지스트리에 /tmp 경로 10줄을 남겨 update-all 이 없는
+# 경로를 돌 뻔했다. 테스트·일회성 설치는 전파 대상이 아니다.
 if [[ $DRY_RUN -eq 0 ]]; then
   REGISTRY="$DEV_SETTING_DIR/.installed-projects"
   touch "$REGISTRY"
-  if ! grep -qxF "$PROJECT_PATH" "$REGISTRY"; then
+  _tmp_root="$(cd "${TMPDIR:-/tmp}" 2>/dev/null && pwd -P)"
+  if [[ "${HERMES_NO_REGISTER:-0}" == "1" || "$(cd "$PROJECT_PATH" && pwd -P)" == "$_tmp_root"/* ]]; then
+    log_info "레지스트리 등록 생략 (임시 경로 또는 HERMES_NO_REGISTER=1)"
+  elif ! grep -qxF "$PROJECT_PATH" "$REGISTRY"; then
     echo "$PROJECT_PATH" >> "$REGISTRY"
     log_info "Registered → .installed-projects"
   fi

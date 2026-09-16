@@ -151,6 +151,20 @@ assert "자체 스킬 my-own 은 남음" "1" "$([[ -f "$PROJ/.claude/skills/my-o
 assert "manifest 제거됨" "0" "$([[ -f "$MANIFEST" ]] && echo 1 || echo 0)"
 
 echo ""
+echo "== 7-b. 임시 경로 설치는 실 레지스트리에 등록되지 않는다 (2026-09-16 오염 사고) =="
+# 실 저장소의 project-claude.sh 로 /tmp 프로젝트를 설치해도 실 .installed-projects 가 바뀌면 안 된다.
+REAL_REG="$REPO_ROOT/.installed-projects"
+REG_BEFORE="$(cat "$REAL_REG" 2>/dev/null | md5sum)"
+T2="$TMP/tmpproj"; mkdir -p "$T2"; git -C "$T2" init -q
+bash "$REPO_ROOT/project-claude.sh" "$T2" hermes >"$TMP/tmpproj.log" 2>&1
+assert "임시 경로 설치 종료 코드 0" "0" "$?"
+assert "등록 생략 로그" "1" "$(grep -c '레지스트리 등록 생략' "$TMP/tmpproj.log")"
+assert "실 .installed-projects 불변" "$REG_BEFORE" "$(cat "$REAL_REG" 2>/dev/null | md5sum)"
+assert "실 레지스트리에 /tmp 경로 없음" "0" "$(grep -c '^/tmp/' "$REAL_REG" 2>/dev/null)"
+# 실 저장소가 이 임시 프로젝트를 설치했으므로 실 .hermes 등은 건드리지 않았는지도 본다
+assert "실 저장소 작업 트리에 새 파일 없음" "0" "$(git -C "$REPO_ROOT" status --short --untracked-files=all | grep -vc '^ M\|^M ' )"
+
+echo ""
 echo "== 8. 저장소 안 ln -s 는 메모리 폴더 링크와 공장 자기 설치뿐 (목표 12) =="
 assert "installers.sh 에 is_windows_path 없음" "0" "$(grep -c is_windows_path "$REPO_ROOT/lib/installers.sh")"
 assert "lib/*.sh 의 ln -s 는 2곳(메모리 폴더 · 공장 자기 설치 상대경로)" "2" "$(grep -c 'ln -s' "$REPO_ROOT"/lib/*.sh | awk -F: '{s+=$2} END{print s}')"

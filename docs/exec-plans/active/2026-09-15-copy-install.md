@@ -105,6 +105,8 @@
 ## 7. 발견·예외
 
 - 2026-09-16 구현 중: 복사 설치가 되자 `cx-baseline-distribution-test.sh` 가 실패했다 — `.claude/rules/harness/examples/python/*.py` 가 심링크 시절에는 링크 하나로만 추적돼 R-cx 밖이었는데, 복사본은 실제 파일로 스테이징돼 복잡도 12·13 이 잡혔다. 규칙 예시집은 프로젝트 코드가 아니므로 `pre-commit.sh` 의 `HARNESS_MANAGED_RE` 에 `.claude/(skills|rules|agents)/` 를 더해 구조 검사(R-cx·R-dep·R-plan-missing)에서 뺐다. 원본은 공장이 검사한다.
+- 2026-09-16 전파 중: `.installed-projects` 에 `/tmp/…` 임시 경로 **10줄**이 끼어 있었다 — 구현 중 손으로 돌린 스모크 설치(`bash project-claude.sh $TMP/p …`)가 실 레지스트리에 등록된 것. `update-all` 을 돌렸다면 없는 경로 10곳을 돌 뻔했다. 조치: (1) 지움(백업 `.harness/out/installed-projects.bak`) (2) `project-claude.sh` 가 `$TMPDIR`/`/tmp` 아래 경로와 `HERMES_NO_REGISTER=1` 을 등록하지 않게 함 (3) 테스트 7-b 가 "실 저장소 설치기로 /tmp 프로젝트를 설치해도 실 레지스트리 불변" 을 고정. 교훈: 설치기는 "설치" 와 "전파 대상 등록" 두 부작용을 가지므로, 실 저장소에서 임시 대상을 돌리면 후자가 새 나간다 — 테스트는 `$SANDBOX` 사본에서만 돌린다.
+- 2026-09-16 전파 결과(zeroday 제외 9곳): 전환 357건(28·28·39·47·47·42·39·47·40), 잔존 링크 0, 자체 스킬 9개 보존, 백업 0, 오류 0. 8곳 게이트 통과(rim-office 첫 시도 R-test 플레이크 — 3회 재실행 통과, 설치 파일은 다른 7곳과 동일). teulankkae 는 git 저장소가 아니라 커밋 단계 없음. 8곳에 이전 전파의 미커밋 훅 사본 18~20개(공장 원본과 동일)가 이미 있었다.
 - 2026-09-16: `hermes-prune.py` 는 시간 기준 자동 tombstone 만 있어 즉시 tombstone 경로가 없다. 목표 8 은 `skill_index.state='tombstoned'` 직접 갱신으로 처리했다. 수동 tombstone CLI 는 계획 5(스킬 4층) 에서 다룬다.
 - 2026-09-16: `claude-harness-hermes-install` 스킬은 `assets/skills/` 에 없고 공장 `.claude/skills/` 에만 있는 로컬 스킬이었다. 거기서 고쳤다.
 
