@@ -150,6 +150,8 @@ for t in \
   install-receipt-test.sh \
   hermes-universe-test.sh \
   hermes-journal-test.sh \
+  hermes-keys-test.sh \
+  hermes-key-guard-test.sh \
   memory-symlink-roundtrip-test.sh \
   hermes-history-export-test.sh \
   hermes-lifecycle-test.sh \

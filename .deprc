@@ -19,6 +19,10 @@ tier: 0  scripts/hermes_keywords.py scripts/hermes_history_fragments.py
 # CLI 는 journal 을 쓰며, loop_decisions 는 hermes_loop(2) 와 journal(1) 을 쓴다.
 tier: 0  scripts/hermes_uuid7.py scripts/hermes_universe.py
 tier: 0  scripts/hermes_journal_schema.py scripts/hermes_journal_views.py
+# 암호 계층(계획 2026-09-15-sync-transport-encryption Step 2): crypto·mnemonic 은 표준 모듈만,
+# keys 는 crypto 를 쓴다.
+tier: 0  scripts/hermes_crypto.py scripts/hermes_mnemonic.py
+tier: 1  scripts/hermes_keys.py
 tier: 1  assets/hooks/check-secrets.py scripts/hermes-crystallize.py scripts/hermes-index-skills.py
 tier: 1  scripts/hermes-search.py scripts/hermes_redact.py scripts/hermes_search_fallback.py
 tier: 1  scripts/hermes_dream_evolve.py scripts/hermes_journal.py

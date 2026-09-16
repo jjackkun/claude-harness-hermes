@@ -50,8 +50,6 @@ docs/superpowers/plans/
 !.hermes/factory.json
 !.hermes/universe.id
 !.hermes/agents.json
-!.hermes/history/
-!.hermes/history/**
 # <<< harness-agent-preset <<<
 
 # ── 공장(이 저장소) 전용: 마커 블록 뒤에 와야 예외를 되무시할 수 있다 ─────────────
