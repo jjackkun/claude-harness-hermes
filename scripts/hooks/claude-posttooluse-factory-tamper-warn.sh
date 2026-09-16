@@ -22,6 +22,9 @@ except Exception:
     print('')
 " 2>/dev/null || true)
 [[ -n "$FILE_PATH" ]] || exit 0
+# 심링크·상대경로 입력을 정규화해 문자열 비교가 어긋나지 않게 한다 (리뷰 LOW)
+FILE_PATH="$(readlink -f -- "$FILE_PATH" 2>/dev/null || echo "$FILE_PATH")"
+PROJECT_DIR="$(readlink -f -- "$PROJECT_DIR" 2>/dev/null || echo "$PROJECT_DIR")"
 
 case "$FILE_PATH" in
   "$PROJECT_DIR"/.claude/skills/*|"$PROJECT_DIR"/.claude/agents/*|"$PROJECT_DIR"/.claude/rules/*) ;;
