@@ -18,6 +18,10 @@ REGISTRY="$REPO_ROOT/.installed-projects"
 TMP=$(mktemp -d)
 export HOME="$TMP/fakehome"         # 실 ~/.claude/projects 절대 격리 (install_memory_symlink)
 mkdir -p "$HOME"
+# 설치기는 $TMPDIR 아래 프로젝트를 레지스트리에 등록하지 않는다(project-claude.sh, 2026-09-16
+# /tmp 오염 사고). 이 테스트는 "등록 → uninstall 이 등록을 지운다" 를 봐야 하므로 TMPDIR 을
+# 별도 하위 폴더로 옮겨 $PROJ 가 임시 경로로 판정되지 않게 한다.
+export TMPDIR="$TMP/tmpdir"; mkdir -p "$TMPDIR"
 PROJ="$TMP/proj"
 mkdir -p "$PROJ"
 

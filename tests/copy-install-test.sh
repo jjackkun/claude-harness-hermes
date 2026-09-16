@@ -156,13 +156,15 @@ echo "== 7-b. 임시 경로 설치는 실 레지스트리에 등록되지 않는
 REAL_REG="$REPO_ROOT/.installed-projects"
 REG_BEFORE="$(cat "$REAL_REG" 2>/dev/null | md5sum)"
 T2="$TMP/tmpproj"; mkdir -p "$T2"; git -C "$T2" init -q
+UNTRACKED_BEFORE="$(git -C "$REPO_ROOT" status --short --untracked-files=all | grep -c '^??')"
 bash "$REPO_ROOT/project-claude.sh" "$T2" hermes >"$TMP/tmpproj.log" 2>&1
 assert "임시 경로 설치 종료 코드 0" "0" "$?"
 assert "등록 생략 로그" "1" "$(grep -c '레지스트리 등록 생략' "$TMP/tmpproj.log")"
 assert "실 .installed-projects 불변" "$REG_BEFORE" "$(cat "$REAL_REG" 2>/dev/null | md5sum)"
 assert "실 레지스트리에 /tmp 경로 없음" "0" "$(grep -c '^/tmp/' "$REAL_REG" 2>/dev/null)"
-# 실 저장소가 이 임시 프로젝트를 설치했으므로 실 .hermes 등은 건드리지 않았는지도 본다
-assert "실 저장소 작업 트리에 새 파일 없음" "0" "$(git -C "$REPO_ROOT" status --short --untracked-files=all | grep -vc '^ M\|^M ' )"
+# 실 저장소가 이 임시 프로젝트를 설치했으므로 실 .hermes 등은 건드리지 않았는지도 본다.
+# 설치 *전후* 를 비교한다 — 작업 중인 새 파일이 있어도 이 단언이 깨지지 않게(2026-09-16).
+assert "실 저장소에 설치가 새 파일을 남기지 않음" "$UNTRACKED_BEFORE" "$(git -C "$REPO_ROOT" status --short --untracked-files=all | grep -c '^??')"
 
 echo ""
 echo "== 8. 저장소 안 ln -s 는 메모리 폴더 링크와 공장 자기 설치뿐 (목표 12) =="

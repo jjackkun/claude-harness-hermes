@@ -147,6 +147,7 @@ for t in \
   hermes-recall-history-search-test.sh \
   uninstall-roundtrip-test.sh \
   copy-install-test.sh \
+  install-receipt-test.sh \
   memory-symlink-roundtrip-test.sh \
   hermes-history-export-test.sh \
   hermes-lifecycle-test.sh \

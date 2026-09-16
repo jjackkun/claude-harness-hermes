@@ -54,12 +54,16 @@ git status --short | head -50
 | 소우주 자체 스킬 | 그대로 있음. 목록에 없는 폴더는 설치기가 건드리지 않는다 |
 | 이름 겹침 백업 | `*.backup-<날짜>` 폴더가 생겼다면 소우주 자체 자산이 공장 이름과 겹친 것 — 내용을 보고 정리 |
 
-문제가 없으면 커밋한다. 메시지 예:
+문제가 없으면 커밋한다. **add 경로를 손으로 고르지 않는다** — 설치기가 이번에 쓴 파일 목록
+(`.claude/.last-install.txt`, 설치 영수증)을 그대로 쓴다. 2026-09-16 에 경로를 손으로 골라
+`scripts/hermes-*.py` 사본 7개를 5곳에서 빠뜨렸다(계획 `2026-09-16-install-receipt.md`).
 
 ```bash
-git add .claude .hermes/factory.json .gitignore
+git add $(git ls-files -co --exclude-standard -- $(cat .claude/.last-install.txt))
 git commit -m "chore(harness): 공장 심링크를 복사 설치로 전환한다 (.factory-manifest.json 추가)"
 ```
+
+빠뜨리면 다음 세션 시작 때 `[install-uncommitted WARN] 설치물 N건이 커밋되지 않았습니다` 가 뜬다.
 
 zeroday-frontend 는 동료 3명이 있는 저장소다. 커밋 내용은 "설치물이 링크에서 파일로 바뀜" 뿐이고,
 동료가 pull 하면 깨져 있던 스킬·규칙·에이전트가 처음으로 동작한다.

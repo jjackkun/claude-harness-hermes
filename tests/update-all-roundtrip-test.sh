@@ -20,6 +20,10 @@ REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 TMP=$(mktemp -d)
 export HOME="$TMP/fakehome"          # ~/.claude 오염 방지
 mkdir -p "$HOME"
+# 설치기는 $TMPDIR 아래 프로젝트를 레지스트리에 등록하지 않는다(project-claude.sh, 2026-09-16
+# /tmp 오염 사고). update-all.sh 는 그 레지스트리를 읽어 도니, 등록이 생략되면 이 테스트의
+# 모든 갱신 단언이 "아무 프로젝트도 안 돎" 으로 조용히 실패한다. TMPDIR 을 옮겨 둔다.
+export TMPDIR="$TMP/tmpdir"; mkdir -p "$TMPDIR"
 trap 'rm -rf "$TMP"' EXIT
 
 PASS=0; FAIL=0

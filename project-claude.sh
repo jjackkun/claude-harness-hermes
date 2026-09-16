@@ -144,6 +144,7 @@ fi
 
 # ---- Apply ----
 mkdir -p "$CLAUDE_DIR"
+receipt_begin   # 이 뒤에 쓰인 파일이 .claude/.last-install.txt 에 오른다
 
 log_info "Installing assets…"
 install_skills "$CLAUDE_DIR"
@@ -179,6 +180,8 @@ write_manifest "$CLAUDE_DIR/.dev-setting-manifest.json"
 printf '%s\n' "${PRESETS[@]}" > "$CLAUDE_DIR/presets.lock"
 log_info "Saved presets → .claude/presets.lock"
 
+
+receipt_end "$PROJECT_PATH"
 
 # 머신 로컬 레지스트리에 등록 (dry-run 제외, 중복 방지)
 # 임시 디렉터리(/tmp, $TMPDIR) 아래 프로젝트와 HERMES_NO_REGISTER=1 은 등록하지 않는다 —

@@ -34,6 +34,8 @@ source "$_DS_LIB/preset.sh"
 source "$_DS_LIB/factory_manifest.sh"
 # shellcheck source=lib/installers.sh
 source "$_DS_LIB/installers.sh"
+# shellcheck source=lib/install_receipt.sh
+source "$_DS_LIB/install_receipt.sh"
 # shellcheck source=lib/plugins.sh
 source "$_DS_LIB/plugins.sh"
 # hook_inventory 는 harness_installers / settings_gen 이 소유 판별에 사용하므로 먼저.

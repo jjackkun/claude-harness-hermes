@@ -38,6 +38,7 @@ docs/superpowers/plans/
 .claude/worktrees/
 .claude/.review-dirty
 .claude/.dev-setting-manifest.json
+.claude/.last-install.txt
 .claude/presets.lock
 .claude/harness-hooks.lock
 .harness/

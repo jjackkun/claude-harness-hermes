@@ -180,6 +180,8 @@ uninstall_asset_symlinks() {
     fi
   done
   [[ -f "$manifest" ]] && _rm_path file "$manifest" ".claude/.factory-manifest.json"
+  local receipt="$project_path/.claude/.last-install.txt"
+  [[ -f "$receipt" ]] && _rm_path file "$receipt" ".claude/.last-install.txt"
   return 0
 }
 

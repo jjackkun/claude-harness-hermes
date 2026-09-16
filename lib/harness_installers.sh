@@ -581,6 +581,8 @@ install_harness_gitignore() {
       ".claude/worktrees/"
       ".claude/.review-dirty"
       ".claude/.dev-setting-manifest.json"
+      # 설치 영수증 — 이번 설치가 쓴 파일 목록. 기계마다 다르므로 커밋하지 않는다.
+      ".claude/.last-install.txt"
       ".claude/presets.lock"
       # 기계마다 다르다 — `.git/hooks/` 에 깐 파일의 sha256 이다. presets.lock 과 같은
       # 성격인데 이 목록에서 빠져 있어 커밋에 딸려 들어갔다(2026-09-02). 그때 고친 곳이
