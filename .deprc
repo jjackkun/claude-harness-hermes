@@ -40,6 +40,10 @@ tier: 3  scripts/hermes-summon.py
 # conflicts 는 표준만, view 는 conflicts. sync_fragments 가 events 를 import 한다.
 tier: 0  scripts/hermes_memory_events.py scripts/hermes_memory_conflicts.py
 tier: 1  scripts/hermes_memory_view.py
+# 인계 봉투(계획 2026-09-15-agent-identity 목표 10·11·12): done_when 은 표준 모듈만,
+# handoff 는 done_when·journal·journal_views·uuid7 을 import 한다(최상위 tier 1 → handoff tier 2).
+tier: 0  scripts/hermes_done_when.py
+tier: 2  scripts/hermes_handoff.py
 tier: 1  assets/hooks/check-secrets.py scripts/hermes-crystallize.py scripts/hermes-index-skills.py
 tier: 1  scripts/hermes-search.py scripts/hermes_redact.py scripts/hermes_search_fallback.py
 tier: 1  scripts/hermes_dream_evolve.py scripts/hermes_journal.py

@@ -23,9 +23,9 @@
 - [ ] 목표 7 — PreToolUse 훅이 세션 안 Bash 의 `claude -p` 직접 호출을 막되, 허용 목록(`hermes-loop-run.sh` · `hermes-cron-run.sh` · `hermes-summon.py`)은 통과 — 판정은 명령줄이 아니라 **러너가 남긴 nonce 파일 존재**로. 검증: `tests/hermes-summon-guard-test.sh` — 직접 호출 차단, 러너 경유 통과, `bash -c 'exec hermes-loop-run.sh …'` 흉내는 nonce 없어 차단.
 - [x] 목표 8 — 기억 이벤트 `memory_events`(UUIDv7 PK, `kind` · `about` · `revises` · `content_hash` · `source_event` · `body`)가 INSERT 전용이고, `MEMORY.md` 는 이벤트에서 계산한 보기다. 검증: `tests/hermes-memory-events-test.sh` — 갈라짐(같은 `revises` 둘)·같은 `about` 모순·`content_hash` 중복이 각각 "충돌"·"충돌"·"합침" 으로 표시, 최신이 자동 승리하지 않음.
 - [x] 목표 9 — 규칙 충돌 표시(RV-11): 기억 `about` 키가 SOUL.md 또는 `assets/rules/**` 의 규칙 키와 겹치고 본문이 부정형이면 보기에 "규칙 충돌", `source_event` 하나면 "단일 사례". 검증: 테스트 픽스처 2건.
-- [ ] 목표 10 — 인계 봉투 검증기: `goal` · `done_when` 없으면 시작 불가(기계 차단), `inputs` 는 참조만(경로·이벤트 id 형식), `expires_at` 선택. 되돌아오는 네 방식이 이벤트로 남는다. 검증: `tests/hermes-handoff-test.sh`.
-- [ ] 목표 11 — 만료 판정은 세션 시작 훅(RV-08): 기한 지났는데 `task.started` · `handoff.question` 없는 봉투 → `handoff.expired` + 알림. 규칙 위반 지시는 `claimed: blocked` + `evidence.reason = rule:<이름>`(RV-07). 검증: 테스트 2케이스.
-- [ ] 목표 12 — `done_when` 허용 형식(G-21) 첫 판: `test:<이름>` · `file:<경로>` · `gate:<규칙>` · `commit:<해시|HEAD>` · `manual` 다섯 가지. `manual` 만 `verified: none`. 검증: 각 형식의 기계 검증 함수 테스트.
+- [x] 목표 10 — 인계 봉투 검증기: `goal` · `done_when` 없으면 시작 불가(기계 차단), `inputs` 는 참조만(경로·이벤트 id 형식), `expires_at` 선택. 되돌아오는 네 방식이 이벤트로 남는다. 검증: `tests/hermes-handoff-test.sh`.
+- [x] 목표 11 — 만료 판정은 세션 시작 훅(RV-08): 기한 지났는데 `task.started` · `handoff.question` 없는 봉투 → `handoff.expired` + 알림. 규칙 위반 지시는 `claimed: blocked` + `evidence.reason = rule:<이름>`(RV-07). 검증: 테스트 2케이스.
+- [x] 목표 12 — `done_when` 허용 형식(G-21) 첫 판: `test:<이름>` · `file:<경로>` · `gate:<규칙>` · `commit:<해시|HEAD>` · `manual` 다섯 가지. `manual` 만 `verified: none`. 검증: 각 형식의 기계 검증 함수 테스트.
 - [ ] 목표 13 — 자연어 입사·소환이 스킬로 연결된다: `assets/skills/hermes-agent/SKILL.md` 가 "users 담당 입사시켜" · "이 일 QA 한테 넘겨" 를 위 CLI 로 안내. 검증: 스킬 description 트리거 평가(skill-creator 벤치) + 문서.
 - [x] 목표 14 — 정체성 자산이 git 을 탄다(자체 리뷰 발견, planner-lite 정정): 현행 규칙은 `.hermes/*` 로 **내용물을** 무시하므로 하위 예외는 **디렉터리 단계마다** 풀어야 한다(`presets/workflow/hermes.conf:171-178` 의 `!.hermes/skills/` + `!.hermes/skills/**` 두 줄 패턴과 같은 이유). 마커에 순서대로: `!.hermes/agents/` · `!.hermes/agents/*/` · `!.hermes/agents/*/SOUL.md` · `!.hermes/agents/*/skills/` · `!.hermes/agents/*/skills/**` · `!.hermes/organization.yaml`, 그 **뒤에** 재무시 `.hermes/agents/*/MEMORY.md` · `.hermes/summons/`. 검증: 테스트가 `git check-ignore -v` 로 6경로를 고정 — SOUL·개인 스킬·organization.yaml 은 추적, MEMORY.md·summons·agents/*/ 의 그 밖 파일은 무시. 이 예외가 없으면 개인 스킬·SOUL 이 다른 컴퓨터로 가지 않는다.
 - [x] 목표 15 — 은퇴 에이전트는 주입·매칭에서 빠진다(planner-lite 지적, RV-17 손해 직결): `retire` 뒤 그 에이전트의 개인 스킬·SOUL 은 파일로 남되 `hermes-search.py` 결과와 담당 매칭에서 0건. `rehire` 뒤 복귀. 검증: `tests/hermes-roster-test.sh` 은퇴/복직 전후 주입 결과 대조.
@@ -104,6 +104,9 @@
 - 2026-09-16: 설계 문서 갱신으로 계획서와 설계가 일치 — 근거: 대조 77건.
 - 2026-09-16: 설치 시 `organization.yaml` 이 없으면 `empty.yaml` 을 자동 복사한다(C-18, 사용자 위임 확정) — 근거: 설치 직후에도 `main` 의 조직 값과 담당 매칭이 동작해야 한다. 고르기는 사람이 나중에. 틀렸을 때 손해: 빈 조직을 잊고 두면 매칭이 항상 "문의".
 - 2026-09-15: 문장 판별(G-16) 은 이번에 하지 않고 스킬 안내로 에이전트가 축 값을 인자로 채운다 — 근거: 모델 호출을 훅에 넣으면 세션 시작이 느려지고 R3(LLM 경로) 문제가 생긴다. 틀렸을 때 손해: 담당 찾기가 에이전트 판단에 기대어 오매칭 가능 — 매칭 결과를 `task.assigned` 에 남겨 나중에 대조.
+- 2026-09-16: `done_when` · `expires_at` 을 봉투 이벤트의 `decision` 칸에 담는다(evidence 아님) — 근거: `expires_at` 이 journal_events EVIDENCE_KEYS 허용목록 밖이라 evidence 로 넣으면 기록기가 거부한다. 틀렸을 때 손해: `decision` 을 정규식으로 다시 파싱해야 함(구조화 손실) — 값이 단순 토큰이라 감수.
+- 2026-09-16: 만료는 시간 데몬이 아니라 세션 시작 훅이 돌린다(RV-08) — 근거: 헤르메스에 상주 프로세스가 없고, 봉투 만료는 다음 세션 시작 때 처리해도 충분하다. 틀렸을 때 손해: 세션을 오래 안 열면 만료가 늦어짐(받는 쪽이 시작 안 한 봉투라 실해 없음).
+- 2026-09-16: handoff 테스트가 임시 프로젝트에 `scripts/` 사본을 넣는다 — 근거: 만료 훅이 `$project/scripts` 를 PYTHONPATH 로 쓰므로 설치본을 흉내내야 실측이 된다. 틀렸을 때 손해: 없음(설치된 소우주는 항상 사본을 가진다).
 
 ## 7. 발견·예외
 

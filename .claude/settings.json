@@ -117,6 +117,10 @@
           {
             "type": "command",
             "command": "${CLAUDE_PROJECT_DIR}/scripts/hooks/claude-sessionstart-lifecycle-lint.sh"
+          },
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/scripts/hooks/claude-sessionstart-handoff-expiry.sh"
           }
         ]
       }
