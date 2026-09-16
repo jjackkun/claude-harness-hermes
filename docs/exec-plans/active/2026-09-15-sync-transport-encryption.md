@@ -17,7 +17,7 @@
 - [ ] 목표 1 — 코드 브랜치 원문 커밋이 멈춘다. `hermes.conf:177-178` 의 `!.hermes/history/` **와** `!.hermes/history/**` 두 줄을 지운다(planner-lite 지적). 검증 두 줄: (a) 재설치 후 `git check-ignore .hermes/history/new.jsonl` 이 무시로 판정 — **새 파일만** (b) 이미 추적 중인 평문은 무시 규칙과 무관하게 그대로다 — `git ls-files .hermes/history | wc -l` 이 zeroday 235 · terminal-shipping 31 로 **불변**(T-03. 추적 해제 `git rm --cached` 도 하지 않는다 — 그것은 이력 재작성은 아니지만 동료 clone 의 작업 트리에서 파일을 지우는 부작용이 있어 저장소별 사용자 판단).
 - [ ] 목표 2 — 매 턴 export 가 세션 파일 전량 재작성이 아니라 **턴 단위 조각**(`history/<session_id>/<순번>.enc`)을 만든다. 검증: `tests/hermes-sync-test.sh` — 3턴 후 파일 3개, 기존 조각 바이트 불변.
 - [ ] 목표 3 — 조각은 `age` 로 **마스터 자물쇠 하나**에 잠기고, 마스터 열쇠는 컴퓨터 자물쇠·비상 자물쇠로 감싸 `keys/` 에 놓인다(RV-03). 검증: 테스트에서 자물쇠 두 개 등록 → 조각 헤더 수신자 1개, `keys/<사람>/master.<지문>.age` 2개, 어느 열쇠로도 복호 성공.
-- [ ] 목표 4 — 열쇠 CLI 가 AI 세션 밖 절차를 구현한다: `init`(마스터+컴퓨터 열쇠), `add-computer`(다른 컴퓨터 자물쇠로 마스터 재감싸기), `emergency`(비상 열쇠 생성·한 번 표시·시험 복호·폐기·자물쇠 등록), `revoke`, `rotate-master`(컴퓨터 분실 후 새 마스터 — 새 조각부터, 옛 마스터는 보관, G-4), `doctor`. 검증: `tests/hermes-keys-test.sh` 가 각 명령을 비대화(`--yes` + stdin) 로 돌림. `emergency` 는 시험 복호 실패 시 다음 단계로 못 감. `rotate-master` 뒤 옛 조각은 옛 마스터로만 열린다.
+- [ ] 목표 4 — 열쇠 CLI 가 AI 세션 밖 절차를 구현한다: `init`(마스터+컴퓨터 열쇠), `add-computer`(다른 컴퓨터 자물쇠로 마스터 재감싸기), `emergency`(비상 열쇠 생성 → **24단어 니모닉으로 한 번 표시**(BIP-39 사전, age 32바이트 열쇠와 무손실 왕복) → "이 열쇠 없이는 복구 불가" 확인 입력 → 사용자가 옮겨 적은 단어를 다시 넣어 시험 복호 → 폐기 → 자물쇠 등록. `--save-file` 은 용도 · 경고 · `BEGIN/END HERMES RECOVERY KEY` 구간 · 번호 목록을 담은 텍스트를 사용자 지정 경로에만 씀), `revoke`, `rotate-master`(컴퓨터 분실 후 새 마스터 — 새 조각부터, 옛 마스터는 보관, G-4), `doctor`. 검증: `tests/hermes-keys-test.sh` 가 각 명령을 비대화(`--yes` + stdin) 로 돌림. `emergency` 는 시험 복호 실패 시 다음 단계로 못 감. 니모닉 왕복 테스트: 열쇠 → 24단어 → 열쇠 가 바이트 동일, 단어 하나 오타는 체크섬으로 거부. `rotate-master` 뒤 옛 조각은 옛 마스터로만 열린다.
 - [ ] 목표 5 — 세션 안 열쇠 취급 차단(T-11): PreToolUse Bash 훅이 `age-keygen` · `AGE-SECRET-KEY-` · `hermes-keys.sh init|emergency` 를 막는다. 검증: `tests/hermes-key-guard-test.sh` 3케이스 차단 + `hermes-keys.sh doctor` 는 통과.
 - [ ] 목표 6 — 세션 종료 훅이 push 정책(`.hermes/sync.json`, 기본 없음=로컬 전용)을 읽어 켜진 소우주만 `refs/hermes/sync` 에 저수준 커밋·push 한다. 검증: 테스트 bare 원격에 push 후 `git ls-remote <bare> refs/hermes/sync` 존재, 코드 브랜치 변경 0, 작업 트리 변경 0.
 - [ ] 목표 7 — 두 클론이 각자 push 해도 둘 다 올라간다(RV-01). 검증: 테스트 — clone A·B 각각 조각 1개 push, 두 번째가 거부 → fetch·임시 worktree merge·재push → 원격 트리에 조각 2개, `--force` 호출 0(스크립트 grep).
@@ -121,6 +121,7 @@ refs/hermes/sync
 - 2026-09-15: push 정책 파일이 없으면 로컬 전용(C) — 근거: T-01 기본값. 켜는 것은 사람의 명시 행위. 틀렸을 때 손해: 이식을 켜는 걸 잊으면 다른 컴퓨터에서 백지 — 세션 시작 훅이 "이식 꺼짐" 을 한 줄 알린다.
 - 2026-09-15: `.hermes/sync.json` 은 **컴퓨터 로컬**(`.hermes/*` 무시 규칙 그대로, 커밋 안 함) — 근거: zeroday 동료 clone 이 `push: true` 를 물려받으면 열쇠 없는 컴퓨터가 매 세션 "보류" 를 찍는다. 사람마다 자기 컴퓨터에서 켠다. 틀렸을 때 손해: 컴퓨터마다 한 번씩 켜야 한다(`enable-sync.md` 절차).
 - 2026-09-15: 마스터 열쇠 평문은 `~/.hermes/keys/<universe_id>/master.key`(0600) 에만, 원격에는 감싼 형태만 — 근거: RV-03. 틀렸을 때 손해: 컴퓨터 분실 시 마스터 교체 필요(G-4 절차, 옛 조각은 옛 마스터로).
+- 2026-09-16: 비상 열쇠는 74자 age 문자열이 아니라 **24단어 니모닉**으로 보여 주고 받는다 — 근거: Aside Vault 복구 키 관찰(12단어 + 이해 확인 + 저장 파일). 손으로 옮겨 적을 때 오타가 줄고 체크섬으로 오타를 잡는다. 24단어인 이유: age 열쇠 32바이트를 파생 없이 그대로 담으려면 256비트 = 24단어. 틀렸을 때 손해: 니모닉 변환 코드(BIP-39 사전 2048단어 동봉)가 하나 늘고, 12단어 대비 옮겨 적을 양이 두 배.
 - 2026-09-15: `tombstone` 물리 삭제는 CLI 에 넣되 키 가드와 같은 차단 목록에 올려 세션 안에서 못 부르게 한다 — 근거: G-5 "사람 승인". 틀렸을 때 손해: 급할 때 세션 밖으로 나가야 함(의도된 마찰).
 
 ## 7. 발견·예외
