@@ -15,7 +15,7 @@
 - [x] 목표 2 — 헤드리스 루프가 반복별 결정을 저장하고 누락과 "없음"을 구분한다. 검증: `bash tests/hermes-loop-test.sh` 의 결정 기록 절 PASS. (2026-09-15 실측: 전체 85/85)
 - [x] 목표 3 — 대화형 `step --decision` 도 같은 저장소에 기록한다. 검증: 같은 테스트 절. (2026-09-15 실측)
 - [x] 목표 4 — report.html 에 「내가 대신 결정한 것」 섹션이 반복 순서대로 나온다. 검증: 같은 테스트 절. (2026-09-15 실측)
-- [ ] 목표 5 — 새 모듈이 설치 복사 목록에 있어 다른 프로젝트에서 import 가 실패하지 않는다. 검증: `update-all.sh` 후 `upbit-ai-trading/scripts/hermes_loop_decisions.py` 존재 + `python3 -c "import hermes_loop_decisions"` 성공.
+- [x] 목표 5 — 새 모듈이 설치 복사 목록에 있어 다른 프로젝트에서 import 가 실패하지 않는다. 검증: `update-all.sh` 후 `upbit-ai-trading/scripts/hermes_loop_decisions.py` 존재 + `python3 -c "import hermes_loop_decisions"` 성공.
 
 ## 3. 비목표 (Out of Scope)
 
@@ -69,8 +69,14 @@
 - kis-trading 은 `presets.lock` 에 hermes 가 없는데 `scripts/hermes_loop.py` 가 남아 있다(과거 설치 잔존물 추정).
 - 전역 `~/.claude/rules/common` 과 `~/.claude/skills/*` 가 사라진 `/tmp/tmp.e9xM75jdYw/harness/...` 를 가리킨다(2026-09-10 16:35 생성). `update-all-roundtrip-test.sh` 는 HOME 을 격리하므로 원인이 아니다. 원인 미확인 — backlog 후보.
 
-## 8. 회고 (완료 시 작성)
+## 8. 회고
 
-- 잘된 것:
-- 잘못된 것:
-- 다음 룰 후보:
+- 잘된 것: 규칙을 "결정 수를 줄이는 것" 이 아니라 "흩어진 결정을 보이게 하는 것" 으로 잡아 세 칸
+  (결정 — 이유 — 손해)으로 고정했다. 헤드리스·대화형 두 경로 모두 `loop_decisions` 에 모여
+  report.html 에서 한자리에 보인다.
+- 잘못된 것: `_decision_block` 이 R-cx(복잡도 15 > 11)에 막혀 커밋이 한 번 반려됐다. 조건 분기를
+  늘리며 쓰다가 임계를 넘긴 것으로, `_missing_iterations`·`_decision_body` 두 헬퍼로 쪼개 통과했다.
+  게이트가 없었으면 그대로 남았을 코드다.
+- 다음 룰 후보: 없음. 규칙 문서 자체가 강제 장치이고, 지키는지는 보고 형식으로 드러난다.
+- 목표 5 검증(2026-09-16): 전파된 6곳(novel-ab · novel-bc · ai-create · jjackkun_bot ·
+  upbit-ai-trading · zeroday-frontend) 모두 `scripts/hermes_loop_decisions.py` 존재 + import 성공.

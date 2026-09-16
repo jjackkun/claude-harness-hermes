@@ -24,7 +24,7 @@
 - [x] 목표 7 — 세션 시작 훅이 깨진 링크를 감지해 재설치를 안내한다. 검증: 테스트에서 링크 대상을 지운 뒤 훅 실행 → `[factory-link WARN]` 출력.
 - [x] 목표 8 — 공장의 모순 결정화 스킬 2개(`.hermes/skills/repository-isolation-principle.md`, `unified-hook-deployment.md`)가 삭제되고 `skill_index` 에서 tombstone 된다. 검증: 파일 없음 + `hermes-search.py` 가 주입하지 않음.
 - [x] 목표 9 — 기존 테스트 전부 통과. 검증: `bash tests/run-all.sh` 0 실패, `tests/update-all-roundtrip-test.sh` · `tests/uninstall-roundtrip-test.sh` · `tests/windows-helpers-test.sh` 포함.
-- [ ] 목표 10 — zeroday-frontend 이전: 링크 41개가 복사본으로 바뀐 상태를 **사용자가 커밋**한다. 검증: zeroday 에서 `git ls-files -s .claude | grep -c 120000` = 0, `.claude/.factory-manifest.json` 추적됨.
+- [x] 목표 10 — zeroday-frontend 이전: 링크 41개가 복사본으로 바뀐 상태를 **사용자가 커밋**한다. 검증: zeroday 에서 `git ls-files -s .claude | grep -c 120000` = 0, `.claude/.factory-manifest.json` 추적됨.
 - [x] 목표 11 — 제거도 설치 목록 기준이다: `uninstall.sh` 가 manifest 항목만 지우고 소우주 자체 스킬은 남긴다. 검증: `tests/uninstall-roundtrip-test.sh` 통과 + 자체 스킬 폴더 잔존 케이스 추가.
 - [x] 목표 12 — `is_windows_path` 분기가 설치·정리·백업 세 함수에서 사라지고 한 경로만 남는다. 검증: `grep -c is_windows_path lib/installers.sh` = 0, `tests/windows-helpers-test.sh` · `tests/windows-smoke.sh` 통과. `lib/harness_installers.sh` 의 `install_memory_symlink()`(667행 함수) 안 `ln -s` 는 메모리 폴더 링크(E-04, 범위 밖)라 남는다 — 테스트가 "저장소 안 `ln -s` 는 이 한 곳뿐" 을 `grep -n 'ln -s' lib/*.sh` 로 고정.
 - 비목표 추가(planner-lite 지적): 복사 설치로 소우주 저장소가 커진다 — 2026-09-16 실측 `du -sh`: `assets/skills` 1.3M · `assets/rules` 276K · `assets/agents` 84K(프리셋에 따라 일부만 복사). 줄이는 일은 이번 범위 밖.
@@ -113,8 +113,14 @@
 - 2026-09-15 에 적었던 "이 컴퓨터 `.installed-projects` 에 zeroday-frontend 가 없다(3곳만)" 는 **틀린 관측**이었다. 2026-09-16 재실측: 12곳 등록, zeroday-frontend 포함(`wc -l < .installed-projects` = 12, `grep -c zeroday-frontend` = 1). 설계 근거 문서의 "등록 12곳" 과 일치한다 — Step 7 은 등록 확인 후 `update-all`.
 - 공장 자기 설치의 상대경로 링크는 `assets/` 이름이나 `.claude/` 깊이가 바뀌면 깨진다(E-02 손해). 훅이 잡는다.
 
-## 8. 회고 (Step 7 사용자 실행 뒤 완료)
+## 8. 회고
 
 - 잘된 것: 세 설치 함수를 `_install_kind` 하나로 접어 `is_windows_path` 분기가 자연히 사라졌다. 이행 분기 덕에 기존 소우주 첫 재설치가 목록 없이도 안전했다(테스트 4절).
 - 잘못된 것: 복사 설치의 부작용(규칙 예시 .py 가 게이트에 잡힘)을 계획 단계에서 못 봤다 — 심링크가 "git 이 안을 보지 않게" 하던 효과를 설계 문서 어디에도 적지 않았기 때문이다.
 - 다음 룰 후보: "설치물은 저장소 밖 경로를 가리키지 않는다"(E-02) → `core-beliefs.md` **P10 등록 완료(Provisional)** + `tests/copy-install-test.sh` 8절이 강제 장치.
+- 전파 결과(2026-09-16 완료): 공장 + 소우주 11곳. zeroday-frontend 는 링크 42건 전환 후 사용자가
+  직접 커밋. teulankkae 는 git 저장소가 아니라 커밋 단계 없음. kis-trading 은 `.gitignore` 가
+  `.claude/*` 를 무시해 훅 사본만 커밋(복사 설치의 이점이 그 저장소에는 닿지 않는다).
+- 전파가 낳은 후속 작업 둘: 커밋 경로를 손으로 골라 `scripts/hermes-*.py` 사본 7개를 5곳에서
+  빠뜨렸고(→ `completed/2026-09-16-install-receipt.md` 로 기계화), 공장 문서 템플릿이 prettier
+  규격 밖이라 prettier 프리셋 소우주의 커밋을 막았다(→ fa7f7a0 에서 원본 수정).
