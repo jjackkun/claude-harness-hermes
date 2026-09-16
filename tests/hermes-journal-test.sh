@@ -1,0 +1,131 @@
+#!/usr/bin/env bash
+# 작업 이력 검증 (계획 docs/exec-plans/active/2026-09-15-universe-id-journal.md 목표 3·4·5·9·12).
+#
+#   - journal_events 는 추가 전용 (UPDATE·DELETE 는 트리거가 막는다)
+#   - 허용목록 밖의 칸·값은 기록되지 않는다 (원문 유입 차단, J-06)
+#   - 결과 3층: claimed 는 에이전트, verified 는 기계, accepted 는 사람만
+#   - 보기: thread · graph · mismatch
+#   - rollback 은 지우지 않고 이름만 바꾼다
+#
+# 실행: bash tests/hermes-journal-test.sh
+# 종료 코드: 0 = 모든 단언 통과, 1 = 실패
+
+set -uo pipefail
+
+REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+TMP=$(mktemp -d)
+trap 'rm -rf "$TMP"' EXIT
+
+PASS=0; FAIL=0
+assert() {
+  local desc="$1" expected="$2" actual="$3"
+  if [[ "$expected" == "$actual" ]]; then
+    echo "  ✓ $desc"; PASS=$((PASS+1))
+  else
+    echo "  ✗ $desc (expected=$expected actual=$actual)"; FAIL=$((FAIL+1))
+  fi
+}
+
+S="$REPO_ROOT/scripts"
+PROJ="$TMP/proj"; mkdir -p "$PROJ/.hermes"
+PYTHONPATH="$S" python3 -c "
+from hermes_universe import ensure_universe_id; ensure_universe_id('$PROJ')"
+UNI="$(cat "$PROJ/.hermes/universe.id")"
+DB="$PROJ/.hermes/state.db"
+J() { python3 "$S/hermes-journal.py" --project "$PROJ" --db "$DB" "$@"; }
+q() { python3 -c "
+import sqlite3,sys;print(sqlite3.connect('$DB').execute(sys.argv[1]).fetchone()[0])" "$1" 2>/dev/null; }
+
+echo "== 1. 기록과 키 (목표 3) =="
+EV1=$(J emit --json '{"kind":"task.started","task_id":"t1","intent":"이력 테스트 시작"}')
+assert "event_id 가 UUIDv7" "7" "$(python3 -c "import uuid;print(uuid.UUID('$EV1').version)")"
+assert "universe_id 가 자동으로 채워짐" "$UNI" "$(q "select universe_id from journal_events")"
+assert "actor 가 기계로 찍힘(agent: 접두)" "1" "$(q "select count(*) from journal_events where actor like 'agent:%'")"
+assert "requested_by 가 사람으로 찍힘" "1" "$(q "select count(*) from journal_events where requested_by like 'human:%' or requested_by like 'system:%'")"
+
+echo ""
+echo "== 2. 추가 전용 (목표 3) =="
+assert "UPDATE 차단" "blocked" "$(python3 -c "
+import sqlite3
+try: sqlite3.connect('$DB').execute(\"update journal_events set kind='step'\"); print('open')
+except sqlite3.IntegrityError: print('blocked')")"
+assert "DELETE 차단" "blocked" "$(python3 -c "
+import sqlite3
+try: sqlite3.connect('$DB').execute('delete from journal_events'); print('open')
+except sqlite3.IntegrityError: print('blocked')")"
+
+echo ""
+echo "== 3. 허용목록 (목표 4) =="
+J emit --json '{"kind":"step","task_id":"t1","raw_text":"대화 원문"}' >/dev/null 2>&1
+assert "모르는 칸은 거부(rc=2)" "2" "$?"
+J emit --json '{"kind":"step","task_id":"t1","evidence":{"secret":"x"}}' >/dev/null 2>&1
+assert "evidence 의 모르는 칸도 거부" "2" "$?"
+J emit --json '{"kind":"mystery","task_id":"t1"}' >/dev/null 2>&1
+assert "모르는 kind 거부" "2" "$?"
+J emit --json '{"kind":"step","task_id":"t1","actor":"root"}' >/dev/null 2>&1
+assert "접두어 없는 actor 거부" "2" "$?"
+J emit --json '{"kind":"step","task_id":"t1","evidence":{"command":"/usr/bin/curl -H Authorization: Bearer SECRET","exit_code":0}}' >/dev/null
+assert "command 는 이름만 남는다" "curl" "$(python3 -c "
+import sqlite3,json
+row=sqlite3.connect('$DB').execute(
+  \"select evidence from journal_events where evidence like '%command%'\").fetchone()[0]
+print(json.loads(row)['command'])")"
+assert "인자(비밀값)가 남지 않음" "0" "$(q "select count(*) from journal_events where evidence like '%SECRET%'")"
+LONG=$(python3 -c "print('가'*600)")
+J emit --json "{\"kind\":\"step\",\"task_id\":\"t1\",\"intent\":\"$LONG\"}" >/dev/null 2>&1
+assert "긴 자유 글 거부" "2" "$?"
+python3 -c "
+import json,sys;sys.path.insert(0,'$S')
+from hermes_journal_schema import validate, JournalRejected
+try:
+    validate({'kind':'step','event_id':'e','ts':'t','universe_id':'u','task_id':'t1','actor':'agent:main','intent':'한 줄\n두 줄'})
+    print('통과함')
+except JournalRejected: print('거부')" > "$TMP/nl.txt"
+assert "줄바꿈 있는 자유 글 거부" "거부" "$(cat "$TMP/nl.txt")"
+
+echo ""
+echo "== 4. 결과 3층 (목표 5) =="
+J emit --json '{"kind":"task.finished","task_id":"t2","claimed":"success","verified":"pass"}' >/dev/null
+assert "증거 없으면 기계 판정은 none (에이전트 주장 무시)" "none" "$(q "select verified from journal_events where task_id='t2'")"
+J emit --json '{"kind":"task.finished","task_id":"t3","claimed":"success","evidence":{"exit_code":1}}' >/dev/null
+assert "exit_code 0 아니면 fail" "fail" "$(q "select verified from journal_events where task_id='t3'")"
+J emit --json '{"kind":"task.finished","task_id":"t4","claimed":"success","evidence":{"exit_code":0}}' >/dev/null
+assert "exit_code 0 이면 pass" "pass" "$(q "select verified from journal_events where task_id='t4'")"
+J emit --json '{"kind":"task.finished","task_id":"t5","claimed":"success","accepted":"human:jjackkun"}' >/dev/null
+assert "accepted 는 기록기가 쓰지 않는다(사람만)" "0" "$(q "select count(*) from journal_events where accepted is not null")"
+
+echo ""
+echo "== 5. 보기 (목표 9) =="
+assert "thread 가 t1 의 이벤트를 모은다" "2" "$(J thread t1 | python3 -c "import json,sys;print(len(json.load(sys.stdin)))")"
+assert "mismatch 는 주장 성공·기계 실패만" "t3" "$(J mismatch | python3 -c "
+import json,sys;d=json.load(sys.stdin);print(d[0]['task_id'] if len(d)==1 else [x['task_id'] for x in d])")"
+J emit --json '{"kind":"task.started","task_id":"child","parent_task_id":"t1"}' >/dev/null
+assert "graph 가 부모 간선을 낸다" "1" "$(J graph child | python3 -c "
+import json,sys;print(sum(1 for e in json.load(sys.stdin)['edges'] if e['type']=='parent'))")"
+J emit --json "{\"kind\":\"step\",\"task_id\":\"child\",\"caused_by\":[\"$EV1\"]}" >/dev/null
+assert "graph 가 caused_by 간선을 낸다" "1" "$(J graph child | python3 -c "
+import json,sys;print(sum(1 for e in json.load(sys.stdin)['edges'] if e['type']=='caused_by'))")"
+
+echo ""
+echo "== 6. 미완료 작업 (목표 6 의 바탕) =="
+assert "끝나지 않은 작업 2건(t1 · child)" "2" "$(J gap-check)"
+assert "누락 이벤트가 붙었다" "2" "$(q "select count(*) from journal_events where actor='system:claude-stop-journal-gap'")"
+assert "누락 이벤트의 claimed 는 abandoned" "2" "$(q "select count(*) from journal_events where claimed='abandoned'")"
+assert "다시 돌려도 중복으로 붙지 않음" "0" "$(J gap-check)"
+
+echo ""
+echo "== 7. rollback 은 지우지 않는다 (목표 12) =="
+BEFORE=$(q "select count(*) from journal_events")
+J rollback --confirm >/dev/null
+assert "테이블 이름만 바뀜(기록 보존)" "$BEFORE" "$(python3 -c "
+import sqlite3;c=sqlite3.connect('$DB')
+t=[r[0] for r in c.execute(\"select name from sqlite_master where name like 'journal_events_disabled_%'\")]
+print(c.execute(f'select count(*) from {t[0]}').fetchone()[0])")"
+J emit --json '{"kind":"step","task_id":"t1"}' >/dev/null 2>&1
+assert "rollback 뒤 emit 은 조용히 성공(rc=0)" "0" "$?"
+assert "rollback 뒤 보기는 빈 목록" "0" "$(J mismatch | python3 -c "import json,sys;print(len(json.load(sys.stdin)))")"
+assert "--confirm 없으면 거부" "2" "$(J rollback >/dev/null 2>&1; echo $?)"
+
+echo ""
+echo "PASS=$PASS FAIL=$FAIL"
+[[ $FAIL -eq 0 ]]

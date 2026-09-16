@@ -12,6 +12,9 @@ import os
 import sqlite3
 import sys
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from hermes_journal_schema import ensure_schema, schema_disabled  # noqa: E402  (작업 이력 스키마)
+
 
 GLOBAL_DB_DIR = os.path.expanduser("~/.hermes")
 GLOBAL_DB_PATH = os.path.join(GLOBAL_DB_DIR, "global.db")
@@ -42,6 +45,9 @@ def init_project_db(project_path: str):
     os.makedirs(os.path.join(db_dir, "skills"), exist_ok=True)
     con = connect_db(db_path)
     _apply_schema(con, scope="project")
+    # 작업 이력(추가 전용). 이미 있으면 그대로 두고, rollback 으로 꺼 둔 DB 는 되살리지 않는다.
+    if not schema_disabled(con):
+        ensure_schema(con)
     con.close()
     print(f"[hermes] project DB initialized: {db_path}")
 
