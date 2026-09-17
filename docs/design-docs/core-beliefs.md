@@ -506,6 +506,37 @@ R-plan 은 *스테이징된* 계획서만 검사한다 — "갱신하지 않는 
 `--deliver` 없이 gh 0회 · 주소 인자 거부). 상태: Provisional — 설계
 `docs/hermes-universe/design/world/skill-proposal-delivery.md`, 결정 P-04 · RV-15 · RV-16.
 
+## R-coexist — 공장 파일은 덮지 않고 합친다 {#r-coexist}
+
+**원칙**: 공장이 소우주에 놓는 파일(훅·git 훅·hermes 스크립트·lint 설정·스킬·에이전트·규칙)은
+네 문장을 따른다 — **공장의 개정은 언제나 전달된다 · 하류의 수정은 지워지지 않는다 · 한 파일에서
+만나면 합쳐서 둘 다 살린다 · 같은 자리가 겹치면 사람이 푼다.** "고친 건 덮지 않는다" 가 아니다 —
+그렇게 읽으면 하류가 한 번 고친 파일은 영영 상류 개선을 못 받는다.
+
+**왜 "덮되 말한다" 가 아닌가**: 08-27 계획은 해시 목록으로 하류 수정을 *감지하면서* 덮고 경고만
+냈다. 그 정책 아래 같은 사고가 다섯 번 났다(terminal-shipping `check-secrets.py`·`plan_state.py`,
+09-08 → 09-17; 한 번은 덮인 판이 커밋까지 됨). 잡는 것과 막는 것은 다르다.
+
+**따르는 규칙 셋**:
+- **복사는 한 함수를 거친다.** 소우주로 가는 파일 쓰기는 `install_factory_file <src> <dst> <kind> <name>
+  <claude_dir> [mode]`(`lib/factory_coexist.sh`) 하나다. 설치기·프리셋에 raw `cp` 를 새로 두지 않는다.
+  예외는 `tests/fixtures/raw-copy-allowlist.txt` 에 **이유와 함께** 적힌 것뿐이다(폴더형 자산 백업,
+  없을 때만 생성하는 템플릿, NTFS 메모리 폴백, 공존 엔진 자체).
+- **판정은 base 대조다.** base = 마지막 설치판(manifest `sha256`), ours = 프로젝트 현재, theirs = 새
+  공장판. 같으면 무출력 · 하류만 바뀌었으면 손대지 않음 · 상류만 바뀌었으면 덮음 · 둘 다 바뀌었으면
+  `git merge-file` + 구문 검사 뒤 병합본 · 충돌이거나 base 를 모르면 `<dst>.factory-new` 로 세워 둔다.
+  `cmp` 로 "다르다" 만 보고 덮거나 건너뛰지 않는다.
+- **풀지 않은 병합은 커밋을 막는다.** `*.factory-new` 가 워킹트리에 있으면 pre-commit `R-merge` 가
+  차단한다. 해소는 사람이 합치고 파일을 지우는 것뿐이다.
+
+**기계 강제**: `lib/factory_coexist.sh`(판정 엔진 — 분기 ⓪ a b c d ⓔ f, 모드 보존, 원자적 쓰기) +
+pre-commit `R-merge`(`# GATE: R-merge block`) + `tests/raw-copy-guard-test.sh`(설치기·프리셋의 raw
+`cp` 를 허용 목록과 대조 — 새 raw `cp` 는 빨강, 가드 자체가 심은 위반을 잡는지 자기 검사 포함).
+회귀 고정: `tests/install-coexist-test.sh`(분기 전수 · 실행 비트 · 심링크 · 프로젝트 밖 심링크 ·
+실물 픽스처 byte-equal · R-merge 차단/통과 · 변조 훅). 상태: Provisional — 계획
+`docs/exec-plans/completed/2026-09-17-install-coexistence.md` §6·§8, 뒤집은 결정은
+`completed/2026-08-27-propagation-reverts-downstream-fixes.md` §7 추기.
+
 <!--===HARNESS-RULES:BEGIN===-->
 
 ## 하네스 공통 룰
@@ -522,4 +553,5 @@ pre-commit 메시지의 `근거:` 링크가 이 앵커들을 가리킨다.
 - [R-plan-missing](#r-plan-missing) — 코드 수정 시 계획 존재 (경고)
 - [R-plan-stale](#r-plan-stale) — 계획서가 코드를 따라오는가 (경고)
 - [R-retro](#r-retro) — 회고 없이 완료 처리 금지 (경고)
+
 <!--===HARNESS-RULES:END===-->

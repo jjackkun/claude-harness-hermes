@@ -1,0 +1,31 @@
+# R-coexist 허용 목록 — 설치기·프리셋에 남아 있어도 되는 raw `cp`.
+# 형식: <파일 basename>|<그 줄에만 있는 부분 문자열>|<이유>
+# 줄 번호를 쓰지 않는다 — 편집마다 어긋난다. 부분 문자열이 맞는 그 파일의 cp 줄은 모두 허용된다 —
+# 그래서 부분 문자열은 허용하려는 줄에만 맞을 만큼 구체적이어야 한다.
+# 새 항목은 이유 없이는 못 넣는다. 소우주로 가는 파일 쓰기는 install_factory_file 을 거친다.
+#
+# 근거: docs/design-docs/core-beliefs.md #r-coexist, 계획 completed/2026-09-17-install-coexistence.md 목표 1.
+
+# ── 공존 엔진 자체 — 이 함수들이 install_factory_file 의 쓰기·세워두기 구현이다
+factory_coexist.sh|cp "$from" "$tmp"|원자적 쓰기(임시 파일 → mv). 엔진 내부.
+factory_coexist.sh|cp "$src" "$real.factory-new"|충돌·판정 불가 시 theirs 를 옆에 세워 둔다. 엔진 내부.
+
+# ── 없을 때만 생성 — 이미 있으면 continue/skip 이라 하류 수정에 닿지 않는다
+harness_installers.sh|cp "$f" "$dest"|docs/ 템플릿 신규 생성 — 바로 위 `[[ -e "$dest" ]] && continue`.
+hermes.conf|bip39-english.txt|BIP-39 사전 — 없을 때만 복사(`[[ -f ... ]] ||`). 내용이 고정된 사전이라 하류가 고칠 파일이 아니다.
+hermes.conf|templates/agent/SOUL.md|SOUL 틀 — 없을 때만 복사. 에이전트마다 복제해 쓰는 원본.
+hermes.conf|organization.yaml|조직 파일 — 없을 때만 생성(`[[ -f ... ]] ||`).
+
+# ── 폴더형 자산 · 메모리 이전 — 파일 단위 판정 대상이 아니다
+installers.sh|cp -r "$src" "$dst"|폴더형 자산(스킬 디렉터리) 설치 — _backup_user_asset 이 manifest sha 대조 뒤 백업하고 덮는 기존 경로.
+harness_installers.sh|cp -p "$f" "$native_dest"|NTFS 메모리 폴백 — 심링크를 못 만들 때 메모리 파일 복사.
+harness_installers.sh|cp -p "$f" "$dest" 2>/dev/null|NTFS 메모리 폴백 — 위와 같은 블록.
+harness_installers.sh|cp -r "$repo_mem" "$native_mem"|NTFS 메모리 폴백 — 폴더 통째 복사.
+uninstall_helpers.sh|cp -rn "$repo_mem/."|uninstall 의 메모리 되돌리기(-n: 있으면 덮지 않음). 설치 경로가 아니다.
+
+# ── 사용자 홈 — 소우주가 아니다
+public-claude.sh|global-claude.md.tpl|~/.claude/CLAUDE.md 전역 템플릿. 프로젝트 파일이 아니다.
+
+# ── Codex 설치 경로 — 미전환. 2026-09-17 계획은 Claude 경로만 다뤘다. 같은 결함 클래스이며 backlog 후보.
+codex_installers.sh|cp "$f" "$dest"|미전환 — Codex 규칙·스킬·훅 복사 3곳(같은 줄 문자열이라 한 항목으로 3줄 허용). 전환 시 이 줄을 지운다.
+project-codex.sh|hooks.json|미전환 — Codex hooks.json 복사. 전환 시 이 줄을 지운다.

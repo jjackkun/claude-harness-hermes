@@ -149,6 +149,7 @@ for t in \
   copy-install-test.sh \
   install-receipt-test.sh \
   install-coexist-test.sh \
+  raw-copy-guard-test.sh \
   hermes-universe-test.sh \
   hermes-journal-test.sh \
   hermes-keys-test.sh \
