@@ -11,6 +11,7 @@ import json
 import re
 
 KINDS = (
+    "agent.created",   # 입사 — 명부 등록·id 발급·정체성 폴더 뒤 (creation-and-organization.md §2)
     "task.assigned", "task.started", "step", "decision", "task.handoff",
     "task.finished", "correction", "tombstone",
     "handoff.declined", "handoff.question", "handoff.expired", "handoff.external",
@@ -33,13 +34,16 @@ COLUMNS = (
     "evidence", "intent", "lesson", "decision",
 )
 
+# kind 의 CHECK 는 KINDS 에서 만든다 — 같은 목록이 튜플·SQL 두 곳에 있으면 갈라진다
+# (2026-09-17: 설계가 요구한 agent.created 가 둘 다에 없었다). 기존 DB 의 옛 CHECK 는
+# ensure_schema 가 hermes_journal_migrate 로 옮긴다.
+_KIND_CHECK = ",".join("'%s'" % k for k in KINDS)
+
 SCHEMA_SQL = """
 CREATE TABLE IF NOT EXISTS journal_events (
   event_id        TEXT PRIMARY KEY,
   ts              TEXT NOT NULL,
-  kind            TEXT NOT NULL CHECK (kind IN ('task.assigned','task.started','step','decision',
-                                                'task.handoff','task.finished','correction','tombstone',
-                                                'handoff.declined','handoff.question','handoff.expired','handoff.external')),
+  kind            TEXT NOT NULL CHECK (kind IN (%s)),
   universe_id     TEXT NOT NULL,
   task_id         TEXT NOT NULL,
   parent_task_id  TEXT,
@@ -61,7 +65,7 @@ CREATE TRIGGER IF NOT EXISTS journal_no_update BEFORE UPDATE ON journal_events
   BEGIN SELECT RAISE(ABORT,'journal_events is append-only'); END;
 CREATE TRIGGER IF NOT EXISTS journal_no_delete BEFORE DELETE ON journal_events
   BEGIN SELECT RAISE(ABORT,'journal_events is append-only'); END;
-"""
+""" % _KIND_CHECK
 
 
 class JournalRejected(ValueError):
@@ -69,7 +73,12 @@ class JournalRejected(ValueError):
 
 
 def ensure_schema(con) -> None:
-    """테이블·인덱스·트리거를 만든다. 이미 있으면 아무것도 하지 않는다(기존 DB 무손실)."""
+    """테이블·인덱스·트리거를 만든다. 이미 있으면 아무것도 하지 않는다(기존 DB 무손실).
+
+    옛 CHECK(KINDS 보다 좁은 목록)를 가진 표는 먼저 새 표로 옮긴다 — 한 트랜잭션,
+    실패하면 원상(hermes_journal_migrate)."""
+    from hermes_journal_migrate import migrate_kind_check
+    migrate_kind_check(con, SCHEMA_SQL, KINDS)
     con.executescript(SCHEMA_SQL)
     con.commit()
 

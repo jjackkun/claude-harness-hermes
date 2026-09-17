@@ -25,12 +25,15 @@ from hermes_done_when import is_valid  # noqa: E402
 from hermes_journal import emit  # noqa: E402
 from hermes_journal_views import thread  # noqa: E402
 from hermes_uuid7 import uuid7_str  # noqa: E402
+from hermes_handoff_kind import REFUSABLE, derive_kind  # noqa: E402
 
 # inputs 참조 형식: 파일 경로(원문 아님) 또는 이벤트 id(UUID). 그 밖 문자열은 거부한다.
 _UUID = re.compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
 _PATH = re.compile(r"^[\w./~-]+$")
 _RETURN_KINDS = {"finished": "task.finished", "declined": "handoff.declined",
-                 "question": "handoff.question", "expired": "handoff.expired"}
+                 "question": "handoff.question", "expired": "handoff.expired",
+                 "blocked": "task.finished"}     # 규칙 위반 지시를 되돌림(RV-07) — 거절이 아니다
+_RULE_REASON = re.compile(r"^rule:[A-Za-z0-9._-]+$")
 
 
 class HandoffError(ValueError):
@@ -86,12 +89,20 @@ def _check_inputs(envelope: dict) -> list:
 
 def open_handoff(db: str, project: str, to_agent: str, envelope: dict,
                  parent_task_id: str = None, by: str = None) -> str:
-    """봉투를 검증해 task.assigned 를 남긴다. handoff_id(=task_id)를 돌려준다."""
+    """봉투를 검증해 task.assigned 를 남긴다. handoff_id(=task_id)를 돌려준다.
+
+    `by` 는 **신뢰된 호출자**만 넘긴다(러너·훅이 `resolve_actor()` 로 계산한 값). 사용자 입력을
+    그대로 넘기면 보내는 쪽을 꾸며 지시를 협업·요청으로 바꿔 거절 가능하게 만들 수 있다(리뷰 LOW).
+    """
     env = validate_envelope(envelope)
+    frm = by or "agent:main"
+    kind, certain = derive_kind(project, frm, to_agent)          # 기계가 정한다(handoff-contract §2)
+    env["kind"] = kind if certain else f"{kind}(미상)"
+    env["return_to"] = (envelope.get("return_to") or frm).strip()   # 기본은 from
     handoff_id = uuid7_str()
     emit(db, project, {
         "kind": "task.assigned", "task_id": handoff_id, "parent_task_id": parent_task_id,
-        "actor": by or "agent:main", "requested_by": by or "agent:main",
+        "actor": frm, "requested_by": frm,
         "intent": env["goal"],
         "decision": _assign_decision(env),
         "evidence": {"reason": "handoff", "files": env["inputs"][:50]},
@@ -100,11 +111,31 @@ def open_handoff(db: str, project: str, to_agent: str, envelope: dict,
 
 
 def _assign_decision(env: dict) -> str:
-    """done_when 과 (있으면) 만료를 한 줄 decision 칸에 담는다 — evidence 허용목록 밖을 피한다."""
-    parts = [f"done_when={env['done_when']}"]
+    """done_when · kind · return_to · (있으면) 만료·constraints 를 한 줄 decision 칸에 담는다 —
+    evidence 허용목록 밖을 피한다. constraints 는 자유 글이라 emit 이 저장 전 마스킹한다."""
+    parts = [f"done_when={env['done_when']}", f"kind={env['kind']}", f"return_to={env['return_to']}"]
     if env.get("expires_at"):
         parts.append(f"expires_at={env['expires_at']}")
+    if env.get("constraints"):
+        parts.append(f"constraints={env['constraints']}")
     return " ".join(parts)
+
+
+def _kind_of(db: str, handoff_id: str) -> str:
+    """봉투의 kind(지시·협업·요청). `(미상)` 표시는 뗀다 — 미상은 요청으로 다룬다."""
+    m = re.search(r"kind=([^\s(]+)", _assign_row(db, handoff_id) or "")
+    return m.group(1) if m else "요청"
+
+
+def _assign_row(db: str, handoff_id: str) -> str:
+    con = sqlite3.connect(db)
+    try:
+        row = con.execute(
+            "SELECT decision FROM journal_events WHERE task_id=? AND kind='task.assigned' "
+            "ORDER BY ts LIMIT 1", (handoff_id,)).fetchone()
+    finally:
+        con.close()
+    return row[0] if row else ""
 
 
 def resolve(db: str, project: str, handoff_id: str, how: str, actor: str,
@@ -115,20 +146,44 @@ def resolve(db: str, project: str, handoff_id: str, how: str, actor: str,
     verified 를 채운다(기록기가 evidence 로 계산). 나머지는 사유를 intent 에 남긴다.
     """
     if how not in _RETURN_KINDS:
-        raise HandoffError(f"모르는 반환 방식: {how} (finished·declined·question·expired)")
+        raise HandoffError(f"모르는 반환 방식: {how} (finished·declined·question·expired·blocked)")
     event = {"kind": _RETURN_KINDS[how], "task_id": handoff_id, "actor": actor}
-    if how == "finished":
-        from hermes_done_when import verify
-        spec = done_when or _done_when_of(db, handoff_id)
-        verdict = verify(spec, project) if spec else "none"
-        event["claimed"] = "success"
-        event["evidence"] = {"reason": f"gate-{'pass' if verdict == 'pass' else 'fail'}"} \
-            if verdict in ("pass", "fail") else {"reason": "manual"}
+    if how == "blocked":
+        event.update(_blocked_fields(reason))
+    elif how == "finished":
+        event.update(_finished_fields(db, project, handoff_id, done_when))
     else:
+        if how == "declined":
+            _check_refusable(db, handoff_id, reason)
         event["intent"] = (reason or "").strip()[:200] or f"handoff {how}"
         if how in ("declined", "question"):
             event["claimed"] = "blocked"
     return emit(db, project, event)
+
+
+def _blocked_fields(reason: str) -> dict:
+    """규칙 위반 지시를 되돌린다 — 거절이 아니라 "막힘". 사유는 rule:<이름> 꼴만(RV-07)."""
+    if not _RULE_REASON.match(reason or ""):
+        raise HandoffError("blocked 는 사유가 rule:<이름> 꼴이어야 한다 (예: rule:R-secret)")
+    return {"claimed": "blocked", "evidence": {"reason": reason}, "intent": f"규칙 위반으로 막힘 {reason}"}
+
+
+def _check_refusable(db: str, handoff_id: str, reason: str) -> None:
+    """지시는 거절할 수 없다(handoff-contract §1). 협업·요청은 사유가 있어야 거절된다."""
+    kind = _kind_of(db, handoff_id)
+    if kind not in REFUSABLE:
+        raise HandoffError(f"{kind} 는 거절할 수 없다 — 규칙 위반이면 blocked(rule:<이름>)로 되돌린다")
+    if not (reason or "").strip():
+        raise HandoffError(f"{kind} 거절에는 사유가 필수다")
+
+
+def _finished_fields(db: str, project: str, handoff_id: str, done_when: str) -> dict:
+    from hermes_done_when import verify
+    spec = done_when or _done_when_of(db, handoff_id)
+    verdict = verify(spec, project) if spec else "none"
+    evidence = {"reason": f"gate-{'pass' if verdict == 'pass' else 'fail'}"} \
+        if verdict in ("pass", "fail") else {"reason": "manual"}
+    return {"claimed": "success", "evidence": evidence}
 
 
 def _done_when_of(db: str, handoff_id: str) -> str:

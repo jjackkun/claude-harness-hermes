@@ -93,6 +93,20 @@ assert "판정 파일 없는 nonce 는 믿지 않음" "system:unverified-session
 from hermes_journal import resolve_actor; print(resolve_actor()[0])")"
 
 echo ""
+echo "== 2b. summons 테이블 쓰기 가드 (계획 design-coverage-gaps 목표 7) =="
+W() { python3 -c 'import json,sys;print(json.dumps({"tool_name":"Bash","tool_input":{"command":sys.argv[1]}}))' "$1" | CLAUDE_PROJECT_DIR="$P" bash "$H/claude-pretooluse-summons-write-guard.sh" >/dev/null 2>"$TMP/w.err"; echo $?; }
+assert "sqlite3 INSERT summons → 차단" 2 "$(W 'sqlite3 .hermes/state.db "INSERT INTO summons(nonce,agent_id) VALUES (\x27x\x27,\x27y\x27)"')"
+assert "차단 문구 접두어" 1 "$(grep -c '^\[summons-write-guard BLOCK\]' "$TMP/w.err")"
+assert "python 으로 UPDATE summons → 차단" 2 "$(W 'python3 -c "import sqlite3; sqlite3.connect(\".hermes/state.db\").execute(\"update summons set used=1\")"')"
+assert "DELETE FROM summons → 차단" 2 "$(W 'sqlite3 .hermes/state.db "delete from summons"')"
+assert "SELECT 는 통과" 0 "$(W 'sqlite3 .hermes/state.db "select count(*) from summons"')"
+assert "따옴표 결합 우회(summ\"\"ons) → 차단" 2 "$(W 'sqlite3 .hermes/state.db "insert into summ""ons values (1)"')"
+assert "백슬래시 결합 우회(sum\\mons) → 차단" 2 "$(W 'sqlite3 .hermes/state.db "insert into sum\\mons values (1)"')"
+assert "러너 호출은 통과" 0 "$(W 'python3 scripts/hermes-summon.py run main --task "x"')"
+assert "summons 와 무관한 INSERT 는 통과" 0 "$(W 'sqlite3 .hermes/state.db "insert into notes values (1)"')"
+assert "Bash 아닌 도구는 무시" 0 "$(python3 -c 'import json;print(json.dumps({"tool_name":"Write","tool_input":{"command":"insert into summons"}}))' | CLAUDE_PROJECT_DIR="$P" bash "$H/claude-pretooluse-summons-write-guard.sh" >/dev/null 2>&1; echo $?)"
+
+echo ""
 echo "== 3. claude -p 가드 (목표 7) =="
 G() { python3 -c 'import json,sys;print(json.dumps({"tool_name":"Bash","tool_input":{"command":sys.argv[1]}}))' "$1" | CLAUDE_PROJECT_DIR="$P" bash "$H/claude-pretooluse-summon-guard.sh" >/dev/null 2>"$TMP/g.err"; echo $?; }
 rm -f "$P/.hermes/summons/"*.pending

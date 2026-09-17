@@ -110,13 +110,15 @@ PY
 python3 - <<'PY'
 import sys; sys.path.insert(0, "scripts")
 from hermes_handoff import resolve
-# how 는 넷 중 하나: finished(완료) · declined(거절) · question(되묻기) · expired(만료)
+# how 는 다섯 중 하나: finished(완료) · declined(거절) · question(되묻기) · expired(만료) · blocked(규칙 위반으로 막힘)
 resolve(".hermes/state.db", ".", "<handoff_id>", "finished", "<행위자>")
 # finished 는 done_when 을 기계가 다시 재서 verified 를 채운다.
-# declined·question 은 reason= 에 사유를 적는다.
+# declined·question 은 reason= 에 사유를 적는다(필수).
+# blocked 는 reason="rule:<이름>" 꼴만 받는다 — 예: resolve(db, ".", hid, "blocked", "agent:…", reason="rule:R-secret")
 PY
 ```
 
+- **봉투의 `kind` 는 기계가 정한다** — 보내는 쪽·받는 쪽의 조직 관계로 지시(위→아래, 사람→에이전트) · 협업(같은 unit) · 요청(다른 unit). **지시는 거절할 수 없다** — 규칙(R 룰·결정 원장의 멈추는 네 경우)에 걸리면 거절이 아니라 `blocked` 로 되돌린다. 협업·요청은 사유를 적어 거절할 수 있다. 명부에 없는 상대끼리면 `요청(미상)` 으로 두어 거절 가능하게 한다.
 - **만료**는 시간 데몬이 아니라 **세션 시작 훅**이 처리한다: 기한이 지났는데 시작(`task.started`)도 되묻기(`handoff.question`)도
   없는 봉투에 자동으로 `handoff.expired` 를 붙인다. 사용자가 손댈 일은 없다 — 다음 세션 시작 때 알림만 뜬다.
 

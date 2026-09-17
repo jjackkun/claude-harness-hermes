@@ -33,7 +33,7 @@ from hermes_universe import ensure_universe_id; ensure_universe_id('$PROJ')"
 UNI="$(cat "$PROJ/.hermes/universe.id")"
 DB="$PROJ/.hermes/state.db"
 mkdir -p "$PROJ/scripts"
-for m in hermes-journal.py hermes_journal.py hermes_journal_schema.py hermes_journal_views.py hermes_universe.py hermes_uuid7.py hermes_loop_decisions.py; do cp "$S/$m" "$PROJ/scripts/"; done
+for m in hermes-journal.py hermes_journal.py hermes_journal_schema.py hermes_journal_migrate.py hermes_redact.py hermes_journal_views.py hermes_universe.py hermes_uuid7.py hermes_loop_decisions.py; do cp "$S/$m" "$PROJ/scripts/"; done
 J() { python3 "$S/hermes-journal.py" --project "$PROJ" --db "$DB" "$@"; }
 q() { python3 -c "
 import sqlite3,sys;print(sqlite3.connect('$DB').execute(sys.argv[1]).fetchone()[0])" "$1" 2>/dev/null; }
@@ -187,6 +187,75 @@ assert "rotate 스킬에 제외 문장" "1" "$(grep -c 'journal_events.*로테�
 assert "cleanup 이 journal_events 를 지우지 않음" "0" "$(grep -c 'DELETE FROM journal_events' "$REPO_ROOT/scripts/hermes-cleanup.py")"
 
 echo ""
+echo "== 6b. 자유 글 칸은 기록 전 마스킹된다 (계획 design-coverage-gaps 목표 1) =="
+printf 'DEMO_DB_PASSWORD=Qz9!secretValue77\n' > "$PROJ/.env"
+cp "$S/hermes_redact.py" "$PROJ/scripts/"
+EVM=$(J emit --json '{"kind":"step","task_id":"t1","intent":"비번 Qz9!secretValue77 로 접속, 토큰 ghp_abcdefghijklmnopqrstuvwxyz0123456789 연락 010-1234-5678","lesson":"메일 someone@example.com","decision":"키 Qz9!secretValue77"}')
+assert "마스킹 emit 성공" "1" "$([[ -n "$EVM" ]] && echo 1 || echo 0)"
+ROW="$(python3 -c "
+import sqlite3;r=sqlite3.connect('$DB').execute('select intent,lesson,decision from journal_events where event_id=?',('$EVM',)).fetchone();print(' | '.join(r))")"
+assert ".env 값 원문 0건" "0" "$(printf '%s' "$ROW" | grep -c 'Qz9!secretValue77')"
+assert "GitHub PAT 원문 0건" "0" "$(printf '%s' "$ROW" | grep -c 'ghp_abcdefghij')"
+assert "전화번호 원문 0건" "0" "$(printf '%s' "$ROW" | grep -c '010-1234-5678')"
+assert "메일 원문 0건" "0" "$(printf '%s' "$ROW" | grep -c 'someone@example.com')"
+assert "[REDACTED: 토큰이 세 칸 모두에" "3" "$(printf '%s' "$ROW" | tr '|' '\n' | grep -c 'REDACTED:')"
+assert "마스킹 밖 문장은 보존" "1" "$(printf '%s' "$ROW" | grep -c '로 접속')"
+rm -f "$PROJ/.env"
+
+echo "== 6c. 옛 CHECK 를 가진 DB 는 한 트랜잭션으로 옮겨진다 (목표 3) =="
+OLD="$TMP/old.db"
+python3 - "$OLD" <<'PY'
+import sqlite3, sys
+con = sqlite3.connect(sys.argv[1])
+con.executescript("""
+CREATE TABLE journal_events (
+  event_id TEXT PRIMARY KEY, ts TEXT NOT NULL,
+  kind TEXT NOT NULL CHECK (kind IN ('task.assigned','task.started','step','decision',
+    'task.handoff','task.finished','correction','tombstone',
+    'handoff.declined','handoff.question','handoff.expired','handoff.external')),
+  universe_id TEXT NOT NULL, task_id TEXT NOT NULL, parent_task_id TEXT, caused_by TEXT,
+  actor TEXT NOT NULL, requested_by TEXT, session_id TEXT,
+  claimed TEXT CHECK (claimed IN ('success','failure','partial','blocked','abandoned') OR claimed IS NULL),
+  verified TEXT CHECK (verified IN ('pass','fail','none') OR verified IS NULL),
+  accepted TEXT, evidence TEXT, intent TEXT, lesson TEXT, decision TEXT);
+CREATE INDEX journal_task_idx ON journal_events(task_id, ts);
+CREATE INDEX journal_universe_idx ON journal_events(universe_id, ts);
+CREATE TRIGGER journal_no_update BEFORE UPDATE ON journal_events BEGIN SELECT RAISE(ABORT,'journal_events is append-only'); END;
+CREATE TRIGGER journal_no_delete BEFORE DELETE ON journal_events BEGIN SELECT RAISE(ABORT,'journal_events is append-only'); END;
+""")
+for i in range(3):
+    con.execute("INSERT INTO journal_events(event_id,ts,kind,universe_id,task_id,actor,intent) VALUES (?,?,?,?,?,?,?)",
+                (f"e{i}", "2026-09-17T00:00:0%dZ" % i, "step", "u", "t", "human:x", f"옛 행 {i}"))
+con.commit()
+PY
+assert "옛 DB 에 agent.created 는 실패(전제)" "1" "$(python3 -c "
+import sqlite3
+try:
+    sqlite3.connect('$OLD').execute(\"INSERT INTO journal_events(event_id,ts,kind,universe_id,task_id,actor) VALUES ('n','t','agent.created','u','t','human:x')\"); print(0)
+except sqlite3.IntegrityError: print(1)")"
+PYTHONPATH="$S" python3 -c "
+import sqlite3; from hermes_journal_schema import ensure_schema
+con = sqlite3.connect('$OLD'); ensure_schema(con); con.close()"
+q2() { python3 -c "import sqlite3,sys;print(sqlite3.connect('$OLD').execute(sys.argv[1]).fetchone()[0])" "$1" 2>/dev/null; }
+assert "행 3 보존" "3" "$(q2 'select count(*) from journal_events')"
+assert "내용 보존" "옛 행 2" "$(q2 "select intent from journal_events where event_id='e2'")"
+assert "새 kind INSERT 성공" "0" "$(python3 -c "
+import sqlite3
+sqlite3.connect('$OLD').execute(\"INSERT INTO journal_events(event_id,ts,kind,universe_id,task_id,actor) VALUES ('n','t','agent.created','u','t','human:x')\"); print(0)" 2>&1 | tail -1)"
+assert "UPDATE 여전히 거부" "1" "$(python3 -c "
+import sqlite3
+try: sqlite3.connect('$OLD').execute(\"UPDATE journal_events SET intent='x' WHERE event_id='e0'\"); print(0)
+except sqlite3.DatabaseError: print(1)")"
+assert "DELETE 여전히 거부" "1" "$(python3 -c "
+import sqlite3
+try: sqlite3.connect('$OLD').execute(\"DELETE FROM journal_events WHERE event_id='e0'\"); print(0)
+except sqlite3.DatabaseError: print(1)")"
+assert "인덱스 2개" "2" "$(q2 "select count(*) from sqlite_master where type='index' and name like 'journal_%'")"
+assert "disabled 사본 없음" "0" "$(q2 "select count(*) from sqlite_master where name like 'journal_events_disabled_%'")"
+assert "두 번째 ensure_schema 는 무변경" "3" "$(PYTHONPATH="$S" python3 -c "
+import sqlite3; from hermes_journal_schema import ensure_schema
+con = sqlite3.connect('$OLD'); ensure_schema(con); print(con.execute('select count(*) from journal_events where kind=\'step\'').fetchone()[0])")"
+
 echo "== 7. rollback 은 지우지 않는다 (목표 12) =="
 BEFORE=$(q "select count(*) from journal_events")
 J rollback --confirm >/dev/null

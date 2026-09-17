@@ -14,8 +14,9 @@ import sys
 from datetime import datetime, timezone
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from hermes_redact import redact  # noqa: E402
 from hermes_journal_schema import (  # noqa: E402
-    JournalRejected, ensure_schema, schema_disabled, validate,
+    FREE_TEXT, JournalRejected, ensure_schema, schema_disabled, validate,
 )
 from hermes_universe import universe_id  # noqa: E402
 from hermes_uuid7 import uuid7_str  # noqa: E402
@@ -112,6 +113,11 @@ def emit(db_path: str, project_path: str, event: dict, hook_input: dict = None) 
         # verified 는 입력을 믿지 않는다 — 기계가 다시 계산해 덮어쓴다(RV-09).
         row["verified"] = machine_verified(event.get("evidence"), row.get("claimed"))
         row.pop("accepted", None)   # 사람만 쓴다
+        # 자유 글 칸은 저장 **전** 마스킹한다(work-journal.md §7 "기록 전 마스킹"). 값 대조(.env)는
+        # 프로젝트 경로가 있어야 하므로 스키마가 아니라 여기서 — 스키마는 형식만 본다.
+        for field in FREE_TEXT:
+            if row.get(field) is not None:
+                row[field] = redact(str(row[field]), project_path)
         checked = validate(row)
         con.execute(
             "INSERT INTO journal_events ({}) VALUES ({})".format(

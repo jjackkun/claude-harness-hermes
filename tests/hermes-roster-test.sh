@@ -71,6 +71,8 @@ echo ""
 echo "== 3. 입사·전이 6경로 (목표 1·2) =="
 A hire 유저기획 --org 기획,담당,공통 --template planner >"$TMP/hire.out" 2>&1
 assert "hire → probation" probation "$(roster_field 유저기획 status)"
+assert "hire 가 agent.created 를 기록 (목표 2)" "1" "$(python3 -c "
+import sqlite3;print(sqlite3.connect('$P/.hermes/state.db').execute(\"select count(*) from journal_events where kind='agent.created' and actor like 'human:%' and intent like 'hire 유저기획%'\").fetchone()[0])" 2>/dev/null || echo 0)"
 assert "agent_id 는 UUIDv7" 7 "$(python3 -c "import uuid;print(uuid.UUID('$(roster_field 유저기획 agent_id)').version)")"
 assert "created_by 는 human:" 1 "$(roster_field 유저기획 created_by | grep -c '^human:')"
 assert "template 에 @factory" planner@factory "$(roster_field 유저기획 template)"

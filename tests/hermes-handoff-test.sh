@@ -72,11 +72,58 @@ assert "open → task.assigned 1건" 1 "$(q "select count(*) from journal_events
 assert "task.assigned 지시자 = 사람" 1 "$(q "select count(*) from journal_events where task_id='$HID' and requested_by='human:tester'")"
 py "$R; resolve('$DB','$P','$HID','finished','agent:x')" >/dev/null
 assert "finished → file 존재라 verified pass" pass "$(q "select verified from journal_events where kind='task.finished' and task_id='$HID'")"
-HID2="$(py "$R; print(open_handoff('$DB','$P','agent:x',{'goal':'g2','done_when':'file:no.txt'},by='human:t'))")"
+# 보내는 쪽이 사람이면 지시라 거절 불가 — 거절 경로는 명부 밖 에이전트(요청·미상)로 낸다
+HID2="$(py "$R; print(open_handoff('$DB','$P','agent:x',{'goal':'g2','done_when':'file:no.txt'},by='agent:y'))")"
 py "$R; resolve('$DB','$P','$HID2','declined','agent:x',reason='담당 아님')" >/dev/null
 assert "declined 이벤트(claimed blocked)" 1 "$(q "select count(*) from journal_events where kind='handoff.declined' and claimed='blocked'")"
 py "$R; resolve('$DB','$P','$HID2','question','agent:x',reason='inputs 부족')" >/dev/null
 assert "question 이벤트" 1 "$(q "select count(*) from journal_events where kind='handoff.question'")"
+
+echo ""
+echo "== 3b. 봉투 kind·return_to·constraints·blocked (계획 design-coverage-gaps 목표 4·5·6) =="
+# 명부·조직: 리드(위) → 담당(아래) = 지시, 같은 unit 담당끼리 = 협업, 다른 unit = 요청
+cat > "$P/.hermes/organization.yaml" <<'EOF2'
+discipline: [백엔드, QA]
+rank: [리드, 담당]
+unit:
+  users: {}
+  공통: {}
+EOF2
+py "import sys; sys.path.insert(0,'$S'); from hermes_org import ensure_unit_ids; ensure_unit_ids('$P')
+from hermes_roster import load_roster, add_agent, save_roster
+from hermes_org import load_org
+org=load_org('$P'); r=load_roster('$P')
+for n,o in (('리드A',('백엔드','리드','users')),('담당B',('백엔드','담당','users')),('담당C',('QA','담당','users')),('담당D',('QA','담당','공통'))):
+    add_agent(r, n, dict(zip(('discipline','rank','unit'),o)), org, 'human:tester')
+save_roster('$P', r)"
+ID() { python3 -c "import json;print([a['agent_id'] for a in json.load(open('$P/.hermes/agents.json'))['agents'] if a['name']=='$1'][0])"; }
+LA="agent:$(ID 리드A)"; DB_="agent:$(ID 담당B)"; DC="agent:$(ID 담당C)"; DD="agent:$(ID 담당D)"
+ENV="{'goal':'g','done_when':'manual','constraints':'결제 모듈은 손대지 않는다'}"
+H_DIR="$(py "$R; print(open_handoff('$DB','$P','$DB_',$ENV,by='$LA'))")"
+H_COL="$(py "$R; print(open_handoff('$DB','$P','$DC',$ENV,by='$DB_'))")"
+H_REQ="$(py "$R; print(open_handoff('$DB','$P','$DD',$ENV,by='$DB_'))")"
+H_HUM="$(py "$R; print(open_handoff('$DB','$P','$DB_',$ENV,by='human:tester'))")"
+kind_of() { q "select decision from journal_events where kind='task.assigned' and task_id='$1'" | grep -o 'kind=[^ ]*'; }
+assert "리드→담당 = 지시" "kind=지시" "$(kind_of "$H_DIR")"
+assert "같은 unit 담당끼리 = 협업" "kind=협업" "$(kind_of "$H_COL")"
+assert "다른 unit = 요청" "kind=요청" "$(kind_of "$H_REQ")"
+assert "사람→에이전트 = 지시" "kind=지시" "$(kind_of "$H_HUM")"
+assert "return_to 기본 = from" "1" "$(q "select count(*) from journal_events where task_id='$H_DIR' and decision like '%return_to=$LA%'")"
+assert "constraints 보존(decision)" "1" "$(q "select count(*) from journal_events where task_id='$H_DIR' and decision like '%constraints=결제 모듈은 손대지 않는다%'")"
+assert "지시 declined → 거부" "1" "$(py "$R
+try: resolve('$DB','$P','$H_DIR','declined','$DB_',reason='싫다'); print(0)
+except Exception as e: print(1 if '지시' in str(e) else str(e))")"
+assert "협업 declined → 기록" "1" "$(py "$R; resolve('$DB','$P','$H_COL','declined','$DC',reason='담당 아님')"; q "select count(*) from journal_events where kind='handoff.declined' and task_id='$H_COL'")"
+assert "요청 declined 사유 없음 → 거부" "1" "$(py "$R
+try: resolve('$DB','$P','$H_REQ','declined','$DD'); print(0)
+except Exception as e: print(1 if '사유' in str(e) else str(e))")"
+py "$R; resolve('$DB','$P','$H_DIR','blocked','$DB_',reason='rule:R-secret')" >/dev/null
+assert "blocked → task.finished claimed=blocked" "1" "$(q "select count(*) from journal_events where kind='task.finished' and task_id='$H_DIR' and claimed='blocked'")"
+assert "blocked evidence.reason=rule:R-secret" "1" "$(q "select count(*) from journal_events where kind='task.finished' and task_id='$H_DIR' and evidence like '%\"reason\": \"rule:R-secret\"%'")"
+assert "blocked 인데 rule: 꼴 아님 → 거부" "1" "$(py "$R
+try: resolve('$DB','$P','$H_HUM','blocked','$DB_',reason='그냥'); print(0)
+except Exception as e: print(1 if 'rule:' in str(e) else str(e))")"
+assert "명부에 없는 에이전트끼리 → 요청(미상)" "kind=요청(미상)" "$(kind_of "$HID2")"
 
 echo ""
 echo "== 4. 만료 (목표 11) =="

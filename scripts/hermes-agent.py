@@ -74,6 +74,23 @@ def _write_identity(project: str, agent: dict) -> str:
     return folder
 
 
+def _record_created(project: str, agent: dict) -> None:
+    """입사를 이력에 남긴다(agent.created, creation-and-organization.md §2). 이력이 꺼져 있거나
+    DB 가 없으면 한 줄 알리고 넘어간다 — 명부·폴더는 이미 만들어졌고, 이력 실패로 입사를 되돌리지 않는다."""
+    db = os.path.join(project, ".hermes", "state.db")
+    try:
+        from hermes_journal import emit
+        org = agent.get("org") or {}
+        emit(db, project, {
+            "kind": "agent.created", "task_id": agent["agent_id"],
+            "actor": agent.get("created_by") or _human(project),
+            "intent": "hire %s %s/%s/%s" % (agent["name"], org.get("discipline", "-"),
+                                           org.get("rank", "-"), org.get("unit", "-")),
+        })
+    except Exception as exc:  # noqa: BLE001 — 이력은 부수 기록, 입사 자체를 막지 않는다
+        print(f"[hermes-agent WARN] agent.created 를 이력에 못 남김: {exc}", file=sys.stderr)
+
+
 def cmd_hire(args) -> int:
     project = args.project
     ensure_unit_ids(project)
@@ -83,6 +100,7 @@ def cmd_hire(args) -> int:
                       template=(f"{args.template}@factory" if args.template else None))
     save_roster(project, roster)
     folder = _write_identity(project, agent)
+    _record_created(project, agent)
     print(f"입사: {agent['name']} ({agent['agent_id']}) status={agent['status']} org={agent['org']}")
     print(f"정체성: {os.path.relpath(folder, project)}/  — SOUL.md 를 채우십시오(사람 승인으로만 수정)")
     return 0

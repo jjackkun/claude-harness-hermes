@@ -276,7 +276,7 @@ hid = open_handoff(".hermes/state.db", ".", "선적QA",
       </div>
       <div class="lane">
         <div class="k"><b>보인다</b>화면에</div>
-        <div class="v"><p>받는 쪽은 봉투를 검사하고 시작하며, 넷 중 하나로 닫습니다: <code>finished</code>(완료 — <code>done_when</code> 을 기계가 다시 재서 검증값을 채움) · <code>declined</code>(거절, 사유 필수) · <code>question</code>(되묻기, 사유 필수) · <code>expired</code>(만료).</p>
+        <div class="v"><p>봉투의 <b>종류</b>는 기계가 정합니다 — 보내는 쪽과 받는 쪽의 조직 관계로 <b>지시</b>(위→아래, 사람→에이전트) · <b>협업</b>(같은 조직) · <b>요청</b>(다른 조직). 받는 쪽은 봉투를 검사하고 시작하며, 다섯 중 하나로 닫습니다: <code>finished</code>(완료 — <code>done_when</code> 을 기계가 다시 재서 검증값을 채움) · <code>declined</code>(거절 — 협업·요청만, 사유 필수; <b>지시는 거절 불가</b>) · <code>blocked</code>(규칙 위반이라 막힘 — <code>rule:&lt;이름&gt;</code> 사유 필수) · <code>question</code>(되묻기, 사유 필수) · <code>expired</code>(만료). 봉투의 <code>constraints</code>(손대면 안 되는 것)는 기록에 남고, 자유 글 칸은 저장 전에 비밀값이 마스킹됩니다.</p>
 <pre>from hermes_handoff import resolve
 resolve(".hermes/state.db", ".", "&lt;handoff_id&gt;", "finished", "agent:01a0ae58-…")</pre>
 <p><b>만료는 시간 데몬이 아니라 세션 시작 훅이 처리합니다.</b> 기한이 지났는데 시작도 되묻기도 없는 봉투에 다음 세션 시작 때 자동으로 <code>handoff.expired</code> 가 붙고 알림이 뜹니다. 사람이 손댈 일은 없습니다.</p></div>
