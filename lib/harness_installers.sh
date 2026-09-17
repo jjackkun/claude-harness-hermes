@@ -125,6 +125,17 @@ install_harness_pre_commit() {
     fi
   fi
 
+  # design_cover.py (R-design-cover) — doc_counts.py 와 같은 부류. 설계 디렉터리
+  # (docs/hermes-universe/design) 가 없는 프로젝트에서는 pre-commit 이 skipped 로 넘어간다.
+  local designcover_src="$ASSETS_DIR/hooks/design_cover.py"
+  if [[ -f "$designcover_src" ]]; then
+    if _install_git_hook "$project_path" "$designcover_src" design_cover.py; then
+      log_info "  hook    → .git/hooks/design_cover.py"
+    else
+      log_warn "  hook    → .git/hooks/design_cover.py 복사 실패"
+    fi
+  fi
+
   # coverage_probe.py (R-cov) — complexity.py 와 같은 부류.
   # 표준 라이브러리 trace 기반이라 프로젝트에 추가 설치를 요구하지 않는다.
   local covprobe_src="$ASSETS_DIR/hooks/coverage_probe.py"

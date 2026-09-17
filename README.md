@@ -318,7 +318,7 @@ Claude 전용 `CLAUDE.md`, `.claude/settings.json` / `.claude/settings.local.jso
 - **에이전트 11종**: `architect-lite`, `planner-lite`, `architect`, `planner`, `code-reviewer`, `silent-failure-hunter`, `tdd-guide`, `doc-updater`, `docs-lookup`, `performance-optimizer`, `refactor-cleaner`
 
 <!--===DS:COUNTS:BEGIN===-->
-- 세션 중 실행 훅 **16종** + 훅이 공유하는 판정 모듈 **10개**
+- 세션 중 실행 훅 **16종** + 훅이 공유하는 판정 모듈 **11개**
 - git pre-commit 게이트 **18종** — 차단 11 / 경고 7
 - 스킬 **5종** · 에이전트 **11종** · 테스트 **69개**
 <!--===DS:COUNTS:END===-->
