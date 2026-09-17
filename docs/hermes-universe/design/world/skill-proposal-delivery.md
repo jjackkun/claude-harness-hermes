@@ -16,8 +16,7 @@
 | 공장이 직접 개선 | 공장 커밋 → 소우주가 `update-all`로 받을 때 반영(복사 설치, [copy-install.md](copy-install.md)) |
 | 소우주가 필요해서 개선 | 아래 흐름 |
 
-## 2. 소우주가 개선한 경우의 흐름 (확정)
-
+## 2. 소우주가 개선한 경우의 흐름 (확정, P-03 · P-04 · RV-15 · S-03 · S-06)
 ```text
 소우주                                               우주 (github.com/jjackkun/claude-harness-hermes)
 1. 공통 스킬을 직접 고치지 않는다

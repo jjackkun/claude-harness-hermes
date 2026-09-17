@@ -14,6 +14,8 @@
 
 ## 2. 목표 (What — 검증 가능한 형태)
 
+> 설계 결정 인용(2026-09-18 소급, R-design-cover): A-08 · A-10 · C-03 · C-04 · C-09 · C-10 · C-15 · C-19 · H-03 · J-09 — 이 계획의 목표가 구현한 원장 결정(docs/audits/2026-09-18-decision-id-mapping.md).
+
 - [x] 목표 1 — 명부 `.hermes/agents.json` 형식이 확정되고 검증기가 있다: `agent_id`(UUIDv7) · `name`(소우주 안 유일, 은퇴 이름 재사용 금지) · `status`(`probation|active|retired`) · `org`(`discipline` · `rank` · `unit`) · `template` · `created_at` · `approved_by`. 검증: `tests/hermes-roster-test.sh` — 중복 이름·은퇴 이름 재사용·모르는 상태값 거부.
 - [x] 목표 2 — 입사·은퇴·복직 CLI: `hermes-agent.py hire <이름> --org … [--template …]`(사람만, 수습으로) · `promote`(→ active) · `retire` · `rehire`(RV-17). 검증: 테스트 상태 전이 6경로 + 폴더 `.hermes/agents/<agent_id>/{SOUL.md,MEMORY.md,skills/}` 생성.
 - [x] 목표 3 — 조직 정의 `.hermes/organization.yaml` 스키마(G-14)와 공장 템플릿 3종(제품 개발 · 사무 · 빈 조직, G-15). 검증: 세 템플릿이 스키마 검증 통과, `unit` 마다 불변 `unit_id`(UUIDv7) 부여, 수직 축 맨 위 `human` 은 기계가 고정.

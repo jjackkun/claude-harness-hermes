@@ -19,8 +19,7 @@
 
 하네스는 이미 작업 결과를 `result:` / `failed:` / `needs input:`으로 표기한다. 이 어휘를 이어받는다.
 
-## 2. 이벤트 종류 (합의)
-
+## 2. 이벤트 종류 (합의, J-05 · RV-10 · H-03 · H-04 · RV-08)
 | 이벤트 | 언제 |
 |---|---|
 | `task.assigned` | 누가(`requested_by`) 누구에게(`actor`) 일을 맡김 |
@@ -36,10 +35,9 @@
 | `handoff.expired` | 기한이 지났는데 `task.started` 도 `handoff.question` 도 없음. 세션 시작 훅이 남김 |
 | `handoff.external` | 다른 소우주에 있는 일을 사람에게 문의([handoff-contract.md](handoff-contract.md) 4절) |
 
-- `step` 은 **heartbeat** 로도 쓴다. 긴 작업은 N분마다 `step` 을 남겨 살아 있음을 보이고, 끊기면 8절의 누락 감지가 세션 종료를 기다리지 않고 잡는다. N 은 근거 있는 값이 없어 미정이다(cumora 는 60초 heartbeat · 90초 부재 판정).
+- `step` 은 **heartbeat** 로도 쓴다. 긴 작업은 120분(8절, 2026-09-16 실측 확정)마다 `step` 을 남겨 살아 있음을 보이고, 끊기면 8절의 누락 감지가 세션 종료를 기다리지 않고 잡는다. N 은 근거 있는 값이 없어 미정이다(cumora 는 60초 heartbeat · 90초 부재 판정).
 
-## 3. 결과는 세 층 (합의)
-
+## 3. 결과는 세 층 (합의, J-04 · RV-09)
 | 층 | 칸 | 누가 | 값 |
 |---|---|---|---|
 | 주장 | `claimed` | 에이전트 | `success` / `failure` / `partial` / `blocked` / `abandoned` |
@@ -155,8 +153,7 @@ CREATE TRIGGER IF NOT EXISTS journal_no_delete BEFORE DELETE ON journal_events B
 > - `evidence.usage`: `{input_tokens, output_tokens, cached_input_tokens, model}` — 기계 칸, 평문. cumora 는 클라우드·로컬을 가리지 않고 한 원장 `llm_calls` 에 적어 비교한다. 우리는 작업 단위로 붙이면 "이 작업에 얼마가 들었나" 가 스레드에서 바로 나온다. 백로그 `platform-cost-performance-levers` 의 실측 근거가 된다.
 > - V-8 확인 결과(2026-09-15): Claude Code 훅 입력에 토큰 수는 **없다**. 그래서 `usage` 는 러너가 `claude -p --output-format json` 의 값을 받는 헤드리스 경로에서만 채운다. 대화형 비용은 실측 불가로 남는다.
 
-## 5. 원문을 담지 않는 허용목록 스키마 (합의)
-
+## 5. 원문을 담지 않는 허용목록 스키마 (합의, J-06)
 비밀값 유출이 반복된 원인은 원문을 통째로 기록한 뒤 걸러내는 구조였다([raw-transcript.md](../protection/raw-transcript.md)).
 작업 이력은 **애초에 원문을 담을 칸을 두지 않는다.**
 
@@ -169,8 +166,7 @@ CREATE TRIGGER IF NOT EXISTS journal_no_delete BEFORE DELETE ON journal_events B
 - **스키마 검증기가 모르는 칸은 거부한다.** 훅이 실수로 원문을 넘겨도 기록되지 않는다.
 - 남는 위험은 자유 글 칸 세 개다. 여기에는 기존 방어(`.env` 값 대조, 형태 마스킹, 줄 길이 제한, 보존 전 스캐너)를 적용하고, 원격에는 암호화해 올린다(7절).
 
-## 6. 저장 — 원본 단위와 두 층 (합의)
-
+## 6. 저장 — 원본 단위와 두 층 (합의, J-03)
 ### 원본 단위는 이벤트 한 개
 
 - 이벤트는 한 번 쓰면 바뀌지 않고, 시간순 정렬이 되는 고유 id(UUIDv7)를 가진다.
@@ -189,8 +185,7 @@ CREATE TRIGGER IF NOT EXISTS journal_no_delete BEFORE DELETE ON journal_events B
                      └──▶ 보기 (파생, 언제든 재생성): 에이전트별 이력 · 작업 스레드 · 그래프
 ```
 
-### 구버전 DB 호환과 롤백 (확정)
-
+### 구버전 DB 호환과 롤백 (확정, J-09)
 | 상황 | 동작 |
 |---|---|
 | `journal_events` · `loops.started_by` 가 없는 기존 `state.db`(zeroday 포함) | 훅(Stop · SubagentStop · 세션 시작)은 죽지 않고 한 줄 알린 뒤 **exit 0**. 첫 실행 때 `CREATE TABLE IF NOT EXISTS` · `ALTER TABLE … ADD COLUMN` 으로 지연 생성한다(`hermes-search.py` 의 `_ensure_injection_source_column` 패턴). 기존 행은 건드리지 않는다 |
@@ -206,8 +201,7 @@ CREATE TRIGGER IF NOT EXISTS journal_no_delete BEFORE DELETE ON journal_events B
 | 커밋 소음 | 코드 커밋마다 이력 파일이 바뀌고 게이트에 걸린다 |
 | 비밀값 | 코드 이력에 들어가면 코드 이력 전체를 재작성해야 지운다 |
 
-## 7. 칸별 암호화 (확정)
-
+## 7. 칸별 암호화 (확정, J-07 · T-13)
 원격으로 올리는 이벤트는 칸 종류로 나눠 처리한다. **모든 소우주에 같은 규칙**을 적용한다.
 
 | 칸 | 처리 | 이유 |
@@ -223,8 +217,7 @@ CREATE TRIGGER IF NOT EXISTS journal_no_delete BEFORE DELETE ON journal_events B
 - 혼자 쓰는 저장소에도 같은 규칙을 적용한다. 나중에 공유하게 됐을 때 과거 이력이 평문으로 남아 있지 않게 하기 위해서다.
 - 암호화 방식과 열쇠는 [encryption-keys.md](../protection/encryption-keys.md).
 
-## 8. 누락 감지 (합의)
-
+## 8. 누락 감지 (합의, J-08)
 세션이 끝났는데 `task.started`만 있고 `task.finished`가 없으면, Stop 훅이 `actor: system:claude-stop-journal-gap`,
 `claimed: null`, `verified: none`인 "기록 누락" 이벤트를 붙인다. 적히지 않은 작업이 조용히 사라지지 않게 한다.
 

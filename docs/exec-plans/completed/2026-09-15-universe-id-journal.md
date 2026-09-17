@@ -15,6 +15,8 @@
 
 ## 2. 목표 (What — 검증 가능한 형태)
 
+> 설계 결정 인용(2026-09-18 소급, R-design-cover): A-04 · J-04 · J-08 · J-09 — 이 계획의 목표가 구현한 원장 결정(docs/audits/2026-09-18-decision-id-mapping.md).
+
 - [x] 목표 1 — 설치 시 `<소우주>/.hermes/universe.id`(UUID v4 한 줄)가 생기고 git 추적된다. 재설치해도 바뀌지 않는다. 검증: `tests/hermes-universe-test.sh` — 두 번 설치 후 값 동일, `.gitignore` 마커에 `!.hermes/universe.id`.
 - [x] 목표 2 — 세 스크립트의 `project_id` 가 `universe.id` 값을 읽는다(없으면 basename 으로 폴백하고 `[hermes] universe.id 없음` 경고). 검증: 테스트에서 폴더 이름을 바꿔도 `session_summary.project_id` 가 같은 값.
 - [x] 목표 3 — `journal_events` 테이블이 INSERT 만 허용한다. 검증: 테스트에서 `UPDATE` · `DELETE` 가 트리거로 실패(`sqlite3.IntegrityError`).

@@ -15,6 +15,8 @@
 
 ## 2. 목표 (What — 검증 가능한 형태)
 
+> 설계 결정 인용(2026-09-18 소급, R-design-cover): RV-19 · S-02 · S-03 · S-07 · S-08(부분: exclude 신고만) · S-11(부분: 횟수 전송 경로 없음) · J-09 — 이 계획의 목표가 구현한 원장 결정(docs/audits/2026-09-18-decision-id-mapping.md).
+
 - [x] 목표 1 — `skill_index` 에 `universe_id` · `layer`(`universe|common|unit|agent`) · `unit_id` · `agent_id` · `skill_id`(층을 옮겨도 불변) 칸이 있고, 기존 1088행은 `layer='common'`, `universe_id` = 현 소우주, 나머지 NULL 로 채워진다(L-01 "소우주 공통(미배정)"). 검증: (a) `tests/hermes-skill-layers-test.sh` 합성 픽스처 — 행 수 불변, 값 분포 (b) **실제 사본 리허설**: `cp /home/jjackkun/PROJECT/zeroday-frontend/.hermes/state.db /tmp/zd.db && python3 scripts/hermes-init.py --db /tmp/zd.db && python3 -c "import sqlite3;c=sqlite3.connect('/tmp/zd.db');print(c.execute('select count(*),sum(layer=\"common\") from skill_index').fetchone())"` → `(1088, 1088)`.
 - [x] 목표 2 — 층별 저장 위치가 코드로 고정된다: 우주 `.claude/skills/<이름>/`(설치 목록에 있음), 소우주 공통 `.hermes/skills/`(기존 자리 유지 — 옮기지 않는다), 단위 `.hermes/units/<unit_id>/skills/`, 개인 `.hermes/agents/<agent_id>/skills/`. 검증: `hermes_skill_layers.py` 경로 함수 테스트 + 색인기가 네 자리를 모두 훑음.
 - [x] 목표 3 — 주입 필터(RV-12): `hermes-search.py` 가 소환된 에이전트(`HERMES_AGENT_ID`, 없으면 `main`)의 `unit` · `agent_id` 에 맞는 층만 검색한다. 검증: 테스트 — 다른 단위의 스킬이 결과에 0건.

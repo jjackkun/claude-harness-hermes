@@ -11,6 +11,8 @@
 
 ## 2. 목표 (What — 검증 가능한 형태)
 
+> 설계 결정 인용(2026-09-18 소급, R-design-cover): C-05 · C-19 — 이 계획의 목표가 구현한 원장 결정(docs/audits/2026-09-18-decision-id-mapping.md).
+
 > 검증 명령: `bash tests/hermes-handoff-test.sh` · `bash tests/hermes-journal-test.sh` · `bash tests/hermes-memory-events-test.sh` · `bash tests/hermes-summon-guard-test.sh` · `bash tests/hermes-roster-test.sh` · `bash tests/hermes-skill-inject-test.sh` · `bash tests/run-all.sh`.
 
 - [x] 목표 1 — **매칭 근거 기록**(`creation-and-organization.md:59`): `hermes-summon.py run` 이 축 값으로 매칭했으면 `task.assigned` 의 `decision` 에 `match=<축:값,…> chosen=<이름> among=<후보 수>` 를 남긴다(이름 지정이면 `match=by-name`). 검증: `bash tests/hermes-summon-guard-test.sh` — 매칭 소환 뒤 행의 decision 에 `match=` 와 `among=`.

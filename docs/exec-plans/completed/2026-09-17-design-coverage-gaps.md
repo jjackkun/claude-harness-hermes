@@ -13,6 +13,8 @@
 
 ## 2. 목표 (What — 검증 가능한 형태)
 
+> 설계 결정 인용(2026-09-18 소급, R-design-cover): H-03 — 이 계획의 목표가 구현한 원장 결정(docs/audits/2026-09-18-decision-id-mapping.md).
+
 > 검증 명령: 각 목표에 적힌 테스트 · `bash tests/run-all.sh`(회귀).
 
 - [x] 목표 1 — **자유 글 마스킹**: `hermes_journal.emit` 이 `intent`·`lesson`·`decision` 을 저장 **전** `hermes_redact.redact(text, project)` 로 치환한다(.env 값 대조 + 형태 규칙). 검증: `bash tests/hermes-journal-test.sh` — `.env` 의 값·GitHub PAT 꼴·전화번호를 담은 intent 를 emit → DB 행에 원문 0건, `[REDACTED:` ≥1.
