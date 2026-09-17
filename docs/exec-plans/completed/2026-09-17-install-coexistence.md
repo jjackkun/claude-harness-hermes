@@ -24,12 +24,12 @@
   검증: `tests/install-coexist-test.sh` — 분기 ⓪·a·b·c·d(깨끗)·d(충돌)·d(구문 실패)·ⓔ 각 1건, **실행 비트 보존**(+x src → +x dst, 병합 뒤에도), **심링크 dst**(타깃이 바뀌고 링크는 유지), + **실물 픽스처**(terminal-shipping `plan_state.py` 의 ours/base/theirs — `check-secrets.py` 는 사내 경로·자격증명 꼴 문자열이 있어 PUBLIC 공장에 수록하지 않는다, R-leak) → 분기 (c), 결과 byte-equal. (2026-09-17 실측: 둘 다 충돌 0, plan_state 321→321 · check-secrets 407→407 — 후자는 수록 없이 실측치만.) 각 분기는 옛 코드(raw cp)로 되돌리면 빨개져야 한다.
 - [x] 목표 3 — base 는 **두 단계**로 쓴다(리뷰 MED⑤ 반영): ① (b)(c) 판정은 manifest 에 **이미 있는 `sha256`** 만으로 한다 — `git show` 불필요, 공장 이력·clone 깊이와 무관. ② base **내용**은 (d) 에서만 필요하며 `git -C <공장> show <factory_commit>:<src>` 로 복원한다. 복원 실패(manifest 미등록·커밋 없음·얕은 clone·공장 경로 없음) → ⓔ. 설치는 언제나 공장 저장소 **안에서** 돌므로(`DEV_SETTING_DIR`) "공장 부재" 는 설치 중엔 성립하지 않고, 얕은 clone 만 실제 위험이다. 검증: 미등록 픽스처·존재하지 않는 커밋 픽스처·`git clone --depth 1` 한 공장 사본에서 (d) 상황 → 셋 다 ⓔ(`.factory-new`, 덮지 않음). 목표 9 리허설에 얕은 clone 공장 1회 포함.
 - [x] 목표 4 — manifest 항목에 `path`(프로젝트 상대 설치 경로)·`src`(공장 상대 원본 경로)·`mode`(8진 파일 모드)를 더하고 kind `hook|githook|script|lint` 를 추가한다. 같은 이름이 두 경로에 깔리는 경우(`scripts/hooks/x` 와 `.git/hooks/x`)는 **경로마다 항목**이다(08-27 §7-bis "키를 이름에서 경로로" 와 일치). 기존 3 kind·`manifest_prune`(kind 별)·`copy-install-test`·변조 훅 무영향, 옛 항목(필드 없음)은 그대로 읽힌다. 검증: 기존 테스트 초록 + 새 kind 라운드트립(add→verify 0 / 수정→1 / 미등록→2) + 필드 없는 옛 manifest 로 verify 가 죽지 않음.
-- [x] 목표 5 — G6(경고 피로) 준수: 소우주가 아무것도 안 고쳤으면 **출력 0줄**. 고쳤으면 파일당 1줄(G4). 검증: 차이 0 인 소우주 8곳 사본에 새 설치기 → 공존 관련 출력 0줄 실측.
+- [x] 목표 5 — G6(경고 피로) 준수: 소우주가 아무것도 안 고쳤으면 **출력 0줄**. 고쳤으면 파일당 1줄(G4). 검증: 차이 0 인 소우주 8곳 사본에 새 설치기 → 공존 관련 출력 0줄 실측 — `bash update-all.sh 2>&1 | grep -c '^\[factory-'` 가 고친 파일 수와 같다(§7 라이브 2차 전파: 변경 없는 소우주는 0줄). 단위로는 `bash tests/install-coexist-test.sh` §1 의 ⓪·b 분기가 "출력 0줄" 을 단언한다.
 - [x] 목표 6 — 게이트: `*.factory-new` 가 워킹트리에 있으면 pre-commit 이 **차단**(`R-merge`), 해소는 사람(병합 뒤 삭제). 검증: 테스트 — 파일 있으면 차단, 지우면 통과.
 - [x] 목표 7 — `harness-hooks.lock` 퇴역: `.gitignore` 생성 항목에서 제거, 소우주에 남은 고아 파일은 **건드리지 않는다**(문서로만 알림). 검증: 생성된 gitignore 에 항목 없음.
 - [x] 목표 8 — 변조 경고 훅(`claude-posttooluse-factory-tamper-warn.sh`)이 `.claude/<kind>/<name>` 재구성이 아니라 manifest 의 `path` 로 판정해, 훅·스크립트 편집에도 `[factory-tamper WARN]` 을 낸다. 검증: 테스트 — `scripts/hooks/plan_state.py` 편집 → 경고 1건, 미등록 파일 → 0건.
 - [x] 목표 9 — **실물 리허설**(라이브 금지): terminal-shipping·zeroday **사본**에 새 설치기 → 두 파일 byte-equal 유지, `.factory-new` 0개, 나머지 8곳 사본 변경 0. 그 뒤에만 사람 승인으로 라이브 `update-all`.
-- [ ] 목표 10 — 08-27 결정 "덮되 말한다" 를 §6 에서 **명시적으로 뒤집고** 근거를 남긴다. `core-beliefs.md` 룰 후보 `R-coexist` 는 이 계획 완료 뒤 `harness-promote-rule` 로 별도 승격(이 계획은 문장만 제안).
+- [x] 목표 10 — 08-27 결정 "덮되 말한다" 를 §6 에서 **명시적으로 뒤집고** 근거를 남긴다. `core-beliefs.md` 룰 후보 `R-coexist` 는 이 계획 완료 뒤 `harness-promote-rule` 로 별도 승격(이 계획은 문장만 제안 — §8 "다음 룰 후보"). 검증: `grep -c '뒤집는다' docs/exec-plans/*/2026-09-17-install-coexistence.md` ≥1(§6 첫 항목) · 08-27 계획 §7 끝에 이 계획을 가리키는 상호 참조 1줄(`grep -c install-coexistence docs/exec-plans/completed/2026-08-27-propagation-reverts-downstream-fixes.md` ≥1).
 
 ## 3. 비목표 (Out of Scope)
 
@@ -146,5 +146,15 @@
 ## 8. 회고 (완료 시 작성)
 
 - 잘된 것:
+  - **결함을 한 함수로 좁혔다.** raw `cp` 17건이 `install_factory_file` 하나를 거치게 되자, "어느 경로가 보호를 못 받는가" 라는 질문 자체가 사라졌다(08-27 은 `.claude/` 한 경로만 보호해 사고 파일 둘이 정확히 그 밖에 있었다). 재발 시 볼 곳이 `lib/factory_coexist.sh` 한 파일이다.
+  - **"덮지 않는다" 가 아니라 "합친다" 로 간 것.** 사용자 지적("소우주에서 고쳤다고 못 덮으면 상류 개선이 아무 상관 없어진다") 이 초안의 구멍을 짚었다. base 대조 + `git merge-file` 이라 하류 수정과 상류 개정이 한 파일에서 만나도 둘 다 산다 — 실물 사본에서 증명(하류 규칙 + 공장 개정 동시 보존, 구문 통과, 755 유지).
+  - **리뷰가 잡은 셋이 전부 실측으로 확정됐다.** 모드 회귀(HIGH②: src 원본이 644 라 "src 복원" 이면 훅이 죽음), no-op 무출력(HIGH①), base 없음 분기 ⓔ(MED⑤). 리뷰 문장을 그대로 믿지 않고 `stat`·`git show`·얕은 clone 으로 각각 재현한 뒤 고쳤다.
+  - **통과만 보는 테스트를 두 번 잡았다.** `py_compile(cfile=/dev/null)` 이 3.12+ 에서 항상 실패해 모든 병합이 충돌로 떨어졌는데 "구문 실패→충돌" 단언은 헛되이 초록이었다 → 대조 단언 추가. `check-secrets.py` 를 파일 인자로 돌린 스캔도 헛되이 초록(스테이징만 읽음) → 스테이징으로 재스캔하니 5건 → 픽스처 수록 취소(R-leak).
+  - 라이브 전파 2회 12/12: 사고 파일 byte-equal, `.factory-new` 0, 변경 없는 소우주는 출력 0줄(G6).
 - 잘못된 것:
+  - **미커밋 작업 하루치를 `git reset --hard` 로 지웠다**(§7). 임시 커밋이 스테이징 트리를 잡아 둔 덕에 복구했고 잃은 함수 하나(`_coexist_is_old_factory`)·테스트 §7c2 는 다시 썼다. 원인은 두 가지 — 실험을 라이브 저장소에서 했고, 커밋을 미뤘다. 교훈: 리허설·실험은 **별도 clone** 에서, 검증이 끝난 단위는 그 자리에서 커밋(사용자 지시 대기 중이면 최소 `git stash`/임시 브랜치로 잡아 둔다), 미커밋 트리 위에서 `reset --hard`·`checkout .` 금지.
+  - **리허설이 라이브를 두 번 건드렸다.** 사본의 `.git/hooks` 심링크가 절대경로라 라이브 terminal-shipping 에 `.factory-new` 2개가 섰고(→ 분기 f OUTSIDE 가드로 봉쇄), `.installed-projects` 에 `/tmp` 경로가 두 번 등록됐다(8·2건). Step 5 에서 원인을 실측으로 고쳐 잡았다: §7 의 "설치기가 인자 경로를 그대로 적는다" 는 **틀렸다** — 가드(`project-claude.sh:189`, 09-16)는 있으나 `${TMPDIR:-/tmp}` **한 곳만** 대조해, `TMPDIR` 을 잡 디렉터리로 둔 채 `/tmp` 사본을 설치하면 새어 나간다(재현: 가드 식에 그 조합을 넣으면 "등록됨"). 이 계획 밖 결함으로 `backlog/installer-registers-rehearsal-paths.md` 에 남긴다.
+  - **첫 R-merge 게이트가 모든 커밋을 조용히 죽였다** — `grep -v '^$' | sort` 가 pipefail 아래서 빈 입력에 rc 1. 게이트 코드는 "차단이 나는지" 뿐 아니라 "정상 커밋이 통과하는지" 도 단언해야 한다(8b 에 통과 케이스 포함).
+  - **슬로건이 오해를 낳았다.** "고친 건 덮지 않는다" 한 줄이 사용자에게 "업데이트를 못 받는다" 로 읽혔다. 정책은 네 문장(전달·보존·병합·충돌은 사람)으로만 말한다 — 계획서 세 곳 정정.
+  - UNKNOWN-BASE 가 리허설 4건·라이브 7건 떴다 — 옛 공장판이 manifest 없이 깔린 소우주. `installed_version` 폴백과 공장 이력 대조(`git log -60`)로 흡수했지만, 이는 "manifest 가 없는 과거" 를 위한 보정이지 설계는 아니다. 두 번째 전파 뒤 0건이므로 이후 새로 뜨면 진짜 판정 불가다.
 - 다음 룰 후보: `R-coexist`(공장의 개정은 언제나 전달되고, 하류의 수정은 지워지지 않으며, 한 파일에서 만나면 합쳐서 둘 다 살린다) — `harness-promote-rule` 로 승격.
