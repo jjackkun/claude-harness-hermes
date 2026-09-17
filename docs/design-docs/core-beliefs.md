@@ -537,6 +537,36 @@ pre-commit `R-merge`(`# GATE: R-merge block`) + `tests/raw-copy-guard-test.sh`(�
 `docs/exec-plans/completed/2026-09-17-install-coexistence.md` §6·§8, 뒤집은 결정은
 `completed/2026-08-27-propagation-reverts-downstream-fixes.md` §7 추기.
 
+## R-design-cover — 설계에서 확정된 결정은 계획서에 인용돼야 한다 {#r-design-cover}
+
+**원칙**: 설계 문서(`docs/hermes-universe/design/**`)에서 "(확정)"·"✅ 리뷰 확정" 으로 굳은 결정은
+**결정 ID**(RV-07 · G-14 · V-8 · K-3 · T-1 · C-11)를 갖고, 그 ID 는 어느 실행 계획서(`docs/exec-plans/**`)
+§2 목표에든 인용돼야 한다. 인용이 없는 확정은 "아직 아무도 만들기로 하지 않은 결정" 이며, 계획이
+그것을 모른 채 완료로 닫히는 것을 막는 것이 이 룰의 일이다.
+
+**왜**: 2026-09-17 하루에 같은 경로로 16건이 드러났다 — 설계는 확정인데 계획 목표에 옮겨지지 않아 코드가
+없는 채 계획 4가 완료 처리됐고(소환 시 SOUL 읽기 · 이력 자유 글 마스킹 · `agent.created` · 봉투 kind ·
+`blocked` · summons 쓰기 차단 …), 그중 하나는 계획에 ✔ 까지 돼 있었다(RV-07). 설계→계획 전사를 보는
+장치가 없었다.
+
+**따르는 규칙 셋**:
+- **확정이면 ID 를 단다.** `## … (확정)` 절 제목은 `(확정, G-14)` 꼴로, `✅ 리뷰 확정 (날짜, RV-07)` 은 지금
+  꼴 그대로. ID 가 없는 확정은 판정기가 볼 수 없다 — 산문으로만 적힌 확정 문장이 2026-09-17 누락의 꼴이었다.
+- **계획서가 ID 로 인용한다.** 목표 문장에 파일명만 적지 않고 결정 ID 를 적는다(`… (RV-07)`). 줄 번호는
+  편집마다 어긋나고 절 제목 문자열은 실측 61건 중 16건 오탐이라 단위로 쓰지 않는다.
+- **기준선은 줄어들기만 한다.** 도입 시점(2026-09-17) 틈 71건(미인용 ID 13 · ID 없는 확정 절 58)은
+  `.design-cover-baseline` 에 잠겨 있고, 새 틈만 경고한다. 기준선 항목을 지우는 것은 언제나 되고,
+  더하는 것은 `docs/audits/` 근거가 있어야 한다(R-cx `.cxbaseline` 과 같은 태도).
+
+**한계(솔직히)**: ID 도 표지도 없는 산문 확정은 여전히 못 본다. 그래서 첫 규칙이 "확정이면 ID" 다 —
+앞으로 적히는 확정은 판정기 안으로 들어온다.
+
+**기계 강제**: `assets/hooks/design_cover.py`(판정: `check` rc 0=새 틈·1=없음·2=설계 디렉터리 없음, `baseline`)
++ pre-commit `R-design-cover`(`# GATE: R-design-cover warn` — 설계 문서·계획서가 스테이징됐을 때만, 설계
+디렉터리 없는 소우주는 조용히 skipped). 회귀 고정: `tests/design-cover-gate-test.sh`(검출 (A)(B) · 기준선
+억제 · 인용으로 해소 · rc 2 · 실 저장소 새 틈 0). 상태: Provisional — 계획
+`docs/exec-plans/completed/2026-09-17-r-design-cover.md`, 감사 `docs/audits/2026-09-17-r-design-cover-promotion.md`.
+
 <!--===HARNESS-RULES:BEGIN===-->
 
 ## 하네스 공통 룰

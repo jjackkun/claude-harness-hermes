@@ -109,6 +109,7 @@ for t in \
   iface-gate-test.sh \
   plan-declare-gate-test.sh \
   doc-counts-gate-test.sh \
+  design-cover-gate-test.sh \
   output-budget-test.sh \
   gate-declaration-coverage-test.sh \
   struct-barrel-test.sh \

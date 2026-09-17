@@ -3,9 +3,9 @@
 #
 # "4단 검사" 문구는 uninstall 이 하네스 설치본을 식별하는 마커다 — 바꾸지 말 것
 #
-# 현재 실제 게이트는 17종이다 (위 헤더의 "4단 검사" 는 마커라서 그대로 둔다):
+# 현재 실제 게이트는 18종이다 (위 헤더의 "4단 검사" 는 마커라서 그대로 둔다):
 #   차단 11 — R-size R-fmt R-lint R-test R-doc R-cx R-dep R-struct R-secret R-merge R-plan
-#   경고 6 — R-cov R-acc R-plan-missing R-plan-stale R-pipe R-retro
+#   경고 7 — R-cov R-acc R-design-cover R-plan-missing R-plan-stale R-pipe R-retro
 # (lib/uninstall_helpers.sh `uninstall_pre_commit`, uninstall.sh 미리보기).
 #
 # 메시지 형식 (2026-04-17 Opus 4.7 튜닝):
@@ -650,6 +650,34 @@ $(echo "$BARE" | head -3 | sed 's/^/    /')
   → 목표마다 그것을 확인하는 명령을 붙이십시오 (예: \`bash tests/foo-test.sh\`).
   근거: docs/design-docs/core-beliefs.md#r-acc")
   done < <(filter_files "^${ACTIVE_DIR}/[^/]+\.md$")
+fi
+
+# 7-ter. R-design-cover — 설계 확정 결정이 계획서에 옮겨졌는가 (경고)
+# GATE: R-design-cover warn
+#
+# 설계 문서(docs/hermes-universe/design/**)의 결정 ID 가 어느 계획서에도 인용되지 않았거나,
+# "(확정)" 절 제목에 ID 가 없으면 알린다. 2026-09-17 하루에 16건이 이 경로(설계→계획 전사 누락)로
+# 코드 없이 완료 처리됐다. 기준선 .design-cover-baseline 은 도입 시점 틈을 잠그고 새 틈만 본다.
+# 설계 문서나 계획서가 스테이징됐을 때만 돈다. 설계 디렉터리가 없는 프로젝트(소우주)는 조용히 skipped.
+DESIGN_COVER="$(dirname "$0")/design_cover.py"
+if [[ -f "$DESIGN_COVER" ]] && command -v python3 >/dev/null 2>&1 \
+   && [[ -n "$(filter_files '^docs/(hermes-universe/design|exec-plans)/.*\.md$')" ]]; then
+  if [[ -d docs/hermes-universe/design ]]; then
+    rc=0; DC_OUT=$(python3 "$DESIGN_COVER" check 2>/dev/null) || rc=$?
+    case "$rc" in
+      1) gate_add R-design-cover pass precommit "" "새 틈 없음" ;;
+      0) gate_add R-design-cover warn precommit "" "새 틈 $(printf '%s\n' "$DC_OUT" | grep -c .)건"
+         WARNINGS+=("
+[R-design-cover] 설계 확정 결정이 계획서에 옮겨지지 않음 ($(printf '%s\n' "$DC_OUT" | grep -c .)건):
+$(printf '%s\n' "$DC_OUT" | head -5 | sed 's/^/    /')
+  → id:<ID> 는 어느 계획서 §2 목표에든 그 ID 를 인용하십시오. heading:… 은 절 제목에 결정 ID 를 다십시오.
+     도입 시점 틈은 .design-cover-baseline 에 있고 줄어들기만 합니다.
+  근거: docs/design-docs/core-beliefs.md#r-design-cover") ;;
+      *) gate_add R-design-cover skipped precommit "" "판정 불가 (rc=$rc)" ;;
+    esac
+  else
+    gate_add R-design-cover skipped precommit "" "설계 디렉터리 없음"
+  fi
 fi
 
 # 8. R-plan-missing / R-plan-stale — 계획서가 코드를 따라오는가 (둘 다 경고)
