@@ -18,7 +18,7 @@
 - [x] 목표 2 — 보통 세션(환경변수 없음)·폴더 없는 id(`main` 포함)·retired 에이전트는 **무출력 exit 0**. retired 는 설계 `skill-layers.md`("은퇴한 에이전트는 주입에서 빠진다")와 일치. 검증: 세 케이스 stdout 빈 문자열, rc 0.
 - [x] 목표 3 — 크기 상한: SOUL 4,096 B · MEMORY 4,096 B, 합 8,192 B — 이 프로젝트가 R-out 으로 "한 번에 너무 많은 문맥" 이라 재는 임계(`claude-posttooluse-output-budget.sh` `R_OUT_THRESHOLD=8192`)와 같은 값. 넘치면 자르고 `[…잘림 N B — 원문 <경로>]` 한 줄. 검증: 10 KB SOUL → 주입 ≤ 4,096 B + 잘림 줄, 경로 포함.
 - [x] 목표 4 — 훅은 절대 세션을 세우지 않는다: 명부 손상·파이썬 부재·파일 권한 오류 → stderr 한 줄 + exit 0. 검증: `bash tests/hermes-soul-inject-test.sh` §4 — `agents.json` 을 깨뜨린 픽스처에서 rc 0·stdout 빈 문자열·stderr 에 이유, `chmod 000 SOUL.md` 에서도 rc 0 이고 MEMORY 는 주입.
-- [ ] 목표 5 — 프리셋 등록·전파: `presets/workflow/hermes.conf` 에 `HARNESS_HOOK_SOURCES`·`SESSION_START_HOOKS` 등록, `.deprc` 필요 시 등록, `run-all.sh` 등록. 검증: `preset-integrity-test` 통과, 소우주 사본 설치 뒤 `.claude/settings.json` 에 훅 경로 존재.
+- [x] 목표 5 — 프리셋 등록·전파: `presets/workflow/hermes.conf` 에 `HARNESS_HOOK_SOURCES`·`SESSION_START_HOOKS` 등록, `.deprc` 필요 시 등록, `run-all.sh` 등록. 검증: `preset-integrity-test` 통과, 소우주 사본 설치 뒤 `.claude/settings.json` 에 훅 경로 존재.
 - [x] 목표 6 — 문서 동기: `design/agent/creation-and-organization.md` 소환 절에 "읽는 주체 = 세션 시작 훅" 한 줄, 안내서 2장(`docs/hermes-universe/guide/`)의 "알려진 구멍" 에서 SOUL 항목 제거. 검증: `grep -c 'SOUL' docs/hermes-universe/guide/agent-eli5.html` 의 "안 되는 것" 상자 0건.
 
 ## 3. 비목표 (Out of Scope)
@@ -62,5 +62,11 @@
 ## 8. 회고 (완료 시 작성)
 
 - 잘된 것:
+  - 러너가 아니라 세션 시작 훅에 붙여 `HERMES_AGENT_ID` 가 있는 모든 세션에 한 방식으로 닿게 했다. 소우주 사본에서 실제 id 로 실행해 SOUL·MEMORY 전문 주입을 눈으로 확인했다.
+  - 상한을 새로 정하지 않고 R-out 임계(8,192 B)를 빌렸다 — 근거 없는 숫자를 안 만들었다.
+  - 이 한 건을 고치고 멈추지 않고 "같은 유형이 더 있나" 를 전수 대조해 15+1건을 찾았다(→ 계획 design-coverage-gaps).
 - 잘못된 것:
-- 다음 룰 후보:
+  - 첫 판이 파이썬 경고를 로그로만 보내 훅 stderr 가 비었다(목표 4 단언 1건 빨강) — 기존 훅 관례(stderr+로그)를 먼저 읽었어야 했다.
+  - 설계 문장 한 줄이 계획 4 목표에서 빠진 것을 이틀 뒤에야 발견했다 — 계획 완료 시 "설계 확정 문장이 다 옮겨졌나" 를 보는 절차가 없었다.
+- 다음 룰 후보: `R-design-cover`(설계 "(확정)" 문장 ↔ 계획 §2 인용 대조 게이트) — 계획 design-coverage-gaps §8 과 동일 후보, 한 번만 승격.
+- 전파: 2026-09-17 `update-all` 12/12 — hermes 소우주 8곳 `settings.json` 에 훅 등록·755, `.factory-new` 0.

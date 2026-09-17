@@ -28,8 +28,10 @@ cmd = d.get("tool_input", {}).get("command", "") or ""
 cmd = re.sub(r"[\"\x27\\\\]", "", cmd)
 if not re.search(r"\bsummons\b", cmd, re.I):
     sys.exit(0)
-# 쓰기 동사 — SQL 키워드로서. 러너 파일명(hermes-summon.py)에는 어느 것도 없다.
-if re.search(r"\b(insert|update|delete|replace|drop|alter|truncate)\b", cmd, re.I):
+# 쓰기 동사가 **표 이름에 붙은 SQL 꼴**일 때만 — 커밋 메시지의 "summons … update-all" 같은 산문은
+# 잡지 않는다(2026-09-17 자기 커밋이 막힌 오탐). 러너 파일명(hermes-summon.py)에는 어느 것도 없다.
+WRITE = r"\b(?:insert\s+(?:or\s+\w+\s+)?into|replace\s+into|update|delete\s+from|drop\s+table(?:\s+if\s+exists)?|alter\s+table|truncate(?:\s+table)?)\s+(?:main\.)?summons\b"
+if re.search(WRITE, cmd, re.I | re.S):
     print("hit")
 ' 2>/dev/null)"
 [[ "$HIT" == "hit" ]] || exit 0

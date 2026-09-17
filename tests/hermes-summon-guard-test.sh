@@ -104,6 +104,8 @@ assert "따옴표 결합 우회(summ\"\"ons) → 차단" 2 "$(W 'sqlite3 .hermes
 assert "백슬래시 결합 우회(sum\\mons) → 차단" 2 "$(W 'sqlite3 .hermes/state.db "insert into sum\\mons values (1)"')"
 assert "러너 호출은 통과" 0 "$(W 'python3 scripts/hermes-summon.py run main --task "x"')"
 assert "summons 와 무관한 INSERT 는 통과" 0 "$(W 'sqlite3 .hermes/state.db "insert into notes values (1)"')"
+assert "산문(커밋 메시지의 summons + update-all) 은 통과" 0 "$(W 'git commit -m "summons 쓰기 가드 추가 — update-all 12/12 반영"')"
+assert "표 이름 앞 main. 접두도 차단" 2 "$(W 'sqlite3 .hermes/state.db "UPDATE main.summons SET used=1"')"
 assert "Bash 아닌 도구는 무시" 0 "$(python3 -c 'import json;print(json.dumps({"tool_name":"Write","tool_input":{"command":"insert into summons"}}))' | CLAUDE_PROJECT_DIR="$P" bash "$H/claude-pretooluse-summons-write-guard.sh" >/dev/null 2>&1; echo $?)"
 
 echo ""
