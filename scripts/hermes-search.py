@@ -38,6 +38,7 @@ from hermes_search_fallback import haiku_fallback  # noqa: E402  (claude -p 뉘�
 from hermes_skill_layers import (  # noqa: E402  (스킬 4층 필터)
     ensure_layer_columns, layer_of_path, skill_visible)
 from hermes_skill_render import inject_text  # noqa: E402  (주입 렌더링)
+from hermes_skill_extends import parse_extends, resolve_base_path  # noqa: E402  (확장 합성)
 
 
 def connect_db(db_path: str) -> sqlite3.Connection:
@@ -281,6 +282,21 @@ def search_skills_dir(skills_dir: str, keywords: list, max_results: int,
     ]
 
 
+def _compose_injection(db_path: str, name: str, path: str, prefix: str):
+    """주입 텍스트를 만든다. 확장 파일이면 위 층 본문 뒤에 붙인다(RV-13, 목표 6)."""
+    text = inject_text(name, path, prefix)
+    if text is None:
+        return None
+    ext = parse_extends(path)
+    if not ext:
+        return text
+    base = resolve_base_path(db_path, ext[0])
+    if not base:
+        return text
+    base_text = inject_text(os.path.basename(base), base, prefix)
+    return f"{base_text}\n[확장] {text}" if base_text else text
+
+
 def _select_injections(deduped: list, max_n: int) -> list:
     """중복 제거된 (텍스트, 경로, 그물망여부) 후보에서 max_n 개를 뽑는다.
 
@@ -408,7 +424,7 @@ def main():
     def _add(results, prefix, is_mesh):
         for r in results:
             name = r.get("name", os.path.basename(r["path"]))
-            text = inject_text(name, r["path"], prefix)
+            text = _compose_injection(args.db, name, r["path"], prefix)
             if text:
                 candidates.append((text, r["path"], is_mesh))
 

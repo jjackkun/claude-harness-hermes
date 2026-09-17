@@ -159,6 +159,7 @@ for t in \
   hermes-handoff-test.sh \
   hermes-skill-layers-test.sh \
   hermes-skill-inject-test.sh \
+  hermes-skill-extends-test.sh \
   memory-symlink-roundtrip-test.sh \
   hermes-history-export-test.sh \
   hermes-lifecycle-test.sh \

@@ -20,7 +20,7 @@
 - [x] 목표 3 — 주입 필터(RV-12): `hermes-search.py` 가 소환된 에이전트(`HERMES_AGENT_ID`, 없으면 `main`)의 `unit` · `agent_id` 에 맞는 층만 검색한다. 검증: 테스트 — 다른 단위의 스킬이 결과에 0건.
 - [x] 목표 4 — 주입 형식 하위 호환(RV-12): `description` 머리말이 있는 스킬은 `이름 — 설명` 한 줄로, 없는 스킬은 현행 `read_skill_snippet` 10줄로 주입된다. 검증: 테스트 두 종류 픽스처 + zeroday 스킬 1088개를 픽스처로 돌려 주입 형식이 전부 스니펫임을 확인(회귀 보호).
 - [x] 목표 5 — 스킬 본문 요청 경로: 에이전트가 `hermes-skill.py read <이름>` 으로 본문을 그 턴에 끌어온다(진행적 공개). 검증: CLI 출력 = 파일 본문, `skill_injection` 에 `source='read'` 기록.
-- [ ] 목표 6 — 확장 파일(RV-13): 머리말 `extends: <skill_id>@<version>` 을 가진 파일은 "위 층 본문 + 확장" 으로 주입되고, `update-all` 이 기준 버전이 달라진 확장을 찾아 `[extends WARN]` 을 낸다. 검증: 테스트 — 공장 커밋 해시 바꾼 뒤 재설치 → 경고 1건.
+- [x] 목표 6 — 확장 파일(RV-13): 머리말 `extends: <skill_id>@<version>` 을 가진 파일은 "위 층 본문 + 확장" 으로 주입되고, `update-all` 이 기준 버전이 달라진 확장을 찾아 `[extends WARN]` 을 낸다. 검증: 테스트 — 공장 커밋 해시 바꾼 뒤 재설치 → 경고 1건.
 - [ ] 목표 7 — 승격 제안 명령 `hermes-propose.py new|improve|exclude <스킬>` 이 (a) 일반화 자체 점검(`hermes_mesh_gate.py`) (b) 금지 내용 게이트(기억 · 원문 · 티켓 번호 · 파일 경로 · 사람이 읽는 이름) (c) `.hermes/outbox/<envelope_id>/` 봉투 작성 (d) **사람이 `--deliver` 를 붙였을 때만** `gh issue create --label proposal` 로 배달(RV-15) 을 한다. 검증: `tests/hermes-propose-test.sh` — 금지 내용 4종 각각 거부, `--deliver` 없이는 `gh` 호출 0(모의 gh 로 검증), 오프라인 실패 시 `status=pending`.
 - [ ] 목표 8 — 봉투에는 `universe_id` · `agent_id` · `skill_id` · `base` · 본문 · 차이 · 이유 · 게이트 결과만 있고 소우주 이름·에이전트 이름·팀 이름이 없다. 검증: 봉투 JSON 에 명부의 `name` 값과 저장소 basename 이 문자열로 나타나지 않음(테스트가 grep).
 - [ ] 목표 9 — 배달 목적지 보호(RV-16): `hermes-propose.py` 는 주소 인자를 받지 않고 `factory.json.remote_url` 만 쓰며, `factory.json` 은 설치 목록(계획 1)에 포함돼 변조 경고 대상이다. 검증: `--remote` 인자 → 오류, 파일 변조 → 계획 1 훅 경고.
