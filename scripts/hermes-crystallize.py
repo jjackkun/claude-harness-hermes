@@ -23,7 +23,6 @@ from datetime import datetime, timezone
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from hermes_skills import extract_keywords  # noqa: E402  (본문 키워드 추출 공유 헬퍼)
-from hermes_universe import universe_id  # noqa: E402  (소우주 키 — 폴더 이름 대체)
 
 
 def connect_db(db_path: str) -> sqlite3.Connection:
@@ -367,32 +366,13 @@ def register_skill(db_path: str, skill_path: str, key: str) -> None:
     con.close()
 
 
-def record_global_summary(key: str, skill_path: str, project_id: str) -> None:
-    """결정화 성공 시 ~/.hermes/global.db 에 패턴 요약 1행을 기록한다 (LOW).
-
-    전역 DB가 없으면 조용히 건너뛴다 — 최소 연동만.
-    """
-    global_db = os.path.join(os.path.expanduser("~/.hermes"), "global.db")
-    if not os.path.isfile(global_db):
-        return
-    try:
-        con = connect_db(global_db)
-        con.execute(
-            "INSERT INTO harness_rules (trigger_keywords, instruction, source_session_id, scope) "
-            "VALUES (?, ?, ?, 'local')",
-            (key, f"[{project_id}] 결정화 스킬: {skill_path}", project_id),
-        )
-        con.commit()
-        con.close()
-    except Exception as e:
-        _log(f"global.db 요약 기록 실패({key}): {e}")
+# record_global_summary 는 계획 5 목표 11(L-05)에서 제거했다 — ~/.hermes/global.db 의
+# harness_rules 에 소우주 칸 없이 섞여 쌓이기만 하고 읽는 코드가 없었다(1142행). 기존 행은 그대로 둔다.
 
 
 def crystallize(db_path: str, keys: list[str], project_dir: str) -> None:
     skills_dir = os.path.join(os.path.dirname(db_path), "skills")
     os.makedirs(skills_dir, exist_ok=True)
-    # 소우주 키. 폴더 이름을 쓰면 같은 이름의 다른 저장소와 겹치고 이름을 바꾸면 기록이 끊긴다.
-    project_id = universe_id(project_dir) if project_dir else ""
 
     for key in keys:
         is_fallback = key not in CATEGORY_METADATA
@@ -439,7 +419,6 @@ def crystallize(db_path: str, keys: list[str], project_dir: str) -> None:
             f.write(content + "\n")
 
         register_skill(db_path, skill_path, key)
-        record_global_summary(key, skill_path, project_id)
         print(f"[hermes] DONE:{filename} (키: {key})")
 
 

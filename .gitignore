@@ -58,6 +58,11 @@ docs/superpowers/plans/
 !.hermes/agents/*/skills/**
 !.hermes/organization.yaml
 .hermes/summons/
+!.hermes/units/
+!.hermes/units/*/
+.hermes/units/*/*
+!.hermes/units/*/skills/
+!.hermes/units/*/skills/**
 # <<< harness-agent-preset <<<
 
 # ── 공장(이 저장소) 전용: 마커 블록 뒤에 와야 예외를 되무시할 수 있다 ─────────────

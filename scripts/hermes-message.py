@@ -158,6 +158,11 @@ def main():
 
     args = parser.parse_args()
 
+    # 폐기 예정 (계획 5 목표 13, L-06 후속). messages 테이블·이 CLI 는 인계 봉투(hermes_handoff)와
+    # 제안 봉투(hermes-propose)로 대체된다. 읽는 곳을 확인한 뒤 다음 계획에서 제거한다 — 지금은 경고만.
+    print("[hermes-msg] 폐기 예정: 메시지 버스는 인계 봉투·제안 봉투로 대체됩니다 "
+          "(다음 계획에서 제거).", file=sys.stderr)
+
     if args.cmd == "send":
         cmd_send(args.db, args.from_agent, args.to_agent, args.content)
     elif args.cmd == "recv":

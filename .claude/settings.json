@@ -121,6 +121,10 @@
           {
             "type": "command",
             "command": "${CLAUDE_PROJECT_DIR}/scripts/hooks/claude-sessionstart-handoff-expiry.sh"
+          },
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/scripts/hooks/claude-sessionstart-outbox-status.sh"
           }
         ]
       }

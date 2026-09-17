@@ -25,10 +25,10 @@
 - [x] 목표 8 — 봉투에는 `universe_id` · `agent_id` · `skill_id` · `base` · 본문 · 차이 · 이유 · 게이트 결과만 있고 소우주 이름·에이전트 이름·팀 이름이 없다. 검증: 봉투 JSON 에 명부의 `name` 값과 저장소 basename 이 문자열로 나타나지 않음(테스트가 grep).
 - [x] 목표 9 — 배달 목적지 보호(RV-16): `hermes-propose.py` 는 주소 인자를 받지 않고 `factory.json.remote_url` 만 쓰며, `factory.json` 은 설치 목록(계획 1)에 포함돼 변조 경고 대상이다. 검증: `--remote` 인자 → 오류, 파일 변조 → 계획 1 훅 경고.
 - [x] 목표 10 — 세션 시작 훅이 `outbox` 의 `delivered` 봉투 이슈 상태를 읽어(`gh issue view`) 허가면 "소우주 확장분 제거 안내", 거절이면 "확장으로 계속" 을 한 줄 알린다. `pending` 이 있으면 "배달 못 한 봉투 N개". 검증: 모의 gh 로 3상태.
-- [ ] 목표 11 — `~/.hermes/global.db` `harness_rules` 쓰기 중단(L-05): `record_global_summary` 호출 제거. 기존 1142행은 그대로. 검증: 결정화 실행 후 `global.db` 행 수 불변(테스트).
+- [x] 목표 11 — `~/.hermes/global.db` `harness_rules` 쓰기 중단(L-05): `record_global_summary` 호출 제거. 기존 1142행은 그대로. 검증: 결정화 실행 후 `global.db` 행 수 불변(테스트).
 - [x] 목표 12 — 우주 판단 보조: `hermes_mesh_gate.py` 를 "허가자 1차 검사" CLI 로 노출하고 "사례 나열" 판정(RV-14)을 항목으로 추가 — **승격 심사에만**, 기존 스킬 삭제·재분류에 쓰지 않는다. 검증: 사례 나열 픽스처(`if convo has 1,2,3 …` 류 3줄 이상)가 `scenario-list` 로 표시, zeroday 1088개는 어떤 처리도 받지 않음(테스트가 파일 수·내용 불변 확인).
-- [ ] 목표 13 — 폐기된 배달 경로 정리: `hermes-message.py` 와 `messages` 테이블은 제거하지 않고 **"폐기 예정"** 경고만 낸다(읽는 곳 확인 뒤 다음 계획에서 제거). 검증: 호출 시 경고 1줄.
-- [ ] 목표 14 — 단위 층 스킬이 git 을 탄다(자체 리뷰 발견, planner-lite 정정): `.hermes/*` 무시 아래서는 디렉터리 단계마다 풀어야 하므로 마커에 `!.hermes/units/` · `!.hermes/units/*/` · `!.hermes/units/*/skills/` · `!.hermes/units/*/skills/**` 네 줄(`hermes.conf:171-178` 패턴). `outbox/` 는 무시 그대로(봉투는 배달로 나간다). 검증: `git check-ignore -v` 테스트 — 단위 스킬 추적, `units/*/` 의 그 밖 파일과 `outbox/` 무시.
+- [x] 목표 13 — 폐기된 배달 경로 정리: `hermes-message.py` 와 `messages` 테이블은 제거하지 않고 **"폐기 예정"** 경고만 낸다(읽는 곳 확인 뒤 다음 계획에서 제거). 검증: 호출 시 경고 1줄.
+- [x] 목표 14 — 단위 층 스킬이 git 을 탄다(자체 리뷰 발견, planner-lite 정정): `.hermes/*` 무시 아래서는 디렉터리 단계마다 풀어야 하므로 마커에 `!.hermes/units/` · `!.hermes/units/*/` · `!.hermes/units/*/skills/` · `!.hermes/units/*/skills/**` 네 줄(`hermes.conf:171-178` 패턴). `outbox/` 는 무시 그대로(봉투는 배달로 나간다). 검증: `git check-ignore -v` 테스트 — 단위 스킬 추적, `units/*/` 의 그 밖 파일과 `outbox/` 무시.
 - [x] 목표 15 — 주입 필터는 **두 검색 경로 모두**에 건다(planner-lite 지적): `search_db`(`scripts/hermes-search.py:141`)뿐 아니라 파일시스템 직접 스캔 `search_skills_dir`(`:198`)도 층·단위·에이전트를 판정한다 — 색인 전 스킬이 단위 경계를 넘어 주입되지 않게. 검증: 목표 3 테스트에 "색인되지 않은 타 단위 스킬 파일도 결과 0건" 케이스.
 - [x] 목표 16 — 구버전 스키마 호환(planner-lite 지적): `skill_index` 에 새 칸이 없는 기존 DB 에서 `hermes-search.py` 가 죽지 않고 `_ensure_injection_source_column` 패턴으로 칸을 추가한다. 검증: 계획 1 이전 DB 사본으로 검색 실행 → exit 0 + 칸 5개 생성.
 - [x] 목표 17 — 복잡도 실측(planner-lite 지적): 필터 추가 후 `python3 scripts/hooks/complexity.py scripts/hermes-search.py` 가 임계 12 를 넘는 함수 0개. 검증: 그 명령 출력.
@@ -114,8 +114,26 @@
   - (MEDIUM) 경로/티켓 정규식이 확장자 없는 디렉터리 경로(`backend/app/execution`)·자연어 티켓(`이슈 4521`)을 놓쳤다 → 알려진 최상위 폴더 접두 경로와 자연어 티켓 패턴을 추가했다.
   - (LOW) outbox 훅이 라벨을 감지해도 상태 전이를 안 해 매 세션 반복 알림했다 → 허가/거절 감지 시 `set_status` 로 전이해 1회만 알린다.
 
-## 8. 회고 (완료 시 작성)
+## 8. 회고 (2026-09-17 완료)
 
-- 잘된 것:
-- 잘못된 것:
-- 다음 룰 후보: P-04 · RV-15 를 R 룰로.
+- **잘된 것:**
+  - 17개 목표를 5 스텝으로 닫고 각 스텝을 테스트로 봉인했다. 최종 전체 스위트 68/68.
+  - Review 승격 두 번(Step 1 데이터 마이그레이션 · Step 4 공개 배달)에서 code-reviewer/database-reviewer 가 실제 위험(IndexError·TOCTOU·reason 누출·미검사 필드)을 잡았고 전부 그 자리에서 고쳤다. 특히 Step 4 의 "배달 직전 전체 JSON 최종 재검사" 는 개별 칸 게이트보다 견고하다.
+  - 파일 1책임 분리로 R-size 를 피했다(`hermes_skill_render` 를 hermes-search 500줄 초과 회피로 뗀 것). 층 신원(layers)·렌더링(render)·확장(extends)·봉투(envelope)·게이트(envelope_gate)·CLI 를 각각 한 책임으로 나눴다.
+  - 누출 방지를 fail-closed + 다층으로 짰다: mesh_gate(일반화) + envelope_gate(티켓·경로·원문·이름·PII) + 배달 직전 최종 재검사. 공장이 PUBLIC 이라는 전제(V-7)에 맞춘 설계.
+- **잘못된 것:**
+  - 날짜·환경 취약 테스트가 이번에 두 번 드러났다: `hermes-sync-test`(하드코딩 `2026/09/16` — 날짜 롤오버로 깨짐), `hermes-pipeline-test`(내가 목표 11로 없앤 global.db 기록을 검증하고 있었음). 둘 다 새 동작에 맞게 고쳤다 — 계획이 기존 동작을 바꿀 때 그 동작을 검증하던 테스트를 먼저 찾는 습관이 필요하다.
+  - `hermes-search` 가 500줄을 넘겨 Step 2 도중에 렌더 모듈을 급히 뗐다. §4 게이트 대비에서 "본문 증가 최소화" 를 적었지만 필터+형식+viewer 해석이 예상보다 컸다 — 새 파일을 계획 단계에서 미리 잡았어야 했다(§4 에 사후 선언).
+  - 초기 `layer_of_path` 를 자기 자신과 비교하는 tautological 조건으로 짰다(우연히 동작). 리뷰가 아니었으면 얕은 경로에서 IndexError 로 터졌을 것이다.
+- **다음 룰 후보:** P-04 · RV-15(소우주 밖으로 나가는 봉투에 사람이 읽는 이름·원문·티켓·경로를 넣지 않는다)를 `core-beliefs.md` 의 R 룰로 승격 — 강제 장치는 `hermes_envelope_gate` + `hermes-propose-test` 로 이미 존재하므로 문장화만 남았다. 백로그: `crystallize-reversed-decision-guard`(폐기된 결정이 규칙으로 굳는 것 방지, G-25/L-06).
+
+---
+
+## 헤르메스 우주 구현 완료 (5/5)
+
+이 계획으로 헤르메스 우주 구현 5개 계획이 모두 끝났다:
+1. copy-install — 복사 설치·factory.json (완료)
+2. universe-id-journal — 소우주 키·작업 이력 (완료)
+3. sync-transport-encryption — 원문 보호·운반·암호화 (완료)
+4. agent-identity — 명부·조직·소환·기억·인계 (완료)
+5. skill-layers-delivery — 스킬 4층·주입 필터·확장·제안 배달 (완료)

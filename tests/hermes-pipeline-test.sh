@@ -171,8 +171,9 @@ cz=$(sql "SELECT crystallized FROM pattern_count WHERE pattern_key='hermes-pipel
 check "crystallized=1" test "$cz" = "1"
 si=$(sql "SELECT COUNT(*) FROM skill_index WHERE skill_path='$SKILL_MD'")
 check "skill_index 등록" test "$si" = "1"
-gr=$(python3 -c "import sqlite3;print(sqlite3.connect('$HOME/.hermes/global.db').execute(\"SELECT COUNT(*) FROM harness_rules WHERE trigger_keywords='hermes-pipeline-test'\").fetchone()[0])")
-check "global.db 패턴 요약 1행 기록" test "$gr" = "1"
+# 계획 5 목표 11(L-05): global.db harness_rules 쓰기를 중단했다 — 결정화해도 기록되지 않는다.
+gr=$(python3 -c "import sqlite3,os;p=os.path.expanduser('$HOME/.hermes/global.db');print(sqlite3.connect(p).execute(\"SELECT COUNT(*) FROM harness_rules WHERE trigger_keywords='hermes-pipeline-test'\").fetchone()[0] if os.path.isfile(p) else 0)")
+check "global.db 에 기록 안 함(목표 11, 쓰기 중단)" test "$gr" = "0"
 
 echo ""
 echo "== 5b. crystallize — claude 실패 시 stderr 로그 =="
