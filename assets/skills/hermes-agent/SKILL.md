@@ -53,6 +53,8 @@ python3 scripts/hermes-agent.py match [--discipline <분야>] [--rank <직급>] 
 ```
 
 - 축 값으로 후보를 좁힌다. 맞는 담당이 없으면 `ask:` 를 출력한다 — 그때는 **사람에게 문의**하지, 아무나 고르지 않는다.
+- 사람이 "이 영역은 담당을 두지 않는다" 고 답하면 `python3 scripts/hermes-agent.py no-owner --discipline <분야> [--unit <조직>]` 로 기억해 둔다. 이후 같은 영역의 `match` 는 `ask:` 대신 `no-owner: …(날짜)` 를 내고 다시 묻지 않는다.
+- 사람 없는 세션(루프·크론, `HERMES_HEADLESS=1`)은 담당이 없어도 멈추지 않고 `main` 이 수행한 뒤 "담당 없음" 제안을 남긴다. 다음 대화형 세션 시작 훅이 `[owner-proposals] … N건` 으로 알리면 사용자에게 **입사시킬지, 담당을 두지 않을지** 묻고 그 답을 `hire` 또는 `no-owner` 로 기록한다.
 - 은퇴한 에이전트는 결과에서 빠진다.
 
 **예** — "이 결제 버그 누가 맡지"

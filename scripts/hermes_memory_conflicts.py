@@ -33,11 +33,28 @@ def _retracted_ids(events: list) -> set:
 
 
 def current_memories(con, agent_id: str = None) -> list:
-    """지금 살아 있는 기억 — 철회된 것과 그 갱신 사슬은 뺀다. 최신 승리는 없다."""
+    """지금 살아 있는 기억 — 철회된 것과 그 갱신 사슬은 뺀다. 최신 승리는 없다.
+
+    같은 본문(content_hash)이 전에 철회된 적 있으면 previously_retracted 에 그 철회 사유를 붙인다
+    (memory-events.md "철회는 흔적을 남긴다") — 다시 배워도 "전에 틀렸다" 가 보이게."""
     events = [e for e in _rows(con) if agent_id is None or e["agent_id"] == agent_id]
     retracted = _retracted_ids(events)
-    return [e for e in events
+    reasons = _retracted_hash_reasons(events, retracted)
+    return [{**e, "previously_retracted": reasons.get(e.get("content_hash"))}
+            for e in events
             if e["kind"] != "memory.retracted" and e["memory_id"] not in retracted]
+
+
+def _retracted_hash_reasons(events: list, retracted: set) -> dict:
+    """철회된 기억의 content_hash → 철회 사유(memory.retracted 의 body)."""
+    by_id = {e["memory_id"]: e for e in events}
+    out = {}
+    for e in events:
+        if e["kind"] == "memory.retracted" and e["revises"] in by_id:
+            h = by_id[e["revises"]].get("content_hash")
+            if h:
+                out[h] = e.get("body") or "사유 없음"
+    return out
 
 
 def find_conflicts(con, agent_id: str = None) -> list:

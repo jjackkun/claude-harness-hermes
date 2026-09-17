@@ -27,6 +27,16 @@ from hermes_uuid7 import uuid7_str  # noqa: E402
 
 LAYERS = ("universe", "common", "unit", "agent")
 
+# 주입 순서는 층이 먼저다 — 개인 → 단위 → 소우주 공통 → 우주 공통(skill-layers.md §2·"층 우선순위는 주입 순서").
+# **뽑는 것**은 점수로, **넣는 순서**만 층으로 한다 — 층을 선별 키로 쓰면 --max 가 작을 때 관련도 높은
+# 공통 스킬이 0건으로 잘린다(2026-09-17 리뷰). 큰 값이 앞이다.
+LAYER_RANK = {"agent": 3, "unit": 2, "common": 1, "universe": 0}
+
+
+def inject_order(selected: list, layer_of) -> list:
+    """점수로 뽑힌 목록을 층 순(개인→단위→공통→우주)으로 재배열한다. 같은 층 안 순서는 유지(안정 정렬)."""
+    return sorted(selected, key=lambda item: -LAYER_RANK.get(layer_of(item), 0))
+
 # skill_index 에 더하는 층 칸 5개. layer 만 DEFAULT 'common'(기존 행 즉시 백필), 나머지는 NULL.
 _NEW_COLUMNS = (
     ("universe_id", "ALTER TABLE skill_index ADD COLUMN universe_id TEXT"),

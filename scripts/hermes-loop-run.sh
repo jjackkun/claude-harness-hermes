@@ -35,6 +35,7 @@ if [[ -z "${HERMES_REQUESTED_BY:-}" ]]; then
   _git_user="$(git -C "$project_dir" config user.name 2>/dev/null || true)"
   export HERMES_REQUESTED_BY="${_git_user:+human:$_git_user}"
   export HERMES_REQUESTED_BY="${HERMES_REQUESTED_BY:-system:unknown}"
+  export HERMES_HEADLESS=1   # 사람 없는 세션 — 담당 없으면 main 이 수행하고 제안을 남긴다(creation-and-organization.md §5)
 fi
 
 # 이 루프의 세션은 main 으로 소환된다 — 토큰을 발급해 환경으로 넘긴다(RV-06, 계획 4 목표 5).

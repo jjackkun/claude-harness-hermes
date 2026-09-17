@@ -36,6 +36,7 @@ db_path="$project_dir/.hermes/state.db"
 # cron 이 시작한 일은 사람이 지시한 것이 아니다 (계획 2 목표 7).
 export HERMES_REQUESTED_BY="${HERMES_REQUESTED_BY:-system:hermes-cron}"
 export HERMES_ACTOR="${HERMES_ACTOR:-system:hermes-cron}"
+export HERMES_HEADLESS=1   # 사람 없는 세션 — 담당 없으면 main 이 수행하고 제안을 남긴다(creation-and-organization.md §5)
 # cron 세션도 main 으로 소환된다(토큰 없이 도는 세션을 남기지 않는다, 계획 4 목표 5).
 if [[ -f "$scripts_dir/hermes-summon.py" && -z "${HERMES_SUMMON_NONCE:-}" ]]; then
   if grep -q '"name": *"main"' "$project_dir/.hermes/agents.json" 2>/dev/null; then

@@ -126,6 +126,38 @@ except Exception as e: print(1 if 'rule:' in str(e) else str(e))")"
 assert "명부에 없는 에이전트끼리 → 요청(미상)" "kind=요청(미상)" "$(kind_of "$HID2")"
 
 echo ""
+echo "== 3c. 2차 되묻기 승격·우선순위 대기열 (계획 design-gaps-tier2 목표 5·6) =="
+# 목표 5 — 같은 봉투의 두 번째 handoff.question 은 사람에게 올라간다 (handoff-contract.md:83)
+HQ="$(py "$R; print(open_handoff('$DB','$P','$DC',{'goal':'되묻기','done_when':'manual'},by='$LA'))")"
+py "$R; resolve('$DB','$P','$HQ','question','$DC',reason='inputs 칸이 비었다')" >/dev/null
+assert "1차 되묻기 → escalate 없음" 0 "$(q "select count(*) from journal_events where kind='handoff.question' and task_id='$HQ' and decision like '%escalate=human%'")"
+py "$R; resolve('$DB','$P','$HQ','question','$DC',reason='done_when 이 모호하다')" >/dev/null
+assert "2차 되묻기 → decision=escalate=human" 1 "$(q "select count(*) from journal_events where kind='handoff.question' and task_id='$HQ' and decision like '%escalate=human%'")"
+assert "gaps 의 escalations 에 그 봉투" 1 "$(py "import sys,sqlite3; sys.path.insert(0,'$S'); from hermes_journal_views import escalations
+print(sum(1 for e in escalations(sqlite3.connect('$DB')) if e['task_id']=='$HQ'))")"
+# 목표 6 — 열린 봉투는 지시 → 협업 → 요청, 같은 종류는 먼저 온 순 (handoff-contract.md:66)
+Q1="$(py "$R; print(open_handoff('$DB','$P','$DC',{'goal':'요청1','done_when':'manual'},by='$DD'))")"
+sleep 1
+Q2="$(py "$R; print(open_handoff('$DB','$P','$DC',{'goal':'지시1','done_when':'manual'},by='$LA'))")"
+sleep 1
+Q3="$(py "$R; print(open_handoff('$DB','$P','$DC',{'goal':'협업1','done_when':'manual'},by='$DB_'))")"
+sleep 1
+Q4="$(py "$R; print(open_handoff('$DB','$P','$DC',{'goal':'지시2','done_when':'manual'},by='$LA'))")"
+py "$R; resolve('$DB','$P','$Q3','finished','$DC')" >/dev/null   # 닫힌 봉투는 대기열에서 빠진다
+QUEUE="$(py "import sys; sys.path.insert(0,'$S'); from hermes_handoff_queue import queue
+print(' '.join(q['goal'] for q in queue('$DB','$DC')))")"
+assert "대기열 = 지시1 지시2 요청1 (협업1 은 닫힘·되묻기 봉투는 별도)" "지시1 지시2 요청1" "$(python3 -c "
+q='$QUEUE'.split(); print(' '.join(x for x in q if x in ('지시1','지시2','요청1','협업1')))")"
+# 리뷰 HIGH — return_to 가 조회 대상과 같은 봉투(리드A 가 담당B 에게 보낸 것)는 리드A 의 대기열에 뜨면 안 된다
+QX="$(py "$R; print(open_handoff('$DB','$P','$DB_',{'goal':'남의봉투','done_when':'manual'},by='$LA'))")"
+assert "return_to 가 나인 남의 봉투는 내 대기열에 없다" 0 "$(py "import sys; sys.path.insert(0,'$S'); from hermes_handoff_queue import queue
+print(sum(1 for q in queue('$DB','$LA') if q['goal']=='남의봉투'))")"
+assert "그 봉투는 받는 쪽(담당B) 대기열에 있다" 1 "$(py "import sys; sys.path.insert(0,'$S'); from hermes_handoff_queue import queue
+print(sum(1 for q in queue('$DB','$DB_') if q['goal']=='남의봉투'))")"
+assert "대기열 항목에 kind" 1 "$(py "import sys; sys.path.insert(0,'$S'); from hermes_handoff_queue import queue
+print(1 if all('kind' in q for q in queue('$DB','$DC')) else 0)")"
+
+echo ""
 echo "== 4. 만료 (목표 11) =="
 HE="$(py "$R; print(open_handoff('$DB','$P','agent:x',{'goal':'급함','done_when':'manual','expires_at':'2000-01-01T00:00:00Z'},by='human:t'))")"
 HN="$(py "$R; print(open_handoff('$DB','$P','agent:x',{'goal':'기한없음','done_when':'manual'},by='human:t'))")"
@@ -140,6 +172,19 @@ HS="$(py "$R; print(open_handoff('$DB','$P','agent:x',{'goal':'시작됨','done_
 py "import sys;sys.path.insert(0,'$S');from hermes_journal import emit; emit('$DB','$P',{'kind':'task.started','task_id':'$HS','actor':'agent:x'})" >/dev/null
 echo '{"source":"startup"}' | CLAUDE_PROJECT_DIR="$P" bash "$H/claude-sessionstart-handoff-expiry.sh" >/dev/null 2>&1
 assert "이미 시작된 봉투는 만료 안 됨" 0 "$(q "select count(*) from journal_events where kind='handoff.expired' and task_id='$HS'")"
+# 계획 design-gaps-tier2 목표 4 — 만료 원인 기계 판정 (handoff-contract.md:79)
+reason_of() { q "select evidence from journal_events where kind='handoff.expired' and task_id='$1'" | grep -o 'expired:[a-z-]*'; }
+assert "미시작 만료 → expired:unstarted" "expired:unstarted" "$(reason_of "$HE")"
+HK="$(py "$R; print(open_handoff('$DB','$P','agent:x',{'goal':'열쇠없음','done_when':'manual','expires_at':'2000-01-01T00:00:00Z'},by='human:t'))")"
+echo '{"remote":"x"}' > "$P/.hermes/sync.json"
+HOME="$TMP/nokeyhome" bash -c "echo '{\"source\":\"startup\"}' | CLAUDE_PROJECT_DIR='$P' bash '$H/claude-sessionstart-handoff-expiry.sh'" >/dev/null 2>&1
+assert "sync 설정 있고 열쇠 없음 → expired:key-missing" "expired:key-missing" "$(reason_of "$HK")"
+rm -f "$P/.hermes/sync.json"
+HR="$(py "$R; print(open_handoff('$DB','$P','agent:x',{'goal':'러너죽음','done_when':'manual','expires_at':'2000-01-01T00:00:00Z'},by='human:t'))")"
+mkdir -p "$P/.hermes/summons"; echo "$HR" > "$P/.hermes/summons/deadbeef.pending"
+echo '{"source":"startup"}' | CLAUDE_PROJECT_DIR="$P" bash "$H/claude-sessionstart-handoff-expiry.sh" >/dev/null 2>&1
+assert "pending 파일 남아 있음 → expired:runner-dead" "expired:runner-dead" "$(reason_of "$HR")"
+rm -f "$P/.hermes/summons/deadbeef.pending"
 
 echo ""
 echo "== 5. 구 스키마·rollback (목표 11 하위호환) =="

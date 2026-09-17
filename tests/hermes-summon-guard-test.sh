@@ -54,6 +54,8 @@ echo "== 1. 러너 (목표 5) =="
 SUMMON run main --task "테스트 작업 한 줄" >"$TMP/run.out" 2>&1
 assert "러너 종료 코드 0" 0 "$?"
 assert "summons 행 1개" 1 "$(q "select count(*) from summons")"
+# 계획 design-gaps-tier2 목표 1 — 매칭 근거를 task.assigned 에 남긴다 (creation-and-organization.md:59)
+assert "이름 지정 소환 → match=by-name" 1 "$(q "select count(*) from journal_events where kind='task.assigned' and decision like 'match=by-name%'")"
 assert "summons.agent_id = main" "$MAIN_ID" "$(q "select agent_id from summons")"
 assert "HERMES_AGENT_ID 가 claude 에 전달됨" "$MAIN_ID" "$(sed -n 1p "$MOCK_OUT")"
 NONCE="$(sed -n 2p "$MOCK_OUT")"
@@ -66,6 +68,27 @@ assert "판정 파일 ok" ok "$(cat "$P/.hermes/summons/$NONCE.verdict")"
 assert "pending 파일은 소비 후 삭제" 0 "$(ls "$P/.hermes/summons/"*.pending 2>/dev/null | wc -l)"
 SUMMON run 없는사람 --task x >/dev/null 2>&1
 assert "명부에 없는 이름은 거부" 1 "$?"
+QA_ID="$(PYTHONPATH="$S" python3 -c 'from hermes_uuid7 import uuid7_str; print(uuid7_str())')"
+python3 - "$P/.hermes/agents.json" "$QA_ID" <<'PY'
+import json, sys
+p, qid = sys.argv[1:3]; d = json.load(open(p))
+d["agents"].append({"agent_id": qid, "name": "QA담당", "status": "active", "created_by": "human:tester",
+                    "org": {"discipline": "QA", "rank": "담당", "unit": "공통"}})
+json.dump(d, open(p, "w"), ensure_ascii=False)
+PY
+SUMMON run --discipline QA --task "축 매칭 소환" >/dev/null 2>&1
+assert "축 매칭 소환 → match=discipline:QA chosen=QA담당 among=1" 1 "$(q "select count(*) from journal_events where kind='task.assigned' and decision='match=discipline:QA chosen=QA담당 among=1'")"
+# 계획 design-gaps-tier2 목표 9 — 사람 없는 세션은 main 이 수행하고 "담당 없음" 제안을 남긴다 (creation-and-organization.md:103)
+SUMMON run --discipline 디자인 --task "담당 없는 일" >/dev/null 2>&1; assert "대화형: 담당 없으면 ask 로 중단(rc 1)" 1 "$?"
+HERMES_HEADLESS=1 SUMMON run --discipline 디자인 --task "담당 없는 일" >"$TMP/headless.out" 2>&1; assert "무인: rc 0" 0 "$?"
+assert "무인: main 이 소환됨" "$MAIN_ID" "$(sed -n 1p "$MOCK_OUT")"
+assert "무인: owner-proposal 기록" 1 "$(q "select count(*) from journal_events where kind='decision' and intent='owner-proposal discipline:디자인'")"
+assert "무인: task.assigned 의 매칭 근거가 fallback=main" 1 "$(q "select count(*) from journal_events where kind='task.assigned' and decision like 'match=discipline:디자인 fallback=main%'")"
+OP_OUT="$(echo '{"source":"startup"}' | CLAUDE_PROJECT_DIR="$P" bash "$H/claude-sessionstart-owner-proposals.sh" 2>&1)"
+assert "시작 훅: 답 없는 제안 1건 알림" 1 "$(grep -c '담당 없음 제안 1건' <<<"$OP_OUT")"
+assert "시작 훅: 영역이 보임" 1 "$(grep -c 'discipline:디자인' <<<"$OP_OUT")"
+python3 "$P/scripts/hermes-agent.py" --project "$P" no-owner --discipline 디자인 >/dev/null 2>&1
+assert "no-owner 로 답하면 훅이 조용" "" "$(echo '{"source":"startup"}' | CLAUDE_PROJECT_DIR="$P" bash "$H/claude-sessionstart-owner-proposals.sh" 2>&1)"
 
 echo ""
 echo "== 2. 시작 훅 4케이스 (목표 6) =="

@@ -111,6 +111,13 @@ A hire 프론트 --org 프론트엔드,담당,공통 >/dev/null 2>&1
 assert "discipline+unit 두 축 일치가 우선(유저기획·공통기획 둘 다 기획/공통 → 2명)" 2 "$(A match --discipline 기획 --unit 공통 2>/dev/null | wc -l)"
 assert "한 축만 요청하면 그 축이 맞는 전부" 2 "$(A match --discipline 기획 2>/dev/null | wc -l)"
 A match --discipline 디자인 >/dev/null 2>&1; assert "맞는 담당 없음 → ask(rc=3)" 3 "$?"
+# 계획 design-gaps-tier2 목표 8 — "담당 두지 않음" 을 기억해 두면 그 영역은 다시 묻지 않는다 (creation-and-organization.md:95)
+A no-owner --discipline 디자인 >"$TMP/noowner.out" 2>&1; assert "no-owner 기록 rc 0" 0 "$?"
+assert "no-owner 가 decision 이벤트로 남음" 1 "$(python3 -c "
+import sqlite3;print(sqlite3.connect('$P/.hermes/state.db').execute(\"select count(*) from journal_events where kind='decision' and intent like 'no-owner discipline:디자인%'\").fetchone()[0])")"
+NO_OUT="$(A match --discipline 디자인 2>&1)"; assert "기억된 영역은 ask 대신 no-owner(rc 4)" 4 "$?"
+assert "no-owner 출력에 날짜" 1 "$(grep -c '2026-' <<<"$NO_OUT")"
+A match --discipline 퍼블리싱 >/dev/null 2>&1; assert "다른 영역은 여전히 ask(rc=3)" 3 "$?"
 A retire 유저기획 >/dev/null 2>&1
 assert "은퇴자는 매칭에서 빠진다" 1 "$(A match --discipline 기획 --unit 공통 2>/dev/null | grep -c '공통기획')"
 assert "은퇴자 이름은 결과에 없음" 0 "$(A match --discipline 기획 --unit 공통 2>/dev/null | grep -c '유저기획')"

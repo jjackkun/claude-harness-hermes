@@ -98,6 +98,7 @@ def open_handoff(db: str, project: str, to_agent: str, envelope: dict,
     frm = by or "agent:main"
     kind, certain = derive_kind(project, frm, to_agent)          # 기계가 정한다(handoff-contract §2)
     env["kind"] = kind if certain else f"{kind}(미상)"
+    env["to"] = to_agent
     env["return_to"] = (envelope.get("return_to") or frm).strip()   # 기본은 from
     handoff_id = uuid7_str()
     emit(db, project, {
@@ -113,7 +114,7 @@ def open_handoff(db: str, project: str, to_agent: str, envelope: dict,
 def _assign_decision(env: dict) -> str:
     """done_when · kind · return_to · (있으면) 만료·constraints 를 한 줄 decision 칸에 담는다 —
     evidence 허용목록 밖을 피한다. constraints 는 자유 글이라 emit 이 저장 전 마스킹한다."""
-    parts = [f"done_when={env['done_when']}", f"kind={env['kind']}", f"return_to={env['return_to']}"]
+    parts = [f"done_when={env['done_when']}", f"kind={env['kind']}", f"to={env['to']}", f"return_to={env['return_to']}"]
     if env.get("expires_at"):
         parts.append(f"expires_at={env['expires_at']}")
     if env.get("constraints"):
@@ -139,7 +140,7 @@ def _assign_row(db: str, handoff_id: str) -> str:
 
 
 def resolve(db: str, project: str, handoff_id: str, how: str, actor: str,
-            reason: str = None, done_when: str = None) -> str:
+            reason: str = None, done_when: str = None, cause: str = None) -> str:
     """되돌아오는 네 방식 중 하나를 이벤트로 남긴다.
 
     how: finished · declined · question · expired. finished 는 done_when 을 기계가 재
@@ -153,12 +154,33 @@ def resolve(db: str, project: str, handoff_id: str, how: str, actor: str,
     elif how == "finished":
         event.update(_finished_fields(db, project, handoff_id, done_when))
     else:
-        if how == "declined":
-            _check_refusable(db, handoff_id, reason)
-        event["intent"] = (reason or "").strip()[:200] or f"handoff {how}"
-        if how in ("declined", "question"):
-            event["claimed"] = "blocked"
+        event.update(_return_fields(db, handoff_id, how, reason, cause))
     return emit(db, project, event)
+
+
+def _return_fields(db: str, handoff_id: str, how: str, reason: str, cause: str) -> dict:
+    """declined · question · expired 의 공통 칸. 거절 가능 여부·2차 되묻기 승격·만료 원인을 여기서 정한다."""
+    if how == "declined":
+        _check_refusable(db, handoff_id, reason)
+    out = {"intent": (reason or "").strip()[:200] or f"handoff {how}"}
+    if how in ("declined", "question"):
+        out["claimed"] = "blocked"
+    if how == "question" and _question_count(db, handoff_id) >= 1:
+        # 같은 봉투의 두 번째 되묻기는 사람에게 올라간다(handoff-contract.md "되묻기 남용", K-1) —
+        # 어려운 일을 받으면 되묻고 미루는 길을 막는다. 보기(escalations)가 이 표시를 읽는다.
+        out["decision"] = "escalate=human"
+    if how == "expired":
+        out["evidence"] = {"reason": f"expired:{cause or 'unstarted'}"}   # 기계 판정(목표 4)
+    return out
+
+
+def _question_count(db: str, handoff_id: str) -> int:
+    con = sqlite3.connect(db)
+    try:
+        return con.execute("SELECT count(*) FROM journal_events WHERE task_id=? AND kind='handoff.question'",
+                           (handoff_id,)).fetchone()[0]
+    finally:
+        con.close()
 
 
 def _blocked_fields(reason: str) -> dict:
@@ -218,10 +240,43 @@ def check_expired(db: str, project: str) -> int:
     count = 0
     for handoff_id in sorted(expirable):
         if _is_expired(db, handoff_id):
+            cause = _expiry_cause(project, handoff_id)
             resolve(db, project, handoff_id, "expired", "system:claude-stop-journal-gap",
-                    reason="봉투 기한 초과 — 받는 쪽이 시작하지 않았다")
+                    reason=f"봉투 기한 초과 — {_CAUSE_TEXT[cause]}", cause=cause)
             count += 1
     return count
+
+
+_CAUSE_TEXT = {"key-missing": "이 컴퓨터에 열쇠가 없어 받는 쪽이 읽지 못했다",
+               "runner-dead": "소환 러너가 시작 기록 없이 죽었다(pending 토큰 잔존)",
+               "unstarted": "받는 쪽이 시작하지 않았다"}
+
+
+def _expiry_cause(project: str, handoff_id: str) -> str:
+    """만료 원인의 기계 판정(handoff-contract.md "기록") — 열쇠 없음·러너 죽음은 에이전트 탓이 아니다.
+    key-missing: sync.json 은 있는데 ~/.hermes/keys/<universe>/master.key 가 없다.
+    runner-dead: .hermes/summons/*.pending 중 이 봉투 id 를 담은 파일이 남아 있다."""
+    hermes = os.path.join(project, ".hermes")
+    if os.path.isfile(os.path.join(hermes, "sync.json")):
+        try:
+            from hermes_keys import key_path
+            from hermes_universe import universe_id
+            if not os.path.isfile(key_path(universe_id(project), "master")):
+                return "key-missing"
+        except Exception:  # noqa: BLE001 — 열쇠 모듈이 없으면 판정 불가, 다음 원인으로
+            pass
+    pend = os.path.join(hermes, "summons")
+    if os.path.isdir(pend):
+        for name in os.listdir(pend):
+            if not name.endswith(".pending"):
+                continue
+            try:
+                with open(os.path.join(pend, name), encoding="utf-8", errors="ignore") as fh:
+                    if handoff_id in fh.read():
+                        return "runner-dead"
+            except OSError:
+                continue
+    return "unstarted"
 
 
 def _is_expired(db: str, handoff_id: str) -> bool:

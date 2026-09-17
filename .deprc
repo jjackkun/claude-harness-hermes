@@ -44,7 +44,7 @@ tier: 1  scripts/hermes_memory_view.py
 # 인계 봉투(계획 2026-09-15-agent-identity 목표 10·11·12): done_when 은 표준 모듈만,
 # handoff 는 done_when·journal·journal_views·uuid7 을 import 한다(최상위 tier 1 → handoff tier 2).
 tier: 0  scripts/hermes_done_when.py
-tier: 2  scripts/hermes_handoff.py scripts/hermes_handoff_kind.py
+tier: 2  scripts/hermes_handoff.py scripts/hermes_handoff_kind.py scripts/hermes_handoff_queue.py scripts/hermes_owner_memory.py
 # 제안 봉투(계획 5): envelope=uuid7(0)→1, gate=mesh_gate(2)→3, propose=gate(3)→4.
 tier: 1  scripts/hermes_envelope.py
 tier: 3  scripts/hermes_envelope_gate.py

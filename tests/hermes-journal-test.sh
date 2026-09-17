@@ -99,6 +99,13 @@ assert "accepted 는 기록기가 쓰지 않는다(사람만)" "0" "$(q "select 
 echo ""
 echo "== 5. 보기 (목표 9) =="
 assert "thread 가 t1 의 이벤트를 모은다" "2" "$(J thread t1 | python3 -c "import json,sys;print(len(json.load(sys.stdin)))")"
+# 계획 design-gaps-tier2 목표 2 — actor 가 agent: 인데 task.assigned 짝이 없으면 origin=unknown (identity.md:198,209)
+J emit --json '{"kind":"step","task_id":"t-orphan","actor":"agent:ghost","intent":"짝 없는 행위자"}' >/dev/null
+J emit --json '{"kind":"task.assigned","task_id":"t-paired","actor":"human:x","intent":"배정"}' >/dev/null
+J emit --json '{"kind":"step","task_id":"t-paired","actor":"agent:real","intent":"짝 있는 행위자"}' >/dev/null
+assert "짝 없는 agent 행 origin=unknown" "unknown" "$(J thread t-orphan | python3 -c "import json,sys;print(json.load(sys.stdin)[0]['origin'])")"
+assert "짝 있는 agent 행 origin=paired" "paired" "$(J thread t-paired | python3 -c "import json,sys;print([r['origin'] for r in json.load(sys.stdin) if r['actor']=='agent:real'][0])")"
+assert "사람 행 origin=n/a" "n/a" "$(J thread t-paired | python3 -c "import json,sys;print([r['origin'] for r in json.load(sys.stdin) if r['actor']=='human:x'][0])")"
 assert "mismatch 는 주장 성공·기계 실패만" "t3" "$(J mismatch | python3 -c "
 import json,sys;d=json.load(sys.stdin);print(d[0]['task_id'] if len(d)==1 else [x['task_id'] for x in d])")"
 J emit --json '{"kind":"task.started","task_id":"child","parent_task_id":"t1"}' >/dev/null

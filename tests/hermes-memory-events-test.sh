@@ -88,7 +88,6 @@ assert "철회된 기억은 살아있는 목록에 없음" 0 "$(q "
 import sqlite3,sys; sys.path.insert(0,'$S')
 from hermes_memory_conflicts import current_memories
 print(sum(1 for e in current_memories(sqlite3.connect(sys.argv[1]),'a1') if e['about']=='옛것'))")"
-
 echo ""
 echo "== 3. 규칙 충돌·단일 사례 (목표 9) =="
 assert "규칙 키(접근성) 부정형이면 규칙 충돌(둘 다 부정형이라 2건)" 2 "$(q "
@@ -152,6 +151,25 @@ else
   assert "about 은 평문(기계 칸)" ABOUT_PLAIN "$(sed -n 2p "$TMP/frag.out")"
   assert "kind 는 평문" KIND_PLAIN "$(sed -n 3p "$TMP/frag.out")"
 fi
+
+echo "== 전에 철회됨 (계획 design-gaps-tier2 목표 3) =="
+# 계획 design-gaps-tier2 목표 3 — 같은 본문을 다시 배우면 "전에 철회됨" 이 보인다 (memory-events.md:119)
+q "
+import sqlite3,sys; sys.path.insert(0,'$S')
+from hermes_memory_events import record; from hermes_uuid7 import uuid7_str
+con=sqlite3.connect(sys.argv[1])
+record(con, {'memory_id': uuid7_str(), 'agent_id':'a1','universe_id':'u','ts':'2026-09-17T00:00:01','kind':'memory.added','about':'옛것','body':'X 를 한다','source_event':'e20'})
+record(con, {'memory_id': uuid7_str(), 'agent_id':'a1','universe_id':'u','ts':'2026-09-17T00:00:02','kind':'memory.added','about':'새것','body':'전혀 다른 기억','source_event':'e21'})
+con.commit()" >/dev/null
+assert "철회됐던 본문을 다시 배우면 previously_retracted 에 사유" "틀렸다" "$(q "
+import sqlite3,sys; sys.path.insert(0,'$S')
+from hermes_memory_conflicts import current_memories
+print([e.get('previously_retracted') for e in current_memories(sqlite3.connect(sys.argv[1]),'a1') if e['about']=='옛것'][0])")"
+assert "다른 본문에는 표시 없음" "None" "$(q "
+import sqlite3,sys; sys.path.insert(0,'$S')
+from hermes_memory_conflicts import current_memories
+print([e.get('previously_retracted') for e in current_memories(sqlite3.connect(sys.argv[1]),'a1') if e['about']=='새것'][0])")"
+
 
 echo ""
 echo "PASS=$PASS FAIL=$FAIL"

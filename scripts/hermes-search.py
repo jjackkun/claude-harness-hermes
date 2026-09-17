@@ -35,8 +35,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from hermes_skills import iter_skill_files  # noqa: E402  (스킬 파일 순회 공유 헬퍼)
 from hermes_keywords import document_frequency, idf_score, split_keywords  # noqa: E402
 from hermes_search_fallback import haiku_fallback  # noqa: E402  (claude -p 뉘앙스 폴백)
-from hermes_skill_layers import (  # noqa: E402  (스킬 4층 필터)
-    ensure_layer_columns, layer_of_path, skill_visible)
+from hermes_skill_layers import (  # noqa: E402  (스킬 4층 필터 + 주입 순서)
+    ensure_layer_columns, inject_order, layer_of_path, skill_visible)
 from hermes_skill_render import inject_text  # noqa: E402  (주입 렌더링)
 from hermes_skill_extends import parse_extends, resolve_base_path  # noqa: E402  (확장 합성)
 
@@ -190,20 +190,20 @@ def search_db(db_path: str, keywords: list, max_results: int,
         return []
 
     # 주입 필터 — 다른 단위·다른 개인의 층은 결과에서 뺀다(RV-12).
-    rows = [(p, k, h, u) for p, k, h, u, layer, unit_id, agent_id in rows
+    rows = [(p, k, h, u, layer) for p, k, h, u, layer, unit_id, agent_id in rows
             if skill_visible(layer, unit_id, agent_id, viewer_agent_id, viewer_unit_id)]
 
     # 토큰 일치. 부분 문자열로 보면 두 글자 질의어가 긴 키워드 안에까지 걸려 후보가
     # 폭발한다 — 실측(zeroday, 실제 프롬프트 400건): 후보 중앙값이 부분 문자열 107개
     # 대 토큰 일치 14개, "선별 가능(1~20개)" 프롬프트가 59/400 대 272/400.
     # 근거: docs/exec-plans/active/2026-09-09-hermes-skill-lifecycle.md §7
-    haystacks = [(path, set(split_keywords(kwfield)), kwfield, helpful, used)
-                 for path, kwfield, helpful, used in rows]
-    df = document_frequency(tokens for _p, tokens, _k, _h, _u in haystacks)
+    haystacks = [(path, set(split_keywords(kwfield)), kwfield, helpful, used, layer)
+                 for path, kwfield, helpful, used, layer in rows]
+    df = document_frequency(tokens for _p, tokens, _k, _h, _u, _l in haystacks)
     total = len(haystacks)
 
     scored = []
-    for path, tokens, kwfield, helpful, used in haystacks:
+    for path, tokens, kwfield, helpful, used, layer in haystacks:
         matched = [kw for kw in kws if kw in tokens]
         if not matched:
             continue
@@ -219,12 +219,13 @@ def search_db(db_path: str, keywords: list, max_results: int,
         # 수백 개가 동점이 되는데, 그 키워드가 차지하는 비중이 큰 스킬일수록 그
         # 주제를 실제로 다루는 스킬이다. `hermes-evolve-skill.py` 의 대상 선정과
         # 같은 기준을 쓴다.
-        scored.append(((score, helpful, used, -len(tokens)), path, kwfield, matched[0]))
+        scored.append(((score, helpful, used, -len(tokens)), path, kwfield, matched[0], layer))
 
-    scored.sort(key=lambda x: x[0], reverse=True)
+    scored.sort(key=lambda x: x[0], reverse=True)     # 점수 → helpful → used 로 뽑고
+    picked = inject_order(scored[:max_results], lambda x: x[4])   # 층 순으로 넣는다
     return [
         {"path": path, "keywords": kwfield, "matched": first}
-        for _, path, kwfield, first in scored[:max_results]
+        for _, path, kwfield, first, _layer in picked
     ]
 
 
@@ -245,6 +246,7 @@ def search_skills_dir(skills_dir: str, keywords: list, max_results: int,
         if name in seen:
             continue
         seen.add(name)
+        layer = None
         if project is not None:
             layer, unit_id, agent_id = layer_of_path(project, skill_md)
             if not skill_visible(layer, unit_id, agent_id, viewer_agent_id, viewer_unit_id):
@@ -258,27 +260,28 @@ def search_skills_dir(skills_dir: str, keywords: list, max_results: int,
 
         # 본문 전체 부분 문자열이 아니라 토큰 일치로 본다. 전자는 두 글자만 어딘가
         # 들어 있어도 걸려서, 1,000개가 넘는 결정화 스킬에서는 사실상 무작위였다.
-        docs.append((name, skill_md, set(split_keywords(content))))
+        docs.append((name, skill_md, set(split_keywords(content)), layer))
 
     # 흔한 말은 **빼지 않고** 점수를 낮춘다. 빼면 그 프로젝트에서 가장 중요한 어휘가
     # 빈출이라는 이유로 사라져 재현율이 무너진다 — zeroday 에서 `swagger`(172개 스킬)를
     # 지우자 "스웨거 동기화 해줘" 가 0건이 됐다. IDF 는 흔한 말의 기여를 0 에 수렴시켜
     # 같은 효과를 재현율 손실 없이 낸다.
-    df = document_frequency(tokens for _n, _p, tokens in docs)
+    df = document_frequency(tokens for _n, _p, tokens, _l in docs)
     total = max(len(docs), 1)
 
     scored = []
-    for name, skill_md, tokens in docs:
+    for name, skill_md, tokens, layer in docs:
         matched = [kw for kw in kws if kw in tokens]
         if not matched:
             continue
         score = idf_score(matched, df, total)
-        scored.append((score + _name_bonus(skill_md, matched, df, total), name, skill_md, matched[0]))
+        scored.append((score + _name_bonus(skill_md, matched, df, total), name, skill_md, matched[0], layer))
 
-    scored.sort(key=lambda x: (-x[0], x[1]))
+    scored.sort(key=lambda x: (-x[0], x[1]))          # 점수 → 이름 으로 뽑고
+    picked = inject_order(scored[:max_results], lambda x: x[4])   # 층 순으로 넣는다
     return [
         {"name": name, "path": path, "matched": first}
-        for _n, name, path, first in scored[:max_results]
+        for _s, name, path, first, _layer in picked
     ]
 
 

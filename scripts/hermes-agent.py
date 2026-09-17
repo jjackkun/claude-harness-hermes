@@ -20,6 +20,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from hermes_org import OrgError, ensure_unit_ids, load_org, match_agents  # noqa: E402
+from hermes_owner_memory import no_owner_since, record_no_owner  # noqa: E402
 from hermes_roster import (  # noqa: E402
     RosterError, add_agent, find_agent, load_roster, save_roster, transition)
 
@@ -142,10 +143,25 @@ def cmd_match(args) -> int:
     want = {"discipline": args.discipline, "rank": args.rank, "unit": args.unit}
     result = match_agents(roster["agents"], want)
     if result["ask"]:
+        since = no_owner_since(args.project, want)
+        if since:   # 사람이 "이 영역은 담당을 두지 않는다" 고 정했다 — 다시 묻지 않는다(§5)
+            print(f"no-owner: 이 영역은 담당을 두지 않기로 함({since[:10]}) — 바꾸려면 hire 로 입사시키십시오")
+            return 4
         print("ask: 맞는 담당이 없습니다 — 사람에게 문의하십시오 (hermes-agent.py hire …)")
         return 3
     for a in result["agents"]:
         print(f"{a['name']} ({a['agent_id']}) org={a.get('org')}")
+    return 0
+
+
+def cmd_no_owner(args) -> int:
+    """사람이 정한다: 이 영역(축 값)은 담당을 두지 않는다. 이후 match 는 ask 대신 이 기억을 보인다."""
+    want = {"discipline": args.discipline, "rank": args.rank, "unit": args.unit}
+    if not any(want.values()):
+        print("no-owner 에는 축 값이 하나 이상 필요하다 (--discipline/--rank/--unit)", file=sys.stderr)
+        return 2
+    eid = record_no_owner(args.project, want, _human(args.project))
+    print(f"no-owner 기록: {' '.join(f'{k}:{v}' for k, v in want.items() if v)} ({eid})")
     return 0
 
 
@@ -160,13 +176,15 @@ def main() -> int:
     sub.add_parser("list"); sub.add_parser("whoami")
     m = sub.add_parser("match")
     m.add_argument("--discipline"); m.add_argument("--rank"); m.add_argument("--unit")
+    n = sub.add_parser("no-owner", help="이 영역은 담당을 두지 않는다 — 기억해 두고 다시 묻지 않는다")
+    n.add_argument("--discipline"); n.add_argument("--rank"); n.add_argument("--unit")
     args = ap.parse_args()
     try:
         if args.cmd == "hire":
             return cmd_hire(args)
         if args.cmd in ("promote", "retire", "rehire"):
             return cmd_transition(args)
-        return {"list": cmd_list, "whoami": cmd_whoami, "match": cmd_match}[args.cmd](args)
+        return {"list": cmd_list, "whoami": cmd_whoami, "match": cmd_match, "no-owner": cmd_no_owner}[args.cmd](args)
     except (RosterError, OrgError) as exc:
         print(f"[hermes-agent] 거부: {exc}", file=sys.stderr)
         return 2

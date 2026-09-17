@@ -34,25 +34,48 @@ def _human(project: str) -> str:
     return os.environ.get("HERMES_REQUESTED_BY") or (f"human:{name}" if name else "system:unknown")
 
 
-def _pick(project: str, who: str, want: dict) -> dict:
-    """이름·id 로 찾거나, 축 값으로 매칭한다. 은퇴자는 소환할 수 없다."""
+def _pick(project: str, who: str, want: dict) -> tuple:
+    """이름·id 로 찾거나, 축 값으로 매칭한다. 은퇴자는 소환할 수 없다.
+
+    (agent, basis) 를 돌려준다 — basis 는 task.assigned 의 decision 에 남는 매칭 근거
+    (creation-and-organization.md §3 "매칭 결과는 task.assigned 에 남겨 나중에 대조")."""
     roster = load_roster(project)
     agent = find_agent(roster, who) if who else None
+    basis = "match=by-name"
     if agent is None and any(want.values()):
         result = match_agents(roster["agents"], want)
+        asked = ",".join(f"{k}:{v}" for k, v in want.items() if v)
         if result["ask"]:
-            raise SystemExit("ask: 맞는 담당이 없습니다 — 사람에게 문의하십시오")
-        agent = result["agents"][0]
+            agent = _headless_fallback(project, roster, want)   # 사람 없는 세션만 main 으로(§5)
+            basis = f"match={asked} fallback=main proposal=recorded"
+        else:
+            agent = result["agents"][0]
+            basis = f"match={asked} chosen={agent['name']} among={len(result['agents'])}"
     if agent is None:
         raise SystemExit(f"명부에 없다: {who}")
     if agent["status"] == "retired":
         raise SystemExit(f"은퇴한 에이전트는 소환할 수 없다: {agent['name']}")
-    return agent
+    return agent, basis
+
+
+def _headless_fallback(project: str, roster: dict, want: dict) -> dict:
+    """담당이 없을 때: 대화형이면 ask 로 중단(사람이 정한다). 사람 없는 세션(HERMES_HEADLESS=1 —
+    hermes-loop-run.sh · hermes-cron-run.sh 가 켠다)이면 main 이 수행하고 "담당 없음" 제안을 남겨
+    다음 대화형 세션에서 묻는다(creation-and-organization.md §5, 합의)."""
+    if os.environ.get("HERMES_HEADLESS") != "1":
+        raise SystemExit("ask: 맞는 담당이 없습니다 — 사람에게 문의하십시오")
+    from hermes_owner_memory import no_owner_since, record_proposal
+    main = next((a for a in roster["agents"] if a.get("name") == "main"), None)
+    if main is None:
+        raise SystemExit("ask: 맞는 담당이 없고 main 도 명부에 없습니다")
+    if not no_owner_since(project, want):   # 사람이 이미 "담당 두지 않음" 이라 답한 영역은 다시 묻지 않는다(리뷰 MEDIUM)
+        record_proposal(project, want, _human(project))
+    return main
 
 
 def cmd_issue(args) -> int:
     project = args.project
-    agent = _pick(project, args.who, {})
+    agent, _ = _pick(project, args.who, {})
     con = sqlite3.connect(os.path.join(project, ".hermes", "state.db"))
     nonce = issue(con, project, agent["agent_id"], _human(project))
     con.close()
@@ -63,7 +86,7 @@ def cmd_issue(args) -> int:
 def cmd_run(args) -> int:
     project = args.project
     db = os.path.join(project, ".hermes", "state.db")
-    agent = _pick(project, args.who, {"discipline": args.discipline, "unit": args.unit, "rank": None})
+    agent, basis = _pick(project, args.who, {"discipline": args.discipline, "unit": args.unit, "rank": None})
     requested_by = _human(project)
     con = sqlite3.connect(db)
     nonce = issue(con, project, agent["agent_id"], requested_by)
@@ -71,7 +94,7 @@ def cmd_run(args) -> int:
     task_id = uuid7_str()
     emit(db, project, {"kind": "task.assigned", "task_id": task_id,
                        "actor": requested_by, "requested_by": requested_by,
-                       "intent": args.task[:200],
+                       "intent": args.task[:200], "decision": basis,
                        "evidence": {"template": (agent.get("template") or "").split("@")[0] or None}})
 
     env = dict(os.environ, HERMES_AGENT_ID=agent["agent_id"], HERMES_SUMMON_NONCE=nonce,

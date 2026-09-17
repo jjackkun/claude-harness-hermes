@@ -61,6 +61,15 @@ assert "공통 스킬 보임"       yes "$(has "$OUT" 'common-skill')"
 assert "내 단위(팀A) 스킬 보임" yes "$(has "$OUT" 'teama-skill')"
 assert "타 단위(팀B) 스킬 안 보임" no  "$(has "$OUT" 'teamb-skill')"
 assert "내 개인 스킬 보임"     yes "$(has "$OUT" 'my-skill')"
+# 계획 design-gaps-tier2 목표 7 — 주입 순서는 개인 → 단위 → 공통 (skill-layers.md:53). 질의어를 공통 스킬에
+# 유리하게(공통 스킬 이름을 두 번) 줘도 개인·단위가 앞이다.
+OUT_ORD="$(srch "$AID" "common-skill common-skill teama-skill my-skill")"
+pos() { grep -n "$2" <<<"$1" | head -1 | cut -d: -f1; }
+assert "개인 스킬이 단위 스킬보다 앞" 1 "$(( $(pos "$OUT_ORD" my-skill) < $(pos "$OUT_ORD" teama-skill) ))"
+assert "단위 스킬이 공통 스킬보다 앞" 1 "$(( $(pos "$OUT_ORD" teama-skill) < $(pos "$OUT_ORD" common-skill) ))"
+# 리뷰 MEDIUM — 층은 넣는 순서일 뿐, 뽑는 것은 점수다: --max 1 이면 점수 최상(common-skill 두 번 질의)이 뽑힌다
+OUT_ONE="$(HERMES_AGENT_ID="$AID" python3 "$S/hermes-search.py" --db "$DB" --query "common-skill common-skill teama-skill my-skill" --max 1 --no-fallback 2>&1)"
+assert "--max 1 에서 점수 최상인 공통 스킬이 잘리지 않음" yes "$(has "$OUT_ONE" 'common-skill')"
 
 echo ""
 echo "== 2. 주입 필터: main(미소환) 시점 — 공통만 =="
