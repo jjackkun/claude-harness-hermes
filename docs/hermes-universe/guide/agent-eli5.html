@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>헤르메스 5분 요약</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gothic+A1:wght@500;800&family=Noto+Sans+KR:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --bg: #F5F7F9; --surface: #FFFFFF; --ink: #1A2230; --ink-2: #4A5566; --line: #D9DFE6;
+    --accent: #1F6F78; --accent-ink: #FFFFFF; --accent-soft: #E3F0F1;
+    --brass: #A9843A; --brass-soft: #F6EFDC; --say-bg: #EEF3F6;
+    --font-display: "Gothic A1", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+    --font-body: "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+    --font-mono: "IBM Plex Mono", "SFMono-Regular", Consolas, "D2Coding", monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #101820; --surface: #16202A; --ink: #E4E9EF; --ink-2: #A3AFBE; --line: #2A3641;
+      --accent: #5DB5B5; --accent-ink: #0B1A1C; --accent-soft: #17313A;
+      --brass: #D2B061; --brass-soft: #2C2716; --say-bg: #1B2733;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #101820; --surface: #16202A; --ink: #E4E9EF; --ink-2: #A3AFBE; --line: #2A3641;
+    --accent: #5DB5B5; --accent-ink: #0B1A1C; --accent-soft: #17313A;
+    --brass: #D2B061; --brass-soft: #2C2716; --say-bg: #1B2733;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 16px; line-height: 1.75; }
+  a { color: var(--accent); }
+  .wrap { max-width: 680px; margin: 0 auto; padding-block: 44px 96px; padding-inline: clamp(16px, 5vw, 32px); }
+  h1 { font-family: var(--font-display); font-weight: 800; font-size: clamp(28px, 6vw, 40px); line-height: 1.15; margin: 0 0 12px; text-wrap: balance; }
+  p.lede { font-size: 18px; color: var(--ink-2); margin: 0 0 8px; }
+  p.one { font-size: 17px; margin: 0; padding: 14px 18px; border-left: 3px solid var(--accent); background: var(--say-bg); border-radius: 0 8px 8px 0; }
+  .cards { display: flex; flex-direction: column; gap: 14px; margin-top: 36px; counter-reset: card; }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 20px 22px; display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 16px; }
+  .card .num { font-family: var(--font-display); font-weight: 800; font-size: 26px; color: var(--accent); line-height: 1; padding-top: 4px; }
+  .card h2 { font-family: var(--font-display); font-weight: 800; font-size: 20px; margin: 0 0 6px; text-wrap: balance; }
+  .card p { margin: 0 0 8px; }
+  .card p:last-child { margin-bottom: 0; }
+  .card .like { color: var(--ink-2); font-size: 15px; }
+  .card .like b { color: var(--brass); font-weight: 700; }
+  .say { background: var(--say-bg); border-radius: 8px; padding: 10px 14px; font-size: 15.5px; margin-top: 8px; }
+  .say::before { content: "이렇게 말하면 됩니다"; display: block; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); margin-bottom: 2px; }
+  .say + .say { margin-top: 6px; }
+  .flow { margin-top: 40px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 20px 22px; }
+  .flow h2 { font-family: var(--font-display); font-weight: 800; font-size: 17px; margin: 0 0 12px; }
+  .flow ol { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+  .flow li { background: var(--accent-soft); border-radius: 6px; padding: 10px 8px; font-size: 13.5px; text-align: center; line-height: 1.4; }
+  .flow li b { display: block; font-family: var(--font-display); font-weight: 800; color: var(--accent); font-size: 12px; letter-spacing: .04em; margin-bottom: 4px; }
+  .flow li.you { background: var(--brass-soft); }
+  .flow li.you b { color: var(--brass); }
+  .flow p { margin: 12px 0 0; font-size: 14px; color: var(--ink-2); }
+  .dont { margin-top: 32px; border: 1px solid var(--brass); background: var(--brass-soft); border-radius: 10px; padding: 16px 20px; }
+  .dont h2 { font-family: var(--font-display); font-weight: 800; font-size: 17px; margin: 0 0 8px; color: var(--brass); }
+  .dont ul { margin: 0; padding-left: 18px; }
+  .dont li { margin-bottom: 4px; }
+  .more { margin-top: 40px; padding-top: 16px; border-top: 1px solid var(--line); font-size: 14.5px; color: var(--ink-2); }
+  code { font-family: var(--font-mono); font-size: .9em; background: var(--say-bg); padding: 1px 5px; border-radius: 4px; }
+  @media (max-width: 560px) {
+    .card { grid-template-columns: 1fr; gap: 6px; }
+    .card .num { font-size: 20px; padding: 0; }
+    .flow ol { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <h1>에이전트는 회사 직원처럼 뽑고, 말로 일을 맡깁니다</h1>
+  <p class="lede">소우주(하네스가 깔린 프로젝트)에는 "명부" 가 하나 있습니다. 거기에 사람 대신 일할 에이전트를 올려 두고, 세션에서 <b>평소처럼 말하면</b> 됩니다. 명령어를 외울 필요는 없습니다.</p>
+  <p class="one">한 줄로: <b>조직표를 정하고 → 직원을 뽑고 → 누가 맡을지 찾고 → 일을 시키고 → 끝났는지 기계가 잰다.</b></p>
+
+  <div class="cards">
+    <div class="card">
+      <div class="num">1</div>
+      <div>
+        <h2>먼저 조직표를 정합니다 (한 번만)</h2>
+        <p class="like"><b>비유</b> 회사에 부서·직급이 없으면 채용 공고를 낼 수 없습니다.</p>
+        <p>분야(백엔드·QA…) · 직급(리드·담당…) · 조직(선적·공통…) 세 가지를 정해 두면, 에이전트는 이 세 값만 갖습니다. 정해 두지 않으면 채용이 거부됩니다.</p>
+        <div class="say">우리 조직은 백엔드·프론트엔드·QA, 직급은 리드·담당, 조직은 선적이랑 공통이야.</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="num">2</div>
+      <div>
+        <h2>직원을 뽑습니다</h2>
+        <p class="like"><b>비유</b> 입사하면 사원증(id)과 빈 이력서(SOUL.md)가 나옵니다. 처음엔 수습입니다.</p>
+        <p>이름은 겹치면 안 됩니다. 이력서 — 이 에이전트가 무엇을 맡고 무엇을 하지 않는지 — 는 <b>사람이</b> 씁니다. 에이전트가 자기 소개를 쓰지 않습니다.</p>
+        <div class="say">선적 담당 QA 한 명 뽑아. 이름은 선적QA.</div>
+        <div class="say">선적QA 수습 끝났어, 정식으로 올려.</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="num">3</div>
+      <div>
+        <h2>누가 맡을지 찾습니다</h2>
+        <p class="like"><b>비유</b> "이거 누구 담당이지?" 라고 물으면 조직표에서 찾아 줍니다. 없으면 "없습니다, 뽑으셔야 합니다" 라고 합니다.</p>
+        <p>맞는 사람이 없을 때 아무나 고르지 않습니다. 그게 이 시스템의 약속입니다.</p>
+        <div class="say">명부 보여줘.</div>
+        <div class="say">이 결제 버그 누가 맡지?</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="num">4</div>
+      <div>
+        <h2>일을 시킵니다 — 두 가지 방법</h2>
+        <p class="like"><b>비유</b> "지금 좀 해 줘"(소환) 와 "이 조건 되면 끝, 금요일까지"(인계) 는 다릅니다.</p>
+        <p><b>소환</b>은 그 에이전트 명의로 세션을 하나 띄워 바로 시킵니다. 빠르지만 "됐다" 는 말을 믿어야 합니다.<br><b>인계</b>는 봉투에 <i>무엇을</i> · <i>무엇이 되면 끝</i> · <i>언제까지</i> 를 적어 넘깁니다. 끝났다고 하면 기계가 그 조건을 다시 잽니다. 기준이나 기한을 말하는 순간 자동으로 인계가 됩니다.</p>
+        <div class="say">선적 조회 화면 회귀 테스트, 선적QA 한테 지금 넘겨.</div>
+        <div class="say">이 결제 리팩터 선적QA 한테 인계해. 회귀 테스트 통과하면 끝이고, 금요일까지.</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="num">5</div>
+      <div>
+        <h2>모든 일은 장부에 남습니다</h2>
+        <p class="like"><b>비유</b> 누가 뽑혔고, 누가 무엇을 맡았고, 끝났는지 — 회사 인사 기록처럼 지워지지 않습니다.</p>
+        <p>입사·소환·인계는 전부 검증된 경로로만 기록됩니다. 그래서 에이전트가 자기를 다른 사람으로 속이거나 기록을 손으로 꾸밀 수 없습니다. "했다" 는 말은 <i>주장</i>으로 적히고, 인계였다면 기계가 조건을 다시 재서 검증값을 따로 적습니다. 은퇴시켜도 기록과 이력서는 남고, 복직도 됩니다.</p>
+        <div class="say">지금 나 누구야?</div>
+        <div class="say">선적QA 은퇴시켜. <span style="color:var(--ink-2)">(되돌리기 어려운 일이라 한 번 되묻습니다)</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="flow">
+    <h2>한눈에 — 누가 무엇을 하나</h2>
+    <ol>
+      <li class="you"><b>사람</b>조직표 · 이력서 · 지시</li>
+      <li><b>스킬</b>말을 명령으로 옮김</li>
+      <li><b>명부</b>누가 있는지 · 상태</li>
+      <li><b>에이전트</b>소환된 세션에서 일함</li>
+      <li><b>장부</b>전부 기록 · 기계가 검증</li>
+    </ol>
+    <p>사람 몫은 놋쇠색 하나뿐입니다. 나머지는 말하면 뒤에서 돌아갑니다.</p>
+  </div>
+
+  <div class="dont">
+    <h2>지금 안 되는 것 두 가지 (2026-09-17 기준)</h2>
+    <ul>
+      <li>소환된 세션은 이력서(SOUL.md) 를 <b>아직 읽지 않습니다.</b> 이름과 사원증만 들고 갑니다. 필요한 맥락은 지시에 직접 적으십시오.</li>
+      <li>스킬 문서 한 줄이 틀려 있습니다(조직 값을 <code>/</code> 로 나눈다고 적혀 있으나 실제는 <code>,</code>). 말로 시키면 스킬이 거부를 보고 되묻습니다.</li>
+    </ul>
+  </div>
+
+  <p class="more">더 자세히 — 단계마다 실제 명령과 화면 출력, 파일 지도까지: <a href="agent-guide.html">헤르메스 명부 안내서</a></p>
+</div>
+</body>
+</html>

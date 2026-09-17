@@ -1,0 +1,389 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>헤르메스 명부 안내서</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gothic+A1:wght@500;800&family=Noto+Sans+KR:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --bg: #F5F7F9; --surface: #FFFFFF; --ink: #1A2230; --ink-2: #4A5566; --line: #D9DFE6;
+    --accent: #1F6F78; --accent-ink: #FFFFFF; --accent-soft: #E3F0F1;
+    --brass: #A9843A; --brass-soft: #F6EFDC;
+    --code-bg: #0F1A1F; --code-ink: #D7E4E6; --code-dim: #7FA3A8;
+    --say-bg: #EEF3F6;
+    --font-display: "Gothic A1", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+    --font-body: "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+    --font-mono: "IBM Plex Mono", "SFMono-Regular", Consolas, "D2Coding", monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #101820; --surface: #16202A; --ink: #E4E9EF; --ink-2: #A3AFBE; --line: #2A3641;
+      --accent: #5DB5B5; --accent-ink: #0B1A1C; --accent-soft: #17313A;
+      --brass: #D2B061; --brass-soft: #2C2716;
+      --code-bg: #0A1216; --code-ink: #D7E4E6; --code-dim: #6E9096;
+      --say-bg: #1B2733;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #101820; --surface: #16202A; --ink: #E4E9EF; --ink-2: #A3AFBE; --line: #2A3641;
+    --accent: #5DB5B5; --accent-ink: #0B1A1C; --accent-soft: #17313A;
+    --brass: #D2B061; --brass-soft: #2C2716;
+    --code-bg: #0A1216; --code-ink: #D7E4E6; --code-dim: #6E9096;
+    --say-bg: #1B2733;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.7; }
+  a { color: var(--accent); }
+  .frame { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 0; min-height: 100%; }
+  nav.lnb { position: sticky; top: env(safe-area-inset-top, 0px); align-self: start; height: 100vh; overflow-y: auto; border-right: 1px solid var(--line); background: var(--surface); padding-block: 28px 32px; padding-inline: 16px; }
+  nav.lnb .brand { font-family: var(--font-display); font-weight: 800; font-size: 15px; letter-spacing: .02em; margin: 0 8px 4px; }
+  nav.lnb .brand small { display: block; font-family: var(--font-body); font-weight: 400; color: var(--ink-2); font-size: 12px; letter-spacing: 0; }
+  nav.lnb ol { list-style: none; margin: 18px 0 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+  nav.lnb li a { display: grid; grid-template-columns: 26px 1fr; align-items: baseline; gap: 8px; padding: 7px 8px; border-radius: 6px; text-decoration: none; color: var(--ink); font-size: 13.5px; }
+  nav.lnb li a .n { font-family: var(--font-mono); font-size: 11px; color: var(--ink-2); }
+  nav.lnb li a:hover, nav.lnb li a:focus-visible { background: var(--accent-soft); outline: none; }
+  nav.lnb li a.is-on { background: var(--accent); color: var(--accent-ink); }
+  nav.lnb li a.is-on .n { color: var(--accent-ink); }
+  nav.lnb .apx { margin-top: 18px; padding-top: 12px; border-top: 1px dashed var(--line); }
+  nav.lnb .apx .lbl { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-2); margin: 0 8px 4px; }
+  main { padding-block: 40px 96px; padding-inline: clamp(16px, 5vw, 64px); max-width: 860px; }
+  header.hero h1 { font-family: var(--font-display); font-weight: 800; font-size: clamp(26px, 4vw, 38px); line-height: 1.2; margin: 0 0 10px; text-wrap: balance; }
+  header.hero p.lede { font-size: 16.5px; color: var(--ink-2); margin: 0; max-width: 62ch; }
+  .meta { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 18px 0 0; font-size: 12.5px; color: var(--ink-2); }
+  .meta span b { color: var(--ink); font-weight: 500; }
+  section.step { margin-top: 56px; scroll-margin-top: 24px; }
+  section.step > h2 { font-family: var(--font-display); font-weight: 800; font-size: 23px; margin: 0 0 4px; display: flex; gap: 12px; align-items: baseline; text-wrap: balance; }
+  section.step > h2 .n { font-family: var(--font-mono); font-size: 13px; font-weight: 500; color: var(--accent); }
+  section.step > p.why { margin: 0 0 20px; color: var(--ink-2); max-width: 66ch; }
+  .lane { display: grid; grid-template-columns: 112px minmax(0, 1fr); gap: 14px; padding: 16px 0; border-top: 1px solid var(--line); }
+  .lane:last-of-type { border-bottom: 1px solid var(--line); }
+  .lane .k { font-size: 11.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-2); padding-top: 3px; }
+  .lane .k b { display: block; font-family: var(--font-display); font-size: 14px; letter-spacing: 0; text-transform: none; color: var(--ink); font-weight: 800; margin-bottom: 2px; }
+  .lane .v { min-width: 0; }
+  .lane .v p { margin: 0 0 8px; }
+  .lane .v p:last-child { margin-bottom: 0; }
+  .say { background: var(--say-bg); border-left: 3px solid var(--accent); padding: 10px 14px; border-radius: 0 6px 6px 0; font-size: 15px; margin: 0 0 8px; }
+  .say::before { content: "말한다 → "; font-size: 11px; letter-spacing: .08em; color: var(--accent); text-transform: uppercase; }
+  pre { margin: 0; background: var(--code-bg); color: var(--code-ink); font-family: var(--font-mono); font-size: 12.5px; line-height: 1.6; padding: 12px 14px; border-radius: 6px; overflow-x: auto; }
+  pre + pre, .say + pre, pre + .note { margin-top: 8px; }
+  pre .c { color: var(--code-dim); }
+  pre .p { color: var(--accent); }
+  code { font-family: var(--font-mono); font-size: .92em; background: var(--say-bg); padding: 1px 5px; border-radius: 4px; }
+  .note { border: 1px solid var(--brass); background: var(--brass-soft); border-radius: 6px; padding: 10px 14px; font-size: 14px; }
+  .note b { color: var(--brass); font-weight: 700; }
+  .check { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px; }
+  .check li { position: relative; padding-left: 26px; }
+  .check li::before { content: ""; position: absolute; left: 0; top: 7px; width: 14px; height: 14px; border: 1.5px solid var(--accent); border-radius: 3px; }
+  table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+  .tbl { overflow-x: auto; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 11.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-2); font-weight: 500; }
+  td code { white-space: nowrap; }
+  .tree { font-family: var(--font-mono); font-size: 12.5px; line-height: 1.7; white-space: pre; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 12px 14px; overflow-x: auto; }
+  .tree i { font-style: normal; color: var(--ink-2); }
+  footer { margin-top: 64px; padding-top: 16px; border-top: 1px solid var(--line); font-size: 12.5px; color: var(--ink-2); }
+  @media (max-width: 760px) {
+    .frame { grid-template-columns: 1fr; }
+    nav.lnb { position: sticky; top: env(safe-area-inset-top, 0px); height: auto; border-right: 0; border-bottom: 1px solid var(--line); padding-block: 10px; z-index: 2; }
+    nav.lnb .brand small { display: none; }
+    nav.lnb ol { flex-direction: row; overflow-x: auto; margin-top: 8px; padding-bottom: 4px; }
+    nav.lnb li a { white-space: nowrap; grid-template-columns: auto auto; }
+    nav.lnb .apx { display: none; }
+    .lane { grid-template-columns: 1fr; gap: 6px; }
+  }
+  @media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+</style>
+</head>
+<body>
+
+<div class="frame">
+  <nav class="lnb" aria-label="단계">
+    <div class="brand">헤르메스 명부 안내서<small>소우주에서 에이전트를 뽑고, 찾고, 일 시키는 순서</small></div>
+    <ol>
+      <li><a href="#s0"><span class="n">00</span>조직 축을 정한다</a></li>
+      <li><a href="#s1"><span class="n">01</span>입사시킨다</a></li>
+      <li><a href="#s2"><span class="n">02</span>명부를 보고 담당을 찾는다</a></li>
+      <li><a href="#s3"><span class="n">03</span>지금 일을 시킨다 — 소환</a></li>
+      <li><a href="#s4"><span class="n">04</span>기준을 적어 넘긴다 — 인계</a></li>
+      <li><a href="#s5"><span class="n">05</span>승급·은퇴·복직</a></li>
+      <li><a href="#s6"><span class="n">06</span>내가 누구인지, 무엇이 남는지</a></li>
+    </ol>
+    <div class="apx">
+      <div class="lbl">부록</div>
+      <ol>
+        <li><a href="#files"><span class="n">A</span>파일 지도</a></li>
+        <li><a href="#gaps"><span class="n">B</span>지금 알려진 구멍</a></li>
+        <li><a href="#eli5"><span class="n">C</span>5분 요약 페이지</a></li>
+      </ol>
+    </div>
+  </nav>
+
+  <main>
+    <header class="hero">
+      <h1>소우주에서 에이전트와 일하는 일곱 단계</h1>
+      <p class="lede">전부 <b>대화</b>로 합니다. 각 단계의 첫 칸에 적힌 말을 세션에서 하면, <code>hermes-agent</code> 스킬이 뒤에서 명령을 대신 실행하고 이력에 남깁니다. 명령과 출력은 "무슨 일이 일어나는지" 를 보여드리려고 적은 것이지, 직접 치라는 뜻이 아닙니다.</p>
+      <div class="meta">
+        <span>기준 소우주 <b>terminal-shipping</b></span>
+        <span>실측일 <b>2026-09-17</b></span>
+        <span>출력은 소우주 <b>사본</b>에서 그대로 가져옴</span>
+      </div>
+    </header>
+
+    <section class="step" id="s0">
+      <h2><span class="n">00</span>조직 축을 정한다 — 한 번만</h2>
+      <p class="why">에이전트는 경로를 갖지 않고 <b>세 축의 값</b>만 갖습니다: 분야(discipline) · 직급(rank) · 조직(unit). 이 축이 비어 있으면 입사가 거부됩니다. 설치 직후의 소우주는 비어 있습니다.</p>
+      <div class="lane">
+        <div class="k"><b>말한다</b>사람이</div>
+        <div class="v"><p class="say">우리 조직은 백엔드·프론트엔드·QA, 직급은 리드·담당, 조직은 선적이랑 공통이야.</p><p>스킬은 축 값을 <b>추측해 넣지 않습니다</b>. 값이 불확실하면 되묻고, 사람이 정해 주면 파일을 채웁니다.</p></div>
+      </div>
+      <div class="lane">
+        <div class="k"><b>일어난다</b>뒤에서</div>
+        <div class="v"><p><code>.hermes/organization.yaml</code> 이 채워집니다. 허용 형식은 평면 목록과 2단 맵뿐입니다(앵커·별칭·다중 문서 거부 — 표준 모듈에 YAML 이 없어 자체 파서로 읽습니다).</p>
+<pre><span class="c"># .hermes/organization.yaml</span>
+discipline: [백엔드, 프론트엔드, QA]
+rank: [리드, 담당]            <span class="c"># 위에서 아래 순. 맨 위 human 은 기계가 붙인다</span>
+unit:
+  선적: {code: [src/shipping/**]}
+  공통: {code: [src/shared/**]}</pre></div>
+      </div>
+      <div class="lane">
+        <div class="k"><b>보인다</b>화면에</div>
+        <div class="v"><p>축 없이 입사를 시도하면 이 한 줄이 돌아옵니다 — 그때가 이 단계를 할 때입니다.</p>
+<pre><span class="c">$ python3 scripts/hermes-agent.py hire "유저스담당" --org "backend/staff/users"</span>
+[hermes-agent] 거부: discipline 'backend/staff/users' 은 organization.yaml 에 없다</pre></div>
+      </div>
+      <div class="lane">
+        <div class="k"><b>확인</b>넘어가기 전</div>
+        <div class="v"><ul class="check"><li><code>.hermes/organization.yaml</code> 에 세 축이 다 있다</li><li>영역과 경로의 연결(<code>code:</code>)은 조직(unit)에만 적었다 — 폴더가 바뀌어도 에이전트는 안 고친다</li></ul></div>
+      </div>
+    </section>
+
+    <section class="step" id="s1">
+      <h2><span class="n">01</span>입사시킨다</h2>
+      <p class="why">이름은 명부에서 유일해야 하고(은퇴자 포함), 조직 값은 0단계의 축에 있어야 합니다. 처음 상태는 <code>probation</code>(수습)입니다.</p>
+      <div class="lane">
+        <div class="k"><b>말한다</b>사람이</div>
+        <div class="v"><p class="say">선적 담당 QA 한 명 뽑아. 이름은 선적QA.</p></div>
+      </div>
+      <div class="lane">
+        <div class="k"><b>일어난다</b>뒤에서</div>
+        <div class="v"><pre>python3 scripts/hermes-agent.py hire "선적QA" --org "QA,담당,선적"</pre>
+<p class="note"><b>주의</b> <code>--org</code> 는 <b>쉼표</b>로 나눕니다(<code>분야,직급,조직</code>). 빈 칸은 비워 둘 수 있습니다(<code>QA,,선적</code>). 스킬 문서 §1 에는 <code>/</code> 로 적혀 있는데 그대로 따라 하면 거부됩니다 — 부록 B.</p></div>
+      </div>
+      <div class="lane">
+        <div class="k"><b>보인다</b>화면에</div>
+        <div class="v"><pre>입사: 선적QA (01a0ae58-6aa6-7202-ae81-7d27af7b5617) status=probation org={'discipline': 'QA', 'rank': '담당', 'unit': '선적'}
+정체성: .hermes/agents/01a0ae58-6aa6-7202-ae81-7d27af7b5617/  — SOUL.md 를 채우십시오(사람 승인으로만 수정)</pre>
+<p>정체성 폴더가 생깁니다. <code>SOUL.md</code> 는 <b>사람이 채우는 파일</b>입니다 — 에이전트가 자기 정체성을 쓰지 않습니다. <code>MEMORY.md</code> 는 기계가 이벤트에서 계산해 쓰므로 손대지 않습니다.</p>
+<pre><span class="c"># .hermes/agents/01a0ae58-…/SOUL.md 머리</span>
+---
+agent_id: 01a0ae58-6aa6-7202-ae81-7d27af7b5617
+name: 선적QA
+status: probation
+org: {"discipline": "QA", "rank": "담당", "unit": "선적"}
+created_by: human:jjackkun
+---</pre></div>
+      </div>
+      <div class="lane">
+        <div class="k"><b>확인</b>넘어가기 전</div>
+        <div class="v"><ul class="check"><li>출력에 <code>status=probation</code> 과 정체성 경로가 있다</li><li><code>SOUL.md</code> 에 이 에이전트가 무엇을 맡고 무엇을 하지 않는지 사람이 적었다</li></ul></div>
+      </div>
+    </section>
+
+    <section class="step" id="s2">
+      <h2><span class="n">02</span>명부를 보고 담당을 찾는다</h2>
+      <p class="why">읽기 전용이라 확인 없이 바로 실행됩니다. 맞는 담당이 없으면 스킬은 아무나 고르지 않고 <code>ask:</code> 로 사람에게 돌립니다.</p>
+      <div class="lane">
+        <div class="k"><b>말한다</b>사람이</div>
+        <div class="v"><p class="say">명부 보여줘.</p><p class="say">이 결제 버그 누가 맡지?</p></div>
+      </div>
+      <div class="lane">
+        <div class="k"><b>일어난다</b>뒤에서</div>
+        <div class="v"><pre>python3 scripts/hermes-agent.py list
+python3 scripts/hermes-agent.py match --discipline QA</pre></div>
+      </div>
+      <div class="lane">
+        <div class="k"><b>보인다</b>화면에</div>
+        <div class="v"><pre><span class="c">$ list   — 상태 · 이름 · id · 분야/직급/조직</span>
+active     main        01a0ad8a-e5ff-7026-bedf-0bbf3df3d334  -/-/-
+probation  선적백엔드   01a0ae58-6a84-75bd-8bfa-9c85c2ce2be4  백엔드/담당/선적
+probation  선적QA      01a0ae58-6aa6-7202-ae81-7d27af7b5617  QA/담당/선적
+
+<span class="c">$ match --discipline QA</span>
+선적QA (01a0ae58-6aa6-7202-ae81-7d27af7b5617) org={'discipline': 'QA', 'rank': '담당', 'unit': '선적'}
+
+<span class="c">$ match --discipline 프론트엔드   — 아무도 없을 때</span>
+ask: 맞는 담당이 없습니다 — 사람에게 문의하십시오 (hermes-agent.py hire …)</pre>
+<p><code>main</code> 은 소우주가 설치될 때 생기는 기본 에이전트 — 지금 이 세션 자신입니다. 축 값이 없어 <code>-/-/-</code> 로 보입니다.</p></div>
+      </div>
+      <div class="lane">
+        <div class="k"><b>확인</b>넘어가기 전</div>
+        <div class="v"><ul class="check"><li>후보가 여럿이면 목록에서 사람이 고른다</li><li><code>ask:</code> 가 나오면 1단계로 돌아가 입사시킨다</li></ul></div>
+      </div>
+    </section>
+
+    <section class="step" id="s3">
+      <h2><span class="n">03</span>지금 일을 시킨다 — 소환</h2>
+      <p class="why">그 에이전트 명의로 <b>별도 세션</b>을 띄워 한 가지 일을 시킵니다. 빠르지만 성공 기준이 느슨합니다. "이게 되면 끝" 이라는 기준이나 기한이 있으면 4단계(인계)를 씁니다.</p>
+      <div class="lane">
+        <div class="k"><b>말한다</b>사람이</div>
+        <div class="v"><p class="say">선적 조회 화면 회귀 테스트, 선적QA 한테 지금 넘겨.</p></div>
+      </div>
+      <div class="lane">
+        <div class="k"><b>일어난다</b>뒤에서</div>
+        <div class="v"><pre>python3 scripts/hermes-summon.py run "선적QA" --task "선적 조회 화면 회귀 테스트 작성"</pre>
+<p>러너가 하는 일, 순서대로: ① 명부에서 에이전트를 찾고 1회용 토큰(nonce)을 발급 → ② 이력에 <code>task.assigned</code> 기록 → ③ <code>claude -p "[소환] 당신은 선적QA (agent:01a0ae58-…) 입니다.\n\n&lt;task&gt;"</code> 를 <code>HERMES_AGENT_ID</code> 환경변수와 함께 실행 → ④ 종료 코드를 <code>task.finished</code> 로 기록. 은퇴자는 소환할 수 없고, 이름 대신 축 값(<code>--discipline QA</code>)으로 고를 수도 있습니다.</p>
+<p class="note"><b>가드</b> 세션 안에서 <code>claude -p</code> 를 직접 부르면 소환 가드가 막습니다. 토큰은 러너만 발급하므로 에이전트가 자기를 사칭할 수 없습니다.</p></div>
+      </div>
+      <div class="lane">
+        <div class="k"><b>보인다</b>화면에</div>
+        <div class="v"><pre>[hermes-summon] 선적QA 종료 rc=0 task=&lt;task_id&gt;</pre>
+<p class="note"><b>솔직한 한계</b> 소환된 세션에 들어가는 정체성은 이름·id 한 줄과 환경변수뿐입니다. <code>SOUL.md</code> 본문을 그 세션에 넣어 주는 훅은 지금 없습니다(훅·스크립트 전수 확인, 0건). 즉 현재의 소환은 "그 에이전트의 성격으로 대화" 보다 "그 에이전트 명의로 일을 맡기고 이력을 남기는" 단계입니다 — 부록 B.</p></div>
+      </div>
+      <div class="lane">
+        <div class="k"><b>확인</b>넘어가기 전</div>
+        <div class="v"><ul class="check"><li><code>rc=0</code> 이면 완료 주장, 아니면 실패 — 둘 다 이력에 남는다</li><li>결과가 "확실히 됐는지" 기계가 재야 하면 소환이 아니라 인계였다</li></ul></div>
+      </div>
+    </section>
+
+    <section class="step" id="s4">
+      <h2><span class="n">04</span>기준을 적어 넘긴다 — 인계</h2>
+      <p class="why">봉투에 <code>goal</code>(무엇을)과 <code>done_when</code>(무엇이 되면 끝)이 없으면 기계가 막습니다. 원문 붙여넣기도 막힙니다 — <code>inputs</code> 에는 파일 경로나 이벤트 id 같은 <b>참조</b>만 둡니다.</p>
+      <div class="lane">
+        <div class="k"><b>말한다</b>사람이</div>
+        <div class="v"><p class="say">이 결제 리팩터 선적QA 한테 인계해. 회귀 테스트 통과하면 끝이고, 금요일까지.</p><p>"통과하면 끝", "금요일까지" — 기준과 기한이 나오는 순간 스킬은 소환이 아니라 인계를 고릅니다.</p></div>
+      </div>
+      <div class="lane">
+        <div class="k"><b>일어난다</b>뒤에서</div>
+        <div class="v"><pre>from hermes_handoff import open_handoff
+hid = open_handoff(".hermes/state.db", ".", "선적QA",
+  {"goal": "결제 리팩터 QA",
+   "done_when": "test:tests/payments-regression.sh",
+   "inputs": ["src/payments/refactor.md"],
+   "expires_at": "2026-09-19T00:00:00Z"},
+  by="human:jjackkun")</pre>
+<div class="tbl"><table>
+<thead><tr><th>done_when 형식</th><th>뜻</th><th>판정</th></tr></thead>
+<tbody>
+<tr><td><code>test:&lt;이름&gt;</code></td><td>그 테스트의 종료 코드</td><td>pass / fail</td></tr>
+<tr><td><code>file:&lt;경로&gt;</code></td><td>파일 존재</td><td>pass / fail</td></tr>
+<tr><td><code>gate:&lt;규칙&gt;</code></td><td><code>.harness/gate-events.jsonl</code> 최근 판정</td><td>pass / fail</td></tr>
+<tr><td><code>commit:&lt;해시|HEAD&gt;</code></td><td>저장소에 그 커밋이 있는가</td><td>pass / fail</td></tr>
+<tr><td><code>manual</code></td><td>사람이 잰다</td><td>none</td></tr>
+</tbody></table></div>
+<p>이 다섯 형식만 허용됩니다. <code>manual</code> 만 기계가 재지 않습니다.</p></div>
+      </div>
+      <div class="lane">
+        <div class="k"><b>보인다</b>화면에</div>
+        <div class="v"><p>받는 쪽은 봉투를 검사하고 시작하며, 넷 중 하나로 닫습니다: <code>finished</code>(완료 — <code>done_when</code> 을 기계가 다시 재서 검증값을 채움) · <code>declined</code>(거절, 사유 필수) · <code>question</code>(되묻기, 사유 필수) · <code>expired</code>(만료).</p>
+<pre>from hermes_handoff import resolve
+resolve(".hermes/state.db", ".", "&lt;handoff_id&gt;", "finished", "agent:01a0ae58-…")</pre>
+<p><b>만료는 시간 데몬이 아니라 세션 시작 훅이 처리합니다.</b> 기한이 지났는데 시작도 되묻기도 없는 봉투에 다음 세션 시작 때 자동으로 <code>handoff.expired</code> 가 붙고 알림이 뜹니다. 사람이 손댈 일은 없습니다.</p></div>
+      </div>
+      <div class="lane">
+        <div class="k"><b>확인</b>넘어가기 전</div>
+        <div class="v"><ul class="check"><li><code>done_when</code> 이 다섯 형식 중 하나다 — 산문("잘 되면")은 거부된다</li><li>기한이 있으면 <code>expires_at</code> 을 ISO 8601 UTC 로 적었다</li></ul></div>
+      </div>
+    </section>
+
+    <section class="step" id="s5">
+      <h2><span class="n">05</span>승급 · 은퇴 · 복직</h2>
+      <p class="why">은퇴는 되돌리기 어려운 판단이라 스킬이 대상과 영향(매칭·소환·스킬 주입에서 빠짐)을 사람에게 확인한 뒤 실행합니다. 파일은 남으므로 복직으로 되돌립니다.</p>
+      <div class="lane">
+        <div class="k"><b>말한다</b>사람이</div>
+        <div class="v"><p class="say">선적백엔드 수습 끝났어, 정식으로 올려.</p><p class="say">선적QA 은퇴시켜.</p><p class="say">선적QA 다시 복직시켜.</p></div>
+      </div>
+      <div class="lane">
+        <div class="k"><b>일어난다</b>뒤에서</div>
+        <div class="v"><pre>python3 scripts/hermes-agent.py promote "선적백엔드"   <span class="c"># probation → active</span>
+python3 scripts/hermes-agent.py retire  "선적QA"      <span class="c"># 확인 뒤. 명부에서 빠지고 파일은 남는다</span>
+python3 scripts/hermes-agent.py rehire  "선적QA"</pre></div>
+      </div>
+      <div class="lane">
+        <div class="k"><b>보인다</b>화면에</div>
+        <div class="v"><pre>promote: 선적백엔드 → active</pre></div>
+      </div>
+      <div class="lane">
+        <div class="k"><b>확인</b>넘어가기 전</div>
+        <div class="v"><ul class="check"><li>은퇴 전에 그 담당에게 열린 인계 봉투가 없는지 명부·이력으로 본다</li></ul></div>
+      </div>
+    </section>
+
+    <section class="step" id="s6">
+      <h2><span class="n">06</span>내가 누구인지, 무엇이 남는지</h2>
+      <p class="why">모든 입사·소환·인계는 CLI 를 거쳐 이력(<code>journal_events</code>)에 남습니다. 손으로 SQL 을 넣지 않는 이유가 이것입니다 — CLI 가 검증·토큰·이력을 책임집니다.</p>
+      <div class="lane">
+        <div class="k"><b>말한다</b>사람이</div>
+        <div class="v"><p class="say">지금 나 누구야?</p></div>
+      </div>
+      <div class="lane">
+        <div class="k"><b>일어난다</b>뒤에서</div>
+        <div class="v"><pre>python3 scripts/hermes-agent.py whoami   <span class="c"># HERMES_AGENT_ID 기준</span></pre></div>
+      </div>
+      <div class="lane">
+        <div class="k"><b>보인다</b>화면에</div>
+        <div class="v"><pre>agent:01a0ad8a-e5ff-7026-bedf-0bbf3df3d334 (main, active)</pre><p>사람이 연 보통 세션은 <code>main</code> 입니다. 소환된 세션에서는 그 에이전트의 id 가 나옵니다.</p></div>
+      </div>
+      <div class="lane">
+        <div class="k"><b>확인</b>마무리</div>
+        <div class="v"><ul class="check"><li>이력은 추가 전용이다 — 지우는 일은 사람이 <code>hermes-journal.py rollback</code> 으로만 한다</li><li>전체 현황은 세션에서 <code>/hermes-status</code></li></ul></div>
+      </div>
+    </section>
+
+    <section class="step" id="files">
+      <h2><span class="n">A</span>파일 지도</h2>
+      <p class="why">소우주 루트 기준. 굵은 것만 사람이 편집합니다.</p>
+      <div class="tree">.hermes/
+├── <b>organization.yaml</b>     <i>세 축 정의 — 0단계에서 사람이 채움</i>
+├── agents.json              <i>명부 — CLI 만 쓴다</i>
+├── agents/&lt;id&gt;/
+│   ├── <b>SOUL.md</b>             <i>정체성 — 사람 승인으로만 수정</i>
+│   ├── MEMORY.md            <i>기억 — 기계가 이벤트에서 계산</i>
+│   └── skills/              <i>그 에이전트 개인 스킬</i>
+├── state.db                 <i>이력(journal_events)·인계 봉투·스킬 색인</i>
+├── summons/&lt;nonce&gt;.pending  <i>소환 토큰 — 러너가 남기고 시작 훅이 검증</i>
+└── universe.id
+scripts/
+├── hermes-agent.py          <i>hire · match · list · whoami · promote · retire · rehire</i>
+├── hermes-summon.py         <i>run — 소환 러너</i>
+└── hermes_handoff.py        <i>open_handoff · resolve — 인계 봉투</i>
+.claude/skills/hermes-agent/SKILL.md   <i>자연어 → 위 명령 대응표</i></div>
+    </section>
+
+    <section class="step" id="gaps">
+      <h2><span class="n">B</span>지금 알려진 구멍 (2026-09-17 실측)</h2>
+      <p class="why">숨기지 않고 적습니다. 둘 다 공장(claude-harness-hermes)에서 고쳐 전파해야 하는 것입니다.</p>
+      <div class="tbl"><table>
+<thead><tr><th>구멍</th><th>실측</th><th>지금 우회</th></tr></thead>
+<tbody>
+<tr><td>스킬 문서 §1 의 <code>--org "&lt;분야&gt;/&lt;직급&gt;/&lt;조직&gt;"</code></td><td>CLI 는 쉼표만 받는다. 슬래시로 주면 <code>거부: discipline '…/…/…' 은 organization.yaml 에 없다</code></td><td>쉼표로 말하거나, 스킬이 거부를 보고 되묻게 둔다</td></tr>
+<tr><td>소환 세션에 <code>SOUL.md</code> 가 주입되지 않는다</td><td><code>HERMES_AGENT_ID</code> 를 읽는 곳 7개 중 SOUL 본문을 세션에 넣는 훅은 0개</td><td>소환 <code>--task</code> 에 필요한 맥락을 직접 적는다. 설계 문서(<code>creation-and-organization.md</code>)와 구현 대조가 필요</td></tr>
+</tbody></table></div>
+    </section>
+
+    <section class="step" id="eli5">
+      <h2><span class="n">C</span>5분 요약 페이지</h2>
+      <p class="why">처음 보는 사람에게는 이 문서 대신 <a href="agent-eli5.html">헤르메스 5분 요약</a>을 먼저 건네십시오 — 회사에 사람을 뽑아 일 맡기는 비유 다섯 장입니다.</p>
+    </section>
+
+    <footer>출처: 소우주 <code>.claude/skills/hermes-agent/SKILL.md</code> · <code>scripts/hermes-agent.py</code> · <code>scripts/hermes-summon.py</code> · 공장 <code>docs/hermes-universe/design/agent/creation-and-organization.md</code>. 출력은 terminal-shipping 사본에서 2026-09-17 실행한 것입니다.</footer>
+  </main>
+</div>
+
+<script>
+  (function () {
+    var links = Array.prototype.slice.call(document.querySelectorAll('nav.lnb a[href^="#"]'));
+    var targets = links.map(function (a) { return document.getElementById(a.getAttribute('href').slice(1)); });
+    function mark() {
+      var y = window.scrollY + 120, on = 0;
+      for (var i = 0; i < targets.length; i++) { if (targets[i] && targets[i].offsetTop <= y) on = i; }
+      links.forEach(function (a, i) { a.classList.toggle('is-on', i === on); });
+    }
+    window.addEventListener('scroll', mark, { passive: true });
+    window.addEventListener('load', mark);
+    mark();
+  })();
+</script>
+</body>
+</html>
