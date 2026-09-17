@@ -17,9 +17,9 @@
 
 - [x] 목표 1 — `skill_index` 에 `universe_id` · `layer`(`universe|common|unit|agent`) · `unit_id` · `agent_id` · `skill_id`(층을 옮겨도 불변) 칸이 있고, 기존 1088행은 `layer='common'`, `universe_id` = 현 소우주, 나머지 NULL 로 채워진다(L-01 "소우주 공통(미배정)"). 검증: (a) `tests/hermes-skill-layers-test.sh` 합성 픽스처 — 행 수 불변, 값 분포 (b) **실제 사본 리허설**: `cp /home/jjackkun/PROJECT/zeroday-frontend/.hermes/state.db /tmp/zd.db && python3 scripts/hermes-init.py --db /tmp/zd.db && python3 -c "import sqlite3;c=sqlite3.connect('/tmp/zd.db');print(c.execute('select count(*),sum(layer=\"common\") from skill_index').fetchone())"` → `(1088, 1088)`.
 - [x] 목표 2 — 층별 저장 위치가 코드로 고정된다: 우주 `.claude/skills/<이름>/`(설치 목록에 있음), 소우주 공통 `.hermes/skills/`(기존 자리 유지 — 옮기지 않는다), 단위 `.hermes/units/<unit_id>/skills/`, 개인 `.hermes/agents/<agent_id>/skills/`. 검증: `hermes_skill_layers.py` 경로 함수 테스트 + 색인기가 네 자리를 모두 훑음.
-- [ ] 목표 3 — 주입 필터(RV-12): `hermes-search.py` 가 소환된 에이전트(`HERMES_AGENT_ID`, 없으면 `main`)의 `unit` · `agent_id` 에 맞는 층만 검색한다. 검증: 테스트 — 다른 단위의 스킬이 결과에 0건.
-- [ ] 목표 4 — 주입 형식 하위 호환(RV-12): `description` 머리말이 있는 스킬은 `이름 — 설명` 한 줄로, 없는 스킬은 현행 `read_skill_snippet` 10줄로 주입된다. 검증: 테스트 두 종류 픽스처 + zeroday 스킬 1088개를 픽스처로 돌려 주입 형식이 전부 스니펫임을 확인(회귀 보호).
-- [ ] 목표 5 — 스킬 본문 요청 경로: 에이전트가 `hermes-skill.py read <이름>` 으로 본문을 그 턴에 끌어온다(진행적 공개). 검증: CLI 출력 = 파일 본문, `skill_injection` 에 `source='read'` 기록.
+- [x] 목표 3 — 주입 필터(RV-12): `hermes-search.py` 가 소환된 에이전트(`HERMES_AGENT_ID`, 없으면 `main`)의 `unit` · `agent_id` 에 맞는 층만 검색한다. 검증: 테스트 — 다른 단위의 스킬이 결과에 0건.
+- [x] 목표 4 — 주입 형식 하위 호환(RV-12): `description` 머리말이 있는 스킬은 `이름 — 설명` 한 줄로, 없는 스킬은 현행 `read_skill_snippet` 10줄로 주입된다. 검증: 테스트 두 종류 픽스처 + zeroday 스킬 1088개를 픽스처로 돌려 주입 형식이 전부 스니펫임을 확인(회귀 보호).
+- [x] 목표 5 — 스킬 본문 요청 경로: 에이전트가 `hermes-skill.py read <이름>` 으로 본문을 그 턴에 끌어온다(진행적 공개). 검증: CLI 출력 = 파일 본문, `skill_injection` 에 `source='read'` 기록.
 - [ ] 목표 6 — 확장 파일(RV-13): 머리말 `extends: <skill_id>@<version>` 을 가진 파일은 "위 층 본문 + 확장" 으로 주입되고, `update-all` 이 기준 버전이 달라진 확장을 찾아 `[extends WARN]` 을 낸다. 검증: 테스트 — 공장 커밋 해시 바꾼 뒤 재설치 → 경고 1건.
 - [ ] 목표 7 — 승격 제안 명령 `hermes-propose.py new|improve|exclude <스킬>` 이 (a) 일반화 자체 점검(`hermes_mesh_gate.py`) (b) 금지 내용 게이트(기억 · 원문 · 티켓 번호 · 파일 경로 · 사람이 읽는 이름) (c) `.hermes/outbox/<envelope_id>/` 봉투 작성 (d) **사람이 `--deliver` 를 붙였을 때만** `gh issue create --label proposal` 로 배달(RV-15) 을 한다. 검증: `tests/hermes-propose-test.sh` — 금지 내용 4종 각각 거부, `--deliver` 없이는 `gh` 호출 0(모의 gh 로 검증), 오프라인 실패 시 `status=pending`.
 - [ ] 목표 8 — 봉투에는 `universe_id` · `agent_id` · `skill_id` · `base` · 본문 · 차이 · 이유 · 게이트 결과만 있고 소우주 이름·에이전트 이름·팀 이름이 없다. 검증: 봉투 JSON 에 명부의 `name` 값과 저장소 basename 이 문자열로 나타나지 않음(테스트가 grep).
@@ -29,9 +29,9 @@
 - [ ] 목표 12 — 우주 판단 보조: `hermes_mesh_gate.py` 를 "허가자 1차 검사" CLI 로 노출하고 "사례 나열" 판정(RV-14)을 항목으로 추가 — **승격 심사에만**, 기존 스킬 삭제·재분류에 쓰지 않는다. 검증: 사례 나열 픽스처(`if convo has 1,2,3 …` 류 3줄 이상)가 `scenario-list` 로 표시, zeroday 1088개는 어떤 처리도 받지 않음(테스트가 파일 수·내용 불변 확인).
 - [ ] 목표 13 — 폐기된 배달 경로 정리: `hermes-message.py` 와 `messages` 테이블은 제거하지 않고 **"폐기 예정"** 경고만 낸다(읽는 곳 확인 뒤 다음 계획에서 제거). 검증: 호출 시 경고 1줄.
 - [ ] 목표 14 — 단위 층 스킬이 git 을 탄다(자체 리뷰 발견, planner-lite 정정): `.hermes/*` 무시 아래서는 디렉터리 단계마다 풀어야 하므로 마커에 `!.hermes/units/` · `!.hermes/units/*/` · `!.hermes/units/*/skills/` · `!.hermes/units/*/skills/**` 네 줄(`hermes.conf:171-178` 패턴). `outbox/` 는 무시 그대로(봉투는 배달로 나간다). 검증: `git check-ignore -v` 테스트 — 단위 스킬 추적, `units/*/` 의 그 밖 파일과 `outbox/` 무시.
-- [ ] 목표 15 — 주입 필터는 **두 검색 경로 모두**에 건다(planner-lite 지적): `search_db`(`scripts/hermes-search.py:141`)뿐 아니라 파일시스템 직접 스캔 `search_skills_dir`(`:198`)도 층·단위·에이전트를 판정한다 — 색인 전 스킬이 단위 경계를 넘어 주입되지 않게. 검증: 목표 3 테스트에 "색인되지 않은 타 단위 스킬 파일도 결과 0건" 케이스.
-- [ ] 목표 16 — 구버전 스키마 호환(planner-lite 지적): `skill_index` 에 새 칸이 없는 기존 DB 에서 `hermes-search.py` 가 죽지 않고 `_ensure_injection_source_column` 패턴으로 칸을 추가한다. 검증: 계획 1 이전 DB 사본으로 검색 실행 → exit 0 + 칸 5개 생성.
-- [ ] 목표 17 — 복잡도 실측(planner-lite 지적): 필터 추가 후 `python3 scripts/hooks/complexity.py scripts/hermes-search.py` 가 임계 12 를 넘는 함수 0개. 검증: 그 명령 출력.
+- [x] 목표 15 — 주입 필터는 **두 검색 경로 모두**에 건다(planner-lite 지적): `search_db`(`scripts/hermes-search.py:141`)뿐 아니라 파일시스템 직접 스캔 `search_skills_dir`(`:198`)도 층·단위·에이전트를 판정한다 — 색인 전 스킬이 단위 경계를 넘어 주입되지 않게. 검증: 목표 3 테스트에 "색인되지 않은 타 단위 스킬 파일도 결과 0건" 케이스.
+- [x] 목표 16 — 구버전 스키마 호환(planner-lite 지적): `skill_index` 에 새 칸이 없는 기존 DB 에서 `hermes-search.py` 가 죽지 않고 `_ensure_injection_source_column` 패턴으로 칸을 추가한다. 검증: 계획 1 이전 DB 사본으로 검색 실행 → exit 0 + 칸 5개 생성.
+- [x] 목표 17 — 복잡도 실측(planner-lite 지적): 필터 추가 후 `python3 scripts/hooks/complexity.py scripts/hermes-search.py` 가 임계 12 를 넘는 함수 0개. 검증: 그 명령 출력.
 
 ## 3. 비목표 (Out of Scope)
 
@@ -46,9 +46,10 @@
 
 - 코드(수정): `scripts/hermes-init.py`(skill_index 칸 추가 마이그레이션), `scripts/hermes-index-skills.py`(네 자리 색인 + 층 값), `scripts/hermes-search.py`(`search_db` 와 `search_skills_dir` **둘 다** 필터 + 주입 형식 분기 + 지연 마이그레이션), `scripts/hermes-crystallize.py`(`record_global_summary` 제거, 저장 층 `common`), `scripts/hermes_mesh_gate.py`(CLI + 사례 나열 항목), `scripts/hermes-message.py`(폐기 예정 경고), `lib/installers.sh` 또는 `lib/factory_manifest.sh`(확장 기준 버전 검사), `presets/workflow/hermes.conf`(복사 목록 · 훅), `assets/skills/claude-harness-hermes-install/SKILL.md`(제안 흐름 안내), `docs/hermes-universe/design/world/*.md`(확정 표시).
 - **신규 파일 목록 (파일별 책임 1줄 필수)**:
-  - `scripts/hermes_skill_layers.py` — 층 값·저장 경로·소유(`unit_id` · `agent_id`)·`skill_id` 규칙과 `skill_index` 마이그레이션만.
+  - `scripts/hermes_skill_layers.py` — 층 값·저장 경로·소유(`unit_id` · `agent_id`)·`skill_id` 규칙·`skill_index` 마이그레이션·주입 가시성 판정(`skill_visible`)만.
+  - `scripts/hermes_skill_render.py` — 스킬을 주입용 텍스트로 렌더링만(헤드라인·스니펫·형식 분기). 층 신원과 분리(hermes-search 500줄 초과 회피, Step 2 실측으로 분리).
+  - `scripts/hermes-skill.py` — CLI(`read <이름>` · `where <이름>` · `layers`) — 진행적 공개의 본문 읽기 진입점, `skill_injection` 에 `source='read'` 기록.
   - `scripts/hermes_skill_extends.py` — `extends:` 머리말 파싱과 기준 버전 대조(설치기와 검색기가 공유).
-  - `scripts/hermes-skill.py` — CLI(`read <이름>` · `layers` · `where <이름>`) — 진행적 공개의 본문 읽기 진입점.
   - `scripts/hermes_envelope.py` — 봉투 스키마·`envelope_id`·`outbox` 읽기/쓰기·상태 전이(`pending → delivered → approved|rejected`)만.
   - `scripts/hermes_envelope_gate.py` — 봉투 금지 내용 게이트(기억 · 원문 · 티켓 · 경로 · 사람이 읽는 이름)만. 명부·저장소 이름을 읽어 대조한다.
   - `scripts/hermes-propose.py` — CLI(`new|improve|exclude`, `--deliver`, `status`) — 일반화 점검 → 봉투 → (사람 명령 시) `gh` 배달. 주소 인자 없음.

@@ -35,6 +35,9 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from hermes_skills import iter_skill_files  # noqa: E402  (스킬 파일 순회 공유 헬퍼)
 from hermes_keywords import document_frequency, idf_score, split_keywords  # noqa: E402
 from hermes_search_fallback import haiku_fallback  # noqa: E402  (claude -p 뉘앙스 폴백)
+from hermes_skill_layers import (  # noqa: E402  (스킬 4층 필터)
+    ensure_layer_columns, layer_of_path, skill_visible)
+from hermes_skill_render import inject_text  # noqa: E402  (주입 렌더링)
 
 
 def connect_db(db_path: str) -> sqlite3.Connection:
@@ -138,12 +141,34 @@ def _name_bonus(skill_path: str, matched: list, df, total: int) -> float:
         return 0.0
     return idf_score([slug], df, total)
 
-def search_db(db_path: str, keywords: list, max_results: int) -> list:
+def resolve_viewer(project: str):
+    """지금 세션 에이전트의 (agent_id, unit_id). HERMES_AGENT_ID 없으면 'main'.
+
+    unit_id 는 명부의 그 에이전트 org.unit(이름)을 organization.yaml 의 unit_id 로 옮긴 값.
+    명부·조직이 없거나 매핑이 안 되면 unit_id 는 None — 그러면 unit 층은 아무도 못 본다(안전측).
+    """
+    agent_id = os.environ.get("HERMES_AGENT_ID") or "main"
+    unit_id = None
+    try:
+        from hermes_roster import load_roster, find_agent
+        from hermes_org import load_org
+        agent = find_agent(load_roster(project), agent_id)
+        unit_name = ((agent or {}).get("org") or {}).get("unit")
+        if unit_name:
+            unit_id = ((load_org(project).get("unit") or {}).get(unit_name) or {}).get("unit_id")
+    except Exception as e:
+        _log(f"viewer 해석 실패(계속): {e}")
+    return agent_id, unit_id
+
+
+def search_db(db_path: str, keywords: list, max_results: int,
+              viewer_agent_id: str = None, viewer_unit_id: str = None) -> list:
     """skill_index 에서 관련 스킬을 검색한다.
 
     관련도(질의 키워드 매칭 수) 우선 → 도움/사용 통계는 보조 정렬.
     매칭 수를 1차 키로 두면 갓 등록된(used=0) 스킬도 관련도가 높으면 상위 노출돼,
     used_count 만으로 정렬할 때 신규 스킬이 LIMIT 밖으로 굶던 콜드스타트를 구제한다(②).
+    주입 필터(RV-12): 소환된 에이전트의 unit·agent 층만 남긴다.
     """
     if not os.path.isfile(db_path) or not keywords:
         return []
@@ -151,14 +176,21 @@ def search_db(db_path: str, keywords: list, max_results: int) -> list:
     kws = [kw.lower() for kw in keywords[:5]]
     try:
         con = connect_db(db_path)
+        ensure_layer_columns(con)     # 층 칸 없는 구 DB 지연 마이그레이션(목표 16)
         rows = con.execute(
-            "SELECT skill_path, keywords, COALESCE(helpful_count,0), COALESCE(used_count,0) "
+            "SELECT skill_path, keywords, COALESCE(helpful_count,0), COALESCE(used_count,0), "
+            "layer, unit_id, agent_id "
             "FROM skill_index WHERE COALESCE(state,'active') != 'tombstoned'"
         ).fetchall()
+        con.commit()
         con.close()
     except Exception as e:
         _log(f"DB 검색 실패: {e}")
         return []
+
+    # 주입 필터 — 다른 단위·다른 개인의 층은 결과에서 뺀다(RV-12).
+    rows = [(p, k, h, u) for p, k, h, u, layer, unit_id, agent_id in rows
+            if skill_visible(layer, unit_id, agent_id, viewer_agent_id, viewer_unit_id)]
 
     # 토큰 일치. 부분 문자열로 보면 두 글자 질의어가 긴 키워드 안에까지 걸려 후보가
     # 폭발한다 — 실측(zeroday, 실제 프롬프트 400건): 후보 중앙값이 부분 문자열 107개
@@ -195,8 +227,13 @@ def search_db(db_path: str, keywords: list, max_results: int) -> list:
     ]
 
 
-def search_skills_dir(skills_dir: str, keywords: list, max_results: int) -> list:
-    """스킬 디렉토리를 직접 탐색해 키워드 매칭 스킬을 찾는다."""
+def search_skills_dir(skills_dir: str, keywords: list, max_results: int,
+                      project: str = None, viewer_agent_id: str = None,
+                      viewer_unit_id: str = None) -> list:
+    """스킬 디렉토리를 직접 탐색해 키워드 매칭 스킬을 찾는다.
+
+    project 가 주어지면 색인 전 파일도 층으로 판정해 타 단위·타 개인 스킬을 뺀다(RV-12, 목표 15).
+    """
     if not os.path.isdir(skills_dir) or not keywords:
         return []
 
@@ -207,6 +244,10 @@ def search_skills_dir(skills_dir: str, keywords: list, max_results: int) -> list
         if name in seen:
             continue
         seen.add(name)
+        if project is not None:
+            layer, unit_id, agent_id = layer_of_path(project, skill_md)
+            if not skill_visible(layer, unit_id, agent_id, viewer_agent_id, viewer_unit_id):
+                continue
         try:
             with open(skill_md, "r", encoding="utf-8") as f:
                 content = f.read()
@@ -238,27 +279,6 @@ def search_skills_dir(skills_dir: str, keywords: list, max_results: int) -> list
         {"name": name, "path": path, "matched": first}
         for _n, name, path, first in scored[:max_results]
     ]
-
-
-def read_skill_snippet(skill_path: str, max_lines: int = 10) -> str:
-    """스킬 파일에서 핵심 내용만 추출한다."""
-    if not os.path.isfile(skill_path):
-        return ""
-    try:
-        with open(skill_path, "r", encoding="utf-8") as f:
-            lines = f.readlines()
-        snippet = []
-        for line in lines:
-            stripped = line.strip()
-            if stripped.startswith("<!--") or not stripped:
-                continue
-            snippet.append(stripped)
-            if len(snippet) >= max_lines:
-                break
-        return "\n".join(snippet)
-    except Exception as e:
-        _log(f"스킬 스니펫 읽기 실패({skill_path}): {e}")
-        return ""
 
 
 def _select_injections(deduped: list, max_n: int) -> list:
@@ -320,14 +340,20 @@ def main():
 
     keywords = extract_keywords(args.query)
 
+    # 소환된 에이전트 신원 — 주입 필터(RV-12)에 쓴다. project 는 .hermes 의 부모.
+    project = os.path.dirname(os.path.dirname(os.path.abspath(args.db)))
+    viewer_agent, viewer_unit = resolve_viewer(project)
+
     # 1단계 — skill_index 전수 스캔 + 부분 문자열 매칭 (FTS5 미사용)
-    db_results = search_db(args.db, keywords, args.max)
+    db_results = search_db(args.db, keywords, args.max, viewer_agent, viewer_unit)
 
     hermes_skills_dir = os.path.join(os.path.dirname(args.db), "skills")
-    dir_results = search_skills_dir(hermes_skills_dir, keywords, args.max)
+    dir_results = search_skills_dir(hermes_skills_dir, keywords, args.max,
+                                    project, viewer_agent, viewer_unit)
 
     if args.skills_dir and os.path.isdir(args.skills_dir):
-        dir_results += search_skills_dir(args.skills_dir, keywords, args.max)
+        dir_results += search_skills_dir(args.skills_dir, keywords, args.max,
+                                         project, viewer_agent, viewer_unit)
 
     # 그물망(전역 2차 소스) 결과는 별도로 추적한다 — 출력 라벨과 할당량 예약(finding 1/4)에 필요.
     mesh_results = []
@@ -375,31 +401,21 @@ def main():
     # 결과 후보 (프롬프트 주입용) — (텍스트, 경로, 그물망여부) 3-튜플.
     # 순서: db → 로컬 dir-scan → 그물망 → haiku. db가 dir-scan 쌍둥이보다 먼저 오므로
     # 뒤의 중복 제거 단계에서 db 항목이 우선(선점) 살아남는다.
+    # (텍스트, 경로, 그물망여부) 후보. 그물망 출처는 라벨로 구분한다 — Phase 2 PII/비밀 승격
+    # 게이트 이전이라 출처 불명확 시 검증되지 않은 내용이 섞인 것처럼 보일 수 있다.
     candidates = []
 
-    for r in db_results:
-        snippet = read_skill_snippet(r["path"])
-        if snippet:
-            candidates.append((f"[헤르메스 규칙 — {os.path.basename(r['path'])}]\n{snippet}", r["path"], False))
-
-    for r in dir_results:
-        snippet = read_skill_snippet(r["path"])
-        if snippet:
+    def _add(results, prefix, is_mesh):
+        for r in results:
             name = r.get("name", os.path.basename(r["path"]))
-            candidates.append((f"[헤르메스 규칙 — {name}]\n{snippet}", r["path"], False))
+            text = inject_text(name, r["path"], prefix)
+            if text:
+                candidates.append((text, r["path"], is_mesh))
 
-    for r in mesh_results:
-        snippet = read_skill_snippet(r["path"])
-        if snippet:
-            name = r.get("name", os.path.basename(r["path"]))
-            # 그물망 출처는 라벨로 구분한다 — Phase 2 PII/비밀 승격 게이트 이전이라
-            # 출처 불명확 시 검증되지 않은 내용이 프롬프트에 섞여 들어간 것처럼 보일 수 있다.
-            candidates.append((f"[헤르메스 규칙(그물망) — {name}]\n{snippet}", r["path"], True))
-
-    for r in haiku_results:
-        snippet = read_skill_snippet(r["path"])
-        if snippet:
-            candidates.append((f"[헤르메스 규칙(뉘앙스/claude-p) — {r['name']}]\n{snippet}", r["path"], False))
+    _add(db_results, "헤르메스 규칙", False)
+    _add(dir_results, "헤르메스 규칙", False)
+    _add(mesh_results, "헤르메스 규칙(그물망)", True)
+    _add(haiku_results, "헤르메스 규칙(뉘앙스/claude-p)", False)
 
     # 경로 기준 중복 제거 — 같은 스킬이 search_db 와 search_skills_dir 양쪽에서
     # 매칭돼도(동일 파일을 skill_index 와 dir-scan 이 이중 스캔) 한 자리만 차지하고 한 번만 출력한다.

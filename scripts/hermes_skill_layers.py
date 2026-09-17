@@ -113,3 +113,18 @@ def layer_of_path(project: str, skill_path: str):
 def new_skill_id() -> str:
     """스킬 신원(UUIDv7). 색인기가 그 경로를 처음 볼 때 한 번 부여하고 재색인에서 보존한다."""
     return uuid7_str()
+
+
+def skill_visible(layer, unit_id, agent_id, viewer_agent_id, viewer_unit_id) -> bool:
+    """이 스킬(층·소유)이 지금 세션 에이전트에게 보이는가(주입 필터, RV-12).
+
+    universe·common 은 모두에게. unit 은 같은 unit_id 에게만. agent 는 그 개인에게만.
+    알 수 없는 층(구 데이터)은 막지 않는다 — 필터가 기존 주입을 조용히 끊지 않게.
+    """
+    if layer in (None, "", "universe", "common"):
+        return True
+    if layer == "unit":
+        return bool(viewer_unit_id) and unit_id == viewer_unit_id
+    if layer == "agent":
+        return bool(agent_id) and agent_id == viewer_agent_id
+    return True

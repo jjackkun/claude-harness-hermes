@@ -70,7 +70,7 @@ assert "원격에 refs/hermes/sync 존재" 1 "$(git ls-remote "$BARE" refs/herme
 assert "코드 브랜치 HEAD 불변" "$HEAD_BEFORE" "$(git -C "$A" rev-parse HEAD)"
 assert "작업 트리 변경 0(전후 동일)" "$WT_BEFORE" "$(git -C "$A" status --porcelain | md5sum)"
 assert "원격에 조각 1개" 1 "$(remote_ls | grep -c '^history/sess-1/0000\.enc$')"
-assert "원격에 이력 1개" 1 "$(remote_ls | grep -c '^journal/2026/09/16/.*\.json$')"
+assert "원격에 이력 1개" 1 "$(remote_ls | grep -cE '^journal/[0-9]{4}/[0-9]{2}/[0-9]{2}/.*\.json$')"
 assert "원격에 자물쇠 + 감싼 마스터" 2 "$(remote_ls | grep -c '^keys/jjackkun/')"
 assert "조각은 age 암호문" 1 "$(git -C "$A" show refs/hermes/sync-remote:history/sess-1/0000.enc | head -c 21 | grep -c 'age-encryption.org')"
 JPATH="$(remote_ls | grep '^journal/')"

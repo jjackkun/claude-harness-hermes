@@ -158,6 +158,7 @@ for t in \
   hermes-memory-events-test.sh \
   hermes-handoff-test.sh \
   hermes-skill-layers-test.sh \
+  hermes-skill-inject-test.sh \
   memory-symlink-roundtrip-test.sh \
   hermes-history-export-test.sh \
   hermes-lifecycle-test.sh \

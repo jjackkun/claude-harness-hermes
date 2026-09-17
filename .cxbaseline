@@ -5,7 +5,7 @@
 
 assets/skills/continuous-learning-v2/scripts/instinct-cli.py 57
 assets/skills/skill-creator/scripts/run_loop.py 49
-scripts/hermes-search.py 48
+scripts/hermes-search.py 42
 lib/generate_settings_json.py 46
 assets/skills/skill-creator/scripts/run_eval.py 33
 assets/skills/skill-creator/scripts/generate_report.py 30

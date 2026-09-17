@@ -13,6 +13,7 @@ tier: 0  scripts/hermes-correlate.py scripts/hermes-evolve-skill.py
 tier: 0  scripts/hermes-increment.py scripts/hermes-manager.py scripts/hermes-message.py
 tier: 0  scripts/hermes-prune.py scripts/hermes-reindex.py scripts/hermes_lifecycle_apply.py
 tier: 0  scripts/hermes_reuse.py scripts/hermes_secret_values.py scripts/hermes_skills.py
+tier: 0  scripts/hermes_skill_render.py
 tier: 0  scripts/hermes_keywords.py scripts/hermes_history_fragments.py
 # 작업 이력(계획 2026-09-15-universe-id-journal). tier 는 실측 import 그래프에서 계산했다:
 # uuid7·universe·journal_schema·journal_views 는 의존 없음, journal 은 그 셋을 쓰고,
@@ -48,7 +49,10 @@ tier: 2  scripts/hermes_handoff.py
 tier: 1  scripts/hermes_skill_layers.py
 tier: 1  assets/hooks/check-secrets.py scripts/hermes-crystallize.py
 tier: 2  scripts/hermes-index-skills.py
-tier: 1  scripts/hermes-search.py scripts/hermes_redact.py scripts/hermes_search_fallback.py
+tier: 1  scripts/hermes_redact.py scripts/hermes_search_fallback.py
+# search 는 layers(1)+render(0)+지연 roster(2)/org(1) → tier3. skill CLI 는 layers(1) → tier2.
+tier: 3  scripts/hermes-search.py
+tier: 2  scripts/hermes-skill.py
 tier: 1  scripts/hermes_dream_evolve.py scripts/hermes_journal.py
 tier: 2  scripts/hermes-export-history.py scripts/hermes-lifecycle.py scripts/hermes-recall.py
 tier: 2  scripts/hermes-scrub-history.py scripts/hermes-summarize.py scripts/hermes_loop.py

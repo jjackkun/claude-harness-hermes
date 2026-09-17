@@ -34,7 +34,7 @@ gen 11 > b.py; [[ "$(run b.py)" == OK    ]] && ok "복잡도 11 → 통과" || n
 echo "── 계산 정확도 (실측 재현) ──"
 # 스펙 표의 값을 그대로 재현한다. 계산기가 바뀌면 스펙의 임계 근거도 무효가 된다.
 VAL="$(python3 "$CX" --report "$ROOT/scripts/hermes-search.py" 2>/dev/null | awk '{print $1}' | sort -rn | head -1)"
-[[ "$VAL" == "48" ]] && ok "hermes-search.py 최대 48 재현" || nope "hermes-search.py 최대 48 재현 (실제 $VAL)"
+[[ "$VAL" == "42" ]] && ok "hermes-search.py 최대 42 재현" || nope "hermes-search.py 최대 42 재현 (실제 $VAL)"
 # plan_state.py 를 같은 방식으로 박아 뒀다가 R-acc 리팩터링으로 13 → 8 이 되면서 깨졌다.
 # 살아 있는 소스의 측정값을 픽스처로 쓰면 **개선이 회귀로 신고된다.**
 # 고정해야 할 것은 특정 파일의 숫자가 아니라 기준선과 실측의 관계다:
