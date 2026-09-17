@@ -164,6 +164,13 @@ assert "임시 경로 설치 종료 코드 0" "0" "$?"
 assert "등록 생략 로그" "1" "$(grep -c '레지스트리 등록 생략' "$TMP/tmpproj.log")"
 assert "실 .installed-projects 불변" "$REG_BEFORE" "$(cat "$REAL_REG" 2>/dev/null | md5sum)"
 assert "실 레지스트리에 /tmp 경로 없음" "0" "$(grep -c '^/tmp/' "$REAL_REG" 2>/dev/null)"
+# TMPDIR 이 다른 곳(백그라운드 잡의 tmp 등)을 가리켜도 /tmp 사본은 등록되지 않아야 한다
+# (2026-09-17 리허설이 이 조합으로 실 레지스트리를 두 번 오염 — backlog installer-registers-rehearsal-paths).
+T3="$(mktemp -d /tmp/harness-guard.XXXXXX)"; git -C "$T3" init -q; OTHER_TMP="$(mktemp -d)"
+TMPDIR="$OTHER_TMP" bash "$REPO_ROOT/project-claude.sh" "$T3" hermes >"$TMP/tmpproj2.log" 2>&1
+assert "TMPDIR 을 딴 곳으로 둔 /tmp 설치도 등록 생략" "1" "$(grep -c '레지스트리 등록 생략' "$TMP/tmpproj2.log")"
+assert "  실 레지스트리에 그 경로 없음" "0" "$(grep -cF "$T3" "$REAL_REG" 2>/dev/null || true)"
+grep -vF "$T3" "$REAL_REG" > "$TMP/reg.clean" 2>/dev/null; cp "$TMP/reg.clean" "$REAL_REG"; rm -rf "$T3" "$OTHER_TMP"
 # 실 저장소가 이 임시 프로젝트를 설치했으므로 실 .hermes 등은 건드리지 않았는지도 본다.
 # 설치 *전후* 를 비교한다 — 작업 중인 새 파일이 있어도 이 단언이 깨지지 않게(2026-09-16).
 assert "실 저장소에 설치가 새 파일을 남기지 않음" "$UNTRACKED_BEFORE" "$(git -C "$REPO_ROOT" status --short --untracked-files=all | grep -c '^??')"

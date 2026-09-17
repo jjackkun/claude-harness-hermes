@@ -22,6 +22,9 @@ mkdir -p "$HOME"
 # /tmp 오염 사고). 이 테스트는 "등록 → uninstall 이 등록을 지운다" 를 봐야 하므로 TMPDIR 을
 # 별도 하위 폴더로 옮겨 $PROJ 가 임시 경로로 판정되지 않게 한다.
 export TMPDIR="$TMP/tmpdir"; mkdir -p "$TMPDIR"
+# 2026-09-17: 설치기가 /tmp 와 $TMPDIR 를 둘 다 보게 되어 TMPDIR 이동만으로는 등록되지 않는다.
+# 등록이 필요한 테스트는 명시 스위치로 연다(lib/registry.sh).
+export HERMES_FORCE_REGISTER=1
 PROJ="$TMP/proj"
 mkdir -p "$PROJ"
 

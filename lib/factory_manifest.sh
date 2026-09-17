@@ -36,6 +36,7 @@ manifest_add() {
     python3 - "$(_manifest_path "$claude_dir")" <<'PYEOF'
 import json, os, sys
 p = sys.argv[1]
+os.makedirs(os.path.dirname(p) or ".", exist_ok=True)   # Codex 전용 프로젝트엔 .claude/ 가 없다 — 2026-09-17 실측 13회 FileNotFoundError
 items = []
 if os.path.isfile(p):
     try:

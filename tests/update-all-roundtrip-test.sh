@@ -24,6 +24,9 @@ mkdir -p "$HOME"
 # /tmp 오염 사고). update-all.sh 는 그 레지스트리를 읽어 도니, 등록이 생략되면 이 테스트의
 # 모든 갱신 단언이 "아무 프로젝트도 안 돎" 으로 조용히 실패한다. TMPDIR 을 옮겨 둔다.
 export TMPDIR="$TMP/tmpdir"; mkdir -p "$TMPDIR"
+# 2026-09-17: 설치기가 /tmp 와 $TMPDIR 를 둘 다 보게 되어 TMPDIR 이동만으로는 등록되지 않는다.
+# 등록이 필요한 테스트는 명시 스위치로 연다(lib/registry.sh).
+export HERMES_FORCE_REGISTER=1
 trap 'rm -rf "$TMP"' EXIT
 
 PASS=0; FAIL=0

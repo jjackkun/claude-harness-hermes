@@ -148,11 +148,9 @@ write_codex_manifest "$CODEX_DIR/.dev-setting-manifest.json"
 printf '%s\n' "${PRESETS[@]}" > "$CODEX_DIR/presets.lock"
 log_info "Saved presets → .codex/presets.lock"
 
-REGISTRY="$DEV_SETTING_DIR/.installed-projects.codex"
-touch "$REGISTRY"
-if ! grep -qxF "$PROJECT_PATH" "$REGISTRY"; then
-  echo "$PROJECT_PATH" >> "$REGISTRY"
-  log_info "Registered → .installed-projects.codex"
+# 판정(임시 경로·HERMES_NO_REGISTER)은 lib/registry.sh — Claude 쪽과 같은 가드를 쓴다.
+if [[ $DRY_RUN -eq 0 ]]; then
+  registry_register "$DEV_SETTING_DIR/.installed-projects.codex" "$PROJECT_PATH" ".installed-projects.codex"
 fi
 
 log_success "Done. Open Codex at: $PROJECT_PATH"

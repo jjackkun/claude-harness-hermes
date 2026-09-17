@@ -13,8 +13,8 @@ install_codex_hooks() {
   for f in "$src_dir"/*.sh; do
     [[ -f "$f" ]] || continue
     dest="$target_dir/$(basename "$f")"
-    cp "$f" "$dest"
-    chmod +x "$dest"
+    # 공존 설치(R-coexist) — 프로젝트가 고친 훅은 덮지 않고, 공장 개정은 합쳐 전달한다. 목록은 .codex/ 에.
+    install_factory_file "$f" "$dest" hook "scripts/codex-hooks/$(basename "$f")" "$project_path/.codex" 755
     log_info "  hook    → scripts/codex-hooks/$(basename "$f")"
   done
 }
@@ -30,8 +30,7 @@ install_codex_scripts() {
   for f in "$src_dir"/*.sh; do
     [[ -f "$f" ]] || continue
     dest="$target_dir/$(basename "$f")"
-    cp "$f" "$dest"
-    chmod +x "$dest"
+    install_factory_file "$f" "$dest" script "scripts/$(basename "$f")" "$project_path/.codex" 755
     log_info "  script  → scripts/$(basename "$f")"
   done
 }
