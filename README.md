@@ -577,6 +577,35 @@ Windows NTFS 경로(`/mnt/c/...`)의 경우 NTFS 심볼릭 링크 제한으로 *
 
 두 서문은 `SKILLS`/`AGENTS`/`RULES` 배열에서 자동 생성되므로 프리셋을 바꿔 재설치하면 목차도 함께 갱신됩니다.
 
+### 복사된 파일은 덮지 않고 합칩니다 (공존 설치)
+
+심볼릭 링크가 아니라 **복사**로 깔리는 파일 — `scripts/hooks/*`, `.git/hooks/*`, hermes `scripts/*.py`,
+lint 설정 — 은 프로젝트가 고쳐 쓸 수 있습니다(예: `check-secrets.py` 에 프로젝트 비밀 규칙 추가).
+재설치·`update-all.sh` 는 그 수정을 **덮지 않습니다.** 네 문장이 정책입니다:
+공장의 개정은 언제나 전달된다 · 프로젝트의 수정은 지워지지 않는다 · 한 파일에서 만나면 합쳐서
+둘 다 살린다 · 같은 자리가 겹치면 사람이 푼다. (룰 [`R-coexist`](docs/design-docs/core-beliefs.md#r-coexist))
+
+판정은 마지막 설치판(`.claude/.factory-manifest.json` 의 `sha256`) 대비입니다:
+
+| 상황 | 하는 일 | 출력 |
+|------|---------|------|
+| 프로젝트도 공장도 안 바뀜 · 공장만 바뀜 | 그대로 둠 · 새 판으로 교체 | 없음 |
+| 프로젝트만 고침 | 손대지 않음 | 없음 |
+| 둘 다 바뀜, 다른 자리 | `git merge-file` 로 합치고 구문 검사(`.py`·`.sh`) | `[factory-merge MERGED] <경로>` |
+| 둘 다 바뀜, 같은 자리 (또는 구문 실패 · 기준판을 모름) | 프로젝트 판을 두고 공장 판을 `<경로>.factory-new` 로 옆에 세움 | `[factory-merge CONFLICT\|UNKNOWN-BASE] <경로>` |
+
+`.factory-new` 가 남아 있으면 pre-commit `R-merge` 가 **커밋을 막습니다** — 공장 개정이 아직 안 들어온 상태를
+그대로 굳히지 않기 위해서입니다. 푸는 법: 두 파일을 비교해 원하는 쪽을 합친 뒤 `.factory-new` 를 지웁니다.
+
+```bash
+diff .git/hooks/check-secrets.py .git/hooks/check-secrets.py.factory-new   # 무엇이 겹치는지 본다
+# 합친 결과를 .git/hooks/check-secrets.py 에 반영한 뒤
+rm .git/hooks/check-secrets.py.factory-new                                 # 게이트가 풀린다
+```
+
+실행 비트는 기존 파일 것을 그대로 지킵니다. 프로젝트 밖을 가리키는 심링크는 손대지 않고
+`[factory-merge OUTSIDE]` 만 냅니다. 설치가 파일을 고친 적 없으면 아무 줄도 찍지 않습니다.
+
 ### .gitignore 에 머신 로컬 항목 자동 추가
 
 설치 시 프로젝트의 `.gitignore` 에 커밋하면 안 되는 머신 로컬 파일을 자동으로 추가합니다.
