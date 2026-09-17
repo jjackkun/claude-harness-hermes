@@ -148,6 +148,7 @@ for t in \
   uninstall-roundtrip-test.sh \
   copy-install-test.sh \
   install-receipt-test.sh \
+  install-coexist-test.sh \
   hermes-universe-test.sh \
   hermes-journal-test.sh \
   hermes-keys-test.sh \

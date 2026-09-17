@@ -109,7 +109,10 @@ if [[ -f "$ZD" ]]; then
   N0="$(q "$TMP/zd.db" "select count(*) from skill_index")"
   python3 "$S/hermes-init.py" --db "$TMP/zd.db" >/dev/null 2>&1
   assert "행 수 불변" "$N0" "$(q "$TMP/zd.db" "select count(*) from skill_index")"
-  assert "전부 layer='common' 으로 백필" "$N0" "$(q "$TMP/zd.db" "select count(*) from skill_index where layer='common'")"
+  # "전부 common" 이 아니라 "NULL 없음" 이 불변식이다 — 라이브 DB 는 이미 재색인돼 universe 층이 섞여 있을 수 있다
+  # (2026-09-17 전파 뒤 zeroday 에 universe 50건). 마이그레이션의 약속은 NULL 이던 행을 common 으로 채우는 것.
+  assert "layer NULL 인 행 0(백필 누락 없음)" 0 "$(q "$TMP/zd.db" "select count(*) from skill_index where layer is null")"
+  assert "층 값이 네 가지 밖에 없음" 0 "$(q "$TMP/zd.db" "select count(*) from skill_index where layer not in ('universe','common','unit','agent')")"
 else
   echo "  ⊘ zeroday DB 없음 — 리허설 건너뜀"
 fi

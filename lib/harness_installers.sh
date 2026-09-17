@@ -43,14 +43,25 @@ install_harness_hooks() {
       local src="$ASSETS_DIR/hooks/$name"
       [[ -f "$src" ]] || { log_warn "harness hook missing: $name (skipped)"; continue; }
       dest="$target_dir/$name"
-      cp "$src" "$dest"
-      chmod +x "$dest"
+      # 공존 설치 — 하류가 고친 훅(plan_state.py [~] 세기 등, 5회 덮임)은 지우지 않고, 공장 개정은
+      # 합쳐 전달한다. 새 파일만 755 로 놓고 기존 파일은 제 모드를 지킨다(계획 2026-09-17 목표 1·2).
+      install_factory_file "$src" "$dest" hook "scripts/hooks/$name" "$project_path/.claude" 755
       log_info "  hook    → scripts/hooks/$name"
     done
   fi
   # preset 에서 빠진 hook 회수 — count==0 (hook 을 쓰는 preset 이 전부 빠진 경우) 에도
   # 실행돼야 하므로 early-return 하지 않는다.
   _cleanup_stale_hooks "$target_dir"
+}
+
+# _install_git_hook <project_path> <src> <basename> [mode]
+# .git/hooks/<basename> 에 공존 설치로 놓는다(하류 수정 보존 · 상류 개정 합침). 이 파일들은 pre-commit 이
+# $(dirname $0) 에서 참조하는 게이트 모듈이라, 프로젝트가 규칙을 좁혀 둔 판을 덮으면 게이트가 약해진다
+# (check-secrets.py 가 그렇게 5회 덮였다 — 계획 2026-09-17-install-coexistence).
+_install_git_hook() {
+  local project_path="$1" src="$2" base="$3" mode="${4:-}"
+  local dest="$project_path/.git/hooks/$base"
+  install_factory_file "$src" "$dest" githook ".git/hooks/$base" "$project_path/.claude" "$mode"
 }
 
 # install_harness_pre_commit <project_path>
@@ -64,23 +75,20 @@ install_harness_pre_commit() {
   [[ -f "$src" ]] || { log_warn "pre-commit.sh missing in assets (skipped)"; return 0; }
   local dest="$git_dir/hooks/pre-commit"
   mkdir -p "$git_dir/hooks"
-  cp "$src" "$dest"
-  chmod +x "$dest"
+  _install_git_hook "$project_path" "$src" pre-commit 755
   log_info "  hook    → .git/hooks/pre-commit (게이트 13종 — 차단 9 / 경고 4)"
 
   # check-component-structure.mjs — pre-commit 이 $(dirname $0) 에서 참조
   local struct_src="$ASSETS_DIR/hooks/check-component-structure.mjs"
   if [[ -f "$struct_src" ]]; then
-    cp "$struct_src" "$git_dir/hooks/check-component-structure.mjs"
-    chmod +x "$git_dir/hooks/check-component-structure.mjs"
+    _install_git_hook "$project_path" "$struct_src" check-component-structure.mjs 755
     log_info "  hook    → .git/hooks/check-component-structure.mjs"
   fi
 
   # check-secrets.py (R-secret) — pre-commit 이 $(dirname $0) 에서 참조.
   local secrets_src="$ASSETS_DIR/hooks/check-secrets.py"
   if [[ -f "$secrets_src" ]]; then
-    cp "$secrets_src" "$git_dir/hooks/check-secrets.py"
-    chmod +x "$git_dir/hooks/check-secrets.py"
+    _install_git_hook "$project_path" "$secrets_src" check-secrets.py 755
     log_info "  hook    → .git/hooks/check-secrets.py"
   fi
 
@@ -88,7 +96,7 @@ install_harness_pre_commit() {
   # scripts/hooks/ 쪽 사본은 HARNESS_HOOK_SOURCES 가 배치한다(UserPromptSubmit·CI 용).
   local plan_state_src="$ASSETS_DIR/hooks/plan_state.py"
   if [[ -f "$plan_state_src" ]]; then
-    if cp "$plan_state_src" "$git_dir/hooks/plan_state.py"; then
+    if _install_git_hook "$project_path" "$plan_state_src" plan_state.py; then
       log_info "  hook    → .git/hooks/plan_state.py"
     else
       log_warn "  hook    → .git/hooks/plan_state.py 복사 실패"
@@ -99,7 +107,7 @@ install_harness_pre_commit() {
   # scripts/hooks/ 사본은 HARNESS_HOOK_SOURCES 가 따로 배치한다.
   local complexity_src="$ASSETS_DIR/hooks/complexity.py"
   if [[ -f "$complexity_src" ]]; then
-    if cp "$complexity_src" "$git_dir/hooks/complexity.py"; then
+    if _install_git_hook "$project_path" "$complexity_src" complexity.py; then
       log_info "  hook    → .git/hooks/complexity.py"
     else
       log_warn "  hook    → .git/hooks/complexity.py 복사 실패"
@@ -110,7 +118,7 @@ install_harness_pre_commit() {
   # 없는 프로젝트에서는 pre-commit 이 아예 호출하지 않으므로 조용하다.
   local doccounts_src="$ASSETS_DIR/hooks/doc_counts.py"
   if [[ -f "$doccounts_src" ]]; then
-    if cp "$doccounts_src" "$git_dir/hooks/doc_counts.py"; then
+    if _install_git_hook "$project_path" "$doccounts_src" doc_counts.py; then
       log_info "  hook    → .git/hooks/doc_counts.py"
     else
       log_warn "  hook    → .git/hooks/doc_counts.py 복사 실패"
@@ -121,7 +129,7 @@ install_harness_pre_commit() {
   # 표준 라이브러리 trace 기반이라 프로젝트에 추가 설치를 요구하지 않는다.
   local covprobe_src="$ASSETS_DIR/hooks/coverage_probe.py"
   if [[ -f "$covprobe_src" ]]; then
-    if cp "$covprobe_src" "$git_dir/hooks/coverage_probe.py"; then
+    if _install_git_hook "$project_path" "$covprobe_src" coverage_probe.py; then
       log_info "  hook    → .git/hooks/coverage_probe.py"
     else
       log_warn "  hook    → .git/hooks/coverage_probe.py 복사 실패"
@@ -136,7 +144,7 @@ install_harness_pre_commit() {
   local gate_src
   for gate_src in gate_event.py gate_emit.sh; do
     if [[ -f "$ASSETS_DIR/hooks/$gate_src" ]]; then
-      if cp "$ASSETS_DIR/hooks/$gate_src" "$git_dir/hooks/$gate_src"; then
+      if _install_git_hook "$project_path" "$ASSETS_DIR/hooks/$gate_src" "$gate_src"; then
         log_info "  hook    → .git/hooks/$gate_src"
       else
         log_warn "  hook    → .git/hooks/$gate_src 복사 실패 (게이트 발화 기록 비활성)"
@@ -147,7 +155,7 @@ install_harness_pre_commit() {
   # depcheck.py (R-dep) — complexity.py 와 같은 부류. pre-commit 이 $(dirname $0) 에서 참조한다.
   local depcheck_src="$ASSETS_DIR/hooks/depcheck.py"
   if [[ -f "$depcheck_src" ]]; then
-    if cp "$depcheck_src" "$git_dir/hooks/depcheck.py"; then
+    if _install_git_hook "$project_path" "$depcheck_src" depcheck.py; then
       log_info "  hook    → .git/hooks/depcheck.py"
       # 계약이 없으면 R-dep 은 조용히 통과한다(미설정과 고장을 구분한다).
       # 그 사실을 여기서 한 번 알린다 — 매 커밋 경고는 경고 피로를 부른다.
@@ -164,7 +172,7 @@ install_harness_pre_commit() {
   # hermes 프리셋 없이 harness 만 설치한 프로젝트에서도 값 기반 차단이 동작한다.
   local values_src="$DEV_SETTING_DIR/scripts/hermes_secret_values.py"
   if [[ -f "$values_src" ]]; then
-    cp "$values_src" "$git_dir/hooks/hermes_secret_values.py"
+    _install_git_hook "$project_path" "$values_src" hermes_secret_values.py
     log_info "  hook    → .git/hooks/hermes_secret_values.py"
   fi
 }
@@ -415,14 +423,14 @@ install_harness_lint_configs() {
   [[ -f "$src" ]] || return 0
   local target_dir="$project_path/lint-configs"
   mkdir -p "$target_dir"
-  cp "$src" "$target_dir/harness-max-lines.config.js"
+  install_factory_file "$src" "$target_dir/harness-max-lines.config.js" lint lint-configs/harness-max-lines.config.js "$project_path/.claude"
   log_info "  lint    → lint-configs/harness-max-lines.config.js"
 
   # R-struct-3: .vue 직접 import 금지 ESLint config
   if [[ ${HARNESS_COMPONENT_STRUCTURE:-0} -eq 1 ]]; then
     local struct_src="$ASSETS_DIR/lint-configs/eslint/component-structure.config.js"
     if [[ -f "$struct_src" ]]; then
-      cp "$struct_src" "$target_dir/harness-component-structure.config.js"
+      install_factory_file "$struct_src" "$target_dir/harness-component-structure.config.js" lint lint-configs/harness-component-structure.config.js "$project_path/.claude"
       log_info "  lint    → lint-configs/harness-component-structure.config.js"
     fi
   fi
@@ -584,10 +592,9 @@ install_harness_gitignore() {
       # 설치 영수증 — 이번 설치가 쓴 파일 목록. 기계마다 다르므로 커밋하지 않는다.
       ".claude/.last-install.txt"
       ".claude/presets.lock"
-      # 기계마다 다르다 — `.git/hooks/` 에 깐 파일의 sha256 이다. presets.lock 과 같은
-      # 성격인데 이 목록에서 빠져 있어 커밋에 딸려 들어갔다(2026-09-02). 그때 고친 곳이
-      # *생성된 .gitignore* 였던 탓에 다음 전파가 그대로 덮어썼다 — 소유자는 여기다.
-      ".claude/harness-hooks.lock"
+      # `.claude/harness-hooks.lock` 은 퇴역했다(계획 2026-09-17-install-coexistence 목표 7) — 공장에 작성자가
+      # 없는 고아였고, 기계별이라 3-way 의 base 가 될 수 없었다. base 는 이제 `.factory-manifest.json` 의
+      # factory_commit(커밋됨)에서 복원한다. 소우주에 남은 옛 파일은 건드리지 않는다.
       # 게이트 발화 기록. 개발자 로컬 사건이라 커밋하면 매 커밋 diff 노이즈가 된다.
       # 근거: docs/exec-plans/active/2026-09-03-gate-telemetry.md §6
       ".harness/"

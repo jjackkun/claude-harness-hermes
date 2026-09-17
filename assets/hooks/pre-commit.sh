@@ -3,9 +3,9 @@
 #
 # "4단 검사" 문구는 uninstall 이 하네스 설치본을 식별하는 마커다 — 바꾸지 말 것
 #
-# 현재 실제 게이트는 13종이다 (위 헤더의 "4단 검사" 는 마커라서 그대로 둔다):
-#   차단 9 — R-size R-fmt R-lint R-test R-cx R-dep R-struct R-secret R-plan
-#   경고 4 — R-cov R-pipe R-retro R-acc
+# 현재 실제 게이트는 17종이다 (위 헤더의 "4단 검사" 는 마커라서 그대로 둔다):
+#   차단 11 — R-size R-fmt R-lint R-test R-doc R-cx R-dep R-struct R-secret R-merge R-plan
+#   경고 6 — R-cov R-acc R-plan-missing R-plan-stale R-pipe R-retro
 # (lib/uninstall_helpers.sh `uninstall_pre_commit`, uninstall.sh 미리보기).
 #
 # 메시지 형식 (2026-04-17 Opus 4.7 튜닝):
@@ -539,6 +539,34 @@ EOF
 else
   # 마지막 방어선이 꺼진 채 커밋이 흐르는 상태다. pass 와 절대 합치지 않는다.
   gate_add R-secret skipped precommit "" "check-secrets.py 또는 python3 없음"
+fi
+
+# 6b. R-merge — 풀지 않은 공장 병합이 남아 있으면 차단
+# GATE: R-merge block
+#
+# 공존 설치(lib/factory_coexist.sh)는 하류가 고친 파일과 공장 개정이 같은 자리에서 겹치면 덮지 않고
+# 공장 판을 `<파일>.factory-new` 로 옆에 세운다. 그 파일이 워킹트리에 있는 동안은 "공장의 새 기능이
+# 아직 이 프로젝트에 들어오지 않았다" 는 뜻이다. 사람이 합친 뒤 지워야 커밋이 흐른다 —
+# 안 그러면 새 기능은 조용히 버려지고, 옛 방식("덮되 말한다")의 경고처럼 잊힌다(5회 재발의 원인).
+# 스테이징 여부와 무관하게 워킹트리 전체를 본다: .factory-new 는 gitignore 대상이 아니어도
+# 커밋에 안 들어가는 것이 보통이라, 스테이징만 보면 영원히 안 걸린다.
+# 근거: docs/exec-plans/active/2026-09-17-install-coexistence.md 목표 6
+# 파이프에 grep 을 두지 않는다 — 정상 상태(파일 0개)에서 grep 이 rc=1 을 내고 `pipefail` 이 스크립트를
+# 조용히 죽여, **모든 커밋이 아무 메시지 없이 막혔다**(2026-09-17 테스트가 잡음). find 한 번으로 끝낸다.
+MERGE_PENDING=$(find . \( -path ./node_modules -o -path ./.git \) -prune -o -name '*.factory-new' -print 2>/dev/null | sed 's|^\./||' | sort -u)
+if [[ -n "$MERGE_PENDING" ]]; then
+  VIOLATIONS+=("$(cat <<EOF
+
+[R-merge] 풀지 않은 공장 병합 $(printf '%s\n' "$MERGE_PENDING" | wc -l)건 — 공장 개정이 아직 들어오지 않았습니다.
+$(printf '%s\n' "$MERGE_PENDING" | sed 's/^/  /')
+  → 원본과 .factory-new 를 합친 뒤 .factory-new 를 지우십시오 (diff <파일> <파일>.factory-new).
+  근거: docs/design-docs/core-beliefs.md#r-merge
+EOF
+)")
+  FAIL=1
+  gate_add R-merge block precommit "" "풀지 않은 .factory-new $(printf '%s\n' "$MERGE_PENDING" | wc -l)건"
+else
+  gate_add R-merge pass precommit "" ".factory-new 없음"
 fi
 
 # 7. R-plan — 완료된 계획이 active/ 에 남아있으면 경고

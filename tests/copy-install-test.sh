@@ -40,7 +40,9 @@ PROJ="$TMP/proj"; mkdir -p "$PROJ"; git -C "$PROJ" init -q
 install() { bash "$SANDBOX/project-claude.sh" "$PROJ" "$@" >"$TMP/install.log" 2>&1; }
 MANIFEST="$PROJ/.claude/.factory-manifest.json"
 count_links() { find "$PROJ/.claude/skills" "$PROJ/.claude/agents" "$PROJ/.claude/rules" -type l 2>/dev/null | wc -l; }
-manifest_n() { python3 -c "import json;print(len(json.load(open('$MANIFEST'))['items']))" 2>/dev/null || echo 0; }
+# 3 kind 만 센다. 공존 설치(2026-09-17) 뒤로 목록은 훅·git훅·스크립트·lint 도 기록하므로 전체를 세면
+# "설치한 것 = 기록한 것" 이 아니라 다른 것을 비교하게 된다(그때 23 vs 145 로 빨개졌다).
+manifest_n() { python3 -c "import json;print(sum(1 for i in json.load(open('$MANIFEST'))['items'] if i['kind'] in ('skills','agents','rules')))" 2>/dev/null || echo 0; }
 
 echo "== 1. 복사 설치 (목표 1 · 2 · 5) =="
 install harness hermes

@@ -40,7 +40,6 @@ docs/superpowers/plans/
 .claude/.dev-setting-manifest.json
 .claude/.last-install.txt
 .claude/presets.lock
-.claude/harness-hooks.lock
 .harness/
 !.claude/memory/
 !.claude/memory/**

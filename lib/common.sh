@@ -32,6 +32,8 @@ source "$_DS_LIB/preset.sh"
 # factory_manifest 는 installers 가 쓰므로 먼저.
 # shellcheck source=lib/factory_manifest.sh
 source "$_DS_LIB/factory_manifest.sh"
+# shellcheck source=lib/factory_coexist.sh
+source "$_DS_LIB/factory_coexist.sh"   # 공존 설치 — 하류 수정을 덮지 않고 상류 개정은 합쳐 전달(계획 2026-09-17)
 # shellcheck source=lib/installers.sh
 source "$_DS_LIB/installers.sh"
 # shellcheck source=lib/install_receipt.sh

@@ -26,11 +26,13 @@ _manifest_sha() {
 # manifest_add <claude_dir> <kind> <name> <installed_path>
 # 항목을 추가하거나(같은 kind+name 이면) 교체한다.
 manifest_add() {
-  local claude_dir="$1" kind="$2" name="$3" path="$4"
+  # $5 src  — 공장 상대 원본 경로(선택). 공존 설치가 base 내용을 `git show <commit>:<src>` 로 복원할 때 쓴다.
+  # $6 mode — 설치된 파일의 8진 모드(선택). 둘 다 없던 옛 항목도 그대로 읽힌다(계획 2026-09-17-install-coexistence 목표 4).
+  local claude_dir="$1" kind="$2" name="$3" path="$4" src_rel="${5:-}" mode="${6:-}"
   local sha commit
   sha="$(_manifest_sha "$path")"
   commit="$(git -C "${DEV_SETTING_DIR:-$ASSETS_DIR/..}" rev-parse HEAD 2>/dev/null || echo unknown)"
-  M_KIND="$kind" M_NAME="$name" M_SHA="$sha" M_COMMIT="$commit" \
+  M_KIND="$kind" M_NAME="$name" M_SHA="$sha" M_COMMIT="$commit" M_SRC="$src_rel" M_MODE="$mode" \
     python3 - "$(_manifest_path "$claude_dir")" <<'PYEOF'
 import json, os, sys
 p = sys.argv[1]
@@ -43,8 +45,14 @@ if os.path.isfile(p):
         items = []
 k, n = os.environ["M_KIND"], os.environ["M_NAME"]
 items = [i for i in items if not (i.get("kind") == k and i.get("name") == n)]
-items.append({"name": n, "kind": k,
-              "factory_commit": os.environ["M_COMMIT"], "sha256": os.environ["M_SHA"]})
+item = {"name": n, "kind": k,
+        "factory_commit": os.environ["M_COMMIT"], "sha256": os.environ["M_SHA"]}
+# 선택 필드 — 값이 있을 때만 적는다. 없으면 옛 항목과 같은 모양이라 읽는 쪽이 구분할 일이 없다.
+if os.environ.get("M_SRC"):
+    item["src"] = os.environ["M_SRC"]
+if os.environ.get("M_MODE"):
+    item["mode"] = os.environ["M_MODE"]
+items.append(item)
 items.sort(key=lambda i: (i["kind"], i["name"]))
 tmp = p + ".tmp"
 with open(tmp, "w", encoding="utf-8") as f:
@@ -99,6 +107,23 @@ with open(tmp, "w", encoding="utf-8") as f:
 os.replace(tmp, p)
 for n in removed:
     print(n)
+PYEOF
+}
+
+# manifest_field <claude_dir> <kind> <name> <field>  → 그 항목의 필드 값 한 줄(없으면 빈 줄, 종료코드 0)
+# field: sha256 | factory_commit | src | mode. 공존 설치(lib/factory_coexist.sh)가 base 판정·복원에 쓴다.
+manifest_field() {
+  local p; p="$(_manifest_path "$1")"
+  [[ -f "$p" ]] || return 0
+  M_KIND="$2" M_NAME="$3" M_FIELD="$4" python3 - "$p" <<'PYEOF'
+import json, os, sys
+try:
+    items = json.load(open(sys.argv[1], encoding="utf-8")).get("items", [])
+except (json.JSONDecodeError, AttributeError):
+    items = []
+for i in items:
+    if i.get("kind") == os.environ["M_KIND"] and i.get("name") == os.environ["M_NAME"]:
+        print(i.get(os.environ["M_FIELD"], "") or ""); break
 PYEOF
 }
 

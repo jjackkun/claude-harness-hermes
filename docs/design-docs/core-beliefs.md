@@ -518,7 +518,6 @@ pre-commit 메시지의 `근거:` 링크가 이 앵커들을 가리킨다.
 - [R-lint](#r-lint) — ESLint
 - [R-test](#r-test) — pytest
 - [P9](#p9) — 비밀의 경계는 파일이 아니라 값이다
-- [R-leak](#r-leak) — 소우주 밖 봉투에 사내 정보 금지
 - [R-plan](#r-plan) — 완료된 계획은 completed/ 로 이동 (차단)
 - [R-plan-missing](#r-plan-missing) — 코드 수정 시 계획 존재 (경고)
 - [R-plan-stale](#r-plan-stale) — 계획서가 코드를 따라오는가 (경고)
