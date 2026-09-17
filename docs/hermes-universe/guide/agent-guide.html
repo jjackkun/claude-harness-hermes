@@ -239,7 +239,7 @@ ask: 맞는 담당이 없습니다 — 사람에게 문의하십시오 (hermes-a
       <div class="lane">
         <div class="k"><b>보인다</b>화면에</div>
         <div class="v"><pre>[hermes-summon] 선적QA 종료 rc=0 task=&lt;task_id&gt;</pre>
-<p class="note"><b>솔직한 한계</b> 소환된 세션에 들어가는 정체성은 이름·id 한 줄과 환경변수뿐입니다. <code>SOUL.md</code> 본문을 그 세션에 넣어 주는 훅은 지금 없습니다(훅·스크립트 전수 확인, 0건). 즉 현재의 소환은 "그 에이전트의 성격으로 대화" 보다 "그 에이전트 명의로 일을 맡기고 이력을 남기는" 단계입니다 — 부록 B.</p></div>
+<p>소환된 세션은 시작 훅(<code>claude-sessionstart-agent-soul.sh</code>)이 그 에이전트의 <code>SOUL.md</code>·<code>MEMORY.md</code> 를 세션 문맥에 넣어 주고 시작합니다 — 머리에 <code>[헤르메스 출근] 선적QA (agent:…)</code> 한 줄이 붙습니다. 각 4,096 B 상한이며 넘치면 잘라 원문 경로를 남깁니다. 은퇴한 에이전트는 넣지 않습니다.</p></div>
       </div>
       <div class="lane">
         <div class="k"><b>확인</b>넘어가기 전</div>
@@ -353,13 +353,8 @@ scripts/
 
     <section class="step" id="gaps">
       <h2><span class="n">B</span>지금 알려진 구멍 (2026-09-17 실측)</h2>
-      <p class="why">숨기지 않고 적습니다. 공장(claude-harness-hermes)에서 고쳐 전파해야 하는 것입니다. (스킬 문서의 <code>--org</code> 구분자 오류는 2026-09-17 공장에서 고쳤고, 다음 전파에 소우주로 갑니다.)</p>
-      <div class="tbl"><table>
-<thead><tr><th>구멍</th><th>실측</th><th>지금 우회</th></tr></thead>
-<tbody>
-<tr><td>소환 세션에 <code>SOUL.md</code> 가 주입되지 않는다</td><td><code>HERMES_AGENT_ID</code> 를 읽는 곳 7개 중 SOUL 본문을 세션에 넣는 훅은 0개</td><td>소환 <code>--task</code> 에 필요한 맥락을 직접 적는다. 설계 문서(<code>creation-and-organization.md</code>)와 구현 대조가 필요</td></tr>
-</tbody></table></div>
-    </section>
+      <p class="why">숨기지 않고 적는 자리입니다. 2026-09-17 기준 남은 구멍은 없습니다 — 같은 날 발견한 둘(스킬 문서의 <code>--org</code> 구분자, 소환 세션의 SOUL.md 미주입)은 공장에서 고쳐 전파했습니다.</p>
+          </section>
 
     <section class="step" id="eli5">
       <h2><span class="n">C</span>5분 요약 페이지</h2>

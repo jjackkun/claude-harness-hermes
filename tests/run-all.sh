@@ -157,6 +157,7 @@ for t in \
   hermes-sync-test.sh \
   hermes-roster-test.sh \
   hermes-summon-guard-test.sh \
+  hermes-soul-inject-test.sh \
   hermes-memory-events-test.sh \
   hermes-handoff-test.sh \
   hermes-skill-layers-test.sh \
