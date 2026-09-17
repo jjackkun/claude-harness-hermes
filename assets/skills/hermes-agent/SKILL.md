@@ -34,16 +34,16 @@ description: 헤르메스 에이전트 명부·조직·소환·인계를 CLI 로
 ## 1. 입사 (hire)
 
 ```bash
-python3 scripts/hermes-agent.py hire "<이름>" --org "<분야>/<직급>/<조직>" [--template <템플릿>]
+python3 scripts/hermes-agent.py hire "<이름>" --org "<분야>,<직급>,<조직>" [--template <템플릿>]
 ```
 
 - 이름은 명부에서 **유일**해야 한다(은퇴자 이름 포함). 겹치면 CLI 가 거부한다 — 사용자에게 다른 이름을 받는다.
-- `--org` 는 `organization.yaml` 에 **정의된 축 값**만 받는다. 값이 확실치 않으면 먼저 `list` 로 기존 조직을 보이고,
+- `--org` 는 **쉼표**로 나눈 `분야,직급,조직` 이다(빈 칸은 비워 둔다: `QA,,users`). 슬래시로 주면 세 값이 한 덩어리로 읽혀 거부된다(2026-09-17 실측). 값은 `organization.yaml` 에 **정의된 축 값**만 받는다. 값이 확실치 않으면 먼저 `list` 로 기존 조직을 보이고,
   없는 값이면 사용자에게 조직 정의부터 물어본다(추측해 넣지 않는다).
 - 최상위 직급 `human` 은 기계가 고정한다 — 사람이 아닌 에이전트를 `human` 으로 입사시키지 않는다.
 
 **예 1** — "users 담당 백엔드로 한 명 입사시켜"
-→ `python3 scripts/hermes-agent.py hire "유저스담당" --org "backend/staff/users"`
+→ `python3 scripts/hermes-agent.py hire "유저스담당" --org "backend,staff,users"`
 → 출력의 `정체성: .hermes/agents/<id>/` 경로를 사용자에게 알리고, **SOUL.md 는 사람이 채운다**고 안내한다(에이전트가 쓰지 않는다).
 
 ## 2. 담당 찾기 (match)

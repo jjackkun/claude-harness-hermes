@@ -169,7 +169,7 @@ unit:
       <div class="lane">
         <div class="k"><b>일어난다</b>뒤에서</div>
         <div class="v"><pre>python3 scripts/hermes-agent.py hire "선적QA" --org "QA,담당,선적"</pre>
-<p class="note"><b>주의</b> <code>--org</code> 는 <b>쉼표</b>로 나눕니다(<code>분야,직급,조직</code>). 빈 칸은 비워 둘 수 있습니다(<code>QA,,선적</code>). 스킬 문서 §1 에는 <code>/</code> 로 적혀 있는데 그대로 따라 하면 거부됩니다 — 부록 B.</p></div>
+<p class="note"><b>주의</b> <code>--org</code> 는 <b>쉼표</b>로 나눕니다(<code>분야,직급,조직</code>). 빈 칸은 비워 둘 수 있습니다(<code>QA,,선적</code>).</p></div>
       </div>
       <div class="lane">
         <div class="k"><b>보인다</b>화면에</div>
@@ -353,11 +353,10 @@ scripts/
 
     <section class="step" id="gaps">
       <h2><span class="n">B</span>지금 알려진 구멍 (2026-09-17 실측)</h2>
-      <p class="why">숨기지 않고 적습니다. 둘 다 공장(claude-harness-hermes)에서 고쳐 전파해야 하는 것입니다.</p>
+      <p class="why">숨기지 않고 적습니다. 공장(claude-harness-hermes)에서 고쳐 전파해야 하는 것입니다. (스킬 문서의 <code>--org</code> 구분자 오류는 2026-09-17 공장에서 고쳤고, 다음 전파에 소우주로 갑니다.)</p>
       <div class="tbl"><table>
 <thead><tr><th>구멍</th><th>실측</th><th>지금 우회</th></tr></thead>
 <tbody>
-<tr><td>스킬 문서 §1 의 <code>--org "&lt;분야&gt;/&lt;직급&gt;/&lt;조직&gt;"</code></td><td>CLI 는 쉼표만 받는다. 슬래시로 주면 <code>거부: discipline '…/…/…' 은 organization.yaml 에 없다</code></td><td>쉼표로 말하거나, 스킬이 거부를 보고 되묻게 둔다</td></tr>
 <tr><td>소환 세션에 <code>SOUL.md</code> 가 주입되지 않는다</td><td><code>HERMES_AGENT_ID</code> 를 읽는 곳 7개 중 SOUL 본문을 세션에 넣는 훅은 0개</td><td>소환 <code>--task</code> 에 필요한 맥락을 직접 적는다. 설계 문서(<code>creation-and-organization.md</code>)와 구현 대조가 필요</td></tr>
 </tbody></table></div>
     </section>
