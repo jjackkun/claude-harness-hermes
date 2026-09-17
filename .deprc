@@ -45,6 +45,10 @@ tier: 1  scripts/hermes_memory_view.py
 # handoff 는 done_when·journal·journal_views·uuid7 을 import 한다(최상위 tier 1 → handoff tier 2).
 tier: 0  scripts/hermes_done_when.py
 tier: 2  scripts/hermes_handoff.py
+# 제안 봉투(계획 5): envelope=uuid7(0)→1, gate=mesh_gate(2)→3, propose=gate(3)→4.
+tier: 1  scripts/hermes_envelope.py
+tier: 3  scripts/hermes_envelope_gate.py
+tier: 4  scripts/hermes-propose.py
 # 스킬 4층(계획 5): layers 는 uuid7(tier0)만 import → tier1. 색인기는 layers 를 import → tier2.
 tier: 1  scripts/hermes_skill_layers.py
 tier: 1  assets/hooks/check-secrets.py scripts/hermes-crystallize.py

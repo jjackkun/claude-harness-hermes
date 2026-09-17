@@ -103,3 +103,53 @@ def mesh_gate(text, *, timeout=120):
     if not stage2_is_general(text, timeout=timeout):
         return False, "not-general", None
     return True, "general", redact(text)
+
+
+# '사례 나열' — "이 대화에 1,2,3 이 있으면 …" 류 조건 나열이 3줄 이상인 스킬은 특정 상황에
+# 묶인 것이라 일반 지식이 아니다(RV-14). 승격 심사에서 사람이 다시 보도록 표시만 한다.
+_SCENARIO_LINE = re.compile(
+    r"(?im)^\s*(?:\d+[.)]\s+|[-*]\s+)?(?:if\b|when\b|.*?(?:하면|인 경우|일 경우|일 때|할 때))")
+
+
+def scenario_list(text, *, min_lines=3):
+    """조건 나열이 min_lines 줄 이상이면 True(사례 나열). 아니면 False."""
+    if not isinstance(text, str):
+        return False
+    hits = [ln for ln in text.splitlines() if ln.strip() and _SCENARIO_LINE.search(ln)]
+    return len(hits) >= min_lines
+
+
+def verdict(text, *, timeout=120):
+    """허가자 1차 검사(목표 12) — 승격 심사에만. (passed, reason, scenario) 를 돌려준다.
+
+    scenario=True 면 사례 나열이라 사람이 다시 본다. 기존 스킬을 삭제·재분류하지 않는다.
+    """
+    passed, reason, _scrubbed = mesh_gate(text, timeout=timeout)
+    return {"passed": passed, "reason": reason, "scenario_list": scenario_list(text)}
+
+
+def main():
+    import argparse
+    import json
+    ap = argparse.ArgumentParser(description="그물망 승격 게이트 — 허가자 1차 검사")
+    ap.add_argument("path", help="검사할 스킬 .md 경로")
+    ap.add_argument("--no-model", action="store_true", help="stage2(claude) 건너뜀 — 형태 검사만")
+    args = ap.parse_args()
+    try:
+        with open(args.path, encoding="utf-8") as fh:
+            body = fh.read()
+    except OSError as exc:
+        print(f"[mesh-gate] 읽기 실패: {exc}", file=os.sys.stderr)
+        return 2
+    if args.no_model:
+        rejected, reason = stage1_reject(body)
+        out = {"passed": not rejected, "reason": reason if rejected else "stage1-clean",
+               "scenario_list": scenario_list(body)}
+    else:
+        out = verdict(body)
+    print(json.dumps(out, ensure_ascii=False))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

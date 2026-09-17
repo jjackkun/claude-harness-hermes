@@ -160,6 +160,7 @@ for t in \
   hermes-skill-layers-test.sh \
   hermes-skill-inject-test.sh \
   hermes-skill-extends-test.sh \
+  hermes-propose-test.sh \
   memory-symlink-roundtrip-test.sh \
   hermes-history-export-test.sh \
   hermes-lifecycle-test.sh \

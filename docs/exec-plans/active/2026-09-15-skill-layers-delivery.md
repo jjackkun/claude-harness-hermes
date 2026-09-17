@@ -21,12 +21,12 @@
 - [x] 목표 4 — 주입 형식 하위 호환(RV-12): `description` 머리말이 있는 스킬은 `이름 — 설명` 한 줄로, 없는 스킬은 현행 `read_skill_snippet` 10줄로 주입된다. 검증: 테스트 두 종류 픽스처 + zeroday 스킬 1088개를 픽스처로 돌려 주입 형식이 전부 스니펫임을 확인(회귀 보호).
 - [x] 목표 5 — 스킬 본문 요청 경로: 에이전트가 `hermes-skill.py read <이름>` 으로 본문을 그 턴에 끌어온다(진행적 공개). 검증: CLI 출력 = 파일 본문, `skill_injection` 에 `source='read'` 기록.
 - [x] 목표 6 — 확장 파일(RV-13): 머리말 `extends: <skill_id>@<version>` 을 가진 파일은 "위 층 본문 + 확장" 으로 주입되고, `update-all` 이 기준 버전이 달라진 확장을 찾아 `[extends WARN]` 을 낸다. 검증: 테스트 — 공장 커밋 해시 바꾼 뒤 재설치 → 경고 1건.
-- [ ] 목표 7 — 승격 제안 명령 `hermes-propose.py new|improve|exclude <스킬>` 이 (a) 일반화 자체 점검(`hermes_mesh_gate.py`) (b) 금지 내용 게이트(기억 · 원문 · 티켓 번호 · 파일 경로 · 사람이 읽는 이름) (c) `.hermes/outbox/<envelope_id>/` 봉투 작성 (d) **사람이 `--deliver` 를 붙였을 때만** `gh issue create --label proposal` 로 배달(RV-15) 을 한다. 검증: `tests/hermes-propose-test.sh` — 금지 내용 4종 각각 거부, `--deliver` 없이는 `gh` 호출 0(모의 gh 로 검증), 오프라인 실패 시 `status=pending`.
-- [ ] 목표 8 — 봉투에는 `universe_id` · `agent_id` · `skill_id` · `base` · 본문 · 차이 · 이유 · 게이트 결과만 있고 소우주 이름·에이전트 이름·팀 이름이 없다. 검증: 봉투 JSON 에 명부의 `name` 값과 저장소 basename 이 문자열로 나타나지 않음(테스트가 grep).
-- [ ] 목표 9 — 배달 목적지 보호(RV-16): `hermes-propose.py` 는 주소 인자를 받지 않고 `factory.json.remote_url` 만 쓰며, `factory.json` 은 설치 목록(계획 1)에 포함돼 변조 경고 대상이다. 검증: `--remote` 인자 → 오류, 파일 변조 → 계획 1 훅 경고.
-- [ ] 목표 10 — 세션 시작 훅이 `outbox` 의 `delivered` 봉투 이슈 상태를 읽어(`gh issue view`) 허가면 "소우주 확장분 제거 안내", 거절이면 "확장으로 계속" 을 한 줄 알린다. `pending` 이 있으면 "배달 못 한 봉투 N개". 검증: 모의 gh 로 3상태.
+- [x] 목표 7 — 승격 제안 명령 `hermes-propose.py new|improve|exclude <스킬>` 이 (a) 일반화 자체 점검(`hermes_mesh_gate.py`) (b) 금지 내용 게이트(기억 · 원문 · 티켓 번호 · 파일 경로 · 사람이 읽는 이름) (c) `.hermes/outbox/<envelope_id>/` 봉투 작성 (d) **사람이 `--deliver` 를 붙였을 때만** `gh issue create --label proposal` 로 배달(RV-15) 을 한다. 검증: `tests/hermes-propose-test.sh` — 금지 내용 4종 각각 거부, `--deliver` 없이는 `gh` 호출 0(모의 gh 로 검증), 오프라인 실패 시 `status=pending`.
+- [x] 목표 8 — 봉투에는 `universe_id` · `agent_id` · `skill_id` · `base` · 본문 · 차이 · 이유 · 게이트 결과만 있고 소우주 이름·에이전트 이름·팀 이름이 없다. 검증: 봉투 JSON 에 명부의 `name` 값과 저장소 basename 이 문자열로 나타나지 않음(테스트가 grep).
+- [x] 목표 9 — 배달 목적지 보호(RV-16): `hermes-propose.py` 는 주소 인자를 받지 않고 `factory.json.remote_url` 만 쓰며, `factory.json` 은 설치 목록(계획 1)에 포함돼 변조 경고 대상이다. 검증: `--remote` 인자 → 오류, 파일 변조 → 계획 1 훅 경고.
+- [x] 목표 10 — 세션 시작 훅이 `outbox` 의 `delivered` 봉투 이슈 상태를 읽어(`gh issue view`) 허가면 "소우주 확장분 제거 안내", 거절이면 "확장으로 계속" 을 한 줄 알린다. `pending` 이 있으면 "배달 못 한 봉투 N개". 검증: 모의 gh 로 3상태.
 - [ ] 목표 11 — `~/.hermes/global.db` `harness_rules` 쓰기 중단(L-05): `record_global_summary` 호출 제거. 기존 1142행은 그대로. 검증: 결정화 실행 후 `global.db` 행 수 불변(테스트).
-- [ ] 목표 12 — 우주 판단 보조: `hermes_mesh_gate.py` 를 "허가자 1차 검사" CLI 로 노출하고 "사례 나열" 판정(RV-14)을 항목으로 추가 — **승격 심사에만**, 기존 스킬 삭제·재분류에 쓰지 않는다. 검증: 사례 나열 픽스처(`if convo has 1,2,3 …` 류 3줄 이상)가 `scenario-list` 로 표시, zeroday 1088개는 어떤 처리도 받지 않음(테스트가 파일 수·내용 불변 확인).
+- [x] 목표 12 — 우주 판단 보조: `hermes_mesh_gate.py` 를 "허가자 1차 검사" CLI 로 노출하고 "사례 나열" 판정(RV-14)을 항목으로 추가 — **승격 심사에만**, 기존 스킬 삭제·재분류에 쓰지 않는다. 검증: 사례 나열 픽스처(`if convo has 1,2,3 …` 류 3줄 이상)가 `scenario-list` 로 표시, zeroday 1088개는 어떤 처리도 받지 않음(테스트가 파일 수·내용 불변 확인).
 - [ ] 목표 13 — 폐기된 배달 경로 정리: `hermes-message.py` 와 `messages` 테이블은 제거하지 않고 **"폐기 예정"** 경고만 낸다(읽는 곳 확인 뒤 다음 계획에서 제거). 검증: 호출 시 경고 1줄.
 - [ ] 목표 14 — 단위 층 스킬이 git 을 탄다(자체 리뷰 발견, planner-lite 정정): `.hermes/*` 무시 아래서는 디렉터리 단계마다 풀어야 하므로 마커에 `!.hermes/units/` · `!.hermes/units/*/` · `!.hermes/units/*/skills/` · `!.hermes/units/*/skills/**` 네 줄(`hermes.conf:171-178` 패턴). `outbox/` 는 무시 그대로(봉투는 배달로 나간다). 검증: `git check-ignore -v` 테스트 — 단위 스킬 추적, `units/*/` 의 그 밖 파일과 `outbox/` 무시.
 - [x] 목표 15 — 주입 필터는 **두 검색 경로 모두**에 건다(planner-lite 지적): `search_db`(`scripts/hermes-search.py:141`)뿐 아니라 파일시스템 직접 스캔 `search_skills_dir`(`:198`)도 층·단위·에이전트를 판정한다 — 색인 전 스킬이 단위 경계를 넘어 주입되지 않게. 검증: 목표 3 테스트에 "색인되지 않은 타 단위 스킬 파일도 결과 0건" 케이스.
@@ -107,6 +107,12 @@
   - `layer_of_path` 의 unit/agent 판정식이 `parts[:3] == [".hermes","units",parts[2]]` 로 자기 자신과 비교(tautology)라 얕은 경로 입력에서 IndexError 위험 → 길이·값을 먼저 확인하도록 고쳤다. 실사용 경로(`--project`)는 이 함수를 안 타지만 하위호환 `--skills-dir` 경로가 탄다.
   - `ensure_layer_columns` 의 `PRAGMA table_info` → `ALTER` 사이 TOCTOU 경합(두 세션 동시 첫 설치 시 `duplicate column name` 예외)을 `try/except sqlite3.OperationalError` 로 방어했다. ALTER 는 즉시 자체 커밋되므로 경합 패자는 그 칸이 이미 있는 상태.
   - **skill_id 신원의 한계(후속):** 현재 `skill_id=COALESCE(...)` 는 **같은 경로 재색인**만 보존한다. 층 이동(agent→common 승격 등)은 경로가 바뀌어 `ON CONFLICT(skill_path)` 가 안 걸리고 새 행+새 skill_id 로 들어가며 옛 행이 고아로 남는다. 이 계획에 **층 이동 연산 자체가 없어**(승격은 Step 4 제안·배달, 실제 파일 이동은 사람) 지금 이관 로직을 넣는 건 YAGNI 다. Step 4(또는 스킬 이동 연산이 생기는 시점)에서 "옛 경로 skill_id 읽어 새 INSERT 에 명시 + 옛 행 DELETE 를 한 트랜잭션" + `skill_id` 부분 UNIQUE 인덱스(`WHERE skill_id IS NOT NULL`)를 함께 넣는다. 주석은 이 한계를 정직하게 반영하도록 고쳤다.
+
+- **2026-09-17 Step 4 리뷰(code-reviewer, WARNING: HIGH 2·MEDIUM 2·LOW 1)에서 드러난 것:**
+  - (HIGH) `--reason` 이 어떤 게이트도 안 거치고 공개 이슈로 나갔다. `gate_body` 가 body 만 봤다 → reason·diff 를 합쳐 `check_forbidden` 하도록 고쳤고, exclude 도 누출 검사는 반드시 통과하게 했다.
+  - (HIGH) `skill_id` 폴백(스킬 못 찾으면 CLI 원문)·(MEDIUM) `agent_id`(HERMES_AGENT_ID) 가 미검사로 배달됐다 → **최종 방어선**: `_deliver` 가 이슈로 나가는 정확한 JSON 전체를 배달 직전 다시 `check_forbidden` 한다(실패 시 pending 유지). 개별 칸보다 견고하다.
+  - (MEDIUM) 경로/티켓 정규식이 확장자 없는 디렉터리 경로(`backend/app/execution`)·자연어 티켓(`이슈 4521`)을 놓쳤다 → 알려진 최상위 폴더 접두 경로와 자연어 티켓 패턴을 추가했다.
+  - (LOW) outbox 훅이 라벨을 감지해도 상태 전이를 안 해 매 세션 반복 알림했다 → 허가/거절 감지 시 `set_status` 로 전이해 1회만 알린다.
 
 ## 8. 회고 (완료 시 작성)
 
