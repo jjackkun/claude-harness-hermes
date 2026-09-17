@@ -481,6 +481,31 @@ R-plan 은 *스테이징된* 계획서만 검사한다 — "갱신하지 않는 
 공장 상대 링크 · 깨진 링크 훅). 상태: Provisional — 설계
 `docs/hermes-universe/design/world/copy-install.md`, 결정 I-01 · E-02.
 
+## R-leak — 소우주 밖으로 나가는 봉투에 사내 정보를 넣지 않는다 {#r-leak}
+
+**원칙**: 제안 봉투는 공개 GitHub 이슈가 되어 소우주 밖으로 나간다(공장 저장소는 PUBLIC, V-7).
+봉투에 **사람이 읽는 이름**(소우주·팀·에이전트 이름) · **대화 원문** · **티켓 번호** · **파일 경로** ·
+자격증명·개인정보를 넣지 않는다. 봉투에는 기계 id(`universe_id` · `agent_id` · `skill_id`)만 담는다.
+
+**왜 파일이 아니라 내용의 경계인가**(P9 의 스킬판): "봉투 파일을 커밋하지 않는다"로는 부족하다 —
+`gh issue create` 는 그 내용을 곧장 공개 게시물로 만들고, 지운 뒤에도 알림 메일·캐시에 남는다.
+그래서 값 자체를 나가기 전에 막는다.
+
+**따르는 규칙 셋**:
+- **나가는 모든 칸을 검사한다.** 스킬 본문뿐 아니라 `reason` · `diff`, 그리고 배달 직전 **봉투 JSON
+  전체**를 다시 검사한다(최종 방어선). 한 칸만 게이트하면 `reason`·미해결 `skill_id` 폴백처럼 검사
+  밖 칸으로 샌다.
+- **배달은 사람 명령으로만.** 훅·세션 종료의 자동 배달 경로를 두지 않는다(RV-15). 사람이
+  `--deliver` 를 붙였을 때만 `gh` 를 부른다.
+- **배달 주소는 설치기만 정한다.** 에이전트는 목적지를 바꿀 수 없다 — `factory.json.remote_url` 만
+  쓰고 주소 인자(`--remote`)는 거부한다(RV-16). `factory.json` 은 설치 목록(변조 감지) 대상이다.
+
+**기계 강제**: `scripts/hermes_envelope_gate.py`(티켓·경로·원문·이름·직함·PII 형태 검사 +
+명부·저장소 이름 대조) + `hermes-propose.py`(사람 `--deliver` 게이트 · `--remote` 거부 · 배달 직전
+최종 재검사). 회귀 고정: `tests/hermes-propose-test.sh`(금지 4종 거부 · reason 누출 거부 ·
+`--deliver` 없이 gh 0회 · 주소 인자 거부). 상태: Provisional — 설계
+`docs/hermes-universe/design/world/skill-proposal-delivery.md`, 결정 P-04 · RV-15 · RV-16.
+
 <!--===HARNESS-RULES:BEGIN===-->
 
 ## 하네스 공통 룰
@@ -493,6 +518,7 @@ pre-commit 메시지의 `근거:` 링크가 이 앵커들을 가리킨다.
 - [R-lint](#r-lint) — ESLint
 - [R-test](#r-test) — pytest
 - [P9](#p9) — 비밀의 경계는 파일이 아니라 값이다
+- [R-leak](#r-leak) — 소우주 밖 봉투에 사내 정보 금지
 - [R-plan](#r-plan) — 완료된 계획은 completed/ 로 이동 (차단)
 - [R-plan-missing](#r-plan-missing) — 코드 수정 시 계획 존재 (경고)
 - [R-plan-stale](#r-plan-stale) — 계획서가 코드를 따라오는가 (경고)
