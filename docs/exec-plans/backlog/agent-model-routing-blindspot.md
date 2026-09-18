@@ -60,6 +60,24 @@
 **2번이 부정이면 이 항목은 진행하지 않는다.** 관측을 늘리는 것 자체가 목적이 되면
 `R-out` 이 답하려던 질문을 무의미하게 만든다.
 
+## 2026-09-18 점검 — 날짜 게이트 유지
+
+- 진행하지 않는다. 판단일(2026-09-29)이 11일 남았고 `R-out` 목표 5 가 먼저다. 이 문서의 규칙("2번이 부정이면 진행하지 않는다")대로.
+- 기존 기록으로 페이로드 실측을 대신할 수 있는지 확인: `.harness/gate-events.jsonl`(R-out 은 Bash 만 기록)·`.hermes/hooks.log`
+  어디에도 Agent 훅 페이로드 흔적 0건. `claude-pretooluse-agent-guard.sh` 는 `tool_input.subagent_type`·`prompt` 만 읽는다.
+  PostToolUse 에서 Agent 응답을 기록하는 훅은 없다. → 실측은 새 dispatch 1회가 필요하고, 그것은 09-29 이후 일이다.
+
+### 09-29 에 실행할 실측 절차 (그날 10분)
+
+1. 임시 훅 한 개를 `.claude/settings.local.json` 에만 등록(전파 금지): PreToolUse·PostToolUse(matcher `Agent`) 에서
+   `python3 -c 'import sys,json; d=json.load(sys.stdin); print(sorted(d), sorted((d.get("tool_input") or {})), sorted((d.get("tool_response") or {}) if isinstance(d.get("tool_response"),dict) else ["<non-dict>"]))' >> .harness/out/agent-payload.txt`
+2. 가장 싼 에이전트(`doc-updater`, haiku 선언) 를 "README 첫 줄만 읽고 한 줄로 답하라" 는 과제로 1회 dispatch.
+3. `agent-payload.txt` 에서 **모델을 알 수 있는 키가 있는가**(`model`·`usage`·`modelUsage` 등)를 본다.
+   - 있으면: `agent-guard` 에 `gate_emit`(rule `R-route`, detail=`subagent:model`) 을 붙이는 계획으로 승격.
+   - 없으면: 셀 수 있는 것은 dispatch 대상뿐. "어느 에이전트가 불리는가·안 불리는가" 만 답하는 항목으로 범위를 줄이고,
+     모델 적합성 판단은 리뷰 놓침 사례(감사 문서)로 대신한다.
+4. 임시 훅 제거.
+
 ## 승격 시 후보 (아직 설계 아님)
 
 `claude-pretooluse-agent-guard.sh` 가 이미 `tool_input.subagent_type` 을 읽고 있다.
