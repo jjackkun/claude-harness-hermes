@@ -116,10 +116,12 @@ def main(argv):
     if cmd == "baseline":
         print("# R-design-cover 기준선 — 도입 시점(2026-09-17)에 이미 있던 틈. 줄어들기만 한다.")
         print("# id:<ID> = 계획서에 인용되지 않은 결정 ID · heading:<파일>:<제목> = 원장 ID 없는 확정 절 · id-unknown:<ID> = 원장에 없는 결정 ID")
-        print("\n".join(found))
+        if found:  # 틈 0 이면 빈 줄을 내지 않는다(포맷터가 끝 빈 줄을 지워 기준선 파일과 어긋난다)
+            print("\n".join(found))
         return 0
     new = [g for g in found if g not in baseline(root)]
-    print("\n".join(new))
+    if new:
+        print("\n".join(new))
     return 0 if new else 1
 
 
