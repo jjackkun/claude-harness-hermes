@@ -68,7 +68,10 @@ fi
 prompt="$(cat "$prompt_file")"
 echo "[hermes-cron] $(date '+%F %T') action=$action 매니저 에이전트 시작" >>"$log_file"
 cd "$project_dir" || exit 1
-nohup claude -p "$prompt" >>"$log_file" 2>&1 &
+# --exclude-dynamic-system-prompt-sections: cwd·환경·git status 를 첫 사용자 메시지로 옮겨 시스템 프롬프트 접두부가
+# 호출마다 같아지게 한다(프롬프트 캐시 재사용). 같은 프로젝트를 반복 부르는 cron 경로가 이득이 가장 크다.
+# 효과 측정: 헤드리스 세션 transcript(~/.claude/projects/…jsonl)의 cache_read_input_tokens — session-report 스킬.
+nohup claude -p "$prompt" --exclude-dynamic-system-prompt-sections >>"$log_file" 2>&1 &
 manager_pid=$!
 echo "[hermes-cron] manager pid=$manager_pid log=$log_file"
 exit 0

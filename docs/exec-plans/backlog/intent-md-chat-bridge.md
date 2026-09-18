@@ -42,6 +42,16 @@ Slack 태그 → 에이전트가 `intent.md` 초안 작성 → GitHub PR 흐름�
 - intent.md 스타일 문서를 이 프로젝트에 도입하기로 결정됨 (별도 판단 필요)
 - Claude Code/CLI 없이 의견만 내고 싶다는 실제 요청이 1건 이상 발생함
 
+## 착수 조건 점검 (2026-09-18 실측)
+
+| 조건 | 실측 | 판정 |
+|---|---|---|
+| 코드베이스를 모르는 협업자 합류 | 등록 소우주 9곳 `.hermes/agents.json` 전부 에이전트 1명(main) — 사람 협업자 흔적 0 | 미충족 |
+| intent.md 도입 결정 | `docs/design-docs/`·`completed/` 에 intent.md 결정 문서 0, 저장소에 `intent.md` 파일 0 | 미충족 |
+| CLI 없이 의견만 내고 싶다는 요청 | `docs/audits/` 에 Slack/Telegram 요청 기록 0 | 미충족 |
+
+결론: 만들지 않는다. 단독 개발 상태 그대로다. 조건이 생기면 `agent-eval-llm-path.md` 와 같은 순서(설계 판단 → 계획)로 승격.
+
 ## 참고
 
 - 원본 논의: 2026-09-07 대화 (intent.md 영상 검토 중 파생)
