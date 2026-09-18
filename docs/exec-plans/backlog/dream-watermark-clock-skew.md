@@ -15,7 +15,26 @@
 - 수집 조건을 `updated_at >= watermark AND session_id NOT IN (처리된 세션)` 으로 — 처리 이력 테이블 필요.
 - 또는 `session_summary` 에 단조 증가 `seq`(AUTOINCREMENT) 를 두고 워터마크를 `seq` 로 — 스키마 변경 + 마이그레이션.
 
-## 먼저 잴 것
+## 실측 (2026-09-18) — 우선순위 낮음
 
-- 소우주 8곳의 `session_summary` 에서 `updated_at` 이 이전 행보다 이른 사례가 실제로 있는지(`LAG` 로 셈).
-  0 이면 우선순위를 낮게 둔다.
+`docs/audits/2026-09-18-dream-watermark-clock-skew.md`: 8개 DB · 요약 330 · dream 실행 95 에서 **누락 후보 0**,
+`dream_log.run_at` 역행 0. 규칙대로 우선순위를 낮춘다. 재측정 조건: 어느 소우주에서든 누락 후보 ≥ 1.
+
+주의: `session_summary` 를 rowid 순으로 비교하면 역행이 많이 보이지만(zeroday 70) 그것은 `ON CONFLICT DO UPDATE` 가
+rowid 를 유지해 최초 삽입 순서와 마지막 갱신 시각을 비교한 것 — 지표가 아니다.
+
+## 재측정 명령
+
+```bash
+for p in $(grep -v '^#' .installed-projects | awk '{print $1}'); do db="$p/.hermes/state.db"; [[ -f "$db" ]] || continue
+python3 - "$db" "$(basename $p)" <<'PY'
+import sqlite3, sys
+con = sqlite3.connect("file:%s?mode=ro" % sys.argv[1], uri=True)
+tabs = {r[0] for r in con.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+if not {"session_summary","dream_log"} <= tabs: print(sys.argv[2], "표 없음"); sys.exit()
+wm = con.execute("SELECT MAX(watermark_at) FROM dream_log WHERE watermark_at IS NOT NULL").fetchone()[0]
+lost = 0 if not wm else con.execute("SELECT COUNT(*) FROM session_summary WHERE updated_at <= ? AND updated_at > (SELECT MIN(run_at) FROM dream_log WHERE watermark_at = ?)", (wm, wm)).fetchone()[0]
+print("%-22s 워터마크 %s 누락후보 %d" % (sys.argv[2], wm, lost))
+PY
+done
+```
