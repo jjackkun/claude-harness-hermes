@@ -579,6 +579,7 @@ fi
 # 무력화된다. 규칙 의도("내가 끝낸 계획을 방치하지 말 것")를 지키는 최소 범위로 좁혔다.
 # 트레이드오프: 아무도 손대지 않은 방치 계획서는 못 잡는다 — 그건 주기 점검(문서 가드닝)의 몫.
 ACTIVE_DIR="docs/exec-plans/active"
+COMPLETED_DIR="docs/exec-plans/completed"
 if (( PLAN_STATE_OK )) && [[ -d "$ACTIVE_DIR" ]]; then
   while IFS= read -r plan; do
     [[ -f "$plan" ]] || continue
@@ -693,8 +694,18 @@ if (( PLAN_STATE_OK )) && [[ -n "$WORK_FILES" && -d "$ACTIVE_DIR" ]]; then
     ACTIVE_PLANS+=("$p")
   done < <(find "$ACTIVE_DIR" -maxdepth 1 -name '*.md' ! -name 'template.md' -type f 2>/dev/null | sort)
   STAGED_PLANS=$(filter_files "^${ACTIVE_DIR}/[^/]+\.md$")
+  # 완료 커밋: 계획서가 completed/ 로 옮겨지거나(R) 거기 새로 놓이는(A) 커밋은 계획서가
+  # 가장 성실히 따라온 커밋이다 — 그런데 active/ 만 보면 정반대로 경고했다(2026-09-18, 완료+코드
+  # 커밋 13/88 이 전부 해당). filter_files 는 ACM 이라 rename 을 못 보므로 자체 git 호출.
+  # M 은 넣지 않는다: 옛 완료 계획서의 오타 수정이 코드 커밋의 면죄부가 되면 예외가 우회로가 된다
+  # (R-retro 와 같은 경계 — "completed/ 로 옮기는 행위가 완료 선언").
+  COMPLETED_STAGED=$(git diff --cached --name-only --diff-filter=AR -- "$COMPLETED_DIR" 2>/dev/null \
+    | grep -E "^${COMPLETED_DIR}/[^/]+\.md$" | grep -v '/template\.md$' || true)
 
-  if [[ ${#ACTIVE_PLANS[@]} -eq 0 ]]; then
+  if [[ -n "$COMPLETED_STAGED" ]]; then
+    gate_add R-plan-missing pass precommit "" "완료 커밋 (completed/ 로 계획서 이동·추가)"
+    gate_add R-plan-stale pass precommit "" "완료 커밋 (completed/ 로 계획서 이동·추가)"
+  elif [[ ${#ACTIVE_PLANS[@]} -eq 0 ]]; then
     WARNINGS+=("
 [R-plan-missing] 코드 수정 있으나 active/ 에 계획 없음.
   → 단순 버그(1~2파일)면 무시. 다중 파일·설계 결정이면 docs/exec-plans/active/YYYY-MM-DD-<slug>.md 작성.
@@ -821,7 +832,7 @@ $(echo "$GOALS" | head -3 | sed 's/^/    /')
   → 달성했으면 체크하고, 못 했으면 회고(§8)에 이유를 남기십시오.
   근거: docs/design-docs/core-beliefs.md#r-acc")
     fi
-  done < <(git diff --cached --name-only --diff-filter=RA -- docs/exec-plans/completed/ 2>/dev/null || true)
+  done < <(git diff --cached --name-only --diff-filter=RA -- "$COMPLETED_DIR/" 2>/dev/null || true)
 fi
 
 # 출력 — 경고가 먼저 나간다. 차단 여부와 무관하게 항상 보여야 한다.

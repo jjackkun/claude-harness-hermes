@@ -70,6 +70,7 @@ REGISTERED_TESTS=(
   plan-state-test.sh
   iface-gate-test.sh
   plan-declare-gate-test.sh
+  plan-stale-completion-test.sh
   doc-counts-gate-test.sh
   design-cover-gate-test.sh
   output-budget-test.sh
