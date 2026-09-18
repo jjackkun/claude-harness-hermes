@@ -626,14 +626,18 @@ echo "== 17. R-fmt 는 하네스 생성물을 검사하지 않는다 =="
 # 회귀 방지: 설치가 만든 CLAUDE.md·.claude/settings.json 은 프로젝트의 .prettierrc 와
 # 맞을 수 없다(프로젝트마다 설정이 다르다). 검사 대상에 넣으면 재설치할 때마다
 # 하네스가 자기 게이트에 자기가 걸려 커밋이 막힌다 — 실제로 3개 프로젝트에서 발생했다.
-GEN_RE='^(CLAUDE\.md|AGENTS\.md|\.claude/(settings(\.local)?\.json|\.dev-setting-manifest\.json)|\.codex/settings(\.local)?\.json)$|^\.claude/memory/'
+# 정규식은 훅 파일에서 직접 읽는다 — 사본을 두면 어긋난다(2026-09-18 확인: 사본에 lint-configs·.hermes 가 없었다).
+GEN_RE=$(grep -oE "^GENERATED_RE='[^']*'" "$REPO_ROOT/assets/hooks/pre-commit.sh" | head -1 | sed "s/^GENERATED_RE='//; s/'$//")
+[[ -n "$GEN_RE" ]]; assert "GENERATED_RE 를 훅에서 읽음" "0" "$?"
 for _gen in "CLAUDE.md" ".claude/settings.json" ".claude/.dev-setting-manifest.json" \
-            ".claude/memory/MEMORY.md" ".claude/memory/feedback_x.md"; do
+            ".claude/memory/MEMORY.md" ".claude/memory/feedback_x.md" \
+            "lint-configs/harness-max-lines.config.js" ".hermes/factory.json" \
+            "scripts/templates/agent/SOUL.md"; do
   echo "$_gen" | grep -qE "$GEN_RE"
   assert "R-fmt 제외 대상: $_gen" "0" "$?"
 done
 # 일반 소스는 여전히 검사 대상이어야 한다 (제외가 너무 넓어지지 않았는지)
-for _src in "src/App.svelte" "docs/guide.md" "package.json"; do
+for _src in "src/App.svelte" "docs/guide.md" "package.json" "scripts/README.md"; do
   echo "$_src" | grep -qE "$GEN_RE"
   assert "R-fmt 검사 유지: $_src" "1" "$?"
 done

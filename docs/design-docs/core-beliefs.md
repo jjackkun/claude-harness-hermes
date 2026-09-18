@@ -181,6 +181,12 @@ frontend/DB/TS 작업은 `fullstack-developer`, `database-reviewer`, `typescript
 
 prettier 위반은 `pnpm exec prettier --write` 로 자동 수정. `.prettierrc` 단독 변경 금지 (프로젝트 합의 필요).
 
+**공장 생성물·사본은 검사하지 않는다**(`GENERATED_RE`): `CLAUDE.md`·`.claude/{settings,skills,rules,agents,memory}`·
+`lint-configs/`·`.hermes/`·`scripts/templates/`. 프로젝트마다 `.prettierrc` 가 달라 공장 사본이 모든 설정을 만족할 수 없고,
+공존 설치는 사본이 공장과 byte 같음을 전제한다. `scripts/templates/` 는 2026-09-18 kis-trading 에서 추가 — prettier 가
+SOUL 템플릿의 `{{AGENT_ID}}` 를 `{ { AGENT_ID } }` 로 바꿔 템플릿을 깨뜨렸다. `tests/harness-hooks-smoke.sh` 17 이 훅의
+정규식을 직접 읽어 고정한다.
+
 ## R-lint — ESLint {#r-lint}
 
 claude-harness-hermes 의 lint 룰 메시지에는 한국어 수정 지침이 박혀있음. 메시지 따라 수정. `eslint-disable` 단독 우회 금지.

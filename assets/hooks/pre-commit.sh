@@ -98,7 +98,9 @@ PLAN_STATE_OK=1
 #     통하는 수정이라 원천에서 고쳤다 — 문제가 다르면 답도 다르다.
 #   .hermes/ — 결정화 스킬 등 런타임 산출물이지 손으로 쓰는 파일이 아니다.
 # .claude/{skills,rules,agents}/ 와 .factory-manifest.json 은 복사 설치된 공장 사본(2026-09-16) — 서식의 주인은 공장이다.
-GENERATED_RE='^(CLAUDE\.md|AGENTS\.md|\.claude/(settings(\.local)?\.json|\.dev-setting-manifest\.json|\.factory-manifest\.json)|\.codex/settings(\.local)?\.json)$|^\.claude/(memory|skills|rules|agents)/|^lint-configs/|^\.hermes/'
+# scripts/templates/ 는 공장이 복사한 템플릿(SOUL.md 등)이다. 자리표시자 {{X}} 를 prettier 가 { { X } } 로
+# 망가뜨리고(2026-09-18 kis-trading 실측), 공존 설치는 사본이 공장과 byte 같음을 전제하므로 손대면 안 된다.
+GENERATED_RE='^(CLAUDE\.md|AGENTS\.md|\.claude/(settings(\.local)?\.json|\.dev-setting-manifest\.json|\.factory-manifest\.json)|\.codex/settings(\.local)?\.json)$|^\.claude/(memory|skills|rules|agents)/|^lint-configs/|^\.hermes/|^scripts/templates/'
 PRETTIER_FILES=$(filter_files '\.(js|jsx|ts|tsx|svelte|json|css|scss|md|yaml|yml)$' \
   | grep -vE "$GENERATED_RE" || true)
 
