@@ -25,6 +25,7 @@ from hermes_done_when import is_valid  # noqa: E402
 from hermes_journal import emit  # noqa: E402
 from hermes_journal_views import thread  # noqa: E402
 from hermes_uuid7 import uuid7_str  # noqa: E402
+from hermes_universe import universe_id  # noqa: E402
 from hermes_handoff_kind import REFUSABLE, derive_kind  # noqa: E402
 
 # inputs 참조 형식: 파일 경로(원문 아님) 또는 이벤트 id(UUID). 그 밖 문자열은 거부한다.
@@ -96,6 +97,9 @@ def open_handoff(db: str, project: str, to_agent: str, envelope: dict,
     """
     env = validate_envelope(envelope)
     frm = by or "agent:main"
+    target = (envelope.get("universe_id") or "").strip()
+    if target and target != universe_id(project):
+        return _open_external(db, project, frm, target, env)     # 다른 소우주 — 사람 경유(H-04)
     kind, certain = derive_kind(project, frm, to_agent)          # 기계가 정한다(handoff-contract §2)
     env["kind"] = kind if certain else f"{kind}(미상)"
     env["to"] = to_agent
@@ -108,6 +112,23 @@ def open_handoff(db: str, project: str, to_agent: str, envelope: dict,
         "decision": _assign_decision(env),
         "evidence": {"reason": "handoff", "files": env["inputs"][:50]},
     })
+    return handoff_id
+
+
+def _open_external(db: str, project: str, frm: str, target: str, env: dict) -> str:
+    """다른 소우주의 일(handoff-contract §4, H-04): 격리 원칙상 직접 인계는 없다 — `handoff.external`
+    이벤트만 남기고 사람에게 문의한다. task.assigned 를 만들지 않으므로 대기열·만료 판정에 안 잡히고,
+    다른 소우주 원격에 이슈를 여는 자동 경로도 없다(요청 내용 자체가 이쪽 소우주의 정보)."""
+    handoff_id = uuid7_str()
+    emit(db, project, {
+        "kind": "handoff.external", "task_id": handoff_id,
+        "actor": frm, "requested_by": frm,
+        "intent": env["goal"],
+        "decision": f"external={target} route=human done_when={env['done_when']}",
+        "evidence": {"reason": "external-universe", "files": env["inputs"][:50]},
+    })
+    print(f"[handoff] 다른 소우주({target[:8]}…)의 일은 사람을 거쳐서만 요청합니다 — handoff.external {handoff_id} 기록. "
+          "그 저장소에서 직접 요청을 시키고 결과(커밋·문서)를 이쪽에 알려 주십시오.", file=sys.stderr)
     return handoff_id
 
 

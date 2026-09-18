@@ -158,6 +158,18 @@ assert "대기열 항목에 kind" 1 "$(py "import sys; sys.path.insert(0,'$S'); 
 print(1 if all('kind' in q for q in queue('$DB','$DC')) else 0)")"
 
 echo ""
+echo "== 3d. 다른 소우주의 일 — 사람 경유 (계획 unplanned-decisions 목표 3, H-04) =="
+UNI_ME="$(cat "$P/.hermes/universe.id")"
+HX="$(py "$R; print(open_handoff('$DB','$P','$DC',{'goal':'다른 저장소 API 필드 추가','done_when':'manual','universe_id':'01a0b000-0000-7000-8000-00000000dead'},by='$LA'))")"
+assert "다른 소우주 → handoff.external 1건" 1 "$(q "select count(*) from journal_events where kind='handoff.external' and task_id='$HX'")"
+assert "다른 소우주 → task.assigned 없음" 0 "$(q "select count(*) from journal_events where kind='task.assigned' and task_id='$HX'")"
+assert "decision 에 external=<대상>·route=human" 1 "$(q "select count(*) from journal_events where task_id='$HX' and decision like 'external=01a0b000-0000-7000-8000-00000000dead route=human%'")"
+assert "대기열에 없음(사람이 처리)" 0 "$(py "import sys; sys.path.insert(0,'$S'); from hermes_handoff_queue import queue
+print(sum(1 for x in queue('$DB','$DC') if x['task_id']=='$HX'))")"
+HS2="$(py "$R; print(open_handoff('$DB','$P','$DC',{'goal':'같은 소우주','done_when':'manual','universe_id':'$UNI_ME'},by='$LA'))")"
+assert "같은 소우주 id 는 평소 경로(task.assigned)" 1 "$(q "select count(*) from journal_events where kind='task.assigned' and task_id='$HS2'")"
+
+echo ""
 echo "== 4. 만료 (목표 11) =="
 HE="$(py "$R; print(open_handoff('$DB','$P','agent:x',{'goal':'급함','done_when':'manual','expires_at':'2000-01-01T00:00:00Z'},by='human:t'))")"
 HN="$(py "$R; print(open_handoff('$DB','$P','agent:x',{'goal':'기한없음','done_when':'manual'},by='human:t'))")"

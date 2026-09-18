@@ -134,6 +134,33 @@ def _base_of(kind: str, path: str):
     return f"{ext[0]}@{ext[1]}" if ext else None
 
 
+def _propose_template(args) -> int:
+    """에이전트 복제 제안(H-09): SOUL 본문 + 개인 스킬을 kind=template 봉투로. 기억·이력은 넣지 않는다.
+    누출·국한성 게이트는 new 와 같다 — 소우주 사실이 SOUL 에 남아 있으면 여기서 막힌다(설계 의도)."""
+    from hermes_agent_export import export_agent
+    try:
+        exported = export_agent(args.project, args.skill)
+    except KeyError as exc:
+        print(f"[hermes-propose] {exc}", file=sys.stderr)
+        return 2
+    ok, gate_results = gate_body(args.project, exported["body"], reason=args.reason,
+                                 run_model=not args.no_model)
+    if not ok:
+        print(f"[hermes-propose] 거부: {gate_results}", file=sys.stderr)
+        return 3
+    args.skill_id = None
+    args.gate_results = gate_results
+    os.environ["HERMES_AGENT_ID"] = exported["agent_id"]      # 봉투 agent_id = 복제 원본의 기계 id
+    env = _make_and_write(args, "template", exported["body"], None)
+    print(f"봉투 작성: {env['envelope_id']} status={env['status']} kind=template (기억·이력 제외)")
+    if args.deliver:
+        status, err, url = _deliver(args.project, env)
+        print(f"배달: {status}{' — ' + err if err else ''}{' ' + url if url else ''}")
+    else:
+        print("배달 안 함(사람이 --deliver 를 붙여야 gh 로 나간다)")
+    return 0
+
+
 def _propose(args, kind: str) -> int:
     project = args.project
     resolved = _resolve_skill(os.path.join(project, ".hermes", "state.db"), args.skill)
@@ -174,6 +201,7 @@ def main() -> int:
     sub = ap.add_subparsers(dest="cmd", required=True)
     for k in ("new", "improve", "exclude"):
         sub.add_parser(k).add_argument("skill")
+    sub.add_parser("template", help="에이전트 복제 제안 — SOUL+개인 스킬을 우주 템플릿 후보로(H-09)").add_argument("skill", metavar="agent")
     sub.add_parser("status")
     args = ap.parse_args()
     if args.remote:
@@ -182,6 +210,8 @@ def main() -> int:
         return 2
     if args.cmd == "status":
         return _status(args)
+    if args.cmd == "template":
+        return _propose_template(args)
     return _propose(args, args.cmd)
 
 

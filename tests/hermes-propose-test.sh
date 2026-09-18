@@ -130,5 +130,35 @@ python3 "$S/hermes_mesh_gate.py" --no-model "$P/.hermes/skills/retry-util.md" >/
 assert "게이트는 스킬 파일을 건드리지 않음" "$BEFORE" "$(md5sum "$P/.hermes/skills/retry-util.md" | awk '{print $1}')"
 
 echo ""
+echo "== 에이전트 복제 제안 — template 봉투 (계획 unplanned-decisions 목표 4, H-09) =="
+# 명부·정체성 픽스처: 깨끗한 에이전트 1, 소우주 이름이 SOUL 에 든 에이전트 1
+python3 - "$P" <<'PY'
+import json, os, sys
+p = sys.argv[1]
+a1, a2 = "01a0b100-0000-7000-8000-000000000001", "01a0b100-0000-7000-8000-000000000002"
+json.dump({"agents": [{"agent_id": a1, "name": "깨끗한담당", "status": "active", "org": {"discipline": "QA"}},
+                      {"agent_id": a2, "name": "누출담당", "status": "active", "org": {"discipline": "QA"}}]},
+          open(os.path.join(p, ".hermes", "agents.json"), "w"), ensure_ascii=False)
+for aid, soul in ((a1, "# 깨끗한담당\n\n## 역할\n회귀 테스트를 맡는다.\n\n## 금지\n열쇠를 다루지 않는다.\n"),
+                  (a2, "# 누출담당\n\n## 역할\n팩토리소우주 저장소의 배포를 맡는다.\n")):
+    d = os.path.join(p, ".hermes", "agents", aid); os.makedirs(os.path.join(d, "skills"), exist_ok=True)
+    open(os.path.join(d, "SOUL.md"), "w").write("---\nagent_id: %s\nname: x\nstatus: active\ncreated_by: human:tester\n---\n%s" % (aid, soul))
+    open(os.path.join(d, "MEMORY.md"), "w").write("# 기억\n\n- 2026-09-17 회귀 3건 작성(비밀메모)\n")
+    open(os.path.join(d, "skills", "retry.md"), "w").write("---\nname: retry\ndescription: 재시도\n---\n# retry\n지수 백오프로 3회.\n")
+PY
+prop --reason "QA 역할을 다른 소우주에서도 쓰려고" template 깨끗한담당 >"$TMP/tpl.out" 2>&1; assert "깨끗한 에이전트 → 봉투 작성(rc 0)" 0 "$?"
+assert "본문에 에이전트 이름 없음(이름은 소우주 사실)" no "$(has "$(python3 -c "import sys;sys.path.insert(0,'$S');from hermes_envelope import list_envelopes,read_envelope;e=[x for x in list_envelopes('$P') if x['kind']=='template'];print(read_envelope('$P',e[-1]['envelope_id'])['body'] if e else '')")" '깨끗한담당')"
+TENV="$(python3 -c "import sys;sys.path.insert(0,'$S');from hermes_envelope import list_envelopes;e=[x for x in list_envelopes('$P') if x['kind']=='template'];print(e[-1]['envelope_id'] if e else '')")"
+assert "kind=template 봉투 존재" 1 "$([[ -n "$TENV" ]] && echo 1 || echo 0)"
+TBODY="$(python3 -c "import sys;sys.path.insert(0,'$S');from hermes_envelope import read_envelope;print(read_envelope('$P','$TENV')['body'])")"
+assert "본문에 SOUL 역할" yes "$(has "$TBODY" '회귀 테스트를 맡는다')"
+assert "본문에 개인 스킬" yes "$(has "$TBODY" '지수 백오프로 3회')"
+assert "본문에 SOUL 머리말(agent_id) 없음" no "$(has "$TBODY" 'agent_id:')"
+assert "본문에 기억(MEMORY) 없음" no "$(has "$TBODY" '비밀메모')"
+assert "봉투 agent_id 는 기계 id" 1 "$(python3 -c "import sys;sys.path.insert(0,'$S');from hermes_envelope import read_envelope;print(1 if read_envelope('$P','$TENV')['agent_id']=='01a0b100-0000-7000-8000-000000000001' else 0)")"
+prop --reason r template 누출담당 >/dev/null 2>&1; assert "SOUL 에 소우주 이름 → 거부(누출 게이트)" 3 "$?"
+prop --reason r template 없는담당 >/dev/null 2>&1; assert "명부에 없는 에이전트 → 거부" 2 "$?"
+
+echo ""
 echo "PASS=$PASS FAIL=$FAIL"
 [[ $FAIL -eq 0 ]]

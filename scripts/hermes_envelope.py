@@ -21,7 +21,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from hermes_uuid7 import uuid7_str  # noqa: E402
 
 _STATUSES = ("pending", "delivered", "approved", "rejected")
-_KINDS = ("new", "improve", "exclude")
+_KINDS = ("new", "improve", "exclude", "template")   # template: 에이전트 복제 제안(SOUL+개인 스킬, H-09)
 # 봉투에 담기는 칸(설계 3절). 사람이 읽는 이름은 여기 없다 — 기계 id 만.
 _FIELDS = ("envelope_id", "kind", "universe_id", "agent_id", "skill_id",
            "base", "body", "diff", "reason", "gate_results", "status", "error", "issue_url")

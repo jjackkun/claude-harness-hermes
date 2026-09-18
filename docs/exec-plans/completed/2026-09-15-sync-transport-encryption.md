@@ -14,7 +14,7 @@
 
 ## 2. 목표 (What — 검증 가능한 형태)
 
-> 설계 결정 인용(2026-09-18 소급, R-design-cover): T-09 · T-10 · T-13 · T-14 · T-16 — 이 계획의 목표가 구현한 원장 결정(docs/audits/2026-09-18-decision-id-mapping.md).
+> 설계 결정 인용(2026-09-18 소급, R-design-cover): T-09 · T-10 · T-13 · T-14 · T-16 · C-20(기억 body 원격 암호화 — `hermes_sync_fragments.py`, 인용 2026-09-18) — 이 계획의 목표가 구현한 원장 결정(docs/audits/2026-09-18-decision-id-mapping.md).
 
 - [x] 목표 1 — 코드 브랜치 원문 커밋이 멈춘다. `hermes.conf:177-178` 의 `!.hermes/history/` **와** `!.hermes/history/**` 두 줄을 지운다(planner-lite 지적). 검증 두 줄: (a) 재설치 후 `git check-ignore .hermes/history/new.jsonl` 이 무시로 판정 — **새 파일만** (b) 이미 추적 중인 평문은 무시 규칙과 무관하게 그대로다 — `git ls-files .hermes/history | wc -l` 이 zeroday **241**(2026-09-16 재실측 — 계획 작성 시 235에서 늘었다) · terminal-shipping 31 로 **불변**(T-03. 추적 해제 `git rm --cached` 도 하지 않는다 — 그것은 이력 재작성은 아니지만 동료 clone 의 작업 트리에서 파일을 지우는 부작용이 있어 저장소별 사용자 판단).
 - [x] 목표 2 — 매 턴 export 가 세션 파일 전량 재작성이 아니라 **턴 단위 조각**(`history/<session_id>/<순번>.enc`)을 만든다. 검증: `tests/hermes-sync-test.sh` — 3턴 후 파일 3개, 기존 조각 바이트 불변.

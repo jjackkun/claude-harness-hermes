@@ -127,6 +127,30 @@ PY
 **예** — "이 결제 리팩터 QA 한테 인계해. 회귀 테스트 통과하면 끝이고, 금요일까지."
 → `goal="결제 리팩터 QA"`, `done_when="test:payments-regression.sh"`, `expires_at="2026-09-19T…Z"`, `to_agent="QA담당"`.
 
+## 4b. 다른 소우주의 일 — 사람 경유만 (H-04)
+
+봉투에 `universe_id`(다른 소우주의 id)를 적어 `open_handoff` 를 부르면 `task.assigned` 대신 **`handoff.external`** 이벤트만 남고
+"사람을 거쳐서만 요청합니다" 안내가 나온다. 에이전트가 다른 소우주 원격에 이슈를 여는 자동 경로는 **없다** — 요청 내용 자체가
+이쪽 소우주의 정보다. 사용자에게 "그 저장소에서 직접 요청을 시키고, 결과(커밋·문서)를 이쪽에 알려 주십시오" 라고 안내한다.
+
+**예** — "이거 백엔드 저장소 API 에 필드 추가해 달라고 해" → 이쪽 소우주에서 `handoff.external` 기록 + 사람 안내(자동 배달 없음).
+
+## 4c. 에이전트 공유 — 우주 템플릿 경유 복제 (H-09)
+
+에이전트는 태어난 소우주 하나에만 있다. 다른 소우주에서 같은 실력이 필요하면 **복제**한다: SOUL + 개인 스킬을
+일반화해 우주(공장)에 제안하고, 허가되면 우주 공통 직무 템플릿이 되어 전파되며, 그쪽 소우주에서 사람이 `hire --template` 로
+**새 id·수습부터** 입사시킨다. 기억·이력·성적은 넘어가지 않는다.
+
+```bash
+python3 scripts/hermes-propose.py --reason "<왜 공유하나>" template "<에이전트 이름|id>"   # 봉투 kind=template
+python3 scripts/hermes-propose.py --deliver ... template "<이름>"                           # 배달은 사람 명령으로만
+```
+
+- SOUL 에 소우주 이름·경로·티켓이 남아 있으면 누출 게이트가 거부한다 — 사람이 SOUL 을 일반화한 뒤 다시.
+- 같은 에이전트를 두 소우주에 등록(겸직)하거나 파일을 직접 복사(A→B)하지 않는다.
+
+**예** — "선적QA 를 다른 프로젝트에서도 쓰고 싶어" → `hermes-propose.py --reason "…" template 선적QA` → 봉투 확인 뒤 사용자가 배달 여부 결정.
+
 ## 5. 생애주기 (promote / retire / rehire)
 
 ```bash
