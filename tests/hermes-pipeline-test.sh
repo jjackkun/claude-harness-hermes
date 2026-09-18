@@ -421,16 +421,20 @@ check "같은 세션 2회차 주입 없음" test -z "$upout2"
 
 echo ""
 echo "== 20. dream — 수집 + 결정화 구동 + 조용한 날 + 삭제 게이트 =="
+# updated_at 을 벽시계에 맡기지 않는다. 워터마크(마지막 요약 updated_at)와 수집(updated_at > since)은 이 열의
+# 대소로만 판정하는데, 2026-09-09 실패 덤프에서 1.1초 뒤에 넣은 요약이 더 이른 초로 기록됐다(WSL2 시계 역행).
+# 순번 기반 합성 시각(2100-01-01 + n초)이면 삽입 순서 = 시각 순서가 보장된다. 기준을 먼 미래로 둔 이유:
+# 앞 절이 남긴 실시간 워터마크보다 항상 커야 수집된다. (계획 2026-09-18-dream-test-clock)
+SUMMARY_SEQ=0
 add_summary() { # add_summary <session_id> <slots_json>
+  SUMMARY_SEQ=$((SUMMARY_SEQ+1))
   python3 -c "
 import sqlite3,sys
 con=sqlite3.connect('$DB')
 con.execute('''CREATE TABLE IF NOT EXISTS session_summary(session_id TEXT PRIMARY KEY,project_id TEXT,slots_json TEXT,last_msg_count INTEGER DEFAULT 0,turn_count INTEGER DEFAULT 0,updated_at DATETIME DEFAULT CURRENT_TIMESTAMP)''')
-con.execute('INSERT OR REPLACE INTO session_summary(session_id,project_id,slots_json) VALUES(?,?,?)',(sys.argv[1],'proj',sys.argv[2]))
+con.execute('INSERT OR REPLACE INTO session_summary(session_id,project_id,slots_json,updated_at) VALUES(?,?,?,datetime(\'2100-01-01 00:00:00\', ?))',(sys.argv[1],'proj',sys.argv[2],'+%d seconds' % int(sys.argv[3])))
 con.commit()
-" "$1" "$2"; }
-# 워터마크가 초 단위라 직전 dream(run_at)과 다음 요약을 다른 초로 분리해야 결정적 — 1초 경계 강제
-bump_clock() { python3 -c "import time; time.sleep(1.1)"; }
+" "$1" "$2" "$SUMMARY_SEQ"; }
 # 섹션 20 픽스처 격리 — 앞 A 섹션(14 summarize 등)이 남긴 요약 제거
 python3 -c "import sqlite3;c=sqlite3.connect('$DB');c.execute('DELETE FROM session_summary');c.commit()"
 
@@ -467,13 +471,11 @@ con=sqlite3.connect(sys.argv[1])
 p=os.path.join(sys.argv[2],".hermes","skills","내가.md")
 con.execute("INSERT OR IGNORE INTO skill_index (skill_path,keywords,scope) VALUES (?,?,'local')",(p,"내가")); con.commit()
 EOF
-bump_clock  # 직전 (b) dream 의 run_at 이후 초로 dsess2 를 확실히 분리
 add_summary dsess2 '{"decisions":["새 결정"],"facts":["새 사실"],"open":[],"prefs":[],"next":[]}'
 DREAM_D=$(python3 "$S/hermes-dream.py" --db "$DB" --project-dir "$PROJ" 2>&1)
 check "dry-run 은 junk 스킬 삭제 안 함" test -f "$PROJ/.hermes/skills/내가.md"
 
 # (e) --apply 는 junk 스킬 실제 삭제
-bump_clock  # 직전 (d) dream 의 run_at 이후 초로 dsess3 를 확실히 분리
 add_summary dsess3 '{"decisions":["또 결정"],"facts":["또 사실"],"open":[],"prefs":[],"next":[]}'
 # dream 출력을 버리면 삭제가 왜 안 됐는지 알 수 없다 — 이 단언이 하루 넘게
 # 원인 불명이었던 이유가 그것이다(2026-08-25).
@@ -504,12 +506,14 @@ con=sqlite3.connect(sys.argv[1])
 p=os.path.join(sys.argv[2],".hermes","skills","pnpm-rule.md")
 con.execute("INSERT OR IGNORE INTO skill_index (skill_path,keywords,scope,version) VALUES (?,?,'local',1)",(p,"pnpm,rule")); con.commit()
 EOF
-bump_clock  # 직전 (e) dream 의 run_at 이후 초로 dsess-ev 를 확실히 분리
 add_summary dsess-ev '{"decisions":["npm 말고 pnpm 으로 버전 고정"],"facts":["x"],"open":[],"prefs":[],"next":[]}'
 evout=$(MOCK_MODE=evolve python3 "$S/hermes-dream.py" --db "$DB" --project-dir "$PROJ")
 ev=$(sql "SELECT evolved FROM dream_log ORDER BY id DESC LIMIT 1")
 check "정정 요약 → 진화 1건 기록" \
   bash -c "test '$ev' -ge 1 || { echo \"dream(21): $evout\"; exit 1; }"
+# 픽스처 자체 검증 — 삽입 순서(dsess1·2·3·ev)와 updated_at 순서가 같다. 시계가 역행해도 이 순서는 흔들리면 안 된다.
+order=$(sql "SELECT group_concat(session_id) FROM (SELECT session_id FROM session_summary ORDER BY updated_at, session_id)")
+check "요약 updated_at 순서 = 삽입 순서 (벽시계 무관)" test "$order" = "dsess1,dsess2,dsess3,dsess-ev"
 
 echo ""
 echo "== 22. crystallize 장부: 드림 등 pattern_count-밖 키도 멱등/거부 마킹 적중 =="
