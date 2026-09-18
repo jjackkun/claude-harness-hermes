@@ -1,0 +1,1 @@
+- [handoff 용어는 "봉투" 유지](term-handoff-jisiseo.md) — 지시서 개명 검토 뒤 철회, 첫 언급 때 "업무 지시 한 장" 으로 풀어 줌
