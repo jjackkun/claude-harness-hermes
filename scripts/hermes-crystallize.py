@@ -23,6 +23,7 @@ from datetime import datetime, timezone
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from hermes_skills import extract_keywords  # noqa: E402  (본문 키워드 추출 공유 헬퍼)
+from hermes_reversed_guard import reversal_hold  # noqa: E402  (철회 보류 판정, L-06)
 
 
 def connect_db(db_path: str) -> sqlite3.Connection:
@@ -370,6 +371,19 @@ def register_skill(db_path: str, skill_path: str, key: str) -> None:
 # harness_rules 에 소우주 칸 없이 섞여 쌓이기만 하고 읽는 코드가 없었다(1142행). 기존 행은 그대로 둔다.
 
 
+def _reversal_hold(db_path: str, terms: list[str]) -> dict | None:
+    """hermes_reversed_guard.reversal_hold 를 DB 경로로 감싼다. 판정 실패는 보류하지 않고 기록만 한다."""
+    try:
+        con = connect_db(db_path)
+        try:
+            return reversal_hold(con, terms)
+        finally:
+            con.close()
+    except Exception as e:
+        _log(f"철회 보류 판정 실패: {e}")
+        return None
+
+
 def crystallize(db_path: str, keys: list[str], project_dir: str) -> None:
     skills_dir = os.path.join(os.path.dirname(db_path), "skills")
     os.makedirs(skills_dir, exist_ok=True)
@@ -397,6 +411,14 @@ def crystallize(db_path: str, keys: list[str], project_dir: str) -> None:
                 continue
         except Exception as e:
             _log(f"결정화 상태 조회 실패({key}): {e}")
+
+        # 철회 보류(L-06) — 주제가 기억에서 철회된 채면 규칙으로 굳히지 않는다. 장부에 남기지 않고
+        # 매번 다시 잰다: 같은 주제가 다시 추가되면 보류가 저절로 풀린다.
+        hold = _reversal_hold(db_path, meta["search_terms"])
+        if hold:
+            print(f"[hermes-crystallize] HOLD:{key} — 철회된 결정과 겹침 "
+                  f"(철회 {hold['memory_id']} → 원 기억 {hold['retracts']}, about={hold['about']!r}, 사유={hold['reason']!r})")
+            continue
 
         evidence_limit = 10 if is_fallback else 5
         evidence = fetch_evidence(db_path, meta["search_terms"], limit=evidence_limit)

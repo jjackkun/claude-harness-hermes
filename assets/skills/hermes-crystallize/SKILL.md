@@ -18,6 +18,8 @@ description: Crystallize repeated conversation patterns into reusable skill file
 ## 동작 순서
 
 1. `pattern_count` 테이블에서 count >= 3 이고 crystallized = 0 인 패턴 조회
+1-1. 철회 보류(L-06): 패턴 주제와 겹치는 기억(`memory_events`)이 **철회된 채**면 `HOLD:<키>` 를 출력하고 건너뛴다.
+     장부에는 남기지 않아, 같은 주제가 다시 추가되면 다음 결정화에서 저절로 풀린다.
 2. 패턴 내용을 바탕으로 스킬 파일 초안 작성
 3. `[project]/.hermes/skills/<slug>.md` 에 저장
 4. `skill_index` 테이블에 등록

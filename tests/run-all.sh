@@ -129,6 +129,7 @@ REGISTERED_TESTS=(
   hermes-skill-inject-test.sh
   hermes-skill-extends-test.sh
   hermes-propose-test.sh
+  hermes-crystallize-reversed-test.sh
   hermes-cleanup-step5-test.sh
   memory-symlink-roundtrip-test.sh
   hermes-history-export-test.sh
