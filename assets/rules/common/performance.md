@@ -2,20 +2,28 @@
 
 ## Model Selection Strategy
 
-**Haiku 4.5** (90% of Sonnet capability, 3x cost savings):
+Current generation (2026-09): Claude 5 family + Haiku 4.5. Pick by task shape, not by habit —
+newer models often match the previous generation's high effort at a lower effort setting, so
+re-measure before assuming a bigger model is needed.
+
+**Haiku 4.5** (`claude-haiku-4-5-20251001`) — cheapest, fastest:
 - Lightweight agents with frequent invocation
-- Pair programming and code generation
+- Short classification / summarization in background hooks (hermes summarize · dream · crystallize)
 - Worker agents in multi-agent systems
 
-**Sonnet 4.6** (Best coding model):
+**Sonnet 5** (`claude-sonnet-5`) — default for coding:
 - Main development work
 - Orchestrating multi-agent workflows
-- Complex coding tasks
+- Most code review and refactoring
 
-**Opus 4.5** (Deepest reasoning):
+**Opus 5** (`claude-opus-5`) — deep reasoning:
 - Complex architectural decisions
-- Maximum reasoning requirements
 - Research and analysis tasks
+- Long-context or ambiguous investigations
+
+**Fable 5.1** (`claude-fable-5-1`) — most capable, reserve for:
+- Decisions where a wrong answer is expensive to reverse
+- Cases where Opus 5 measurably falls short (keep the measurement)
 
 ## Context Window Management
 

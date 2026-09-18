@@ -40,7 +40,9 @@
 
 ## 권고 (사용자 승인 대상, 이 감사에서는 실행하지 않음)
 
-1. `rules/common/performance.md` 모델 표를 현재 세대(Fable 5.1 · Opus 5 · Sonnet 5 · Haiku 4.5)로 갱신.
+1. ~~`rules/common/performance.md` 모델 표를 현재 세대(Fable 5.1 · Opus 5 · Sonnet 5 · Haiku 4.5)로 갱신.~~ **완료(2026-09-18, 사용자 승인)** —
+   근거 없는 수치("90% of Sonnet"·"3x")는 뺐다. 재측정 옛모델 0. 이 파일은 소우주로 복사되지 않고 `~/.claude/rules/common/` 전역
+   사본으로 로드되므로 전역 사본도 같은 내용으로 맞췄다(새 세션부터 적용).
 2. 강조 문구는 파일별로 "출처 있음/없음" 을 가른 뒤, 출처 없는 것만 평서문으로 — 외부 스킬(impeccable·frontend-design·
    skill-creator) 사본은 상류가 바뀌면 덮이므로 손대지 않는다.
 3. 어휘로 못 재는 두 종(고정 절차 스캐폴드·모순 규칙)은 `prompt-audit` 스킬이 설치되면 그때 돌린다.
