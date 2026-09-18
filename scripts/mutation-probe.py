@@ -29,6 +29,8 @@
 """
 
 import argparse
+import glob
+import importlib.util
 import io
 import os
 import signal
@@ -94,6 +96,25 @@ def _apply(source, site):
     return "".join(lines)
 
 
+def _purge_pyc(path):
+    """대상의 바이트코드 캐시를 지운다. 복원과 캐시 무효화는 한 동작이다.
+
+    변이·복원이 같은 초 안에 일어나고 크기가 같으면(== → !=) CPython 의 pyc 검증(mtime 초 + size)이
+    통과해 옛 바이트코드가 재사용된다 — 변이 직후엔 원본이 돌아 "생존" 으로 오판되고, 복원 뒤엔
+    변이본이 남아 다음 테스트를 오염시킨다(2026-09-03 관측). 최적화 태그(.opt-1 등)까지 같은 stem 을 전부 지운다.
+    """
+    try:
+        cache = importlib.util.cache_from_source(path)
+    except (ValueError, NotImplementedError):
+        return
+    stem = os.path.basename(path)[:-len(".py")] if path.endswith(".py") else os.path.basename(path)
+    for pyc in glob.glob(os.path.join(os.path.dirname(cache), stem + ".*.pyc")):
+        try:
+            os.remove(pyc)
+        except OSError:
+            pass
+
+
 class _Guard:
     """원본을 반드시 되돌린다.
 
@@ -122,10 +143,13 @@ class _Guard:
     def write(self, content):
         with open(self.path, "w", encoding="utf-8") as handle:
             handle.write(content)
+        _purge_pyc(self.path)
 
     def restore(self):
         if _read(self.path) != self.original:
             self.write(self.original)
+        # 내용이 이미 원본이어도 pyc 는 변이본일 수 있다(시그널 뒤 재진입 등). 무조건 지운다.
+        _purge_pyc(self.path)
 
     def __exit__(self, exc_type, exc, tb):
         self.restore()

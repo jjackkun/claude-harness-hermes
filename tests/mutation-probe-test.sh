@@ -184,6 +184,41 @@ printf 'def broken(\n' > src/syntax.py
 python3 "$PROBE" --target src/syntax.py --list >/dev/null 2>&1
 [[ $? -eq 2 ]] && ok "문법 오류 대상은 exit 2" || nope "문법 오류 대상은 exit 2"
 
+
+echo "── pyc 무효화 (backlog mutation-probe-pyc-invalidation) ──"
+# 같은 크기 변이 + 같은 mtime 이면 CPython 이 옛 pyc 를 재사용한다. 도구는 write/restore 때 pyc 를 지워야 한다.
+# 이 셸은 PYTHONDONTWRITEBYTECODE=1 일 수 있으므로 벗기고 잰다.
+mkdir -p pyc && printf 'def f(a, b):\n    return a == b\n' > pyc/m.py
+PYC_OUT=$(env -u PYTHONDONTWRITEBYTECODE python3 - "$PROBE" <<'PY'
+import importlib.util, os, subprocess, sys, glob
+os.chdir("pyc")
+spec = importlib.util.spec_from_file_location("probe", sys.argv[1]); probe = importlib.util.module_from_spec(spec); spec.loader.exec_module(probe)
+run = lambda: subprocess.run([sys.executable, "-c", "import m; print(m.f(1,1))"], capture_output=True, text=True).stdout.strip()
+orig = open("m.py").read()
+run()                                   # 원본 pyc 생성
+st = os.stat("m.py")
+g = probe._Guard("m.py", orig)
+g.write(orig.replace("==", "!="))
+os.utime("m.py", (st.st_atime, st.st_mtime))   # "같은 초" 재현
+print("after-write-pyc", len(glob.glob("__pycache__/m.*.pyc")))
+print("mutant-import", run())           # False 여야 한다 (원본 pyc 재사용이면 True)
+st2 = os.stat("m.py")
+g.restore(); os.utime("m.py", (st2.st_atime, st2.st_mtime))
+print("after-restore-pyc", len(glob.glob("__pycache__/m.*.pyc")))
+print("restored-import", run())         # True 여야 한다 (변이 pyc 잔존이면 False)
+PY
+)
+grep -qx 'after-write-pyc 0' <<<"$PYC_OUT"   && ok "write() 뒤 대상 pyc 없음"        || nope "write() 뒤 대상 pyc 없음 ($PYC_OUT)"
+grep -qx 'mutant-import False' <<<"$PYC_OUT" && ok "변이 직후 import 가 변이본을 본다" || nope "변이 직후 import 가 변이본을 본다"
+grep -qx 'after-restore-pyc 0' <<<"$PYC_OUT" && ok "restore() 뒤 대상 pyc 없음"      || nope "restore() 뒤 대상 pyc 없음"
+grep -qx 'restored-import True' <<<"$PYC_OUT" && ok "복원 뒤 import 가 원본을 본다"  || nope "복원 뒤 import 가 원본을 본다"
+
+# 엔드투엔드: 탐침 실행 전체 뒤 변이본 pyc 가 남지 않는다
+printf 'import sys, os\nsys.path.insert(0, os.getcwd())\nimport m\nsys.exit(0 if m.f(1,1) else 1)\n' > pyc/t.py
+(cd pyc && env -u PYTHONDONTWRITEBYTECODE python3 -c 'import m' && env -u PYTHONDONTWRITEBYTECODE python3 "$PROBE" --target m.py --test "python3 t.py" >/dev/null 2>&1)
+E2E=$(cd pyc && env -u PYTHONDONTWRITEBYTECODE python3 -c 'import m; print(m.f(1,1))')
+[[ "$E2E" == "True" ]] && ok "탐침 실행 뒤 import 결과가 원본과 같다" || nope "탐침 실행 뒤 import 결과가 원본과 같다 ($E2E)"
+
 echo ""
 echo "PASS=$PASS FAIL=$FAIL"
 [[ $FAIL -eq 0 ]]
