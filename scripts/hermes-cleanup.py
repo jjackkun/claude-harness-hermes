@@ -20,6 +20,9 @@ import re
 import sqlite3
 import sys
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from hermes_skill_yield import low_yield_skills  # noqa: E402  (주입 증거 기반 강등, 계획 skill-yield-junk)
+
 
 def connect_db(db_path: str) -> sqlite3.Connection:
     """공통 SQLite 연결 헬퍼 — busy_timeout + WAL (M1)."""
@@ -207,6 +210,33 @@ def clean_junk_skills(
     con.commit()
 
 
+def clean_low_yield_skills(con: sqlite3.Connection, apply: bool) -> None:
+    """(e) 주입은 많은데 도움이 없는 스킬 — 파일·skill_index 행 삭제 + pattern_count 거부(-1).
+
+    키 모양이 아니라 **증거**(skill_injection.correlated)로 판정한다. zeroday 실측(2026-09-18)에서 `array`·`shared`·
+    `index` 세 파일이 각 775회 주입·도움 2회 — 본문은 유용했지만 제목이 흔한 코드 단어라 모든 프롬프트에 매칭됐다.
+    거부 표시를 남겨 같은 키로 재결정화되지 않게 하고, 본문의 규칙은 올바른 키로 다시 결정화될 수 있게 둔다.
+    """
+    targets = low_yield_skills(con)
+    print(f"== (e) 도움 없는 스킬: {len(targets)}개 (주입 ≥50 · 도움률 ≤5%)")
+    for t in targets:
+        print(f"   - {t['skill_path']}  주입 {t['injected']} · 도움 {t['helpful']}")
+    if not apply:
+        return
+    for t in targets:
+        path = t["skill_path"]
+        if os.path.isfile(path):
+            try:
+                os.remove(path)
+            except OSError as e:
+                print(f"[hermes-cleanup] 파일 삭제 실패({path}): {e}", file=sys.stderr)
+        con.execute("DELETE FROM skill_index WHERE skill_path=?", (path,))
+        key = os.path.basename(path)[:-3] if path.endswith(".md") else os.path.basename(path)
+        con.execute("INSERT OR IGNORE INTO pattern_count (pattern_key, count, crystallized) VALUES (?, 0, -1)", (key,))
+        con.execute("UPDATE pattern_count SET crystallized=-1 WHERE pattern_key=?", (key,))
+    con.commit()
+
+
 def find_duplicate_sessions(con: sqlite3.Connection) -> list:
     """(c) 같은 대화가 다른 session_id 로 중복 저장된 세션을 찾는다.
 
@@ -281,6 +311,7 @@ def main() -> None:
         junk_keys = find_junk_patterns(con)
         clean_patterns(con, junk_keys, args.apply)
         clean_junk_skills(con, junk_keys, skills_dir, args.apply)
+        clean_low_yield_skills(con, args.apply)
         clean_duplicate_sessions(con, args.apply)
     finally:
         con.close()

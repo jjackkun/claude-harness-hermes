@@ -24,6 +24,7 @@ from datetime import datetime, timezone
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from hermes_skills import extract_keywords  # noqa: E402  (본문 키워드 추출 공유 헬퍼)
 from hermes_reversed_guard import reversal_hold  # noqa: E402  (철회 보류 판정, L-06)
+from hermes_skill_yield import is_generic_key  # noqa: E402  (일반 코드 단어 키 거부, 계획 skill-yield-junk)
 
 
 def connect_db(db_path: str) -> sqlite3.Connection:
@@ -384,6 +385,43 @@ def _reversal_hold(db_path: str, terms: list[str]) -> dict | None:
         return None
 
 
+def _crystallized_state(db_path: str, key: str):
+    """pattern_count.crystallized 값. 조회 실패는 0(미결정)으로 두고 기록만 한다."""
+    try:
+        con = connect_db(db_path)
+        row = con.execute(
+            "SELECT crystallized FROM pattern_count WHERE pattern_key=?", (key,)).fetchone()
+        con.close()
+        return row[0] if row else 0
+    except Exception as e:
+        _log(f"결정화 상태 조회 실패({key}): {e}")
+        return 0
+
+
+def _skip_reason(db_path: str, key: str, terms: list[str]) -> str | None:
+    """모델을 부르기 전에 거르는 관문. 걸리면 출력할 한 줄, 아니면 None.
+
+    1) 이미 결정화(1)·거부(-1) — 멱등/거부 기억.
+    2) 일반 코드 단어 키(index·shared·array) — 압축 요약에서 잘못 뽑힌 키. zeroday 실측(2026-09-18):
+       이런 키의 스킬이 주입의 75% 를 차지하고 도움률 3.9%. 거부(-1) 표시.
+    3) 철회 보류(L-06) — 주제가 기억에서 철회된 채면 규칙으로 굳히지 않는다. 장부에 남기지 않고 매번
+       다시 잰다: 같은 주제가 다시 추가되면 보류가 저절로 풀린다.
+    """
+    # 장부 행 보장 — 드림 propose 등 pattern_count 밖 키의 멱등/거부기억 활성화
+    ensure_pattern_row(db_path, key)
+    state = _crystallized_state(db_path, key)
+    if state != 0:
+        return f"SKIP:{key} — {'이미 결정화됨' if state == 1 else 'junk 거부됨'}"
+    if is_generic_key(key):
+        mark_rejected(db_path, key)
+        return f"REJECT:{key} — 일반 코드 단어 키 (재시도 안 함)"
+    hold = _reversal_hold(db_path, terms)
+    if hold:
+        return (f"HOLD:{key} — 철회된 결정과 겹침 (철회 {hold['memory_id']} → 원 기억 {hold['retracts']}, "
+                f"about={hold['about']!r}, 사유={hold['reason']!r})")
+    return None
+
+
 def crystallize(db_path: str, keys: list[str], project_dir: str) -> None:
     skills_dir = os.path.join(os.path.dirname(db_path), "skills")
     os.makedirs(skills_dir, exist_ok=True)
@@ -395,29 +433,10 @@ def crystallize(db_path: str, keys: list[str], project_dir: str) -> None:
             "search_terms": _derive_search_terms(key),
         })
 
-        # 장부 행 보장 — 드림 propose 등 pattern_count 밖 키의 멱등/거부기억 활성화
-        ensure_pattern_row(db_path, key)
-
-        # 이미 결정화(1)됐거나 거부(-1)됐으면 스킵
-        try:
-            con = connect_db(db_path)
-            row = con.execute(
-                "SELECT crystallized FROM pattern_count WHERE pattern_key=?", (key,)
-            ).fetchone()
-            con.close()
-            if row and row[0] != 0:
-                state = "이미 결정화됨" if row[0] == 1 else "junk 거부됨"
-                print(f"[hermes-crystallize] SKIP:{key} — {state}")
-                continue
-        except Exception as e:
-            _log(f"결정화 상태 조회 실패({key}): {e}")
-
-        # 철회 보류(L-06) — 주제가 기억에서 철회된 채면 규칙으로 굳히지 않는다. 장부에 남기지 않고
-        # 매번 다시 잰다: 같은 주제가 다시 추가되면 보류가 저절로 풀린다.
-        hold = _reversal_hold(db_path, meta["search_terms"])
-        if hold:
-            print(f"[hermes-crystallize] HOLD:{key} — 철회된 결정과 겹침 "
-                  f"(철회 {hold['memory_id']} → 원 기억 {hold['retracts']}, about={hold['about']!r}, 사유={hold['reason']!r})")
+        # 결정화 전 관문 셋(상태·일반 단어·철회 보류). 하나라도 걸리면 모델을 부르지 않는다.
+        skip = _skip_reason(db_path, key, meta["search_terms"])
+        if skip:
+            print(f"[hermes-crystallize] {skip}")
             continue
 
         evidence_limit = 10 if is_fallback else 5
