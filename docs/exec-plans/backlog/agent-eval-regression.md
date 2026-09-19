@@ -51,3 +51,14 @@ YouTube 영상 「Anthropic 제안한 코드 짜기 전에 무조건 쓰라는 �
 
 - 원본 논의: 2026-09-07 대화 (intent.md 영상 검토 중 파생)
 - 관련 문서: `docs/videos/2026-09-05-intent-md-ai-native-sdlc/intent-md-ai-native-sdlc.md` §3 Test 단계
+
+## ECC 대조 (2026-09-19) — skill-comply · eval-harness/pass@k 를 이 계획의 구현 형태로
+
+> 출처: `docs/audits/2026-09-19-ecc-gap-list.md` (ECC v2.2.1 대비 결핍 목록, 사용자 "다 필요한 것들" 확정 2026-09-19) — #2·#3 (가치 상, 사용자 확정)
+
+- **skill-comply**(`skills/skill-comply/`): 엄격도 3단계 프롬프트로 시나리오를 자동 생성 → 에이전트 실행 → 툴콜 타임라인을 분류해
+  규칙 준수율을 낸다. 우리 "행동 회귀 테스트" 의 시나리오 생성·채점 방식으로 그대로 쓸 수 있다.
+- **eval-harness + harness-optimizer**(`skills/eval-harness/`, `agents/harness-optimizer.md`): 같은 시나리오를 k 회 돌려 pass@k · pass^k 로
+  훅·룰 구성을 채점. 훅 추가·룰 승격(`harness-promote-rule`) 전후를 이 수치로 비교하면 "이 훅이 값을 하는가" 에 답한다.
+- 우리 제약: 모델 호출은 구독 CLI(haiku) 경로만(설계 결정 2026-09-18 `855aa18`), CI·야간 자동 실행 금지, 로컬·수동. 시나리오는 `tests/` 에 고정 픽스처.
+- `.harness/gate-events.jsonl` 발화율(gate_report) 과 합쳐 "발화했는데 안 지켜진 비율" 을 첫 지표로.

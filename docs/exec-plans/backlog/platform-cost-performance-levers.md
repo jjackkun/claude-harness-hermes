@@ -83,3 +83,13 @@ C1·C5·C4 는 `completed/2026-09-18-cost-levers-c1-c4-c5.md` 로 완료(C1 haik
 ## 착수 시
 
 `docs/exec-plans/active/YYYY-MM-DD-<slug>.md` 로 옮기고 템플릿의 §2 목표·검증을 위 항목별 "검증" 줄로 채운다. C1 만 떼어 먼저 할 경우 별도 계획서로 분리한다.
+
+## ECC 대조 (2026-09-19) — 세션 토큰·비용 추적 (C6 후보)
+
+> 출처: `docs/audits/2026-09-19-ecc-gap-list.md` (ECC v2.2.1 대비 결핍 목록, 사용자 "다 필요한 것들" 확정 2026-09-19) — #5 (가치 중, 사용자 확정)
+
+- ECC `scripts/hooks/cost-tracker.js`(Stop 훅) 가 transcript 의 usage 를 합산해 세션·에이전트별 토큰을 남기고 `cost-report` 로 본다.
+- 우리는 `R-out`(Bash 출력 바이트) 만 있다. backlog `agent-model-routing-blindspot`(09-29 관측) 은 Agent 페이로드 실측이 전제인데 그 실측 장치가 없다.
+- 후보: Stop 훅에서 `~/.claude/projects/<proj>/*.jsonl` 의 usage 필드를 합산해 `.hermes/state.db` 새 표(`session_usage`) 에 세션·모델·에이전트별 토큰만 기록.
+  비용 환산은 하지 않는다(구독 경로, 단가 없음). 우주 대시보드 건강 판 한 줄로 합류.
+- 착수 조건: 09-29 blind-spot 관측 전에 있으면 그 관측이 실측이 된다 — 그 전에 하는 것이 값이 크다.
