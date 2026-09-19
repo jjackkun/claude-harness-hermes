@@ -1,1 +1,2 @@
 - [handoff 용어는 "봉투" 유지](term-handoff-jisiseo.md) — 지시서 개명 검토 뒤 철회, 첫 언급 때 "업무 지시 한 장" 으로 풀어 줌
+- [폼 질문 연발 금지](feedback-no-template-forms.md) — 선택지 폼을 연달아 띄우면 "의미 없는 질문"; 값이 자유라면 더 묻지 않고 진행

@@ -1,0 +1,14 @@
+[
+  {"query": "/hermes-agent", "should_trigger": true},
+  {"query": "에이전트 하나 만들자. 뭘 어떻게 정해야 하는지 모르겠어", "should_trigger": true},
+  {"query": "이 프로젝트에 직원 한 명 뽑자", "should_trigger": true},
+  {"query": "qa 분야 담당 직급으로 공통 조직에 '게이트QA' 입사시켜", "should_trigger": true},
+  {"query": "이 로그인 리다이렉트 버그 프론트 담당한테 넘겨줘", "should_trigger": true},
+  {"query": "명부 보여줘. 지금 누가 있어?", "should_trigger": true},
+  {"query": "새 직원 온보딩 문서를 docs/ 에 써줘 (회사 인사팀용)", "should_trigger": false},
+  {"query": "claude code 서브에이전트(.claude/agents) planner.md 의 model 필드를 opus 로 바꿔", "should_trigger": false},
+  {"query": "organization.yaml 파서 hermes_yaml_subset.py 에 유닛테스트 추가해", "should_trigger": false},
+  {"query": "git log 에서 지난주 누가 커밋 많이 했는지 정리해줘", "should_trigger": false},
+  {"query": "헤르메스 루프 돌려줘, 목표는 테스트 전부 통과", "should_trigger": false},
+  {"query": "QA 체크리스트 템플릿 만들어줘", "should_trigger": false}
+]

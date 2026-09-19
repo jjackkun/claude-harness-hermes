@@ -5,6 +5,20 @@
       "name": "main",
       "status": "active",
       "created_by": "system:installer"
+    },
+    {
+      "agent_id": "01a0b728-2040-7e30-ab2d-cee957be526e",
+      "name": "게이트QA",
+      "status": "probation",
+      "org": {
+        "discipline": "QA",
+        "rank": "담당",
+        "unit": "공통"
+      },
+      "template": null,
+      "created_at": "2026-09-19T00:54:15Z",
+      "created_by": "human:jjackkun",
+      "approved_by": "human:jjackkun"
     }
   ]
 }
