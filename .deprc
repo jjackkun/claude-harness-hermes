@@ -30,7 +30,7 @@ tier: 1  scripts/hermes_keys.py
 # 운반 계층: sync_ref 는 git 만, sync_fragments 는 crypto(0)·history_fragments(0)·keys(1)·
 # journal_schema(0) 을 쓰고, hermes-sync.py 는 그 둘과 universe 를 쓴다.
 tier: 0  scripts/hermes_sync_ref.py
-tier: 2  scripts/hermes_sync_fragments.py
+tier: 2  scripts/hermes_sync_fragments.py scripts/hermes_sync_learning.py   # learning(요약·패턴 조각, T-17)은 crypto(0)·keys(1)만 쓰고 fragments 가 부른다(같은 tier)
 tier: 3  scripts/hermes-sync.py
 # 명부·조직(계획 2026-09-15-agent-identity): yaml_subset 은 표준 모듈만, org 는 uuid7·yaml_subset,
 # roster 는 org·uuid7, CLI 는 roster·org.

@@ -40,7 +40,8 @@ mk_clone() {  # <dir> <HOME>
   git -C "$1" remote add origin "$BARE"
   git -C "$1" commit -q --allow-empty -m init
   python3 "$S/hermes-init.py" --project "$1" >/dev/null 2>&1
-  echo '{"push": true}' > "$1/.hermes/sync.json"
+  # 기존 절(2~10)은 잠금 모드 + 원문 운반을 검증한다 — T-17 뒤 원문은 옵션이라 명시한다. 기본 정책은 12절이 따로 본다.
+  echo '{"push": true, "history": true}' > "$1/.hermes/sync.json"
 }
 A="$TMP/A"; HA="$TMP/homeA"; B="$TMP/B"; HB="$TMP/homeB"
 mk_clone "$A" "$HA"; mk_clone "$B" "$HB"
@@ -216,6 +217,48 @@ HOME="$HA" python3 "$A/scripts/hermes-agent.py" --project "$A" refresh-memory "$
 assert "A·B MEMORY.md 내용 동일" "$(md5sum < "$A/.hermes/agents/$AID/MEMORY.md")" "$(md5sum < "$BMD")"
 SYNC_B pull >"$TMP/pullMem2.out" 2>&1
 assert "재pull 새 항목 0(멱등)" 1 "$(grep -c '새 항목 0건' "$TMP/pullMem2.out")"
+
+echo ""
+echo "== 12. 발전 재료 왕복 — 요약·패턴 수는 기본 운반, 원문은 옵션 (T-17, 계획 transport-plain 목표 1·2) =="
+F="$TMP/F"; HF="$TMP/homeF"; G="$TMP/G"; HG="$TMP/homeG"; mk_clone "$F" "$HF"; mk_clone "$G" "$HG"
+cp "$A/.hermes/universe.id" "$F/.hermes/"; cp "$A/.hermes/universe.id" "$G/.hermes/"
+cp -r "$HA/.hermes" "$HF/"; cp -r "$HA/.hermes" "$HG/"                  # 같은 열쇠(잠금 모드 유지, 평문 모드는 14절)
+echo '{"push": true}' > "$F/.hermes/sync.json"; echo '{"push": true}' > "$G/.hermes/sync.json"   # 기본 정책: history 없음
+mkdir -p "$F/.hermes/history/sess-F"; printf '{"seq":0,"session_id":"sess-F","project_id":"p","role":"user","timestamp":"2026-09-20T00:00:00","content":"F 원문"}\n' > "$F/.hermes/history/sess-F/0000.jsonl"
+python3 - "$F/.hermes/state.db" <<'PY'
+import sqlite3, sys
+con = sqlite3.connect(sys.argv[1])
+con.executescript("""
+CREATE TABLE IF NOT EXISTS session_summary (session_id TEXT PRIMARY KEY, project_id TEXT, slots_json TEXT, last_msg_count INTEGER DEFAULT 0, turn_count INTEGER DEFAULT 0, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP);
+CREATE TABLE IF NOT EXISTS pattern_count (id INTEGER PRIMARY KEY AUTOINCREMENT, pattern_key TEXT NOT NULL UNIQUE, count INTEGER DEFAULT 1, last_seen DATETIME DEFAULT CURRENT_TIMESTAMP, crystallized INTEGER DEFAULT 0);
+""")
+con.execute("INSERT INTO session_summary VALUES ('s1','p','{\"decisions\":[\"요약 하나\"]}',3,2,'2026-09-20 01:00:00')")
+con.execute("INSERT INTO session_summary VALUES ('s2','p','{\"decisions\":[\"요약 둘\"]}',5,4,'2026-09-20 02:00:00')")
+con.execute("INSERT INTO pattern_count (pattern_key,count,last_seen,crystallized) VALUES ('테스트 먼저 돌린다',2,'2026-09-20 01:00:00',0)")
+con.execute("INSERT INTO pattern_count (pattern_key,count,last_seen,crystallized) VALUES ('로그를 파일로 받는다',1,'2026-09-20 01:00:00',0)")
+con.commit()
+PY
+HOME="$HF" python3 "$F/scripts/hermes-sync.py" --project "$F" push >"$TMP/pushF.out" 2>&1
+assert "F push rc 0" 0 "$?"
+FLS() { git -C "$F" fetch -q origin "+refs/hermes/sync:refs/hermes/sync-remote" 2>/dev/null; git -C "$F" ls-tree -r --name-only refs/hermes/sync-remote 2>/dev/null; }
+assert "원격에 요약 2" 2 "$(FLS | grep -c '^summary/s[12]/')"
+assert "원격에 패턴 2" 2 "$(FLS | grep -c '^pattern/')"
+assert "원문(history/sess-F)은 기본 정책에서 안 올라감" 0 "$(FLS | grep -c '^history/sess-F/')"
+SPATH="$(FLS | grep '^summary/s1/' | head -1)"
+assert "요약 자유 글은 암호문(잠금 모드)" 0 "$(git -C "$F" show "refs/hermes/sync-remote:$SPATH" | grep -c '요약 하나')"
+HOME="$HG" python3 "$G/scripts/hermes-sync.py" --project "$G" pull >"$TMP/pullG.out" 2>&1
+assert "G 에 요약 2 적재" 2 "$(rows "$G" "select count(*) from session_summary")"
+assert "G 요약 본문 평문 복원" 1 "$(rows "$G" "select count(*) from session_summary where slots_json like '%요약 둘%'")"
+assert "G 패턴 count 일치(2)" 2 "$(rows "$G" "select count from pattern_count where pattern_key='테스트 먼저 돌린다'")"
+python3 -c "import sqlite3,sys;c=sqlite3.connect(sys.argv[1]);c.execute(\"update pattern_count set count=3 where pattern_key='테스트 먼저 돌린다'\");c.commit()" "$F/.hermes/state.db"
+HOME="$HF" python3 "$F/scripts/hermes-sync.py" --project "$F" push >/dev/null 2>&1
+HOME="$HG" python3 "$G/scripts/hermes-sync.py" --project "$G" pull >"$TMP/pullG2.out" 2>&1
+assert "F 에서 1회 더 본 뒤 G 재pull → count 3(키별 max)" 3 "$(rows "$G" "select count from pattern_count where pattern_key='테스트 먼저 돌린다'")"
+HOME="$HG" python3 "$G/scripts/hermes-sync.py" --project "$G" pull >"$TMP/pullG3.out" 2>&1
+assert "재pull 새 항목 0(멱등)" 1 "$(grep -c '새 항목 0건' "$TMP/pullG3.out")"
+echo '{"push": true, "history": true}' > "$F/.hermes/sync.json"
+HOME="$HF" python3 "$F/scripts/hermes-sync.py" --project "$F" push >/dev/null 2>&1
+assert "정책 history:true 면 원문이 올라간다(옵션)" 1 "$(FLS | grep -c '^history/sess-F/0000\.enc$')"
 
 echo ""
 echo "PASS=$PASS FAIL=$FAIL"

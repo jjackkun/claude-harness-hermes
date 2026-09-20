@@ -27,6 +27,7 @@ from hermes_keys import key_path  # noqa: E402
 from hermes_sync_fragments import (  # noqa: E402
     ensure_sync_tables, import_fragment, import_journal, import_memory, incoming_paths,
     mark_pushed, outgoing)
+from hermes_sync_learning import import_learning  # noqa: E402
 from hermes_universe import universe_id  # noqa: E402
 
 NO_STORE = "원격에 기억 저장소(refs/hermes/sync)가 없습니다"
@@ -134,7 +135,7 @@ def cmd_push(args) -> int:
         print("[hermes-sync] 마스터 열쇠가 없어 push 를 보류합니다 (hermes-keys.sh init 또는 pull 로 합류)")
         return 0
     con = _connect(project)
-    files = outgoing(con, project, uid, _person(project))
+    files = outgoing(con, project, uid, _person(project), policy)
     if not files:
         print("[hermes-sync] 올릴 것 없음")
         con.close()
@@ -164,6 +165,8 @@ def _import_all(con, project: str, uid: str, paths) -> int:
             if import_memory(con, uid, path, data, _now()):
                 got += 1
                 touched.add(path.split("/")[1])
+        elif path.startswith(("summary/", "pattern/")):
+            got += import_learning(con, uid, path, data, _now())
     _refresh_memory_views(con, project, touched)
     return got
 

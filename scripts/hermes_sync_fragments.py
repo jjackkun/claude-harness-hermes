@@ -7,6 +7,7 @@
   history/<session_id>/<순번>.superseded                   — 압축 표시
   journal/<YYYY>/<MM>/<DD>/<event_id>.json                 — 기계 칸 평문, 자유 글 3칸 암호문(J-07)
   memory/<agent_id>/<memory_id>.json                        — 기억 이벤트 1개 = 파일 1개, body 만 암호문(C-14·C-20; 왕복 실측 2026-09-20)
+  summary/… · pattern/…                                    — 발전 재료(hermes_sync_learning, T-17). history/ 는 정책 옵션
 
 "새 것" 판정은 state.db 의 sync_cursor(받은 경로)·sync_outbox(올린 경로) 두 표로 한다.
 계획: docs/exec-plans/active/2026-09-15-sync-transport-encryption.md 목표 2·8·10·11
@@ -22,6 +23,7 @@ import sqlite3
 import hermes_crypto as crypto
 from hermes_history_fragments import fragment_dir, superseded_names
 from hermes_keys import key_path
+from hermes_sync_learning import outgoing_learning
 
 _FREE_TEXT = ("intent", "lesson", "decision")
 _SYNC_SQL = """
@@ -50,15 +52,19 @@ def _imported(con) -> set:
     return {r[0] for r in con.execute("SELECT path FROM sync_cursor")}
 
 
-def outgoing(con, project: str, universe_id: str, person: str) -> dict:
-    """아직 올리지 않은 것들을 {원격 경로: 바이트} 로. 조각은 마스터 자물쇠로 잠근다."""
+def outgoing(con, project: str, universe_id: str, person: str, policy: dict = None) -> dict:
+    """아직 올리지 않은 것들을 {원격 경로: 바이트} 로. 조각은 마스터 자물쇠로 잠근다.
+    T-17: 기본은 발전 재료(요약·패턴·기억·작업 이력). 대화 원문(history/)은 정책 `"history": true` 일 때만."""
+    policy = policy or {}
     done = _pushed(con) | _imported(con)
     lock = crypto.public_key(key_path(universe_id, "master"))
     out = {}
     out.update(_outgoing_keys(universe_id, person, done))
-    out.update(_outgoing_history(project, lock, done))
+    if policy.get("history"):
+        out.update(_outgoing_history(project, lock, done))
     out.update(_outgoing_journal(con, lock, done))
     out.update(_outgoing_memory(con, lock, done))
+    out.update(outgoing_learning(con, lock, done))
     return out
 
 
