@@ -32,7 +32,7 @@ ECC 는 코드 세계 역할 68개를 사람이 미리 써 두었고, cumora 는
 
 ## 4. 영향 영역
 
-- 코드: `scripts/hermes_soul_draft.py`(템플릿 절 병합) · `scripts/hermes-agent.py`(`templates` 명령, `--template` 검증, `soul-draft --template`) · `assets/skills/hermes-agent/SKILL.md` · `project-claude.sh`(`HARNESS_REGISTER=0` 등록 옵트아웃 — 테스트 설치의 등록부 오염 방지) · `presets/workflow/hermes.conf`(스크립트 2 + roles/ 복사)
+- 코드: `scripts/hermes_soul_draft.py`(템플릿 절 병합) · `scripts/hermes-agent.py`(`templates` 명령, `--template` 검증, `soul-draft --template`) · `assets/skills/hermes-agent/SKILL.md` · `project-claude.sh`(`HERMES_NO_REGISTER=1` 등록 옵트아웃 — 테스트 설치의 등록부 오염 방지) · `presets/workflow/hermes.conf`(스크립트 2 + roles/ 복사)
 - **신규 파일 목록**:
   - `scripts/hermes-template-import.py` — ECC `agents/*.md` → 우리 역할 템플릿 변환기(규칙, 멱등). 공개 함수 ≤4
   - `scripts/hermes_role_templates.py` — 템플릿 폴더 읽기·목록·이름 검증·SOUL 절 추출. 공개 함수 ≤4
@@ -68,4 +68,4 @@ ECC 는 코드 세계 역할 68개를 사람이 미리 써 두었고, cumora 는
 
 - 잘된 것: 규칙 변환만으로 72개가 한 번에 섰고(모델 호출 0), 멱등이라 상류 갱신은 재실행 한 줄이다. 픽스처 2개 테스트가 변환 규칙을 고정한다.
 - 잘못된 것: 복사 목록 누락을 코드로 먼저 발견하지 못하고 폐로 테스트로 발견 — 새 스크립트를 만들면 hermes.conf 복사 목록을 같은 커밋에서 손보는 것이 순서다. `convert()` 복잡도 17 → 통 나누기로 분리.
-- 다음 룰 후보: "scripts/ 에 새 파일 → hermes.conf 복사 목록 등록" 을 R-declare 처럼 훅에서 경고(설치 폐로 자동 검사). 테스트 설치는 `HARNESS_REGISTER=0` 를 반드시 붙인다 — 기존 테스트(roster 등)도 옮길 것.
+- 다음 룰 후보: "scripts/ 에 새 파일 → hermes.conf 복사 목록 등록" 을 R-declare 처럼 훅에서 경고(설치 폐로 자동 검사). 테스트 설치는 `HERMES_NO_REGISTER=1` 를 반드시 붙인다 — 기존 테스트(roster 등)도 옮길 것.

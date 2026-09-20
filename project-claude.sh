@@ -186,9 +186,7 @@ receipt_end "$PROJECT_PATH"
 
 # 머신 로컬 레지스트리에 등록 (dry-run 제외, 중복 방지). 판정은 lib/registry.sh 한 곳.
 if [[ $DRY_RUN -eq 0 ]]; then
-  # HARNESS_REGISTER=0 — 테스트 픽스처 설치가 공장 등록부(.installed-projects)를 오염시키지 않게 (2026-09-20)
-  if [[ "${HARNESS_REGISTER:-1}" == "0" ]]; then log_info "  registry → 등록 생략(HARNESS_REGISTER=0)"
-  else registry_register "$DEV_SETTING_DIR/.installed-projects" "$PROJECT_PATH" ".installed-projects"; fi
+  registry_register "$DEV_SETTING_DIR/.installed-projects" "$PROJECT_PATH" ".installed-projects"
 fi
 
 cat <<'EOF'

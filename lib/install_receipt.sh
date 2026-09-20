@@ -36,5 +36,6 @@ receipt_end() {
   (cd "$project" && find . \( "${prune_expr[@]}" \) -prune -o \( -type f -o -type l \) -cnewer "$_RECEIPT_MARK" -print) \
     | sed 's|^\./||' | grep -vxF ".claude/$_RECEIPT_NAME" | LC_ALL=C sort > "$receipt"
   rm -f "$_RECEIPT_MARK"; _RECEIPT_MARK=""
+  log_info "원격과 갈라진 소우주라면 설치물은 병합하지 말고(옛 판 덩어리가 섞여 잡종이 된다) 병합 뒤 재설치로 재정렬 → python3 <공장>/scripts/harness-doctor.py <소우주> 가 깨끗인지 확인"
   log_info "이번 설치가 쓴 파일 $(wc -l < "$receipt")건 → .claude/$_RECEIPT_NAME (커밋: git add \$(git ls-files -co --exclude-standard \$(cat .claude/$_RECEIPT_NAME)))"
 }

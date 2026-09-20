@@ -65,6 +65,7 @@ PDF 4~5쪽: "AGENTS.md 를 백과사전이 아닌 *목차* 로 취급한다."
 훅 실체는 `scripts/hooks/`, 커밋 게이트는 `.git/hooks/pre-commit`.
 
 <!--===DS:COUNTS:BEGIN===-->
+
 - 세션 중 실행 훅 **16종** + 훅이 공유하는 판정 모듈 **12개**
 - git pre-commit 게이트 **18종** — 차단 11 / 경고 7
 - 스킬 **5종** · 에이전트 **11종** · 테스트 **83개**
@@ -100,6 +101,7 @@ PDF 11쪽: "이 리포지터리의 특정 구조와 툴링에 따라 크게 달�
 - `docs/audits/` — 조사·감사 기록
 
 **강제 규칙:**
+
 1. 비자명한 작업 시작 전 `docs/exec-plans/active/YYYY-MM-DD-<slug>.md` 작성 (템플릿: `docs/exec-plans/template.md`)
 2. 작업 완료 시 회고(§8) 작성 후 `completed/`로 이동
 3. 세션 시작 시 `active/` 에 문서가 있으면 먼저 읽고 이어감
@@ -111,27 +113,32 @@ PDF 11쪽: "이 리포지터리의 특정 구조와 툴링에 따라 크게 달�
 이 프로젝트는 `hermes` 프리셋으로 자가 진화 러닝 루프가 활성화되어 있다.
 
 **기억 구조:**
+
 - `[project]/.hermes/state.db` — 프로젝트 전용 SQLite (세션 기억 + 스킬 인덱스)
 - `~/.hermes/global.db` — 전역 SQLite (공통 패턴 + 사용자 성향)
 
 **자동 동작 (Claude Code 세션 훅 기반 — Codex 세션에서는 미동작, 추후 버전업에서 지원 예정):**
+
 - 세션 종료 시 러닝 루프: 저장 → 롤링 요약 → 결정화(반복 3회+) → 스킬 효용 상관·강등
 - 결정화된 스킬은 `[project]/.hermes/skills/` 에 저장
 - 세션 시작 시(startup/resume): 관련 스킬 자동 검색 주입 + 직전 세션 요약 회상 주입 + 하루 1회 드리밍 자동 실행(throttle 20h, 백그라운드)
 - 작업 도중 Bash 가 터미널 실패(401·permission denied·Traceback·FAILED 등)를 내면 관련 스킬을 그 자리에서 주입 (세션당 최대 3회)
 
 **슬래시 커맨드:**
+
 - `/hermes-status` — 전체 스킬/규칙/세션 현황 확인
 - `/hermes-crystallize` — 대기 패턴 즉시 결정화 (수동 실행)
 - `/hermes-recall` — 직전 세션 요약 키워드 검색·회상
 - `/hermes-dream` — 드리밍 결정화 수동 실행 (누적 요약 → 승격 + junk 스킬 정리 제안)
 
 **자율 에이전트 (선택):**
+
 - cron + `scripts/hermes-cron-run.sh` 로 매니저 에이전트 자동 실행 가능
 - 설정 방법: `docs/hermes-cron-guide.md` 참고
 - 테스트: `python3 scripts/hermes-manager.py --db .hermes/state.db --action start --projects <프로젝트명>`
 
 **목표 기반 자율 루프:**
+
 - 헤드리스: `scripts/hermes-loop-run.sh <프로젝트> "<목표>"` — 완료/안전캡까지 자율 반복
 - 대화형: `/hermes-loop <목표>` — 현재 세션에서 반복 (파괴적 작업은 승인 게이트)
 - 상태/중단: `python3 scripts/hermes-loop.py status` / `... stop <loop-id>`
@@ -139,11 +146,13 @@ PDF 11쪽: "이 리포지터리의 특정 구조와 툴링에 따라 크게 달�
 - 가이드: `docs/hermes-loop-guide.md`
 
 **기억 운반 (컴퓨터 간 — 설치기가 켠다, T-17~T-21):**
+
 - 비공개 저장소면 설치기가 자동으로 켠다: 세션 요약·패턴 수·기억 이벤트·작업 이력이 `refs/hermes/sync` 로 **평문**으로 간다(업로드 직전 마스킹 세 겹). 대화 원문은 안 올린다.
 - 공개 저장소·판별 불가면 꺼진 채 `.hermes/sync.json` 에 이유가 적힌다. 원문까지 올리려면 잠금 모드(열쇠, 세션 밖) — 가이드 참고.
 - 상태: `cat .hermes/sync.json` · `python3 scripts/hermes-sync.py status` · 가이드: `docs/hermes-sync-guide.md`
 
 **원칙:**
+
 - 로컬 스킬 진화는 자동, 공통(claude-harness-hermes) 반영은 사용자 승인 후 PR
 - AI가 공통 스킬을 자동으로 수정하는 것은 금지
 - 파괴적 작업(삭제·force push)은 자율 에이전트도 절대 자동 실행하지 않는다

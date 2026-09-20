@@ -28,7 +28,7 @@ STRICTNESS = ("supportive", "neutral", "competing")
 _TOOLS = "Bash,Edit,Write,Read,Grep,Glob,Skill,AskUserQuestion"
 _CLAUDE_JSON = os.environ.get("HARNESS_EVAL_CLAUDE_JSON") or os.path.expanduser("~/.claude.json")
 _QUIET_ENV = {"HERMES_DREAM_ON_SESSION_START": "0", "HERMES_DASHBOARD_ON_SESSION_START": "0",
-              "HARNESS_SYNC_AUTOENABLE": "0", "HARNESS_TOOL_INSTALL": "0", "HARNESS_REGISTER": "0"}
+              "HARNESS_SYNC_AUTOENABLE": "0", "HARNESS_TOOL_INSTALL": "0", "HERMES_NO_REGISTER": "1"}
 
 
 def load_scenarios(only=None, scen_dir=_SCEN_DIR):

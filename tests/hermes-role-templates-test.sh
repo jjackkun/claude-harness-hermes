@@ -168,7 +168,7 @@ assert "모델 호출 0(4절까지)" 0 "$([[ -f "$T/MODEL_CALLED" ]] && echo 1 |
 echo "== 5절 폐로 (설치 복사 · 출처 표시 · 문서)"
 export HOME="$T/home"; mkdir -p "$HOME"
 INST="$T/inst"; mkdir -p "$INST"; git -C "$INST" init -q 2>/dev/null
-HARNESS_TOOL_INSTALL=0 HARNESS_SYNC_AUTOENABLE=0 HARNESS_REGISTER=0 bash "$REPO_ROOT/project-claude.sh" "$INST" hermes > "$T/install.out" 2>&1; RC=$?
+HARNESS_TOOL_INSTALL=0 HARNESS_SYNC_AUTOENABLE=0 HERMES_NO_REGISTER=1 bash "$REPO_ROOT/project-claude.sh" "$INST" hermes > "$T/install.out" 2>&1; RC=$?
 assert "설치 rc 0" 0 "$RC"
 assert "설치본 roles/ 72개" 72 "$(ls "$INST"/scripts/templates/agent/roles/*.md 2>/dev/null | wc -l)"
 assert "설치본에서 templates 명령 동작" 1 "$(cd "$INST" && python3 scripts/hermes-agent.py templates 2>/dev/null | grep -c '^(72개)')"

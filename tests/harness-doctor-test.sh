@@ -21,7 +21,7 @@ assert() {
 }
 T="$(mktemp -d)"; trap 'rm -rf "$T"' EXIT
 export HOME="$T/home"; mkdir -p "$HOME"
-export HARNESS_TOOL_INSTALL=0 HARNESS_SYNC_AUTOENABLE=0 HARNESS_REGISTER=0
+export HARNESS_TOOL_INSTALL=0 HARNESS_SYNC_AUTOENABLE=0 HERMES_NO_REGISTER=1
 P="$T/proj"; mkdir -p "$P"; git -C "$P" init -q
 bash "$REPO_ROOT/project-claude.sh" "$P" harness adhd > "$T/install.out" 2>&1 || { echo "FAIL: 픽스처 설치 실패"; tail -5 "$T/install.out"; exit 1; }
 D() { python3 "$DOC" "$@"; }

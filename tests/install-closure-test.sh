@@ -93,6 +93,43 @@ mv "$P/scripts/hermes_journal_migrate.py" "$T/hidden.py"
 assert "hermes_journal_migrate 제거 → 미해결 import 검출" "1" "$(FACTORY="$REPO_ROOT" closure "$P/scripts" | grep -c 'hermes_journal_migrate$')"
 mv "$T/hidden.py" "$P/scripts/hermes_journal_migrate.py"
 
+echo "[6] 설치 직후 첫 커밋이 그 프로젝트의 게이트를 통과한다 (2026-09-20: 하루에 세 번 막혔다 — P9 역할 템플릿 · P9 변수 이름 오탐 · R-fmt)"
+# first_commit <라벨> <선재 파일 준비 함수|-> <프리셋...> → 설치 → git add -A → 첫 커밋. 막히면 게이트 메시지를 보인다.
+first_commit() {
+  local label="$1" prep="$2"; shift 2
+  local d="$T/fc-$RANDOM"; mkdir -p "$d"; git -C "$d" init -q; git -C "$d" config user.email t@t; git -C "$d" config user.name t
+  [[ "$prep" == "-" ]] || "$prep" "$d"
+  HERMES_NO_REGISTER=1 HARNESS_TOOL_INSTALL=0 HARNESS_SYNC_AUTOENABLE=0 bash "$REPO_ROOT/project-claude.sh" "$d" "$@" > "$d.install.log" 2>&1 || { echo "  (설치 실패: $label)"; tail -3 "$d.install.log"; }
+  git -C "$d" add -A
+  git -C "$d" commit -qm "install" > "$d.commit.log" 2>&1; local rc=$?
+  assert "첫 커밋 통과: $label" "0" "$rc"
+  [[ $rc -eq 0 ]] || sed 's/\x1b\[[0-9;]*m//g' "$d.commit.log" | grep -vE '^\s*$|═|─' | grep -A6 '하네스 차단' | head -9 | sed 's/^/      /'
+  LAST_FC="$d"
+}
+prep_existing_beliefs() { mkdir -p "$1/docs/design-docs"; printf '# Core Beliefs\n\n## R1. 프로젝트 고유 룰\n\n- 무엇을 지킨다.\n' > "$1/docs/design-docs/core-beliefs.md"; }
+first_commit "harness" - harness
+first_commit "harness hermes" - harness hermes
+first_commit "harness hermes adhd mcp skill-dev (공장 자기 설치 조합)" - harness hermes adhd mcp skill-dev
+first_commit "기존 core-beliefs.md 가 있는 프로젝트 + harness hermes" prep_existing_beliefs harness hermes
+# 자기 검사 — 게이트가 실제로 살아 있어야 위 통과가 의미를 갖는다(훅이 안 깔려도 커밋은 통과한다)
+printf 'DB_PASSWORD = "Xk9#mQ2$vL7pRw4z"\n' > "$LAST_FC/leak.py"; git -C "$LAST_FC" add leak.py
+git -C "$LAST_FC" commit -qm leak > "$LAST_FC.leak.log" 2>&1
+assert "자기 검사: 같은 픽스처에서 비밀값 커밋은 막힌다(게이트가 살아 있다)" "1" "$?"
+
+echo "[7] 설치기가 쓴 문서가 prettier 규격이다 (R-fmt 가 있는 소우주의 첫 커밋을 막지 않는다)"
+PRETTIER="${HARNESS_PRETTIER_BIN:-$(command -v prettier 2>/dev/null || true)}"
+if [[ -z "$PRETTIER" || ! -x "$PRETTIER" ]]; then
+  echo "  SKIP — prettier 없음 (HARNESS_PRETTIER_BIN=<경로> 로 지정하면 검사한다). 통과로 세지 않는다."
+else
+  D7="$T/fmt"; mkdir -p "$D7"; git -C "$D7" init -q
+  HERMES_NO_REGISTER=1 HARNESS_TOOL_INSTALL=0 HARNESS_SYNC_AUTOENABLE=0 bash "$REPO_ROOT/project-claude.sh" "$D7" harness hermes adhd mcp skill-dev > /dev/null 2>&1
+  # 설치기가 **생성·템플릿에서 복사**한 문서만 — 스킬·에이전트·룰·역할 템플릿은 상류 원문 그대로라 대상이 아니다
+  DOCS="$(cd "$D7" && find . -name '*.md' -not -path './.git/*' -not -path './.claude/*' -not -path './scripts/templates/*' | sort)"
+  BAD="$(cd "$D7" && "$PRETTIER" --check $DOCS 2>&1 | grep -E '^\[.*warn.*\] ' | grep -v 'Code style issues' | sed 's/\x1b\[[0-9;]*m//g' | awk '{print $2}' | tr '\n' ' ')"
+  assert "검사한 문서 수 ≥ 4" "1" "$(( $(echo "$DOCS" | grep -c .) >= 4 ))"
+  assert "prettier 위반 문서 0건" "" "$BAD"
+fi
+
 echo
 echo "install-closure: PASS=$PASS FAIL=$FAIL"
 [[ $FAIL -eq 0 ]]
