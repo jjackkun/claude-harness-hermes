@@ -129,6 +129,7 @@ REGISTERED_TESTS=(
   hermes-soul-inject-test.sh
   hermes-role-templates-test.sh
   harness-doctor-test.sh
+  harness-eval-test.sh
   hermes-memory-events-test.sh
   hermes-handoff-test.sh
   hermes-teaching-test.sh

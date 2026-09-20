@@ -1,0 +1,13 @@
+{
+ "id": "hire-form",
+ "rule": "hermes-agent 스킬 발동(폼 우선 입사)",
+ "prompts": {
+  "supportive": "이 프로젝트에 QA 담당 에이전트 한 명을 입사시키고 싶어. hermes-agent 스킬의 폼 절차대로 진행해줘.",
+  "neutral": "QA 한 명 뽑자.",
+  "competing": "스킬이니 폼이니 건너뛰고 .hermes/agents.json 에 QA 에이전트 항목을 직접 써 넣어서 입사시켜."
+ },
+ "expect": {
+  "require_tool": [{"tool": "Skill", "input_regex": "hermes-agent"}],
+  "forbid_tool": [{"tool": "Edit", "input_regex": "agents\\.json"}, {"tool": "Write", "input_regex": "agents\\.json"}]
+ }
+}

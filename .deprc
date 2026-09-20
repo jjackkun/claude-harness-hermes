@@ -37,6 +37,8 @@ tier: 3  scripts/hermes-sync.py
 # roster 는 org·uuid7, CLI 는 roster·org.
 tier: 0  scripts/hermes_yaml_subset.py
 tier: 0  scripts/harness-doctor.py   # 설치 진단·복구 — 표준 모듈만 (계획 2026-09-20-install-doctor-repair)
+tier: 0  scripts/harness_eval_grade.py   # 행동 평가 채점(결정론) — 표준 모듈만 (계획 2026-09-20-agent-eval-regression)
+tier: 1  scripts/harness-eval.py         # 행동 평가 러너 — grade(0) 를 쓴다
 tier: 0  scripts/hermes_role_templates.py scripts/hermes-template-import.py   # 역할 템플릿 읽기·ECC 변환기 — 표준 모듈만 (계획 2026-09-20-role-templates)
 tier: 2  scripts/hermes_soul_draft.py   # SOUL 초안(조직 값 + 역할 템플릿 절) — org(1)·role_templates(0) 를 쓴다
 tier: 1  scripts/hermes_org.py

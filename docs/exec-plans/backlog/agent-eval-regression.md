@@ -1,5 +1,7 @@
 # agent-eval-regression — 하네스 행동 회귀 테스트
 
+> **완료 → `docs/exec-plans/completed/2026-09-20-agent-eval-regression.md`** (2026-09-20). 후속: backlog `identity-files-edit-guard`.
+
 ## 배경
 
 YouTube 영상 「Anthropic 제안한 코드 짜기 전에 무조건 쓰라는 파일 | AI 네이티브 SDLC 도입 정리」

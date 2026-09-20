@@ -55,6 +55,7 @@ EXCLUDE_RE = re.compile(
     r"|^assets/(rules|skills)/"        # 교육용 예제 문서 ("이렇게 하지 마라")
     r"|^\.claude/(rules|skills|agents)/"  # 위 문서의 소우주 복사본(2026-09-16 복사 설치). 원본은 공장이 검사한다
     r"|^docs/superpowers/specs/"       # 설계 문서 (관측된 유출 형태를 그대로 인용)
+    r"|^(assets|scripts)/templates/agent/roles/"  # 역할 템플릿(ECC 원문 규칙 변환, 2026-09-20) — 예시 자격증명(apiKey=sk-abc123 등)이 본문에 있다. 소우주 커밋 전부를 막던 사고
 )
 
 # 값의 *모양*으로 탐지하는 규칙. 라벨이 없어도 잡힌다.
