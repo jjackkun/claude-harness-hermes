@@ -113,4 +113,19 @@ assert "factory 일치 표시" 1 "$(grep -c '>일치<' "$UH")"
 E2="$TMP/empty2"; mkdir -p "$E2/.hermes"; python3 "$S/hermes-dashboard.py" --project-dir "$E2" >/dev/null
 assert "DB 없는 소우주도 HTML 생성 + 안내" 1 "$(grep -c 'state.db 가 없다' "$E2/.hermes/dashboard.html")"
 
+echo "== 세션 시작 훅 — 하루 1회 (목표 7) =="
+HOOK="$REPO_ROOT/assets/hooks/claude-sessionstart-dashboard.sh"; MK="$P/.hermes/dashboard-last-run"; rm -f "$MK" "$P/.hermes/dashboard.html"; : > "$P/.hermes/hooks.log"
+OUT="$(echo '{"source":"startup"}' | HERMES_DASHBOARD_SYNC=1 CLAUDE_PROJECT_DIR="$P" bash "$HOOK")"; RC=$?
+assert "startup: rc 0 · stdout 무출력" "0 " "$RC $OUT"
+assert "startup: 마커 생성 + HTML 생성" "1 1" "$([[ -f "$MK" ]] && echo 1 || echo 0) $([[ -f "$P/.hermes/dashboard.html" ]] && echo 1 || echo 0)"
+rm -f "$P/.hermes/dashboard.html"
+echo '{"source":"startup"}' | HERMES_DASHBOARD_SYNC=1 CLAUDE_PROJECT_DIR="$P" bash "$HOOK" >/dev/null
+assert "마커 24h 이내 → throttle 로 미실행" "1 0" "$(grep -c 'skip:throttle' "$P/.hermes/hooks.log") $([[ -f "$P/.hermes/dashboard.html" ]] && echo 1 || echo 0)"
+touch -d '-25 hours' "$MK"
+echo '{"source":"resume"}' | HERMES_DASHBOARD_SYNC=1 CLAUDE_PROJECT_DIR="$P" bash "$HOOK" >/dev/null
+assert "25h 지나면 resume 에서 다시 생성" 1 "$([[ -f "$P/.hermes/dashboard.html" ]] && echo 1 || echo 0)"
+echo '{"source":"clear"}' | HERMES_DASHBOARD_SYNC=1 CLAUDE_PROJECT_DIR="$P" bash "$HOOK" >/dev/null
+assert "clear 는 source 게이트에서 건너뜀" 1 "$(grep -c 'skip:source' "$P/.hermes/hooks.log")"
+echo '{"source":"startup"}' | HERMES_DASHBOARD_ON_SESSION_START=0 CLAUDE_PROJECT_DIR="$P" bash "$HOOK" >/dev/null; assert "끄기 변수 존중(rc 0)" 0 "$?"
+
 echo; echo "hermes-dashboard: PASS=$PASS FAIL=$FAIL"; [[ $FAIL -eq 0 ]]

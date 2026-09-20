@@ -25,9 +25,9 @@
 - [x] 목표 6 — **우주 페이지**: `python3 scripts/hermes-dashboard.py --universe` 가 `.installed-projects` 를 훑어 소우주별 한 행
   (에이전트 수·스킬 수·도움률·강등 후보 수·마지막 드림·factory_commit 일치 여부)을 `.hermes/universe-dashboard.html` 에 쓴다.
   hermes 미설치 프로젝트는 "미설치" 로 표시(kis-trading 사례) — 검증: `bash tests/hermes-dashboard-test.sh` 우주 절 — 임시 레지스트리 3곳(1 미설치)
-- [ ] 목표 7 — `/hermes-dashboard` 스킬: 생성 후 경로를 알리고, 세션 시작 훅이 하루 1회 갱신(드림 throttle 과 같은 마커 방식, 백그라운드)
+- [x] 목표 7 — `/hermes-dashboard` 스킬: 생성 후 경로를 알리고, 세션 시작 훅이 하루 1회 갱신(드림 throttle 과 같은 마커 방식, 백그라운드)
   — 검증: `tests/hermes-dashboard-test.sh` 훅 절(마커 24h 이내면 미실행)
-- [ ] 목표 8 — 설치 폐로: 새 모듈이 `hermes.conf` 복사 목록·`.deprc`·`run-all.sh` 에 있다 — 검증: `bash tests/install-closure-test.sh` · `bash tests/dep-contract-test.sh` · `bash tests/run-all.sh --check-orphans`
+- [x] 목표 8 — 설치 폐로: 새 모듈이 `hermes.conf` 복사 목록·`.deprc`·`run-all.sh` 에 있다 — 검증: `bash tests/install-closure-test.sh` · `bash tests/dep-contract-test.sh` · `bash tests/run-all.sh --check-orphans`
 
 ## 3. 비목표 (Out of Scope)
 
@@ -75,10 +75,13 @@
 - 열린 인계: `hermes_handoff_queue.queue` 는 되묻기(question)를 닫힘으로 보므로 "막힘" 은 따로 모았다(question·declined 뒤 finished·expired 없는 봉투).
 - 소환 픽스처는 `hermes_summons.issue` 로 만들었다 — 세션 안 summons 직접 쓰기 가드(RV-06)를 테스트도 지킨다.
 - `.gitignore` 추가 불필요: `.hermes/*` 가 이미 무시라 dashboard.html·universe-dashboard.html 은 커밋에서 빠진다.
+- 2026-09-20 Step 4·5 완료: `/hermes-dashboard` 스킬 + `claude-sessionstart-dashboard.sh`(startup/resume · 마커 24h · 백그라운드 · stdout 0, `HERMES_DASHBOARD_SYNC=1` 로 앞에서 대기) + hermes.conf 등록.
+  훅 테스트 6단언 → 45. install-closure 9 · pipeline 138. 실 소우주 생성: 공장(현역 2 · 스킬 agent 1 · 요약 1), terminal-shipping(활성 계획 11, 주입·강등 표 채워짐), 우주 3곳(ai-create·wonil·terminal-shipping).
+- 발견: 오늘 임시 디렉터리에 설치기를 돌린 픽스처 3곳(rosterfix·demo/one·demo/two)이 `.installed-projects` 에 등록돼 우주 페이지에 떴다 → 그 줄만 걷어냈다. 테스트가 설치기를 부를 때 레지스트리 등록을 막는 옵트아웃이 없다(backlog 후보: install-doctor-repair 와 합류).
 - R6: 프런트 스킬(impeccable)을 불렀으나 설계 맥락 질문(teach)은 돌리지 않았다 — 맥락은 계획서(사람 운영자·한눈에·보고서와 같은 결)가 이미 정했고 사용자가 폼 질문을 거부했다.
 
 ## 8. 회고 (완료 시 작성)
 
-- 잘된 것:
-- 잘못된 것:
-- 다음 룰 후보:
+- 잘된 것: 데이터/렌더/CLI 를 세 파일로 나눈 결정 덕에 테스트가 dict 를 직접 단언하고 렌더는 HTML 존재·외부 자원 0 만 본다. 강등·인계·발화율은 정본 모듈 재사용이라 기준이 갈라지지 않는다.
+- 잘못된 것: 리스트 내포 안의 조건이 복잡도에 세어져 네 함수가 한도를 넘었다 — 판마다 행 생성 헬퍼를 처음부터 뒀어야 했다. 픽스처 SQL 이 세션 가드에 두 번 걸렸다(summons 쓰기·모델 호출 문구).
+- 다음 룰 후보: "테스트·시연이 설치기를 부를 때는 레지스트리에 등록하지 않는다(HARNESS_REGISTER=0)".
