@@ -137,6 +137,7 @@ if [[ $DRY_RUN -eq 1 ]]; then
   echo "Harness hook sources: ${#HARNESS_HOOK_SOURCES[@]}"
   echo "Harness flags: docs=${HARNESS_DOCS_TEMPLATES:-0} pre-commit=${HARNESS_PRE_COMMIT:-0} max-lines=${HARNESS_LINT_MAX_LINES:-0}"
   echo "VSCode ext (${#VSCODE_EXTENSIONS[@]}): ${VSCODE_EXTENSIONS[*]:-<none>}"
+  echo "Tools   (${#REQUIRED_BINS[@]}): ${REQUIRED_BINS[*]:-<none>}"
   echo "Plugins (${#PLUGINS[@]}): ${PLUGINS[*]:-<none>}  [markets: ${PLUGIN_MARKETPLACES[*]:-<none>}]"
   sync_preset_plugins "$PROJECT_PATH" 1
   exit 0
@@ -215,6 +216,10 @@ if [[ ${#VSCODE_EXTENSIONS[@]} -gt 0 ]]; then
     done
   fi
 fi
+
+# ---- 외부 도구 설치 (preset 의 REQUIRED_BINS — 핀 고정, sha256 대조; lib/tool_installers.sh) ----
+tool_install_required "$PROJECT_PATH"
+[[ ${#REQUIRED_BINS[@]} -gt 0 ]] && log_info "$(tool_status_line)"
 
 # ---- Claude Code 플러그인 동기화 (preset 의 PLUGINS / PLUGIN_MARKETPLACES) ----
 # 플러그인은 user scope(전역)에 설치된다 — 프로젝트별이 아니라 한 번 깔면 모든

@@ -20,6 +20,7 @@
 # 종료 코드: 0 = 전체 통과, 1 = 1개 이상 실패
 
 set -uo pipefail
+export HARNESS_TOOL_INSTALL=0   # 개별 테스트도 같은 값을 갖지만 run-all 에서 한 번 더 못 박는다
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 TESTS_DIR="$REPO_ROOT/tests"
@@ -120,6 +121,7 @@ REGISTERED_TESTS=(
   hermes-keys-test.sh
   hermes-key-guard-test.sh
   hermes-sync-test.sh
+  tool-installers-test.sh
   hermes-roster-test.sh
   hermes-summon-guard-test.sh
   hermes-soul-inject-test.sh

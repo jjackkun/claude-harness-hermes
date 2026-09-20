@@ -12,6 +12,7 @@
 # 종료 코드: 0 = 모든 단언 통과, 1 = 실패
 
 set -uo pipefail
+export HARNESS_TOOL_INSTALL=0   # 설치기의 외부 도구 다운로드는 테스트에서 끈다(네트워크 0) — tests/tool-installers-test.sh 가 따로 실측
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 TMP=$(mktemp -d)

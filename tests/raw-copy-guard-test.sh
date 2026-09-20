@@ -10,6 +10,7 @@
 # 실행: bash tests/raw-copy-guard-test.sh
 
 set -uo pipefail
+export HARNESS_TOOL_INSTALL=0   # 설치기의 외부 도구 다운로드는 테스트에서 끈다(네트워크 0) — tests/tool-installers-test.sh 가 따로 실측
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 ALLOW="$REPO_ROOT/tests/fixtures/raw-copy-allowlist.txt"
 PASS=0; FAIL=0

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # 네이티브 메모리 심링크 설치 라운드트립 — HOME 오버라이드로 실 ~/.claude/projects 격리.
 set -uo pipefail
+export HARNESS_TOOL_INSTALL=0   # 설치기의 외부 도구 다운로드는 테스트에서 끈다(네트워크 0) — tests/tool-installers-test.sh 가 따로 실측
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
 T=$(mktemp -d); trap 'rm -rf "$T"' EXIT

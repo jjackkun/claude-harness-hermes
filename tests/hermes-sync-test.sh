@@ -157,7 +157,9 @@ assert "push 는 '이식 꺼짐' 한 줄, rc 0" 1 "$(HOME="$TMP/homeD" python3 "
 echo ""
 echo "== 9. age 없는 컴퓨터 — 훅 exit 0 · 한 줄 · DB 변경 0 (목표 14) =="
 DB_A_BEFORE="$(md5sum "$A/.hermes/state.db" | awk '{print $1}')"
-NOAGE="$TMP/noage"; mkdir -p "$NOAGE"; for b in python3 git bash sed grep cat wc head awk basename dirname mktemp stat mkdir date timeout printf sh; do ln -sf "$(command -v $b)" "$NOAGE/$b"; done
+NOAGE="$TMP/noage"; mkdir -p "$NOAGE"; for b in git bash sed grep cat wc head awk basename dirname mktemp stat mkdir date timeout printf sh; do ln -sf "$(command -v $b)" "$NOAGE/$b"; done
+# python3 는 pyenv 심(shim)일 수 있어 최소 PATH 에서 pyenv 를 못 찾는다(2026-09-20 실측) — 실제 실행 파일을 링크한다
+ln -sf "$(python3 -c 'import sys; print(sys.executable)')" "$NOAGE/python3"
 OUT_NOAGE="$(PATH="$NOAGE" HOME="$HA" python3 "$A/scripts/hermes-sync.py" --project "$A" pull 2>&1)"
 assert "age 없음: pull rc 0" 0 "$?"
 assert "age 없음: 한 줄 알림" 1 "$(grep -c 'age 가 없어' <<<"$OUT_NOAGE")"

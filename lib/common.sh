@@ -42,6 +42,8 @@ source "$_DS_LIB/installers.sh"
 source "$_DS_LIB/install_receipt.sh"
 # shellcheck source=lib/plugins.sh
 source "$_DS_LIB/plugins.sh"
+# shellcheck source=lib/tool_installers.sh
+source "$_DS_LIB/tool_installers.sh"     # REQUIRED_BINS 확인·설치 — 핀 고정 sha256 (계획 agent-memory-roundtrip 목표 8)
 # hook_inventory 는 harness_installers / settings_gen 이 소유 판별에 사용하므로 먼저.
 # shellcheck source=lib/hook_inventory.sh
 source "$_DS_LIB/hook_inventory.sh"

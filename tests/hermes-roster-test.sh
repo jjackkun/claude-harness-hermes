@@ -11,6 +11,7 @@
 # 실행: bash tests/hermes-roster-test.sh
 
 set -uo pipefail
+export HARNESS_TOOL_INSTALL=0   # 설치기의 외부 도구 다운로드는 테스트에서 끈다(네트워크 0) — tests/tool-installers-test.sh 가 따로 실측
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 S="$REPO_ROOT/scripts"
@@ -129,7 +130,9 @@ assert "HERMES_AGENT_ID 로 행위자 지정" 1 "$(HERMES_AGENT_ID="$AID" A whoa
 echo ""
 echo "== 5. git 추적 6경로 (목표 14) =="
 cd "$P"
-ig() { git check-ignore -q "$1" && echo 무시 || echo 추적; }
+# git 2.25 의 check-ignore -q 는 부정 패턴(!…) 일치에도 exit 0 이라 -v 로 매치된 패턴을 보고 판정한다(2026-09-20 실측).
+ig() { local m; m="$(git check-ignore -v "$1" 2>/dev/null | awk -F'\t' '{print $1}' | sed -E 's/^[^:]*:[0-9]+://')"
+       [[ -n "$m" && "${m:0:1}" != "!" ]] && echo 무시 || echo 추적; }
 assert "organization.yaml 추적" 추적 "$(ig .hermes/organization.yaml)"
 assert "agents.json 추적" 추적 "$(ig .hermes/agents.json)"
 assert "agents/<id>/SOUL.md 추적" 추적 "$(ig ".hermes/agents/$AID/SOUL.md")"

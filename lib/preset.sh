@@ -82,6 +82,7 @@ reset_preset_vars() {
   HARNESS_LINT_MAX_LINES=0       # 1 이면 assets/lint-configs/eslint/max-lines.config.js 를 프로젝트로 복사
   SESSION_START_HOOKS=()         # 세션 시작 시 1회 실행 hook 스크립트 경로
   VSCODE_EXTENSIONS=()           # code --install-extension 으로 설치할 익스텐션 ID 목록
+  REQUIRED_BINS=()               # 설치기가 확인·설치할 외부 바이너리 이름 (lib/tool_installers.sh 의 핀 표에 있어야 한다)
   PLUGIN_MARKETPLACES=()         # claude plugin marketplace add 로 등록할 마켓 (e.g. "Egonex-AI/Understand-Anything")
   PLUGINS=()                     # claude plugin install --scope user 로 설치할 플러그인 (e.g. "name@marketplace")
 }
@@ -183,7 +184,7 @@ dedupe_preset_arrays() {
   CLAUDE_MD_SECTIONS=("${out[@]}")
 
   # Harness arrays — dedupe.
-  for arr in USER_PROMPT_SUBMIT_HOOKS SESSION_START_HOOKS PRE_TOOL_USE_HOOKS POST_TOOL_USE_HOOKS HARNESS_PERMISSIONS_ALLOW HARNESS_HOOK_SOURCES VSCODE_EXTENSIONS PLUGIN_MARKETPLACES PLUGINS; do
+  for arr in USER_PROMPT_SUBMIT_HOOKS SESSION_START_HOOKS PRE_TOOL_USE_HOOKS POST_TOOL_USE_HOOKS HARNESS_PERMISSIONS_ALLOW HARNESS_HOOK_SOURCES VSCODE_EXTENSIONS REQUIRED_BINS PLUGIN_MARKETPLACES PLUGINS; do
     seen=(); out=()
     eval "local items=(\"\${$arr[@]:-}\")"
     for v in "${items[@]}"; do

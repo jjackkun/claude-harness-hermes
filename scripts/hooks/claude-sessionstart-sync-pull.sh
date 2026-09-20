@@ -23,7 +23,7 @@ _log() { mkdir -p "$(dirname "$log")"; printf '[hermes-sync-pull] %s %s\n' "$(da
 [[ -f "$project_dir/.hermes/state.db" ]] || { _log "action=skip:no-db"; exit 0; }
 [[ -f "$project_dir/.hermes/sync.json" ]] || { _log "action=skip:sync-off"; exit 0; }
 if ! command -v age >/dev/null 2>&1; then
-  _log "action=skip:no-age — age 가 없어 pull 을 건너뜁니다(설치: apt install age)"
+  _log "action=skip:no-age — age 가 없어 pull 을 건너뜁니다(설치기가 깐다: 공장에서 bash update-all.sh)"
   exit 0
 fi
 
