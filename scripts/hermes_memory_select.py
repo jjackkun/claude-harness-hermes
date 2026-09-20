@@ -34,6 +34,20 @@ def _score(mem: dict, hint_tokens: set) -> int:
     return 2 * len(about_tokens & hint_tokens) + len(body_tokens & hint_tokens)
 
 
+def _related(memories: list, taken: set, hint: str, top: int) -> list:
+    hint_tokens = _tokens(hint)
+    if not hint_tokens:
+        return []
+    scored = sorted(((_score(m, hint_tokens), m) for m in memories if m["memory_id"] not in taken),
+                    key=lambda x: (-x[0], x[1].get("ts") or ""))
+    return [m for score, m in scored if score > 0][:top]
+
+
+def _recent(memories: list, taken: set, top: int) -> list:
+    return sorted((m for m in memories if m["memory_id"] not in taken),
+                  key=lambda m: m.get("ts") or "", reverse=True)[:top]
+
+
 def select_memories(con, agent_id: str, hint: str = "", top_related: int = TOP_RELATED,
                     top_recent: int = TOP_RECENT) -> dict:
     """{'pinned': [...], 'related': [...], 'recent': [...], 'total': n} — 각 목록은 기억 dict. 겹치지 않는다."""
@@ -41,15 +55,9 @@ def select_memories(con, agent_id: str, hint: str = "", top_related: int = TOP_R
     pinned_ids = _pinned_ids(con, agent_id)
     pinned = [m for m in memories if m["memory_id"] in pinned_ids]
     taken = {m["memory_id"] for m in pinned}
-    hint_tokens = _tokens(hint)
-    related = []
-    if hint_tokens:
-        scored = sorted(((_score(m, hint_tokens), m) for m in memories if m["memory_id"] not in taken),
-                        key=lambda x: (-x[0], x[1].get("ts") or ""))
-        related = [m for s, m in scored if s > 0][:top_related]
-        taken |= {m["memory_id"] for m in related}
-    recent = sorted((m for m in memories if m["memory_id"] not in taken),
-                    key=lambda m: m.get("ts") or "", reverse=True)[:top_recent]
+    related = _related(memories, taken, hint, top_related)
+    taken |= {m["memory_id"] for m in related}
+    recent = _recent(memories, taken, top_recent)
     return {"pinned": pinned, "related": related, "recent": recent, "total": len(memories)}
 
 

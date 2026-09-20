@@ -27,6 +27,10 @@ from hermes_reversed_guard import reversal_hold  # noqa: E402  (철회 보류 �
 from hermes_skill_yield import is_generic_key  # noqa: E402  (일반 코드 단어 키 거부, 계획 skill-yield-junk)
 
 
+from hermes_crystallize_evidence import (  # noqa: E402
+    derive_search_terms, evidence_for, fetch_evidence, fetch_memory_evidence, get_pattern_count)
+
+
 def connect_db(db_path: str) -> sqlite3.Connection:
     """공통 SQLite 연결 헬퍼 — busy_timeout + WAL (M1)."""
     con = sqlite3.connect(db_path, timeout=5.0)
@@ -177,65 +181,6 @@ def skill_filename(content: str, key: str) -> str:
     if not slug:
         slug = _slugify(key)
     return f"{slug or 'skill'}.md"
-
-
-def _derive_search_terms(key: str) -> list[str]:
-    """임의 패턴 키에서 검색 토큰 목록을 도출한다."""
-    tokens = re.split(r"[-_\s]+", key)
-    terms = [key.replace("-", " "), key]
-    terms += [t for t in tokens if len(t) >= 2]
-    seen: set[str] = set()
-    result = []
-    for t in terms:
-        if t not in seen:
-            seen.add(t)
-            result.append(t)
-    return result[:5]
-
-
-def fetch_evidence(db_path: str, search_terms: list[str], limit: int = 5) -> str:
-    if not os.path.isfile(db_path):
-        return "(DB 없음)"
-    try:
-        con = connect_db(db_path)
-        snippets: list[str] = []
-        for term in search_terms[:3]:
-            try:
-                # FTS5 MATCH 는 하이픈 등을 구문으로 해석하므로 phrase 인용 필수
-                rows = con.execute(
-                    "SELECT role, content FROM session_history "
-                    "WHERE session_history MATCH ? "
-                    "ORDER BY timestamp DESC LIMIT ?",
-                    ('"' + term.replace('"', '""') + '"', limit),
-                ).fetchall()
-                for role, content in rows:
-                    short = content[:300].replace("\n", " ").strip()
-                    entry = f"[{role}] {short}"
-                    if entry not in snippets:
-                        snippets.append(entry)
-                if len(snippets) >= limit:
-                    break
-            except Exception as e:
-                _log(f"증거 검색 실패(term={term}): {e}")
-                continue
-        con.close()
-        return "\n".join(f"- {s}" for s in snippets[:limit]) if snippets else "(기록 없음)"
-    except Exception as e:
-        _log(f"증거 조회 DB 오류: {e}")
-        return "(DB 쿼리 실패)"
-
-
-def get_pattern_count(db_path: str, key: str) -> int:
-    try:
-        con = connect_db(db_path)
-        row = con.execute(
-            "SELECT count FROM pattern_count WHERE pattern_key=?", (key,)
-        ).fetchone()
-        con.close()
-        return row[0] if row else 0
-    except Exception as e:
-        _log(f"pattern_count 조회 실패({key}): {e}")
-        return 0
 
 
 def generate_skill_content(
@@ -426,19 +371,14 @@ def _skip_reason(db_path: str, key: str, terms: list[str]) -> str | None:
     return None
 
 
-def fetch_memory_evidence(db_path: str, agent_id: str, about: str, limit: int = 10) -> str:
-    """개인 스킬 결정화(C-21)의 증거는 그 에이전트의 같은 about 기억(철회되지 않은 것)이다 — 대화 원문이 아니다."""
-    con = connect_db(db_path)
-    try:
-        rows = con.execute(
-            "SELECT ts, body FROM memory_events WHERE agent_id=? AND about=? AND kind='memory.added' "
-            "AND memory_id NOT IN (SELECT revises FROM memory_events WHERE kind='memory.retracted' AND revises IS NOT NULL) "
-            "ORDER BY ts DESC LIMIT ?", (agent_id, about, limit)).fetchall()
-    except sqlite3.OperationalError:
-        rows = []
-    finally:
-        con.close()
-    return "\n".join(f"- [{ts}] {body}" for ts, body in rows)
+def _meta_for(key: str, agent_id: str):
+    """(about, meta). 개인 층 키 `agent:<id>:<about>` 면 about 이 설명·검색어가 된다."""
+    about = key.split(":", 2)[2] if agent_id and key.startswith("agent:") else None
+    meta = CATEGORY_METADATA.get(key, {
+        "description": about or key,
+        "search_terms": derive_search_terms(about or key),
+    })
+    return about, meta
 
 
 def crystallize(db_path: str, keys: list[str], project_dir: str, agent_id: str = None) -> None:
@@ -453,11 +393,7 @@ def crystallize(db_path: str, keys: list[str], project_dir: str, agent_id: str =
 
     for key in keys:
         is_fallback = key not in CATEGORY_METADATA
-        about = key.split(":", 2)[2] if agent_id and key.startswith("agent:") else None
-        meta = CATEGORY_METADATA.get(key, {
-            "description": about or key,
-            "search_terms": _derive_search_terms(about or key),
-        })
+        about, meta = _meta_for(key, agent_id)
 
         # 결정화 전 관문 셋(상태·일반 단어·철회 보류). 하나라도 걸리면 모델을 부르지 않는다.
         skip = _skip_reason(db_path, key, meta["search_terms"])
@@ -465,13 +401,7 @@ def crystallize(db_path: str, keys: list[str], project_dir: str, agent_id: str =
             print(f"[hermes-crystallize] {skip}")
             continue
 
-        evidence_limit = 10 if is_fallback else 5
-        if about:
-            evidence = fetch_memory_evidence(db_path, agent_id, about)
-            count = max(get_pattern_count(db_path, key), len(evidence.splitlines()))
-        else:
-            evidence = fetch_evidence(db_path, meta["search_terms"], limit=evidence_limit)
-            count = get_pattern_count(db_path, key)
+        evidence, count = evidence_for(db_path, key, meta, is_fallback, agent_id, about)
 
         content = generate_skill_content(key, meta, evidence, count, from_evidence=is_fallback)
         if content == SKIP_SENTINEL:

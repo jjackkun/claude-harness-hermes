@@ -55,25 +55,34 @@ def _agent_of(project: str, actor_or_id: str) -> dict:
     return None
 
 
+def _ranks(project: str) -> list:
+    try:
+        return list(load_org(project).get("rank") or [])
+    except OrgError:
+        return []
+
+
+def _first_at(agents: list, rank: str, unit: str):
+    """그 rank·unit 의 에이전트 중 가장 먼저 입사한 사람. 없으면 None."""
+    for a in sorted(agents, key=lambda x: x.get("created_at") or ""):
+        o = a.get("org") or {}
+        if o.get("rank") == rank and o.get("unit") == unit:
+            return a
+    return None
+
+
 def reviewer_for(project: str, agent_id: str) -> str:
     """같은 unit 에서 바로 위 rank 의 에이전트(은퇴자 제외). 없으면 더 위로, 그래도 없으면 'human'."""
     me = _agent_of(project, agent_id)
-    if not me:
+    org = (me or {}).get("org") or {}
+    ranks = _ranks(project)
+    if not me or org.get("rank") not in ranks:
         return "human"
-    org = me.get("org") or {}
-    try:
-        ranks = list(load_org(project).get("rank") or [])
-    except OrgError:
-        ranks = []
-    if org.get("rank") not in ranks:
-        return "human"
-    idx = ranks.index(org["rank"])
     agents = [a for a in load_roster(project).get("agents", []) if a.get("status") != "retired"]
-    for higher in reversed(ranks[:idx]):                       # 바로 위부터 한 칸씩
-        for a in sorted(agents, key=lambda x: x.get("created_at") or ""):
-            o = a.get("org") or {}
-            if o.get("rank") == higher and o.get("unit") == org.get("unit"):
-                return f"agent:{a['agent_id']}"
+    for higher in reversed(ranks[:ranks.index(org["rank"])]):     # 바로 위부터 한 칸씩
+        found = _first_at(agents, higher, org.get("unit"))
+        if found:
+            return f"agent:{found['agent_id']}"
     return "human"
 
 

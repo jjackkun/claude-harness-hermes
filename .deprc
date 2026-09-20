@@ -57,6 +57,7 @@ tier: 3  scripts/hermes_envelope_gate.py
 tier: 4  scripts/hermes-propose.py
 # 스킬 4층(계획 5): layers 는 uuid7(tier0)만 import → tier1. 색인기는 layers 를 import → tier2.
 tier: 1  scripts/hermes_skill_layers.py
+tier: 0  scripts/hermes_crystallize_evidence.py   # 결정화 증거 수집(표준 모듈만) — crystallize(1) 가 부른다
 tier: 1  assets/hooks/check-secrets.py scripts/hermes-crystallize.py
 tier: 2  scripts/hermes-index-skills.py scripts/hermes_skill_extends.py
 tier: 1  scripts/hermes_redact.py scripts/hermes_search_fallback.py

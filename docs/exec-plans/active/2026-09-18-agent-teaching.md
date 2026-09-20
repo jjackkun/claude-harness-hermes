@@ -49,6 +49,7 @@ teaching.md 개요의 실측 그대로: 학습 재료가 사람의 대화(Stop �
 - **신규 파일 목록**:
   - `scripts/hermes_review_chain.py` — finished 봉투에서 리뷰어(바로 위 rank 또는 human)를 고르고 review 봉투 칸을 조립·기억 이벤트로 옮긴다(표준 모듈 + roster/org/memory_events import)
   - `tests/hermes-teaching-test.sh` — 조직 2단·에이전트 2명 픽스처로 리뷰 자동 개봉·기억 기록·3회 결정화·teach·about 거부 실측
+  - `scripts/hermes_crystallize_evidence.py` — 결정화 증거 수집(검색어·세션 증거·기억 증거·패턴 수). hermes-crystallize.py 가 R-size 500 을 넘어 떼어냄. 공개 함수 5개
   - `scripts/hermes_review.py` — 리뷰 봉투 닫기(approved/corrected → 기억 + 3회 결정화). handoff 와 review_chain 위의 상위 모듈(순환 금지). 공개 함수 2개
   - `scripts/hermes_memory_select.py` — 세션 시작 주입에 넣을 기억을 고른다(핀 전부 → 과제 낱말 겹침 상위 6 → 최근 4)와 그 본문 렌더. 파일 MEMORY.md 는 건드리지 않는다. 공개 함수 2개
 - 룰: R3(모델 호출 없음 — 리뷰어 선택·기억 기록은 규칙) · R-iface ≤7 · R-dep(`.deprc` 계층: review_chain 은 roster(2)·memory_events(0) 위 → tier 3, handoff(2) 가 import 하면 handoff 가 4 로 오름 — 착수 시 계층 재배치 확인)
