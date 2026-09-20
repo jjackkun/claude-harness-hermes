@@ -10,6 +10,10 @@
 파일로 추가만 한다.
 
 ## 1. 무엇을 옮기나 (합의, T-07 · RV-03)
+
+> ⚠️ **2026-09-20 개정 (T-17 · T-18 · T-21)** — 기본 운반 대상은 발전 재료(요약 `summary/` · 패턴 수 · 기억 `memory/` · 작업 이력 `journal/`)이고 **비공개 저장소는 평문**이다.
+> 대화 원문 `history/` 와 암호화·열쇠(`keys/`)는 공개 저장소에서 원문까지 올리려는 사람의 **옵션**이다. 아래 표는 그 옵션(잠금 모드)의 배치다.
+> 근거: `docs/audits/2026-09-20-transport-keys-rethink.md`. 구현 계획: `docs/exec-plans/active/2026-09-20-transport-plain.md`.
 ```text
 refs/hermes/sync   (그 소우주 원격, 코드 브랜치와 무관)
  ├─ keys/<사람 id>/master.<자물쇠 지문>.age     마스터 열쇠를 각 자물쇠로 감싼 것 (RV-03)

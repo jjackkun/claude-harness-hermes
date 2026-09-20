@@ -24,7 +24,8 @@
 - [x] 목표 3 — 복제(H-09, `hermes-propose.py template`)는 여전히 기억을 싣지 않는다 — 검증: 기존 propose 테스트에 `memory_events` 0건 단언 추가
 - [x] 목표 4 — 운반 켜기 절차가 한 곳에 있고 실행 가능하다: 열쇠 만들기 → `.hermes/sync.json {"push": true}` → 첫 push → 다른 컴퓨터 join → pull.
   `docs/hermes-sync-guide.md`(신규 또는 기존 보강) + 세션 시작 훅의 H-10 안내문이 그 문서를 가리킨다 — 검증: 문서의 명령을 공장에서 그대로 실행해 `refs/hermes/sync` 생성
-- [ ] 목표 5 — 공장(이 저장소)에서 실제로 켠다: 게이트QA 의 `teach` 이벤트 1건 → push → 두 번째 clone 에서 pull → MEMORY.md 일치. 검증: 시연 기록(§7)
+- [ ] 목표 5 (2026-09-20 재정의, T-18·T-21) — 실제 켜기는 열쇠 없이 설치기가 한다. 이 공장은 공개 저장소(PUBLIC 실측)라 기본 꺼짐이므로, 시연은 **비공개 임시 원격**에서:
+  설치기 → 평문 운반 켜짐 → 게이트QA `teach` 1건 → push → 두 번째 clone pull → MEMORY.md 일치. 구현은 계획 `2026-09-20-transport-plain` 이 맡고, 이 목표는 그 계획 완료 뒤 시연만 한다
 - [x] 목표 6 — `hermes_sync_fragments.py` 머리말의 "경로만 예약" 을 현재 상태로 고친다. 검증: `grep -c '경로만 예약' scripts/hermes_sync_fragments.py` = 0
 - [x] 목표 8 (2026-09-20 추가, 사용자: "필요한 도구면 setup·update-all 로 깔려야지 따로 설치하면 안 된다") — hermes 프리셋이 `REQUIRED_BINS+=(age age-keygen)` 을 선언하고
   설치기(`project-claude.sh`, 따라서 `setup`·`update-all` 모두)가 없으면 설치한다: 핀 고정 v1.3.2 배포 파일을 받아 sha256 대조 뒤 `~/.local/bin` 에 놓는다(apt 에 없는 Ubuntu 20.04 실측).
@@ -74,6 +75,7 @@
   `hermes-propose-test.sh` 에 memory_events 미포함 단언(33/33). `hermes_sync_fragments.py` 머리말 정정. 안내서 `docs/hermes-sync-guide.md` + `hermes-keys.sh lock`(두 번째 컴퓨터 자물쇠만) 신설,
   `doctor`·H-10 문구가 설치기·안내서를 가리킴, 소우주 CLAUDE.md 에 "기억 운반" 절(hermes.conf).
 - 목표 5(공장에서 실제 켜기)는 열쇠 생성이 T-11(세션 밖 사람) 이라 에이전트가 못 한다 — 사용자가 터미널에서 안내서 1단계를 실행해야 진행.
+  → 2026-09-20 논의로 뒤집힘: 열쇠는 공개 저장소 옵션으로 강등(T-18), 비공개는 평문·설치기 자동(T-21). `docs/audits/2026-09-20-transport-keys-rethink.md`.
 - 2026-09-20 목표 8 완료: `lib/tool_installers.sh`(핀 v1.3.2 · sha256 4플랫폼 · 대조 실패 시 미설치 · `HARNESS_TOOL_INSTALL=0` 옵트아웃) + `preset.sh` `REQUIRED_BINS` 칸 + hermes.conf 선언 +
   `project-claude.sh` 단계·요약 줄. 실측: terminal-shipping 재설치 로그 `tool → age v1.3.2 (linux-amd64, sha256 대조 통과) → ~/.local/bin` · `age --version` = v1.3.2.
   테스트: `tool-installers-test.sh` 10단언(네트워크 0). 설치기를 부르는 테스트 13개 + run-all 에 옵트아웃을 넣어 테스트가 다운로드를 타지 않게 함.
