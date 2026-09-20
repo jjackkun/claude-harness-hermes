@@ -25,6 +25,6 @@ assert "날짜는 안 가림(과마스킹 방지)" 1 "$(grep -c '2026-09-20' <<<
 assert "버전은 안 가림" 1 "$(grep -c '1\.2\.3' <<<"$OUT")"
 assert "전화 여전히 가림" 1 "$(grep -c 'REDACTED:PHONE' <<<"$OUT")"
 assert "git 작성자 이름 → [REDACTED:NAME](자동 정답지)" 0 "$(grep -c '홍길동테스트' <<<"$OUT")"
-assert "명부 이름 → 가림" 0 "$(grep -c '선적QA담당' <<<"$OUT")"
+assert "명부의 에이전트 이름은 안 가림(기계 식별자, 과마스킹 방지)" 1 "$(grep -c '선적QA담당' <<<"$OUT")"
 assert "main 은 안 가림(일반어)" 1 "$(grep -c 'main 브랜치' <<<"$OUT")"
 echo; echo "hermes-redact-pii: PASS=$PASS FAIL=$FAIL"; [[ $FAIL -eq 0 ]]

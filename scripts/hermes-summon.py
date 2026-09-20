@@ -98,8 +98,12 @@ def cmd_run(args) -> int:
                        "evidence": {"template": (agent.get("template") or "").split("@")[0] or None}})
 
     env = dict(os.environ, HERMES_AGENT_ID=agent["agent_id"], HERMES_SUMMON_NONCE=nonce,
-               HERMES_REQUESTED_BY=requested_by, HERMES_PROJECT_DIR=project)
-    prompt = f"[소환] 당신은 {agent['name']} (agent:{agent['agent_id']}) 입니다.\n\n{args.task}"
+               HERMES_REQUESTED_BY=requested_by, HERMES_PROJECT_DIR=project,
+               HERMES_TASK_HINT=args.task[:200])               # 세션 시작 훅이 기억 주입을 이 과제에 맞춰 고른다(목표 10)
+    prompt = (f"[소환] 당신은 {agent['name']} (agent:{agent['agent_id']}) 입니다.\n\n{args.task}\n\n"
+              "끝나기 전에 이번 일에서 배운 것 한 줄을 남기십시오(C-21): "
+              "python3 scripts/hermes-agent.py note \"<한 줄>\" --about <domain>/<slug> "
+              "(domain: gate·test·git·debug·workflow·file·sync·agent). 실제 사람 이름·연락처·비밀값은 적지 않습니다.")
     cmd = [os.environ.get("HERMES_CLAUDE_BIN", "claude"), "-p", prompt, "--output-format", "json"]
     try:
         done = subprocess.run(cmd, capture_output=True, text=True, timeout=args.timeout, env=env, cwd=project)

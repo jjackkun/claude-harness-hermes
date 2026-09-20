@@ -341,8 +341,8 @@ def mark_rejected(db_path: str, key: str) -> None:
         _log(f"거부 마킹 실패({key}): {e}")
 
 
-def register_skill(db_path: str, skill_path: str, key: str) -> None:
-    """skill_index 에 등록하고 pattern_count를 결정화 완료로 표시한다."""
+def register_skill(db_path: str, skill_path: str, key: str, agent_id: str = None) -> None:
+    """skill_index 에 등록하고 pattern_count를 결정화 완료로 표시한다. agent_id 가 있으면 개인 층(layer=agent)으로."""
     # 영문 슬러그 토큰 + 본문(제목·문제상황·규칙·코드)의 한글 포함 키워드 합집합 —
     # 영문 키만 등록하면 한글 질의로 검색이 안 됐다(①). 본문 키워드로 한글도 색인.
     kw_set = set(t for t in key.replace("-", " ").split() if t)
@@ -361,6 +361,10 @@ def register_skill(db_path: str, skill_path: str, key: str) -> None:
         "keywords = excluded.keywords, version = skill_index.version + 1",
         (skill_path, keywords, now),
     )
+    if agent_id:
+        from hermes_skill_layers import ensure_layer_columns
+        ensure_layer_columns(con)
+        con.execute("UPDATE skill_index SET layer='agent', agent_id=? WHERE skill_path=?", (agent_id, skill_path))
     con.execute(
         "UPDATE pattern_count SET crystallized=1 WHERE pattern_key=?", (key,)
     )
@@ -422,15 +426,37 @@ def _skip_reason(db_path: str, key: str, terms: list[str]) -> str | None:
     return None
 
 
-def crystallize(db_path: str, keys: list[str], project_dir: str) -> None:
-    skills_dir = os.path.join(os.path.dirname(db_path), "skills")
+def fetch_memory_evidence(db_path: str, agent_id: str, about: str, limit: int = 10) -> str:
+    """개인 스킬 결정화(C-21)의 증거는 그 에이전트의 같은 about 기억(철회되지 않은 것)이다 — 대화 원문이 아니다."""
+    con = connect_db(db_path)
+    try:
+        rows = con.execute(
+            "SELECT ts, body FROM memory_events WHERE agent_id=? AND about=? AND kind='memory.added' "
+            "AND memory_id NOT IN (SELECT revises FROM memory_events WHERE kind='memory.retracted' AND revises IS NOT NULL) "
+            "ORDER BY ts DESC LIMIT ?", (agent_id, about, limit)).fetchall()
+    except sqlite3.OperationalError:
+        rows = []
+    finally:
+        con.close()
+    return "\n".join(f"- [{ts}] {body}" for ts, body in rows)
+
+
+def crystallize(db_path: str, keys: list[str], project_dir: str, agent_id: str = None) -> None:
+    """agent_id 가 있으면 개인 층(.hermes/agents/<id>/skills/)에 쓰고 증거는 그 에이전트의 기억에서 뽑는다(C-21).
+    키는 `agent:<id>:<about>` 꼴로 장부(pattern_count)를 에이전트별로 나눈다 — 같은 about 을 다른 에이전트가 따로 굳힐 수 있다."""
+    if agent_id:
+        from hermes_skill_layers import layer_dir
+        skills_dir = layer_dir(project_dir, "agent", agent_id=agent_id)
+    else:
+        skills_dir = os.path.join(os.path.dirname(db_path), "skills")
     os.makedirs(skills_dir, exist_ok=True)
 
     for key in keys:
         is_fallback = key not in CATEGORY_METADATA
+        about = key.split(":", 2)[2] if agent_id and key.startswith("agent:") else None
         meta = CATEGORY_METADATA.get(key, {
-            "description": key,
-            "search_terms": _derive_search_terms(key),
+            "description": about or key,
+            "search_terms": _derive_search_terms(about or key),
         })
 
         # 결정화 전 관문 셋(상태·일반 단어·철회 보류). 하나라도 걸리면 모델을 부르지 않는다.
@@ -440,8 +466,12 @@ def crystallize(db_path: str, keys: list[str], project_dir: str) -> None:
             continue
 
         evidence_limit = 10 if is_fallback else 5
-        evidence = fetch_evidence(db_path, meta["search_terms"], limit=evidence_limit)
-        count = get_pattern_count(db_path, key)
+        if about:
+            evidence = fetch_memory_evidence(db_path, agent_id, about)
+            count = max(get_pattern_count(db_path, key), len(evidence.splitlines()))
+        else:
+            evidence = fetch_evidence(db_path, meta["search_terms"], limit=evidence_limit)
+            count = get_pattern_count(db_path, key)
 
         content = generate_skill_content(key, meta, evidence, count, from_evidence=is_fallback)
         if content == SKIP_SENTINEL:
@@ -459,7 +489,7 @@ def crystallize(db_path: str, keys: list[str], project_dir: str) -> None:
         with open(skill_path, "w", encoding="utf-8") as f:
             f.write(content + "\n")
 
-        register_skill(db_path, skill_path, key)
+        register_skill(db_path, skill_path, key, agent_id=agent_id)
         print(f"[hermes] DONE:{filename} (키: {key})")
 
 
@@ -468,6 +498,7 @@ def main() -> None:
     parser.add_argument("--db", required=True, help="state.db 경로")
     parser.add_argument("--crystallize", required=True, help="결정화 대상 패턴 (콤마 구분)")
     parser.add_argument("--project-dir", default="", help="프로젝트 디렉터리")
+    parser.add_argument("--agent", default=None, help="개인 층으로 결정화할 에이전트 id (키는 agent:<id>:<about>)")
     args = parser.parse_args()
 
     keys = [k.strip() for k in args.crystallize.split(",") if k.strip()]
@@ -475,7 +506,7 @@ def main() -> None:
         print("[hermes-crystallize] no keys — skipped")
         return
 
-    crystallize(args.db, keys, args.project_dir or os.path.dirname(os.path.dirname(args.db)))
+    crystallize(args.db, keys, args.project_dir or os.path.dirname(os.path.dirname(args.db)), agent_id=args.agent)
 
 
 if __name__ == "__main__":

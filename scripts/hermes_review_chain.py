@@ -7,8 +7,9 @@
 - 본문은 기록 직전 마스킹(T-20). 같은 about 의 corrected 가 3회면 개인 스킬 결정화 후보다(누적 수를 돌려준다).
 
 리뷰 봉투는 새 journal kind 가 아니라 task.assigned 에 intent "리뷰: …" + decision `constraints=review-of=<원 봉투>;reviewee=<id>;verified=<판정>` 으로 표시한다
-(kind CHECK 마이그레이션을 피한다). 순환 import 를 피해 hermes_handoff 는 함수 안에서 늦게 부른다(같은 tier 2).
-공개 함수 6개: TeachingError · check_about · reviewer_for · open_review · close_review · record_teaching
+(kind CHECK 마이그레이션을 피한다). 이 모듈은 hermes_handoff 를 import 하지 않는다(순환 금지 R-dep-2) — 봉투 개봉 함수는 인자로 받고,
+닫기(close_review)는 상위 모듈 hermes_review.py 에 있다.
+공개 함수 5개: TeachingError · check_about · reviewer_for · open_review · record_teaching
 """
 import re
 import sqlite3
@@ -28,7 +29,6 @@ except ImportError:            # 옛 설치본
 ABOUT_DOMAINS = ("gate", "test", "git", "debug", "workflow", "file", "sync", "agent")
 _ABOUT = re.compile(r"^(%s)/[A-Za-z0-9][A-Za-z0-9._-]{0,127}$" % "|".join(ABOUT_DOMAINS))
 _REVIEW_MARK = re.compile(r"review-of=([0-9a-f-]{36});reviewee=([0-9a-f-]{36})")
-CORRECTED_THRESHOLD = 3
 
 
 class TeachingError(ValueError):
@@ -87,8 +87,12 @@ def _assign_decision(db: str, handoff_id: str) -> str:
     return row or ("", "")
 
 
-def open_review(db: str, project: str, handoff_id: str, finished_actor: str, verified: str = "none") -> str:
-    """finished 뒤 자동 개봉. 리뷰 봉투 자체가 닫힌 것이거나 행위자가 명부 밖이면 None."""
+def open_review(db: str, project: str, handoff_id: str, finished_actor: str, verified: str = "none",
+                opener=None) -> str:
+    """finished 뒤 자동 개봉. 리뷰 봉투 자체가 닫힌 것이거나 행위자가 명부 밖이면 None.
+    `opener` 는 hermes_handoff.open_handoff — 호출측(handoff)이 넘긴다(이 모듈은 handoff 를 import 하지 않는다)."""
+    if opener is None:
+        raise TeachingError("opener(open_handoff) 가 필요하다")
     decision, intent = _assign_decision(db, handoff_id)
     if _REVIEW_MARK.search(decision or ""):
         return None                                            # 리뷰의 리뷰는 열지 않는다
@@ -96,10 +100,9 @@ def open_review(db: str, project: str, handoff_id: str, finished_actor: str, ver
     if not me:
         return None
     to = reviewer_for(project, me["agent_id"])
-    from hermes_handoff import open_handoff                    # 같은 tier — 늦게 불러 순환을 피한다
     env = {"goal": f"리뷰: {(intent or '')[:150]}", "done_when": "manual", "inputs": [handoff_id],
            "constraints": f"review-of={handoff_id};reviewee={me['agent_id']};verified={verified}"}
-    return open_handoff(db, project, to, env, parent_task_id=handoff_id, by="system:review-chain")
+    return opener(db, project, to, env, parent_task_id=handoff_id, by="system:review-chain")
 
 
 def record_teaching(db: str, project: str, agent_id: str, about: str, body: str, source_event: str) -> str:
@@ -122,30 +125,3 @@ def record_teaching(db: str, project: str, agent_id: str, about: str, body: str,
     finally:
         con.close()
     return mid
-
-
-def close_review(db: str, project: str, review_id: str, verdict: str, actor: str,
-                 about: str = None, body: str = None) -> dict:
-    """approved | corrected(about, body). 리뷰 봉투를 finished 로 닫고 리뷰받은 에이전트의 기억에 남긴다.
-    돌려주는 것: {memory_id, reviewee, about, corrected_count} — corrected_count 가 CORRECTED_THRESHOLD 면 개인 스킬 결정화 후보."""
-    if verdict not in ("approved", "corrected"):
-        raise TeachingError(f"판정은 approved 또는 corrected: {verdict}")
-    decision, _ = _assign_decision(db, review_id)
-    m = _REVIEW_MARK.search(decision or "")
-    if not m:
-        raise TeachingError("리뷰 봉투가 아니다(review-of 표시 없음)")
-    reviewee = m.group(2)
-    about = check_about(about)
-    if verdict == "corrected" and not (body or "").strip():
-        raise TeachingError("corrected 는 지적 한 줄(body)이 필요하다")
-    text = body if verdict == "corrected" else (body or f"{about} 가 맞았다 (리뷰 승인)")
-    from hermes_handoff import resolve                         # 같은 tier — 늦게
-    resolve(db, project, review_id, "finished", actor)
-    mid = record_teaching(db, project, reviewee, about, text, f"review:{review_id}:{verdict}:{actor}")
-    con = sqlite3.connect(db)
-    try:
-        n = con.execute("SELECT count(*) FROM memory_events WHERE agent_id=? AND about=? AND kind='memory.added' "
-                        "AND source_event LIKE 'review:%:corrected:%'", (reviewee, about)).fetchone()[0]
-    finally:
-        con.close()
-    return {"memory_id": mid, "reviewee": reviewee, "about": about, "corrected_count": n}

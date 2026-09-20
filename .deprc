@@ -38,7 +38,7 @@ tier: 3  scripts/hermes-sync.py
 tier: 0  scripts/hermes_yaml_subset.py
 tier: 1  scripts/hermes_org.py
 tier: 2  scripts/hermes_roster.py
-tier: 3  scripts/hermes-agent.py
+tier: 3  scripts/hermes_review.py scripts/hermes-agent.py
 tier: 0  scripts/hermes_summons.py
 tier: 3  scripts/hermes-summon.py
 # 기억 이벤트(계획 2026-09-15-agent-identity 목표 8·9): events 는 표준 모듈만,
@@ -46,7 +46,7 @@ tier: 3  scripts/hermes-summon.py
 tier: 0  scripts/hermes_memory_events.py scripts/hermes_memory_conflicts.py
 # 결정화 철회 보류(계획 2026-09-18-crystallize-reversed-guard): 표준 모듈만, crystallize(1) 가 import.
 tier: 0  scripts/hermes_reversed_guard.py
-tier: 1  scripts/hermes_memory_view.py
+tier: 1  scripts/hermes_memory_view.py scripts/hermes_memory_select.py
 # 인계 봉투(계획 2026-09-15-agent-identity 목표 10·11·12): done_when 은 표준 모듈만,
 # handoff 는 done_when·journal·journal_views·uuid7 을 import 한다(최상위 tier 1 → handoff tier 2).
 tier: 0  scripts/hermes_done_when.py
@@ -81,3 +81,5 @@ forbid: assets/hooks/*.py -> scripts/*.py
 # 등록만으로 면제되지 않는다 — 실제로 선택적인지 검사기가 확인한다.
 # check-secrets.py 는 정답지 모듈이 없으면 형태 규칙만으로 동작한다(차단기가 죽는 것보다 낫다).
 optional: assets/hooks/check-secrets.py -> hermes_secret_values
+# 커밋 게이트 훅(표준 모듈만, 다른 scripts 를 import 하지 않는다) — 2026-09-20 자기 계약 검사가 미등록으로 잡음
+tier: 0  scripts/hooks/complexity.py scripts/hooks/coverage_probe.py scripts/hooks/depcheck.py scripts/hooks/design_cover.py scripts/hooks/doc_counts.py scripts/hooks/gate_event.py scripts/hooks/gate_report.py

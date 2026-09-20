@@ -42,8 +42,19 @@ class MemoryRejected(ValueError):
     """허용목록 밖의 값 — 기록하지 않는다."""
 
 
+_PINS_SQL = """
+CREATE TABLE IF NOT EXISTS memory_pins (
+  agent_id   TEXT NOT NULL,
+  memory_id  TEXT NOT NULL,
+  pinned_at  TEXT NOT NULL,
+  PRIMARY KEY (agent_id, memory_id)
+);
+"""
+
+
 def ensure_memory_schema(con) -> None:
     con.executescript(SCHEMA_SQL)
+    con.executescript(_PINS_SQL)     # 핀(주입 항상 포함, 계획 agent-teaching 목표 10) — 이벤트 표는 그대로
     con.commit()
 
 

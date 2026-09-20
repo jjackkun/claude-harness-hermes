@@ -93,6 +93,29 @@ assert "이벤트 본문이 주입된다" "1" "$(printf '%s' "$OUT" | grep -c '4
 assert "손으로 쓴 옛 MEMORY 줄은 사라진다(파생물)" "0" "$(printf '%s' "$OUT" | grep -c '회귀 테스트 3건 작성')"
 assert "MEMORY.md 파일도 갱신됨" "1" "$(grep -c '400줄 넘기 전에' "$P/.hermes/agents/$ID_ACTIVE/MEMORY.md")"
 
+echo "[7] 선별 주입 — 핀 → 과제 관련 → 최근, 나머지는 파일에만 (계획 agent-teaching 목표 10)"
+PYTHONPATH="$REPO_ROOT/scripts" python3 - "$P/.hermes/state.db" "$ID_ACTIVE" <<'PY'
+import sqlite3, sys
+from hermes_memory_events import record, ensure_memory_schema
+from hermes_uuid7 import uuid7_str
+con = sqlite3.connect(sys.argv[1]); ensure_memory_schema(con)
+ids = []
+for i in range(15):
+    ids.append(record(con, {"memory_id": uuid7_str(), "agent_id": sys.argv[2], "universe_id": "u", "ts": "2026-09-20T01:%02d:00" % i,
+                            "kind": "memory.added", "about": "workflow/item-%02d" % i, "body": "잡다한 기억 %02d" % i, "source_event": "t"}))
+rel = record(con, {"memory_id": uuid7_str(), "agent_id": sys.argv[2], "universe_id": "u", "ts": "2026-09-20T00:00:00",
+                   "kind": "memory.added", "about": "sync/keys", "body": "열쇠는 설치기가 다룬다", "source_event": "t"})
+con.execute("INSERT INTO memory_pins (agent_id, memory_id, pinned_at) VALUES (?,?,?)", (sys.argv[2], ids[0], "2026-09-20T00:00:00Z"))
+con.commit(); con.close()
+PY
+OUT="$(echo '{}' | HERMES_AGENT_ID="$ID_ACTIVE" HERMES_PROJECT_DIR="$P" HERMES_TASK_HINT="sync 열쇠 정리" bash "$HOOK" 2>"$T/err")"
+assert "선별 머리말(선별 n/전체)" "1" "$(printf '%s' "$OUT" | grep -c '기억 (선별 [0-9]*/17')"
+assert "핀은 항상(item-00)" "1" "$(printf '%s' "$OUT" | grep -c '잡다한 기억 00')"
+assert "과제 관련(sync/keys) 포함" "1" "$(printf '%s' "$OUT" | grep -c '열쇠는 설치기가 다룬다')"
+assert "최근 4 포함(item-14)" "1" "$(printf '%s' "$OUT" | grep -c '잡다한 기억 14')"
+assert "오래된 무관 기억(item-03)은 주입 밖" "0" "$(printf '%s' "$OUT" | grep -c '잡다한 기억 03')"
+assert "핀 절 · 관련 절 · 최근 절 머리" "3" "$(printf '%s' "$OUT" | grep -cE '^## (핀|이번 과제 관련|최근)$')"
+
 echo "[5] 자기 검사 — 빈 훅이면 목표 1 이 빨개진다"
 EMPTY="$T/empty-hook.sh"; printf '#!/usr/bin/env bash\nexit 0\n' > "$EMPTY"
 OUT2="$(echo '{}' | HERMES_AGENT_ID="$ID_ACTIVE" HERMES_PROJECT_DIR="$P" bash "$EMPTY")"

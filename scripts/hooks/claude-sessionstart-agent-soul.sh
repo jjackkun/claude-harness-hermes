@@ -40,7 +40,7 @@ fi
 
 # 명부 확인 + 파일 읽기 + 자르기를 한 프로세스에서. 잘라도 UTF-8 글자 중간에서 끊지 않는다.
 errf="$(mktemp 2>/dev/null || echo /dev/null)"
-SOUL_CAP="${HERMES_SOUL_CAP:-4096}" MEMORY_CAP="${HERMES_MEMORY_CAP:-4096}" \
+SOUL_CAP="${HERMES_SOUL_CAP:-4096}" MEMORY_CAP="${HERMES_MEMORY_CAP:-4096}" HERMES_SCRIPTS_DIR="${scripts_dir:-$project_dir/scripts}" \
 python3 - "$project_dir" "$HERMES_AGENT_ID" "$agent_dir" <<'PY' 2>"$errf" || { _log "WARN hook-error agent=$HERMES_AGENT_ID → 정체성 없이 시작"; }
 import json, os, sys
 project, agent_id, agent_dir = sys.argv[1:4]
@@ -73,11 +73,36 @@ def clipped(path, cap):
     return cut + f"\n[…잘림 {len(data) - len(cut.encode('utf-8'))} B — 원문 {os.path.relpath(path, project)}]\n"
 
 out = [f"[헤르메스 출근] {agent.get('name', '?')} (agent:{agent_id}) — 아래는 이 에이전트의 정체성(SOUL.md)과 기억(MEMORY.md)이다. 정체성은 사람 승인으로만 고친다."]
-for fname, cap in caps.items():
-    body = clipped(os.path.join(agent_dir, fname), cap)
-    if body is None:
-        continue
-    out.append(f"\n--- {fname} ---\n{body.rstrip()}\n")
+body = clipped(os.path.join(agent_dir, "SOUL.md"), caps["SOUL.md"])
+if body is not None:
+    out.append(f"\n--- SOUL.md ---\n{body.rstrip()}\n")
+
+# 기억은 선별 주입(계획 agent-teaching 목표 10): 핀 → 이번 과제(HERMES_TASK_HINT) 관련 → 최근. DB 가 없으면 파일을 그대로.
+mem_text = None
+db_path = os.path.join(project, ".hermes", "state.db")
+if os.path.isfile(db_path):
+    try:
+        import sqlite3
+        sys.path.insert(0, os.environ.get("HERMES_SCRIPTS_DIR") or os.path.join(project, "scripts"))
+        from hermes_memory_select import select_memories, render_selection
+        con = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+        try:
+            sel = select_memories(con, agent_id, os.environ.get("HERMES_TASK_HINT", ""))
+        finally:
+            con.close()
+        if sel["total"]:
+            mem_text = render_selection(sel, agent.get("name", agent_id))
+    except Exception as exc:  # noqa: BLE001 — 선별 실패는 파일 주입으로 폴백
+        print(f"[agent-soul WARN] 기억 선별 실패, MEMORY.md 파일로 대신: {exc}", file=sys.stderr)
+if mem_text is None:
+    mem_text = clipped(os.path.join(agent_dir, "MEMORY.md"), caps["MEMORY.md"])
+else:
+    data = mem_text.encode("utf-8")
+    if len(data) > caps["MEMORY.md"]:
+        cut = data[:caps["MEMORY.md"]].decode("utf-8", "ignore")
+        mem_text = cut + f"\n[…잘림 {len(data) - len(cut.encode('utf-8'))} B — 원문 .hermes/agents/{agent_id}/MEMORY.md]\n"
+if mem_text is not None:
+    out.append(f"\n--- MEMORY.md ---\n{mem_text.rstrip()}\n")
 sys.stdout.write("\n".join(out) + "\n")
 PY
 # 경고는 세션(stderr)과 로그 양쪽에 — 세션은 이유를 보고, 로그는 나중에 센다.

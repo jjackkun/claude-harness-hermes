@@ -20,19 +20,19 @@ teaching.md 개요의 실측 그대로: 학습 재료가 사람의 대화(Stop �
   (`about` 필수, `source_event=review:<봉투 id>`)가 남는다. `about` 없는 `corrected` 는 거부. `about` 은 `<domain>/<slug>` 형식만 받는다
   (domain 고정 집합 gate·test·git·debug·workflow·file·sync·agent, slug 는 `^[A-Za-z0-9][A-Za-z0-9._-]*$` ≤128자), `kind` 는 observation·preference·fact·decision·note 5종,
   본문·about 에 비밀 패턴 `(api[_-]?key|token|secret|password|authorization|credentials?|auth)` 뒤 값은 `[REDACTED]` — 검증: 같은 테스트 기억 절(형식 위반 3종 거부)
-- [ ] 목표 3 (C-21) — 같은 `about` 의 `corrected` 3회 → 그 에이전트 개인 스킬 결정화(기존 결정화 루프, 철회 보류·도움률 강등 적용)
+- [x] 목표 3 (C-21) — 같은 `about` 의 `corrected` 3회 → 그 에이전트 개인 스킬 결정화(기존 결정화 루프, 철회 보류·도움률 강등 적용)
   결정화되면 원 기억은 지우지 않고 `memory.revised`(body="스킬 <이름> 으로 승격", revises=원 memory_id) 한 건씩 남기며, MEMORY.md 는 그 about 을 한 줄로 접는다
   — 검증: 같은 테스트 결정화 절(`claude` 가짜 실행파일, 승격 뒤 `memory_events` 행 수 = 원 3 + revised 3)
-- [ ] 목표 4 (C-22) — `hermes-agent.py teach "<이름>" --about <주제> "<한 줄>"` 가 `memory.added(by=human:…, source_event=teach)` 를 남기고,
+- [x] 목표 4 (C-22) — `hermes-agent.py teach "<이름>" --about <주제> "<한 줄>"` 가 `memory.added(by=human:…, source_event=teach)` 를 남기고,
   `about` 없으면 거부. 철회는 기존 `memory.retracted` — 검증: 같은 테스트 teach 절 + `hermes-roster-test.sh` 회귀
-- [ ] 목표 5 (C-22) — `hermes-agent` 스킬이 "X 한테 이거 가르쳐" 를 `teach` 로 옮긴다(트리거 문구 추가) — 검증: skill-creator `run_eval.py`
+- [x] 목표 5 (C-22) — `hermes-agent` 스킬이 "X 한테 이거 가르쳐" 를 `teach` 로 옮긴다(트리거 문구 추가) — 검증: skill-creator `run_eval.py`
 - [ ] 목표 6 (C-21) — 대시보드 에이전트 판에 에이전트별 `about` 지적 누적 수 — 검증: `bash tests/hermes-dashboard-test.sh` (계획 hermes-dashboard 와 합류)
-- [ ] 목표 7 (C-25·C-26 경계) — 이 계획은 회의·아카이브 승격을 구현하지 않는다. 소환 러너가 에이전트 1명·세션 1개인 현 상태를 확인만 한다 — 검증: `grep -c` 로 러너에 다중 에이전트 인자 0
-- [ ] 목표 9 (cumora 식 자기 기록) — 소환 러너(`hermes-summon.py run`)의 지시문 꼬리에 "끝나기 전에 배운 것 한 줄을 `python3 scripts/hermes-agent.py note \"<한 줄>\" --about <domain>/<slug>` 로 남겨라" 가 붙고,
+- [x] 목표 7 (C-25·C-26 경계) — 이 계획은 회의·아카이브 승격을 구현하지 않는다. 소환 러너가 에이전트 1명·세션 1개인 현 상태를 확인만 한다 — 검증: `grep -c` 로 러너에 다중 에이전트 인자 0
+- [x] 목표 9 (cumora 식 자기 기록) — 소환 러너(`hermes-summon.py run`)의 지시문 꼬리에 "끝나기 전에 배운 것 한 줄을 `python3 scripts/hermes-agent.py note \"<한 줄>\" --about <domain>/<slug>` 로 남겨라" 가 붙고,
   `note` 는 `memory.added(by=agent:<id>, source_event=task:<nonce>)` 를 남긴다. 모델 추가 호출 0 — 검증: `hermes-teaching-test.sh` note 절 + 러너 지시문 grep
-- [ ] 목표 10 (주입 선별) — 세션 시작 훅이 MEMORY.md 전체 대신 **핀 전체 + 이번 봉투 about/키워드 일치 상위 6 + 최근 4** 만 넣고, 4,096 B 를 넘으면
+- [x] 목표 10 (주입 선별) — 세션 시작 훅이 MEMORY.md 전체 대신 **핀 전체 + 이번 봉투 about/키워드 일치 상위 6 + 최근 4** 만 넣고, 4,096 B 를 넘으면
   ECC 식 마커 `[…잘림 N B — 원문 <경로>]` 를 붙인다(기존 clipped 재사용). `hermes-agent.py pin <이름> <memory_id>` 가 핀을 토글한다 — 검증: `hermes-teaching-test.sh` 주입 절(기억 15건 → 10건 + 마커)
-- [ ] 목표 8 — 설치 폐로·의존 계층 — 검증: `bash tests/install-closure-test.sh` · `bash tests/dep-contract-test.sh` · `bash tests/run-all.sh --check-orphans`
+- [x] 목표 8 — 설치 폐로·의존 계층 — 검증: `bash tests/install-closure-test.sh` · `bash tests/dep-contract-test.sh` · `bash tests/run-all.sh --check-orphans`
 
 ## 3. 비목표 (Out of Scope)
 
@@ -49,6 +49,8 @@ teaching.md 개요의 실측 그대로: 학습 재료가 사람의 대화(Stop �
 - **신규 파일 목록**:
   - `scripts/hermes_review_chain.py` — finished 봉투에서 리뷰어(바로 위 rank 또는 human)를 고르고 review 봉투 칸을 조립·기억 이벤트로 옮긴다(표준 모듈 + roster/org/memory_events import)
   - `tests/hermes-teaching-test.sh` — 조직 2단·에이전트 2명 픽스처로 리뷰 자동 개봉·기억 기록·3회 결정화·teach·about 거부 실측
+  - `scripts/hermes_review.py` — 리뷰 봉투 닫기(approved/corrected → 기억 + 3회 결정화). handoff 와 review_chain 위의 상위 모듈(순환 금지). 공개 함수 2개
+  - `scripts/hermes_memory_select.py` — 세션 시작 주입에 넣을 기억을 고른다(핀 전부 → 과제 낱말 겹침 상위 6 → 최근 4)와 그 본문 렌더. 파일 MEMORY.md 는 건드리지 않는다. 공개 함수 2개
 - 룰: R3(모델 호출 없음 — 리뷰어 선택·기억 기록은 규칙) · R-iface ≤7 · R-dep(`.deprc` 계층: review_chain 은 roster(2)·memory_events(0) 위 → tier 3, handoff(2) 가 import 하면 handoff 가 4 로 오름 — 착수 시 계층 재배치 확인)
 - 설치: `hermes.conf` 복사 목록 → 12곳 전파
 - 데이터: `memory_events` 추가 전용(스키마 불변), `journal_events` 에 `handoff.review` kind 추가(KINDS·CHECK 마이그레이션 — `hermes_journal_migrate.py` 경로)
@@ -75,7 +77,14 @@ teaching.md 개요의 실측 그대로: 학습 재료가 사람의 대화(Stop �
 - 2026-09-20 Step 1·2 완료: `hermes_review_chain.py`(reviewer_for·open_review·close_review·record_teaching·check_about, tier 2) + `hermes_handoff.resolve(finished)` 뒤 자동 개봉 + `derive_kind` 가 `system:` 행위자를 지시로.
   테스트 `hermes-teaching-test.sh` 24단언(리뷰어 선택·자동 개봉·human 폴백·닫기→기억·마스킹·MEMORY.md·리뷰의 리뷰 없음·about 형식 5종 거부·corrected 누적 3) · handoff 55 · dep 21.
 - 설계와 다른 점: journal 에 `handoff.review` kind 를 추가하지 않았다 — task.assigned 의 intent "리뷰: …" + decision `constraints=review-of=…;reviewee=…;verified=…` 로 표시(CHECK 마이그레이션 회피). 판정(approved/corrected)은 memory_events.source_event 에 남는다.
-- 순환 import: review_chain 과 handoff 는 같은 tier 2 에서 서로 함수 안에서 늦게 부른다(depcheck 는 같은 tier 상호 참조 허용).
+- 순환 import: 처음엔 같은 tier 에서 서로 늦게 부르게 했으나 depcheck 가 순환(R-dep-2)을 tier 와 별개로 차단했다 → review_chain 은 handoff 를 import 하지 않고
+  개봉 함수를 인자로 받으며, 닫기(close_review)는 상위 모듈 `hermes_review.py`(tier 3)로 옮겼다. 자기 계약 검사가 미등록으로 잡던 `scripts/hooks/*.py` 7개도 tier 0 으로 등록.
+- 2026-09-20 Step 3 완료: `hermes-crystallize.py --agent`(개인 층, 증거는 그 에이전트의 기억, 장부 키 `agent:<id>:<about>`) · `hermes_review.close_review` 가 3회째에 결정화 호출 ·
+  `hermes-agent.py teach/note/pin` + `memory_pins` 표 · 소환 러너 지시문 꼬리(note) + `HERMES_TASK_HINT` · `hermes_memory_select.py`(핀 → 과제 관련 6 → 최근 4) 를 세션 시작 훅에 연결(DB 없으면 파일 폴백).
+  테스트: teaching 40(가짜 claude 로 결정화 실측) · soul-inject 35(선별 6단언) · handoff 55 · roster 51 · summon 56 · memory-events 29 · dep 21 · closure 9.
+- 발견(과마스킹): 자동 정답지에 명부 에이전트 이름을 넣자 작업 이력의 `chosen=QA담당` 이 가려져 summon·roster 테스트가 깨졌다 → 명부 이름 제외(기계 식별자). transport-plain §7 의 후보를 실측으로 닫음.
+- 목표 5 의 run_eval 은 세션 안에서 돌지 않아(summon-guard) 트리거 문구·표·§7 절만 추가했다. 세션 밖 실행은 hire-form 계획 §7 과 같은 명령.
+- 목표 6(대시보드 에이전트 판)은 `hermes-dashboard` 계획이 맡는다 — 여기서는 `memory_events` 의 `source_event LIKE 'review:%:corrected:%'` 를 about 별로 세면 된다는 것만 적어 둔다.
 
 ## 8. 회고 (완료 시 작성)
 

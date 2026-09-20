@@ -1,6 +1,6 @@
 ---
 name: hermes-agent
-description: 헤르메스 에이전트 명부·조직·소환·인계를 CLI 로 잇는다. `/hermes-agent` 라고만 치거나 "에이전트 만들자"·"한 명 입사시켜"·"직원 뽑자" 처럼 분야·직급·조직 없이 입사를 말하면 터미널 폼(선택지)을 먼저 띄워 조직 정의 → 입사 → SOUL 세 답을 받는다. 사용자가 자연어로 "누구를 입사시켜"(예 "users 담당 입사시켜", "QA 한 명 뽑아"), "이 일을 누구한테 넘겨"(예 "이 로그인 버그 프론트 담당한테 넘겨", "이거 QA 한테 인계해"), "누가 이 일 맡지"(담당 찾기), "누구 은퇴/복직시켜", "명부 보여줘", "지금 나 누구야"(정체성 확인) 중 하나를 말할 때 반드시 이 스킬을 쓴다. 담당 배정·인계·입사·조직 얘기가 나오면, "봉투"·"done_when"·"소환"이라는 단어를 쓰지 않더라도 발동한다. 파괴적 판단(은퇴·인계 실패 처리)은 사람 확인을 거친다.
+description: 헤르메스 에이전트 명부·조직·소환·인계를 CLI 로 잇는다. `/hermes-agent` 라고만 치거나 "에이전트 만들자"·"한 명 입사시켜"·"직원 뽑자" 처럼 분야·직급·조직 없이 입사를 말하면 터미널 폼(선택지)을 먼저 띄워 조직 정의 → 입사 → SOUL 세 답을 받는다. 사용자가 자연어로 "누구를 입사시켜"(예 "users 담당 입사시켜", "QA 한 명 뽑아"), "이 일을 누구한테 넘겨"(예 "이 로그인 버그 프론트 담당한테 넘겨", "이거 QA 한테 인계해"), "누가 이 일 맡지"(담당 찾기), "누구 은퇴/복직시켜", "명부 보여줘", "지금 나 누구야"(정체성 확인), "누구한테 이거 가르쳐"·"이건 기억해 둬"(가르침·기억) 중 하나를 말할 때 반드시 이 스킬을 쓴다. 담당 배정·인계·입사·조직 얘기가 나오면, "봉투"·"done_when"·"소환"이라는 단어를 쓰지 않더라도 발동한다. 파괴적 판단(은퇴·인계 실패 처리)은 사람 확인을 거친다.
 ---
 
 # hermes-agent
@@ -22,6 +22,7 @@ description: 헤르메스 에이전트 명부·조직·소환·인계를 CLI 로
 | "이 일 QA 한테 인계해" (성공 기준·기한 명시) | `hermes_handoff.open_handoff` | [4](#4-구조화-인계-봉투) |
 | "프론트 담당 은퇴시켜" · "복직시켜" · "승급" | `hermes-agent.py promote/retire/rehire` | [5](#5-생애주기-promote-retire-rehire) |
 | "명부 보여줘" · "지금 나 누구야" | `hermes-agent.py list` · `whoami` | [6](#6-조회-list-whoami) |
+| "게이트QA 한테 이거 가르쳐" · "이건 기억해 둬" · "이 기억 핀해" | `hermes-agent.py teach` · `note` · `pin` | [7](#7-가르침과-기억-teach--note--pin) |
 
 **언제 소환(run)이고 언제 인계(handoff)인가** — 이 구분이 핵심이다:
 
@@ -254,6 +255,28 @@ python3 scripts/hermes-agent.py rehire  "<이름>"   # 복직
 
 - **은퇴·인계 실패 처리는 파괴적 판단**이다 — 사용자에게 대상과 영향(그 담당이 매칭·소환에서 빠짐)을 확인한 뒤 실행한다.
 - 은퇴해도 개인 스킬·SOUL 은 파일로 남는다. `rehire` 로 되돌린다.
+
+## 7. 가르침과 기억 (teach · note · pin)
+
+리뷰가 곧 가르침이다(C-21): 담당이 봉투를 `finished` 로 닫으면 같은 조직의 바로 위 직급에게 **리뷰 봉투가 자동으로** 열리고, 리뷰어가
+`approved` / `corrected(about, body)` 로 닫는 순간 리뷰받은 에이전트의 기억(`memory_events`)에 남는다. 같은 `about` 지적이 3회면 그 에이전트의
+개인 스킬로 결정화된다. 이 절은 봉투 밖에서 기억을 다루는 세 명령이다.
+
+```bash
+python3 scripts/hermes-agent.py teach "<이름>" "<한 줄>" --about <domain>/<slug>   # 사람이 직접 가르친다(C-22)
+python3 scripts/hermes-agent.py note "<한 줄>" --about <domain>/<slug>             # 소환된 에이전트가 스스로 남긴다(HERMES_AGENT_ID 세션)
+python3 scripts/hermes-agent.py pin "<이름>" <memory_id>                             # 핀/해제 — 세션 시작 주입에 항상 포함
+python3 scripts/hermes-agent.py refresh-memory ["<이름>"]                            # MEMORY.md 를 이벤트에서 다시 만든다(파생물)
+```
+
+- `about` 은 **`<domain>/<slug>`** 만 받는다 — domain 은 `gate · test · git · debug · workflow · file · sync · agent`, slug 는 영문·숫자·점·밑줄·하이픈.
+  주제 없는 문장은 결정화 키가 못 되므로 거부된다. 사용자가 주제를 안 주면 문장에서 **묻지 말고 가장 가까운 domain/slug 를 골라 한 줄로 보여준 뒤** 실행한다.
+- 본문은 기록 직전 마스킹된다(비밀값·연락처·주소·기계가 아는 사람 이름). 실제 사람 이름·연락처는 처음부터 적지 않는다.
+- 되돌리기는 `unteach` 가 아니라 철회(`memory.retracted`)다 — 철회 뒤 같은 주제를 다시 가르치면 "전에 철회됨" 표시가 붙는다.
+- 리뷰 봉투를 닫는 것은 코드로: `from hermes_review import close_review; close_review(db, ".", "<리뷰 봉투 id>", "corrected", "agent:<리뷰어>", about="gate/r-size", body="지적 한 줄")`.
+
+**예** — "게이트QA 한테 400줄 넘기 전에 나누라고 가르쳐"
+→ `python3 scripts/hermes-agent.py teach 게이트QA "400줄 넘기 전에 파일을 나눈다" --about gate/r-size` (about 은 문장에서 골라 보여준 값)
 
 ## 6. 조회 (list / whoami)
 

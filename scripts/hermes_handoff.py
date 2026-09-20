@@ -185,9 +185,9 @@ def resolve(db: str, project: str, handoff_id: str, how: str, actor: str,
 def _open_review_after(db: str, project: str, handoff_id: str, actor: str, event: dict) -> None:
     """C-21: 하급자가 끝내면 바로 위 rank 에게 리뷰 봉투가 자동으로 열린다. 실패해도 finished 는 이미 남았다 — 세우지 않는다."""
     try:
-        from hermes_review_chain import open_review           # 같은 tier(2) — 늦게 불러 순환을 피한다
+        from hermes_review_chain import open_review           # review_chain 은 handoff 를 import 하지 않는다(순환 금지)
         verified = (event.get("evidence") or {}).get("reason", "none")
-        open_review(db, project, handoff_id, actor, verified)
+        open_review(db, project, handoff_id, actor, verified, opener=open_handoff)
     except Exception as exc:                                  # noqa: BLE001
         print(f"[hermes-handoff] 리뷰 봉투 개봉 실패(finished 는 기록됨): {exc}", file=sys.stderr)
 

@@ -21,6 +21,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from hermes_org import OrgError, ensure_unit_ids, load_org, match_agents  # noqa: E402
 from hermes_memory_view import write_memory_md  # noqa: E402
+from hermes_review_chain import TeachingError, record_teaching  # noqa: E402
 from hermes_owner_memory import no_owner_since, record_no_owner  # noqa: E402
 from hermes_roster import (  # noqa: E402
     RosterError, add_agent, find_agent, load_roster, save_roster, transition)
@@ -199,6 +200,57 @@ def cmd_refresh_memory(args) -> int:
     return 0
 
 
+def cmd_teach(args) -> int:
+    """사람이 특정 에이전트에게 직접 가르친다(C-22): memory.added(source_event=teach:human:<이름>). about 필수."""
+    project = args.project
+    agent = find_agent(load_roster(project), args.name)
+    if not agent:
+        raise RosterError(f"명부에 없는 에이전트: {args.name}")
+    mid = record_teaching(os.path.join(project, ".hermes", "state.db"), project, agent["agent_id"],
+                          args.about, args.body, f"teach:{_human(project)}")
+    print(f"가르침 기록: {agent['name']} about={args.about} memory={mid[:8]} — 되돌리기는 memory.retracted 로")
+    return 0
+
+
+def cmd_note(args) -> int:
+    """소환된 에이전트가 스스로 배운 것 한 줄(cumora 식, 계획 agent-teaching 목표 9). HERMES_AGENT_ID 세션에서만."""
+    agent_id = os.environ.get("HERMES_AGENT_ID", "")
+    if not agent_id:
+        raise RosterError("note 는 소환된 에이전트 세션(HERMES_AGENT_ID)에서만 — 사람은 teach 를 쓴다")
+    nonce = os.environ.get("HERMES_SUMMON_NONCE", "session")
+    mid = record_teaching(os.path.join(args.project, ".hermes", "state.db"), args.project, agent_id,
+                          args.about, args.body, f"note:agent:{agent_id}:{nonce}")
+    print(f"기억 기록: about={args.about} memory={mid[:8]}")
+    return 0
+
+
+def cmd_pin(args) -> int:
+    """기억 하나를 핀 — 세션 시작 주입에 항상 들어간다(계획 agent-teaching 목표 10). 다시 부르면 푼다."""
+    import sqlite3
+    from datetime import datetime, timezone
+    from hermes_memory_events import ensure_memory_schema
+    project = args.project
+    agent = find_agent(load_roster(project), args.name)
+    if not agent:
+        raise RosterError(f"명부에 없는 에이전트: {args.name}")
+    con = sqlite3.connect(os.path.join(project, ".hermes", "state.db"))
+    try:
+        ensure_memory_schema(con)
+        aid = agent["agent_id"]
+        if not con.execute("SELECT 1 FROM memory_events WHERE agent_id=? AND memory_id=?", (aid, args.memory_id)).fetchone():
+            raise RosterError(f"{agent['name']} 의 기억이 아니다: {args.memory_id}")
+        if con.execute("SELECT 1 FROM memory_pins WHERE agent_id=? AND memory_id=?", (aid, args.memory_id)).fetchone():
+            con.execute("DELETE FROM memory_pins WHERE agent_id=? AND memory_id=?", (aid, args.memory_id)); state = "핀 해제"
+        else:
+            con.execute("INSERT INTO memory_pins (agent_id, memory_id, pinned_at) VALUES (?,?,?)",
+                        (aid, args.memory_id, datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"))); state = "핀"
+        con.commit()
+    finally:
+        con.close()
+    print(f"{state}: {agent['name']} {args.memory_id[:8]}")
+    return 0
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="헤르메스 에이전트 명부")
     ap.add_argument("--project", default=os.getcwd())
@@ -214,6 +266,12 @@ def main() -> int:
     n.add_argument("--discipline"); n.add_argument("--rank"); n.add_argument("--unit")
     r = sub.add_parser("refresh-memory", help="기억 이벤트에서 MEMORY.md 를 다시 만든다(이름/id 생략 시 은퇴자 제외 전원)")
     r.add_argument("name", nargs="?")
+    t = sub.add_parser("teach", help="사람이 에이전트에게 한 줄 가르친다(C-22) — about 은 <domain>/<slug>")
+    t.add_argument("name"); t.add_argument("body"); t.add_argument("--about", required=True)
+    nt = sub.add_parser("note", help="소환된 에이전트가 배운 것 한 줄을 남긴다(HERMES_AGENT_ID 세션)")
+    nt.add_argument("body"); nt.add_argument("--about", required=True)
+    pn = sub.add_parser("pin", help="기억 하나를 핀/해제 — 주입에 항상 포함")
+    pn.add_argument("name"); pn.add_argument("memory_id")
     args = ap.parse_args()
     try:
         if args.cmd == "hire":
@@ -221,8 +279,9 @@ def main() -> int:
         if args.cmd in ("promote", "retire", "rehire"):
             return cmd_transition(args)
         return {"list": cmd_list, "whoami": cmd_whoami, "match": cmd_match, "no-owner": cmd_no_owner,
-                "refresh-memory": cmd_refresh_memory}[args.cmd](args)
-    except (RosterError, OrgError) as exc:
+                "refresh-memory": cmd_refresh_memory, "teach": cmd_teach, "note": cmd_note,
+                "pin": cmd_pin}[args.cmd](args)
+    except (RosterError, OrgError, TeachingError) as exc:
         print(f"[hermes-agent] 거부: {exc}", file=sys.stderr)
         return 2
 

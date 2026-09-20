@@ -18,6 +18,10 @@ unit:
   users: {}
   공통: {}
 EOF2
+# 결정화용 가짜 claude — 프롬프트를 무시하고 스킬 본문을 낸다(R3: 모델은 텍스트 생성기일 뿐)
+FAKEBIN="$TMP/bin"; mkdir -p "$FAKEBIN"
+printf '#!/usr/bin/env bash\nprintf "# 파일은 400줄 전에 나눈다\\n\\n## 문제 상황\\n리뷰에서 같은 지적 3회.\\n\\n## 규칙\\n- 400줄에 가까우면 책임 단위로 나눈다.\\n"\n' > "$FAKEBIN/claude"; chmod +x "$FAKEBIN/claude"
+export PATH="$FAKEBIN:$PATH"
 py() { PYTHONPATH="$S" python3 -c "$1"; }
 py "from hermes_org import ensure_unit_ids; ensure_unit_ids('$P')
 from hermes_roster import load_roster, add_agent, save_roster
@@ -29,7 +33,8 @@ save_roster('$P', r)"
 ID() { python3 -c "import json;print([a['agent_id'] for a in json.load(open('$P/.hermes/agents.json'))['agents'] if a['name']=='$1'][0])"; }
 LA="$(ID 리드A)"; DB_="$(ID 담당B)"; DD="$(ID 담당D)"
 R="from hermes_handoff import open_handoff, resolve
-from hermes_review_chain import reviewer_for, open_review, close_review, record_teaching, TeachingError"
+from hermes_review_chain import reviewer_for, open_review, record_teaching, TeachingError
+from hermes_review import close_review"
 q() { python3 -c "import sqlite3,sys;print(sqlite3.connect(sys.argv[1]).execute(sys.argv[2]).fetchone()[0])" "$DB" "$1" 2>/dev/null || echo err; }
 
 echo "== 1. 리뷰어 선택 =="
@@ -88,5 +93,29 @@ for i in 1 2; do
   N="$(py "$R; print(close_review('$DB','$P','$RV','corrected','agent:$LA',about='gate/r-size',body='또 400줄 넘김 $i')['corrected_count'])")"
 done
 assert "gate/r-size corrected 누적 3 (결정화 임계)" 3 "$N"
+assert "3회째에 개인 스킬 결정화(목표 3)" 1 "$(ls "$P/.hermes/agents/$DB_/skills/"*.md 2>/dev/null | wc -l)"
+assert "skill_index 에 layer=agent 로 등록" 1 "$(q "select count(*) from skill_index where layer='agent' and agent_id='$DB_'")"
+assert "장부 키는 agent:<id>:<about>, 결정화 1" 1 "$(q "select crystallized from pattern_count where pattern_key='agent:$DB_:gate/r-size'")"
+
+echo "== 6. teach — 사람이 직접 가르친다 (목표 4, C-22) =="
+A() { python3 "$S/hermes-agent.py" --project "$P" "$@"; }
+A teach 담당B "테스트부터 돌린다" --about test/first >/dev/null; assert "teach rc 0" 0 "$?"
+assert "memory.added source_event=teach:human:tester" 1 "$(q "select count(*) from memory_events where agent_id='$DB_' and about='test/first' and source_event='teach:human:tester'")"
+A teach 담당B "주제 없음" --about "그냥 문장" >/dev/null 2>&1; assert "about 형식 틀림 → rc 2" 2 "$?"
+A teach 없는담당 "x" --about test/x >/dev/null 2>&1; assert "명부에 없는 에이전트 → rc 2" 2 "$?"
+
+echo "== 7. note — 소환된 에이전트가 스스로 남긴다 (목표 9) =="
+HERMES_AGENT_ID="$DB_" HERMES_SUMMON_NONCE=n1 python3 "$S/hermes-agent.py" --project "$P" note "로그는 파일로 받는다" --about workflow/log-to-file >/dev/null; assert "note rc 0" 0 "$?"
+assert "source_event=note:agent:<id>:<nonce>" 1 "$(q "select count(*) from memory_events where agent_id='$DB_' and source_event='note:agent:$DB_:n1'")"
+env -u HERMES_AGENT_ID python3 "$S/hermes-agent.py" --project "$P" note "x" --about workflow/x >/dev/null 2>&1; assert "HERMES_AGENT_ID 없으면 rc 2" 2 "$?"
+assert "소환 러너 지시문에 note 안내" 1 "$(grep -c 'hermes-agent.py note' "$S/hermes-summon.py")"
+assert "러너는 HERMES_TASK_HINT 를 넘긴다" 1 "$(grep -c 'HERMES_TASK_HINT=' "$S/hermes-summon.py")"
+assert "러너에 다중 에이전트 인자 없음(목표 7)" 0 "$(grep -cE '\-\-agents|participants' "$S/hermes-summon.py")"
+
+echo "== 8. pin — 토글 (목표 10) =="
+MID="$(q "select memory_id from memory_events where agent_id='$DB_' and about='test/first' limit 1")"
+A pin 담당B "$MID" >/dev/null; assert "핀 1" 1 "$(q "select count(*) from memory_pins where agent_id='$DB_' and memory_id='$MID'")"
+A pin 담당B "$MID" >/dev/null; assert "다시 → 해제 0" 0 "$(q "select count(*) from memory_pins where agent_id='$DB_' and memory_id='$MID'")"
+A pin 담당B 00000000-0000-7000-8000-000000000000 >/dev/null 2>&1; assert "남의/없는 기억 → rc 2" 2 "$?"
 
 echo; echo "hermes-teaching: PASS=$PASS FAIL=$FAIL"; [[ $FAIL -eq 0 ]]
