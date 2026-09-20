@@ -152,6 +152,21 @@ else
   assert "kind 는 평문" KIND_PLAIN "$(sed -n 3p "$TMP/frag.out")"
 fi
 
+echo "== 6. refresh-memory: 이벤트 → MEMORY.md 재생성 (계획 agent-memory-roundtrip 목표 1) =="
+rm -f "$MD"
+PYTHONPATH="$S" python3 "$S/hermes-agent.py" --project "$P" refresh-memory a1 >/dev/null; RC=$?
+assert "refresh-memory rc 0" 0 "$RC"
+assert "MEMORY.md 재생성됨" 1 "$([[ -f "$MD" ]] && echo 1 || echo 0)"
+assert "이벤트 본문이 보기에 있다" 1 "$(grep -c 'dev 먼저 배포한다' "$MD")"
+echo "손으로 쓴 줄" >> "$MD"
+PYTHONPATH="$S" python3 "$S/hermes-agent.py" --project "$P" refresh-memory a1 >/dev/null
+assert "손으로 쓴 줄은 다음 재생성에서 사라진다(파생물)" 0 "$(grep -c '손으로 쓴 줄' "$MD")"
+P2="$TMP/proj2"; mkdir -p "$P2/.hermes/agents/a1"; echo "# 손 기억" > "$P2/.hermes/agents/a1/MEMORY.md"
+PYTHONPATH="$S" python3 "$S/hermes-agent.py" --project "$P2" refresh-memory a1 >/dev/null; RC=$?
+assert "DB 없음 → rc 0" 0 "$RC"
+assert "DB 없음 → 파일 손대지 않음" 1 "$(grep -c '손 기억' "$P2/.hermes/agents/a1/MEMORY.md")"
+
+echo ""
 echo "== 전에 철회됨 (계획 design-gaps-tier2 목표 3) =="
 # 계획 design-gaps-tier2 목표 3 — 같은 본문을 다시 배우면 "전에 철회됨" 이 보인다 (memory-events.md:119)
 q "

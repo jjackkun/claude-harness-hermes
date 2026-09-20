@@ -153,6 +153,7 @@ def cmd_push(args) -> int:
 
 def _import_all(con, project: str, uid: str, paths) -> int:
     got = 0
+    touched = set()
     for path in paths:
         data = ref.read_blob(project, path)
         if path.startswith("history/"):
@@ -160,8 +161,30 @@ def _import_all(con, project: str, uid: str, paths) -> int:
         elif path.startswith("journal/"):
             got += import_journal(con, uid, path, data, _now())
         elif path.startswith("memory/"):
-            got += import_memory(con, uid, path, data, _now())
+            if import_memory(con, uid, path, data, _now()):
+                got += 1
+                touched.add(path.split("/")[1])
+    _refresh_memory_views(con, project, touched)
     return got
+
+
+def _refresh_memory_views(con, project: str, agent_ids: set) -> None:
+    """받은 기억이 있는 에이전트의 MEMORY.md 를 이벤트에서 다시 만든다(계획 agent-memory-roundtrip 목표 1).
+    보기 갱신 실패는 받기 자체를 되돌리지 않는다 — 원본은 이미 memory_events 에 있다."""
+    if not agent_ids:
+        return
+    from hermes_memory_view import write_memory_md
+    try:
+        from hermes_roster import load_roster, find_agent
+        roster = load_roster(project)
+    except Exception:                      # noqa: BLE001 — 명부 없음/손상: 이름 없이 만든다
+        roster, find_agent = {"agents": []}, (lambda r, x: None)
+    for aid in sorted(agent_ids):
+        agent = find_agent(roster, aid) or {}
+        try:
+            write_memory_md(con, project, aid, agent.get("name"))
+        except Exception as exc:           # noqa: BLE001
+            print(f"[hermes-sync] 기억 보기 갱신 실패 agent={aid[:8]}: {exc}", file=sys.stderr)
 
 
 def cmd_pull(args) -> int:

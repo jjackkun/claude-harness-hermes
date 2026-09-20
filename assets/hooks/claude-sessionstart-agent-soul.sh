@@ -27,6 +27,17 @@ agent_dir="$project_dir/.hermes/agents/$HERMES_AGENT_ID"
 [[ -d "$agent_dir" ]] || { _log "skip:no-identity-dir $HERMES_AGENT_ID"; exit 0; }
 command -v python3 >/dev/null 2>&1 || { _log "skip:no-python3"; exit 0; }
 
+# 읽기 전에 MEMORY.md 를 기억 이벤트에서 다시 만든다(계획 agent-memory-roundtrip 목표 1) — pull 로 들어온 기억도 이 자리에서 보인다.
+# DB 나 memory_events 가 없으면 스크립트가 스스로 건너뛴다. 실패해도 주입은 계속한다.
+scripts_dir="$project_dir/scripts"
+[[ -f "$scripts_dir/hermes-agent.py" ]] || scripts_dir="$(cd "$(dirname "$0")/../../scripts" 2>/dev/null && pwd)"
+if [[ -f "$scripts_dir/hermes-agent.py" ]]; then
+  rerr="$(mktemp 2>/dev/null || echo /dev/null)"
+  python3 "$scripts_dir/hermes-agent.py" --project "$project_dir" refresh-memory "$HERMES_AGENT_ID" >/dev/null 2>"$rerr" \
+    || _log "WARN refresh-memory 실패 agent=$HERMES_AGENT_ID: $(tr '\n' ' ' <"$rerr" 2>/dev/null)"
+  [[ "$rerr" != /dev/null ]] && rm -f "$rerr"
+fi
+
 # 명부 확인 + 파일 읽기 + 자르기를 한 프로세스에서. 잘라도 UTF-8 글자 중간에서 끊지 않는다.
 errf="$(mktemp 2>/dev/null || echo /dev/null)"
 SOUL_CAP="${HERMES_SOUL_CAP:-4096}" MEMORY_CAP="${HERMES_MEMORY_CAP:-4096}" \

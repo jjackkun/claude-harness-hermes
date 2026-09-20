@@ -20,6 +20,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from hermes_org import OrgError, ensure_unit_ids, load_org, match_agents  # noqa: E402
+from hermes_memory_view import write_memory_md  # noqa: E402
 from hermes_owner_memory import no_owner_since, record_no_owner  # noqa: E402
 from hermes_roster import (  # noqa: E402
     RosterError, add_agent, find_agent, load_roster, save_roster, transition)
@@ -165,6 +166,39 @@ def cmd_no_owner(args) -> int:
     return 0
 
 
+def cmd_refresh_memory(args) -> int:
+    """기억 이벤트에서 MEMORY.md 를 다시 만든다(계획 agent-memory-roundtrip 목표 1).
+    DB 나 memory_events 표가 없으면 아무것도 하지 않는다 — 훅이 부르므로 실패로 세션을 세우지 않는다."""
+    import sqlite3
+    project = args.project
+    db = os.path.join(project, ".hermes", "state.db")
+    if not os.path.isfile(db):
+        print("[hermes-agent] refresh-memory: state.db 없음 — 건너뜀")
+        return 0
+    con = sqlite3.connect(db)
+    try:
+        has = con.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='memory_events'").fetchone()
+        if not has:
+            print("[hermes-agent] refresh-memory: memory_events 없음 — 건너뜀")
+            return 0
+        try:
+            roster = load_roster(project)
+        except RosterError:
+            roster = {"agents": []}
+        if args.name:
+            agent = find_agent(roster, args.name) or {"agent_id": args.name, "name": None, "status": "active"}
+            targets = [agent]
+        else:
+            targets = [a for a in roster["agents"] if a.get("status") != "retired"
+                       and os.path.isdir(_agent_dir(project, a["agent_id"]))]
+        for agent in targets:
+            path = write_memory_md(con, project, agent["agent_id"], agent.get("name"))
+            print(f"기억 보기 갱신: {os.path.relpath(path, project)}")
+    finally:
+        con.close()
+    return 0
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="헤르메스 에이전트 명부")
     ap.add_argument("--project", default=os.getcwd())
@@ -178,13 +212,16 @@ def main() -> int:
     m.add_argument("--discipline"); m.add_argument("--rank"); m.add_argument("--unit")
     n = sub.add_parser("no-owner", help="이 영역은 담당을 두지 않는다 — 기억해 두고 다시 묻지 않는다")
     n.add_argument("--discipline"); n.add_argument("--rank"); n.add_argument("--unit")
+    r = sub.add_parser("refresh-memory", help="기억 이벤트에서 MEMORY.md 를 다시 만든다(이름/id 생략 시 은퇴자 제외 전원)")
+    r.add_argument("name", nargs="?")
     args = ap.parse_args()
     try:
         if args.cmd == "hire":
             return cmd_hire(args)
         if args.cmd in ("promote", "retire", "rehire"):
             return cmd_transition(args)
-        return {"list": cmd_list, "whoami": cmd_whoami, "match": cmd_match, "no-owner": cmd_no_owner}[args.cmd](args)
+        return {"list": cmd_list, "whoami": cmd_whoami, "match": cmd_match, "no-owner": cmd_no_owner,
+                "refresh-memory": cmd_refresh_memory}[args.cmd](args)
     except (RosterError, OrgError) as exc:
         print(f"[hermes-agent] 거부: {exc}", file=sys.stderr)
         return 2

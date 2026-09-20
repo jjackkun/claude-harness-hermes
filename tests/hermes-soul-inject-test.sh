@@ -77,6 +77,22 @@ chmod 000 "$P/.hermes/agents/$ID_ACTIVE/SOUL.md"
 run "$ID_ACTIVE"; assert "SOUL 읽기 권한 없음 → rc 0" "0" "$RC"; assert "  MEMORY 는 여전히 주입" "1" "$(printf '%s' "$OUT" | grep -c '회귀 테스트 3건 작성')"
 chmod 644 "$P/.hermes/agents/$ID_ACTIVE/SOUL.md"
 
+echo "[6] 읽기 전 재생성 — 쌓인 기억 이벤트가 MEMORY.md 로 보인다 (계획 agent-memory-roundtrip 목표 1)"
+PYTHONPATH="$REPO_ROOT/scripts" python3 - "$P/.hermes/state.db" "$ID_ACTIVE" <<'PY'
+import sqlite3, sys
+from hermes_memory_events import record, ensure_memory_schema
+from hermes_uuid7 import uuid7_str
+con = sqlite3.connect(sys.argv[1]); ensure_memory_schema(con)
+record(con, {"memory_id": uuid7_str(), "agent_id": sys.argv[2], "universe_id": "u", "ts": "2026-09-20T00:00:01",
+             "kind": "memory.added", "about": "gate/r-size", "body": "400줄 넘기 전에 파일을 나눈다", "source_event": "review:x"})
+con.commit(); con.close()
+PY
+run "$ID_ACTIVE"
+assert "rc 0" "0" "$RC"
+assert "이벤트 본문이 주입된다" "1" "$(printf '%s' "$OUT" | grep -c '400줄 넘기 전에')"
+assert "손으로 쓴 옛 MEMORY 줄은 사라진다(파생물)" "0" "$(printf '%s' "$OUT" | grep -c '회귀 테스트 3건 작성')"
+assert "MEMORY.md 파일도 갱신됨" "1" "$(grep -c '400줄 넘기 전에' "$P/.hermes/agents/$ID_ACTIVE/MEMORY.md")"
+
 echo "[5] 자기 검사 — 빈 훅이면 목표 1 이 빨개진다"
 EMPTY="$T/empty-hook.sh"; printf '#!/usr/bin/env bash\nexit 0\n' > "$EMPTY"
 OUT2="$(echo '{}' | HERMES_AGENT_ID="$ID_ACTIVE" HERMES_PROJECT_DIR="$P" bash "$EMPTY")"
