@@ -22,10 +22,11 @@ _log() { mkdir -p "$(dirname "$log")"; printf '[hermes-sync-pull] %s %s\n' "$(da
 [[ -f "$scripts_dir/hermes-sync.py" ]] || exit 0
 [[ -f "$project_dir/.hermes/state.db" ]] || { _log "action=skip:no-db"; exit 0; }
 [[ -f "$project_dir/.hermes/sync.json" ]] || { _log "action=skip:sync-off"; exit 0; }
-if ! command -v age >/dev/null 2>&1; then
+if ! grep -Eq '"mode"[[:space:]]*:[[:space:]]*"plain"' "$project_dir/.hermes/sync.json" 2>/dev/null && ! command -v age >/dev/null 2>&1; then
   _log "action=skip:no-age — age 가 없어 pull 을 건너뜁니다(설치기가 깐다: 공장에서 bash update-all.sh)"
   exit 0
 fi
+# 평문 모드(T-18)는 age 없이 pull 한다 — 위 조건은 잠금 모드에서만 age 를 요구한다.
 
 timeout "${HERMES_SYNC_TIMEOUT:-60}" python3 "$scripts_dir/hermes-sync.py" --project "$project_dir" pull \
   >>"$log" 2>&1 || _log "action=pull-failed rc=$?"

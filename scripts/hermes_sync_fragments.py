@@ -183,9 +183,13 @@ def mark_pushed(con, paths, when: str) -> None:
     con.commit()
 
 
-def incoming_paths(con, remote_paths) -> list:
-    """원격에 있는데 아직 받지도 올리지도 않은 경로 — 다른 컴퓨터가 만든 것."""
+def incoming_paths(con, remote_paths, retry_skipped: bool = False) -> list:
+    """원격에 있는데 아직 받지도 올리지도 않은 경로 — 다른 컴퓨터가 만든 것.
+    평문 컴퓨터가 열쇠가 없어 건너뛴 암호문 조각(sync_cursor.imported_at = 'skip:locked')은 받은 것으로 친다(집계 고정 방지).
+    잠금 모드 pull(retry_skipped=True)은 그것을 다시 받는다 — 열쇠가 생긴 컴퓨터가 뒤늦게 읽는 길."""
     done = _pushed(con) | _imported(con)
+    if retry_skipped:
+        done -= {r[0] for r in con.execute("SELECT path FROM sync_cursor WHERE imported_at = 'skip:locked'")}
     return [p for p in remote_paths if p not in done]
 
 

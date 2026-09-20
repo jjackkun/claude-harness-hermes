@@ -44,6 +44,8 @@ source "$_DS_LIB/install_receipt.sh"
 source "$_DS_LIB/plugins.sh"
 # shellcheck source=lib/tool_installers.sh
 source "$_DS_LIB/tool_installers.sh"     # REQUIRED_BINS 확인·설치 — 핀 고정 sha256 (계획 agent-memory-roundtrip 목표 8)
+# shellcheck source=lib/sync_autoenable.sh
+source "$_DS_LIB/sync_autoenable.sh"      # 기억 운반 자동 켜기 — 비공개면 평문, 공개·미상은 끔 (T-19·T-21)
 # hook_inventory 는 harness_installers / settings_gen 이 소유 판별에 사용하므로 먼저.
 # shellcheck source=lib/hook_inventory.sh
 source "$_DS_LIB/hook_inventory.sh"

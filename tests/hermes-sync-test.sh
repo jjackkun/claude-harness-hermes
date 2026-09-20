@@ -297,6 +297,32 @@ assert "Q 에 기억 적재(평문)" 1 "$(rows "$Q" "select count(*) from memory
 assert "Q MEMORY.md 생성" 1 "$([[ -f "$Q/.hermes/agents/$PAID/MEMORY.md" ]] && echo 1 || echo 0)"
 assert "Q 이력 intent 복원(주소는 가려진 채)" 1 "$(rows "$Q" "select count(*) from journal_events where task_id='tp' and intent like '%REDACTED:ADDRESS%'")"
 assert "Q 는 원문(.enc)·keys 를 대기 목록에 두지 않는다(재pull 0건)" 1 "$(PATH="$NOAGE" HOME="$HQ" python3 "$Q/scripts/hermes-sync.py" --project "$Q" pull 2>&1 | grep -c '새 항목 0건')"
+# 리뷰(2026-09-20) 3건: 건너뛴 암호문은 집계에 안 남는다 · 마스킹된 pattern_key 도 원본 해시로 병합 · 본문 속 "-----BEGIN AGE" 글자는 오탐 아님
+assert "Q status: 잠금 조각을 건너뛰어도 '안 받은 조각 0건'" 1 "$(PATH="$NOAGE" HOME="$HQ" python3 "$Q/scripts/hermes-sync.py" --project "$Q" status 2>&1 | grep -c '아직 안 받은 조각 0건')"
+python3 - "$P/.hermes/state.db" "$Q/.hermes/state.db" <<'PY'
+import sqlite3, sys
+for db, cnt in ((sys.argv[1], 2), (sys.argv[2], 1)):
+    con = sqlite3.connect(db)
+    con.execute("CREATE TABLE IF NOT EXISTS pattern_count (id INTEGER PRIMARY KEY AUTOINCREMENT, pattern_key TEXT NOT NULL UNIQUE, count INTEGER DEFAULT 1, last_seen DATETIME DEFAULT CURRENT_TIMESTAMP, crystallized INTEGER DEFAULT 0)")
+    con.execute("INSERT OR REPLACE INTO pattern_count (pattern_key,count,last_seen,crystallized) VALUES ('jjackkun 의 빌드 실패 키',?, '2026-09-20 05:00:00',0)", (cnt,))
+    con.commit()
+PY
+PYTHONPATH="$S" python3 - "$P/.hermes/state.db" "$PAID" "$UNI" <<'PY'
+import sqlite3, sys
+from hermes_memory_events import record, ensure_memory_schema
+from hermes_uuid7 import uuid7_str
+con = sqlite3.connect(sys.argv[1]); ensure_memory_schema(con)
+record(con, {"memory_id": uuid7_str(), "agent_id": sys.argv[2], "universe_id": sys.argv[3], "ts": "2026-09-20T04:00:00",
+             "kind": "memory.added", "about": "sync/format", "body": "age 파일은 -----BEGIN AGE ENCRYPTED FILE----- 로 시작한다는 메모", "source_event": "review:q"})
+con.commit(); con.close()
+PY
+HOME="$HP" python3 "$P/scripts/hermes-sync.py" --project "$P" push >/dev/null 2>&1
+PATH="$NOAGE" HOME="$HQ" python3 "$Q/scripts/hermes-sync.py" --project "$Q" pull >/dev/null 2>&1
+assert "마스킹된 pattern_key 가 원본 해시로 병합(count 2, 행 1)" "2 1" "$(rows "$Q" "select count from pattern_count where pattern_key='jjackkun 의 빌드 실패 키'") $(rows "$Q" "select count(*) from pattern_count where pattern_key like '%빌드 실패 키'")"
+assert "본문에 '-----BEGIN AGE' 글자가 있는 평문 기억도 받는다(오탐 없음)" 1 "$(rows "$Q" "select count(*) from memory_events where about='sync/format'")"
+HOOKQ="$REPO_ROOT/assets/hooks/claude-sessionstart-sync-pull.sh"; : > "$Q/.hermes/hooks.log"
+echo '{"source":"startup"}' | PATH="$NOAGE" HOME="$HQ" CLAUDE_PROJECT_DIR="$Q" bash "$HOOKQ" >/dev/null 2>&1
+assert "세션 시작 훅: 평문 모드는 age 없이 pull 을 돈다(skip:no-age 0, 목표 6)" 0 "$(grep -c 'skip:no-age' "$Q/.hermes/hooks.log")"
 echo '{"push": true, "mode": "plain", "history": true}' > "$P/.hermes/sync.json"
 HOME="$HP" python3 "$P/scripts/hermes-sync.py" --project "$P" push >/dev/null 2>&1
 assert "평문 + history:true → push 거부 exit 2" 2 "$?"

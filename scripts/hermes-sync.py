@@ -83,6 +83,14 @@ def _try_join(project: str, uid: str, remote_paths: list, person: str) -> bool:
     return False
 
 
+def _my_remote_paths(project: str, policy: dict) -> list:
+    """이 컴퓨터가 받을 몫: 평문 모드는 원문(.enc)·열쇠 빼고 전부, 잠금 모드는 원문 조각."""
+    paths = ref.list_remote(project)
+    if _mode(policy) == "plain":
+        return [p for p in paths if not p.startswith(("history/", "keys/"))]
+    return [p for p in paths if p.startswith("history/") and p.endswith(".enc")]
+
+
 def _classify(project: str, uid: str, policy: dict) -> str:
     """"기억 없음" 3분류(H-11) + 참조 거부(T-15) 를 한 문장으로."""
     try:
@@ -91,12 +99,9 @@ def _classify(project: str, uid: str, policy: dict) -> str:
         return UNSUPPORTED if exc.unsupported else f"[hermes-sync] fetch 실패: {exc}"
     if not has_store:
         return NO_STORE
-    if _mode(policy) == "plain":
-        frags = [p for p in ref.list_remote(project) if not p.startswith(("history/", "keys/"))]
-    else:
-        frags = [p for p in ref.list_remote(project) if p.startswith("history/") and p.endswith(".enc")]
-        if not _has_master(uid):
-            return MSG_KEYLESS.format(n=len(frags))
+    frags = _my_remote_paths(project, policy)
+    if _mode(policy) == "locked" and not _has_master(uid):
+        return MSG_KEYLESS.format(n=len(frags))
     con = _connect(project)
     pending = incoming_paths(con, frags)
     imported = con.execute("SELECT COUNT(*) FROM sync_cursor").fetchone()[0]
@@ -168,8 +173,12 @@ def _import_all(con, project: str, uid: str, paths, plain: bool = False) -> int:
     touched = set()
     for path in paths:
         data = ref.read_blob(project, path)
-        if plain and b"-----BEGIN AGE" in data:
-            continue           # 잠금 모드 컴퓨터가 올린 암호문 — 열쇠 없는 평문 컴퓨터의 몫이 아니다(T-18). 표시도 남기지 않는다
+        if plain and _is_locked_fragment(path, data):
+            # 잠금 모드 컴퓨터가 올린 암호문 — 열쇠 없는 평문 컴퓨터의 몫이 아니다(T-18).
+            # 받은 것으로 표시해 "안 받은 조각" 집계에 영원히 남지 않게 한다. 잠금 모드로 바뀌면 다시 받는다(retry_skipped).
+            con.execute("INSERT OR IGNORE INTO sync_cursor (path, imported_at) VALUES (?, 'skip:locked')", (path,))
+            con.commit()
+            continue
         if path.startswith("history/"):
             got += import_fragment(con, project, uid, path, data, _now())
         elif path.startswith("journal/"):
@@ -182,6 +191,17 @@ def _import_all(con, project: str, uid: str, paths, plain: bool = False) -> int:
             got += import_learning(con, uid, path, data, _now())
     _refresh_memory_views(con, project, touched)
     return got
+
+
+def _is_locked_fragment(path: str, data: bytes) -> bool:
+    """자유 글 칸이 age 암호문인 조각인가 — JSON 필드 값의 접두어로만 판별한다(본문에 그 글자가 적힌 평문은 오탐하지 않는다)."""
+    if not path.endswith(".json"):
+        return path.endswith(".enc")
+    try:
+        body = json.loads(data.decode("utf-8"))
+    except (ValueError, UnicodeDecodeError):
+        return False
+    return any(isinstance(v, str) and v.startswith("-----BEGIN AGE") for v in body.values())
 
 
 def _refresh_memory_views(con, project: str, agent_ids: set) -> None:
@@ -226,7 +246,8 @@ def cmd_pull(args) -> int:
             print("[hermes] " + MSG_KEYLESS.format(n=n))
             return 0
     con = _connect(project)
-    got = _import_all(con, project, uid, incoming_paths(con, remote_paths), plain=(_mode(policy) == "plain"))
+    plain = _mode(policy) == "plain"
+    got = _import_all(con, project, uid, incoming_paths(con, remote_paths, retry_skipped=not plain), plain=plain)
     con.close()
     print(f"[hermes-sync] 새 항목 {got}건 받음")
     return 0

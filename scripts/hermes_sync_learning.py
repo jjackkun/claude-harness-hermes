@@ -53,22 +53,27 @@ def _stamp(value) -> str:
     return "".join(ch for ch in str(value or "0") if ch.isalnum())
 
 
-def outgoing_learning(con, lock, done: set, project: str = None) -> dict:
-    """아직 올리지 않은 요약·패턴을 {원격 경로: 바이트} 로. 자유 글은 업로드 직전 마스킹(T-20) 뒤 잠근다."""
+def _free_fn(lock, project):
+    """자유 글 한 칸: 업로드 직전 마스킹(T-20) 뒤 잠금 모드면 암호문, 평문 모드면 그대로."""
     try:
         from hermes_redact import redact
     except ImportError:
         redact = None
+
     def free(text):
         if text and redact is not None:
             text = redact(text, project_dir=project)
         return seal_text(lock, text)
+    return free
+
+
+def _outgoing_summaries(con, free, done: set) -> dict:
     out = {}
     try:
         rows = con.execute("SELECT session_id, project_id, slots_json, last_msg_count, turn_count, updated_at "
                            "FROM session_summary").fetchall()
     except sqlite3.OperationalError:
-        rows = []
+        return out
     for sid, pid, slots, lmc, tc, upd in rows:
         remote = f"summary/{sid}/{_stamp(upd)}.json"
         if remote in done:
@@ -76,10 +81,15 @@ def outgoing_learning(con, lock, done: set, project: str = None) -> dict:
         body = {"session_id": sid, "project_id": pid, "slots_json": free(slots),
                 "last_msg_count": lmc, "turn_count": tc, "updated_at": upd}
         out[remote] = json.dumps(body, ensure_ascii=False, sort_keys=True).encode()
+    return out
+
+
+def _outgoing_patterns(con, free, done: set) -> dict:
+    out = {}
     try:
         rows = con.execute("SELECT pattern_key, count, last_seen, crystallized FROM pattern_count").fetchall()
     except sqlite3.OperationalError:
-        rows = []
+        return out
     for key, cnt, seen, cry in rows:
         digest = hashlib.sha1(key.encode("utf-8")).hexdigest()[:16]
         remote = f"pattern/{digest}/{int(cnt or 0)}-{int(cry or 0)}.json"
@@ -90,6 +100,45 @@ def outgoing_learning(con, lock, done: set, project: str = None) -> dict:
     return out
 
 
+def outgoing_learning(con, lock, done: set, project: str = None) -> dict:
+    """아직 올리지 않은 요약·패턴을 {원격 경로: 바이트} 로. 자유 글은 업로드 직전 마스킹(T-20) 뒤 잠근다."""
+    free = _free_fn(lock, project)
+    out = _outgoing_summaries(con, free, done)
+    out.update(_outgoing_patterns(con, free, done))
+    return out
+
+
+def _import_summary(con, universe_id: str, body: dict) -> bool:
+    slots = open_text(universe_id, body.get("slots_json"))
+    sid, upd = body.get("session_id"), body.get("updated_at") or ""
+    if not sid:
+        return False
+    cur = con.execute("SELECT updated_at FROM session_summary WHERE session_id = ?", (sid,)).fetchone()
+    if cur and (cur[0] or "") >= upd:
+        return True                      # 이미 더 새 요약이 있다 — 받은 것으로 친다
+    con.execute("INSERT OR REPLACE INTO session_summary "
+                "(session_id, project_id, slots_json, last_msg_count, turn_count, updated_at) VALUES (?,?,?,?,?,?)",
+                (sid, body.get("project_id"), slots, body.get("last_msg_count") or 0,
+                 body.get("turn_count") or 0, upd))
+    return True
+
+
+def _import_pattern(con, universe_id: str, remote: str, body: dict) -> bool:
+    key = open_text(universe_id, body.get("pattern_key"))
+    if not key:
+        return False
+    # 병합 키는 경로의 원본 해시다 — 올린 쪽 마스킹으로 글자가 바뀌어도 같은 패턴은 같은 행에 합친다(리뷰 2026-09-20 MEDIUM).
+    digest = remote.split("/")[1]
+    local = next((k for (k,) in con.execute("SELECT pattern_key FROM pattern_count")
+                  if hashlib.sha1(k.encode("utf-8")).hexdigest()[:16] == digest), key)
+    con.execute("INSERT INTO pattern_count (pattern_key, count, last_seen, crystallized) VALUES (?,?,?,?) "
+                "ON CONFLICT(pattern_key) DO UPDATE SET count = max(count, excluded.count), "
+                "crystallized = max(crystallized, excluded.crystallized), "
+                "last_seen = max(coalesce(last_seen, ''), coalesce(excluded.last_seen, ''))",
+                (local, int(body.get("count") or 0), body.get("last_seen"), int(body.get("crystallized") or 0)))
+    return True
+
+
 def import_learning(con, universe_id: str, remote: str, data: bytes, when: str) -> bool:
     """summary/·pattern/ 조각을 되넣는다. 요약은 updated_at 최신만, 패턴은 키별 max. 받은 경로는 sync_cursor 에 적는다."""
     try:
@@ -98,26 +147,12 @@ def import_learning(con, universe_id: str, remote: str, data: bytes, when: str) 
         return False
     con.executescript(_SUMMARY_SQL)
     if remote.startswith("summary/"):
-        slots = open_text(universe_id, body.get("slots_json"))
-        sid, upd = body.get("session_id"), body.get("updated_at") or ""
-        if not sid:
-            return False
-        cur = con.execute("SELECT updated_at FROM session_summary WHERE session_id = ?", (sid,)).fetchone()
-        if not cur or (cur[0] or "") < upd:
-            con.execute("INSERT OR REPLACE INTO session_summary "
-                        "(session_id, project_id, slots_json, last_msg_count, turn_count, updated_at) VALUES (?,?,?,?,?,?)",
-                        (sid, body.get("project_id"), slots, body.get("last_msg_count") or 0,
-                         body.get("turn_count") or 0, upd))
+        ok = _import_summary(con, universe_id, body)
     elif remote.startswith("pattern/"):
-        key = open_text(universe_id, body.get("pattern_key"))
-        if not key:
-            return False
-        con.execute("INSERT INTO pattern_count (pattern_key, count, last_seen, crystallized) VALUES (?,?,?,?) "
-                    "ON CONFLICT(pattern_key) DO UPDATE SET count = max(count, excluded.count), "
-                    "crystallized = max(crystallized, excluded.crystallized), "
-                    "last_seen = max(coalesce(last_seen, ''), coalesce(excluded.last_seen, ''))",
-                    (key, int(body.get("count") or 0), body.get("last_seen"), int(body.get("crystallized") or 0)))
+        ok = _import_pattern(con, universe_id, remote, body)
     else:
+        ok = False
+    if not ok:
         return False
     con.execute("INSERT OR REPLACE INTO sync_cursor (path, imported_at) VALUES (?, ?)", (remote, when))
     con.commit()

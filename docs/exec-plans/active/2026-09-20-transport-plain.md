@@ -14,8 +14,8 @@
 - [x] 목표 2 (T-17) — `history/`(대화 원문)는 **기본 제외**. `sync.json` 에 `"history": true` 가 있을 때만 올린다(그때는 잠금 필수 → 열쇠 없으면 거부). — 검증: 같은 테스트 13절: 기본 push 뒤 원격에 `history/` 0 · `"history": true` + 열쇠 없음 → push 거부 exit 2 · 열쇠 있음 → 기존 9절대로
 - [x] 목표 3 (T-18) — 평문 모드: `sync.json` 에 `"mode": "plain"` 이면 `journal/`·`memory/`·`summary/`·`pattern/` 의 자유 글을 **암호화하지 않고** 올리고, pull 은 복호 없이 적재. 열쇠·`keys/` 를 요구하지 않는다. 잠금 모드(`"mode": "locked"`)는 지금 코드 그대로. — 검증: 14절: plain 모드로 A push → 원격 memory 파일의 body 가 평문 · B(열쇠 없음) pull → memory_events 적재 · MEMORY.md 생성
 - [x] 목표 4 (T-20) — 마스킹 세 겹이 **업로드 직전** 한 번 더 돈다: `outgoing()` 이 자유 글 칸마다 `hermes_redact.redact` 를 통과시킨다(plain·locked 모두). 생성 단계 치환은 `hermes-summarize.py` `SUMMARY_PROMPT` 와 `hermes-agent.py note`(agent-teaching 목표 9) 지시문에 "실제 사람 이름·주소·연락처·계좌·차량번호는 역할·종류로" 한 줄. 자동 정답지에 `git config user.name`·최근 커밋 작성자·명부 이름·OS 사용자명을 더한다(`hermes_secret_values` 옆 새 모듈, 값은 출력 금지). 꼴 규칙에 한국 주소(`시·도 + 구·군 + 로·길 + 번지`)·계좌번호 추가. — 검증: `hermes-redact-boundary-test.sh` 에 업로드 게이트 절 + `hermes-redact` 단위 테스트에 주소·계좌·작성자 이름 3건
-- [ ] 목표 5 (T-19·T-21) — 설치기(`project-claude.sh`, hermes 프리셋)가 원격 공개 여부를 판별해 `sync.json` 을 쓴다: 비공개 → `{"push": true, "mode": "plain"}` + 첫 push · 공개/미상 → `{"push": false}` + 설치 로그 한 줄(켜는 법). 이미 `sync.json` 이 있으면 손대지 않는다. `CLAUDECODE` 가 있으면 전체 건너뜀. 판별은 `gh repo view --json visibility` → 실패 시 미상. — 검증: `tests/sync-autoenable-test.sh`(gh 스텁으로 PRIVATE/PUBLIC/실패 세 경우 + 기존 sync.json 보존 + CLAUDECODE 건너뜀)
-- [ ] 목표 6 — 세션 시작 pull 훅·Stop push 훅이 plain 모드에서 age 없이 돈다(age 확인은 locked 모드에서만). — 검증: 9절 "age 없음" 을 plain 모드에서는 정상 pull 로 바꿔 단언
+- [x] 목표 5 (T-19·T-21) — 설치기(`project-claude.sh`, hermes 프리셋)가 원격 공개 여부를 판별해 `sync.json` 을 쓴다: 비공개 → `{"push": true, "mode": "plain"}` + 첫 push · 공개/미상 → `{"push": false}` + 설치 로그 한 줄(켜는 법). 이미 `sync.json` 이 있으면 손대지 않는다. `CLAUDECODE` 가 있으면 전체 건너뜀. 판별은 `gh repo view --json visibility` → 실패 시 미상. — 검증: `tests/sync-autoenable-test.sh`(gh 스텁으로 PRIVATE/PUBLIC/실패 세 경우 + 기존 sync.json 보존 + CLAUDECODE 건너뜀)
+- [x] 목표 6 — 세션 시작 pull 훅·Stop push 훅이 plain 모드에서 age 없이 돈다(age 확인은 locked 모드에서만). — 검증: 9절 "age 없음" 을 plain 모드에서는 정상 pull 로 바꿔 단언
 - [ ] 목표 7 — 안내서·CLAUDE.md 절 갱신: `docs/hermes-sync-guide.md` 를 "기본은 자동(설치기), 열쇠는 공개 저장소 옵션" 으로 다시 쓰고 hermes.conf 의 "기억 운반" 절도 맞춘다. `hermes_sync_fragments.py`·`hermes-sync.py` 머리말 갱신 — 검증: `grep` 으로 "세션 밖 터미널" 이 옵션 절에만
 - [ ] 목표 8 — roundtrip 목표 5 시연: 비공개 임시 bare 원격에서 설치기 → 자동 켜짐 → 게이트QA `teach`/note 1건 → push → 두 번째 clone pull → MEMORY.md 일치. — 검증: 시연 기록(roundtrip §7)
 - [ ] 목표 9 — 설치 폐로·의존 계층·고아 검사 — `install-closure-test` · `dep-contract-test` · `run-all.sh --check-orphans`
@@ -64,6 +64,10 @@
   업로드 직전 마스킹 게이트(`_free_text` → `hermes_redact.redact`)가 journal·memory·summary·pattern 자유 글 전부에 적용. 평문 + `"history": true` 는 push 거부 exit 2(목표 2 의 거부 조건 여기서 실측).
   마스킹 꼴 2종(한국 주소·계좌) + 자동 정답지(`hermes_known_values`: git user.name·커밋 작성자·명부 이름·OS 사용자명, 짧은 일반어 제외). 요약 지시문에 개인정보 치환 한 줄.
   테스트: sync 14절 17단언 → 79/79 · `hermes-redact-pii-test.sh` 9(주소·계좌·이름 가림, 날짜·버전·main 안 가림) · redact 15 · dep 21.
+- 2026-09-20 Step 3 완료: `lib/sync_autoenable.sh`(gh 로 공개 판별 → 비공개면 `{"push": true, "mode": "plain"}` + 첫 push, 공개·미상은 push false + 이유, 있는 sync.json·세션 안·옵트아웃은 건드리지 않음) 을 `_hermes_setup` 끝에 연결.
+  sync-pull 훅은 잠금 모드에서만 age 를 요구. 테스트 `sync-autoenable-test.sh` 10(gh 스텁 PRIVATE/PUBLIC/실패·보존·세션 건너뜀·origin 없음) · sync 14절 훅 단언. 설치기를 부르는 테스트 14개 + run-all 에 `HARNESS_SYNC_AUTOENABLE=0`.
+- code-reviewer(2026-09-20) 지적 3건 반영: ① 평문 컴퓨터가 건너뛴 암호문이 "안 받은 조각" 에 영원히 남음 → `sync_cursor` 에 `skip:locked` 기록, 잠금 모드 pull 은 `retry_skipped` 로 다시 받음.
+  ② 마스킹된 `pattern_key` 가 다른 행으로 갈라짐 → 경로의 원본 해시로 로컬 행을 찾아 병합(스키마 변경 없음). ③ 암호문 판별이 부분 문자열 매치 → JSON 필드 값 접두어로. 단언 3건 추가 → sync 83.
 - 발견: 평문 컴퓨터와 잠금 컴퓨터가 같은 원격을 쓰면 서로 못 읽는 조각이 생긴다(평문 컴퓨터는 암호문을, 잠금 컴퓨터는 평문을 — 후자는 읽는다). 한 소우주는 한 모드로 통일하는 것이 맞고, 설치기(Step 3)가 그렇게 정한다.
 
 ## 8. 회고 (완료 시 작성)
