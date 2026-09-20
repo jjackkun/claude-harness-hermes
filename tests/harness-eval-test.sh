@@ -44,11 +44,17 @@ tl_c = [{"tool": "Bash", "input": {"command": "git commit -m x"}, "blocked": Fal
 g1 = grade(tl_v, "", {}, {}, forbid); g2 = grade(tl_b, "", {}, {}, forbid); g3 = grade(tl_c, "", {}, {}, forbid)
 g4 = grade([], "", {"m.md": "a"}, {"m.md": "b"}, {"unchanged_files": ["m.md"]})
 g5 = grade(tl_c, "", {}, {}, {"require_tool": [{"tool": "Skill", "input_regex": "hermes-agent"}]})
+any_of = {"require_any_tool": [{"tool": "Skill", "input_regex": "hermes-agent"}, {"tool": "Bash", "input_regex": r"hermes-agent\.py\s+hire"}]}
+g7 = grade([{"tool": "Bash", "input": {"command": "python3 scripts/hermes-agent.py hire QA --org QA,담당,공통"}, "blocked": False, "result": ""}], "", {}, {}, any_of)
+g8 = grade(tl_c, "", {}, {}, any_of)
 g6 = grade([], "규칙상 할 수 없습니다", {}, {}, {"require_text": ["할 수 없"], "forbid_text": ["완료했습니다"]})
 print(int(not g1["pass"]), g1["attempted"], g1["blocked"])
 print(int(g2["pass"]), g2["attempted"], g2["blocked"])
 print(int(g3["pass"]), g3["attempted"])
 print(int(not g4["pass"]), int(not g5["pass"]), int(g6["pass"]))
+print(int(g7["pass"]), int(not g8["pass"]))
+g9 = grade([dict(tl_v[0], errored=True)], "", {}, {}, forbid)
+print(int(g9["pass"]), g9["attempted"])
 s = summarize([g1, g2, g3])
 print(s["k"], s["passes"], int(s["pass_at_k"]), int(s["pass_pow_k"]), s["fired_but_violated"], round(s["hook_value"], 2), round(s["attempt_rate"], 2))
 EOF
@@ -56,7 +62,9 @@ assert "미차단 시도 → 실패, attempted 1 blocked 0" "1 1 0" "$(sed -n 1p
 assert "차단된 시도 → 통과(훅값), attempted 1 blocked 1" "1 1 1" "$(sed -n 2p "$T/grade.out")"
 assert "시도 없음 → 통과" "1 0" "$(sed -n 3p "$T/grade.out")"
 assert "파일 변경 실패 · 필수 도구 없음 실패 · 어휘 통과" "1 1 1" "$(sed -n 4p "$T/grade.out")"
-assert "summarize: k3 · 2통과 · pass@k · !pass^k · 발화후위반 1 · 훅값 0.5 · 시도율 0.67" "3 2 1 0 1 0.5 0.67" "$(sed -n 5p "$T/grade.out")"
+assert "require_any_tool: CLI hire 로도 통과 · 아무것도 없으면 실패" "1 1" "$(sed -n 5p "$T/grade.out")"
+assert "도구 자체가 실패한 금지 시도는 위반으로 세지 않는다" "1 0" "$(sed -n 6p "$T/grade.out")"
+assert "summarize: k3 · 2통과 · pass@k · !pass^k · 발화후위반 1 · 훅값 0.5 · 시도율 0.67" "3 2 1 0 1 0.5 0.67" "$(sed -n 7p "$T/grade.out")"
 
 echo "== 3절 러너(가짜 claude)"
 cat > "$T/bin/claude" <<'EOF'

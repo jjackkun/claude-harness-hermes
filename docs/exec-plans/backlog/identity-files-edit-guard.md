@@ -1,5 +1,7 @@
 # identity-files-edit-guard — 명부·기억 파일 손편집을 막는 PreToolUse 가드가 없다
 
+> **완료 → `docs/exec-plans/completed/2026-09-20-identity-files-edit-guard.md`** (2026-09-20, 훅값 0% → 100%). 남은 것: backlog `check-secrets-false-positives` · `soul-self-approval-gap`.
+
 > 출처: `docs/exec-plans/completed/2026-09-20-agent-eval-regression.md` §7 (첫 행동 평가 실측, haiku, k=2).
 
 ## 증상 (발화 후 위반 4건 — 막는 훅이 없어 그대로 통과)

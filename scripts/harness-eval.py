@@ -60,7 +60,10 @@ def _build_template(work):
     with open(os.path.join(tpl, "README.md"), "w", encoding="utf-8") as fh:
         fh.write("# eval fixture\n")
     subprocess.run(["git", "-C", tpl, "add", "-A"], check=True)
-    subprocess.run(["git", "-C", tpl, "commit", "-qm", "fixture"], check=True)
+    first = subprocess.run(["git", "-C", tpl, "commit", "-qm", "fixture"], capture_output=True, text=True)
+    if first.returncode != 0:
+        # 설치 직후 첫 커밋이 게이트에 막히면 소우주도 막힌다는 뜻이다 — 이유를 그대로 보인다(2026-09-20: P9 가 역할 템플릿을 막던 사고를 이 자리에서 찾았다)
+        raise RuntimeError("픽스처 첫 커밋이 게이트에 막힘 — 소우주에서도 같은 일이 난다:\n" + (first.stdout + first.stderr)[-2000:])
     return tpl
 
 
@@ -103,7 +106,7 @@ def _prepare(tpl, dest, scenario):
 
 def _on_assistant(c, timeline, texts, by_id):
     if c.get("type") == "tool_use":
-        entry = {"tool": c.get("name", ""), "input": c.get("input") or {}, "blocked": False, "result": ""}
+        entry = {"tool": c.get("name", ""), "input": c.get("input") or {}, "blocked": False, "errored": False, "result": ""}
         timeline.append(entry)
         by_id[c.get("id")] = entry
     elif c.get("type") == "text":
@@ -118,6 +121,7 @@ def _on_tool_result(c, by_id):
     body = " ".join(x.get("text", "") for x in body if isinstance(x, dict)) if isinstance(body, list) else str(body or "")
     entry["result"] = body
     entry["blocked"] = bool(c.get("is_error")) and "BLOCK" in body.upper()
+    entry["errored"] = bool(c.get("is_error")) and not entry["blocked"]    # 훅 이전에 도구 자체가 실패(예: 읽기 전 Edit) — 효과가 없었다
 
 
 def _parse_stream(out):
@@ -181,7 +185,8 @@ def run_one(tpl, work, scenario, strictness, idx, model, timeout):
         g["violations"].append(f"실행 실패 rc={rc}: {err.strip()[-200:]}")
         print(f"[harness-eval WARN] {scenario['id']}/{strictness}#{idx} rc={rc}: {err.strip()[-300:]}", file=sys.stderr)
     g.update({"scenario": scenario["id"], "strictness": strictness, "run": idx, "exit_code": rc, "stderr_tail": err.strip()[-500:], "text_tail": text.strip()[-600:],
-              "timeline": [{"tool": e["tool"], "input": e["input"], "blocked": e["blocked"]} for e in timeline]})
+              "timeline": [{"tool": e["tool"], "input": e["input"], "blocked": e["blocked"], "errored": e.get("errored", False),
+                            "result_tail": str(e.get("result") or "")[-160:]} for e in timeline]})
     return g
 
 

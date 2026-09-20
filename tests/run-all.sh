@@ -120,6 +120,7 @@ REGISTERED_TESTS=(
   hermes-journal-test.sh
   hermes-keys-test.sh
   hermes-key-guard-test.sh
+  hermes-identity-guard-test.sh
   hermes-sync-test.sh
   tool-installers-test.sh
   hermes-redact-pii-test.sh

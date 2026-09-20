@@ -286,6 +286,8 @@ python3 scripts/hermes-agent.py whoami    # 지금 세션의 에이전트(HERMES
 
 ## 원칙
 
+- 명부(`.hermes/agents.json`)와 `MEMORY.md` 는 손으로 고치지 않는다 — CLI(`hire`·`teach`·`note`·`refresh-memory`)만 쓴다. 편집 도구·리다이렉트로 쓰려 하면 identity-guard 훅이 막는다(SOUL.md 는 사람 승인 편집이 정상 경로라 예외).
+
 - **CLI 를 거친다.** 이벤트(입사·소환·인계)를 손으로 SQL 로 넣지 않는다 — CLI 가 검증·nonce·이력을 책임진다.
 - **추측해 넣지 않는다.** 조직 축 값·담당·이름이 불확실하면 사용자에게 묻는다(실측·정의 우선).
 - **파괴적 판단은 확인.** 은퇴·인계 거절/만료 강제 같은 되돌리기 어려운 일은 사람 확인을 거친다.
