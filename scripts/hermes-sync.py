@@ -7,9 +7,10 @@
   backfill   이 컴퓨터 DB 의 기존 원문을 조각으로 만들어 올린다 (세션당 1회, 멱등)
   tombstone  원격·로컬에서 경로 하나를 지운다 — **사람 실행 전용**(세션 안 차단)
 
-push 정책은 `.hermes/sync.json`(컴퓨터 로컬, 커밋 안 함). 없으면 로컬 전용(C).
-  {"push": true, "remote": "origin"}
-계획: docs/exec-plans/active/2026-09-15-sync-transport-encryption.md 목표 6~11·14·15
+push 정책은 `.hermes/sync.json`(컴퓨터 로컬, 커밋 안 함). 없으면 로컬 전용. 설치기가 비공개 저장소면 자동으로 쓴다(T-21).
+  {"push": true, "mode": "plain"}                       기본 — 발전 재료(요약·패턴·기억·작업 이력)를 평문으로, 열쇠·age 불필요 (T-17·T-18)
+  {"push": true, "mode": "locked", "history": true}     옵션 — 자유 글 암호문 + 대화 원문까지. 열쇠는 세션 밖에서(T-11)
+계획: docs/exec-plans/active/2026-09-20-transport-plain.md (원안 2026-09-15-sync-transport-encryption)
 """
 
 import argparse

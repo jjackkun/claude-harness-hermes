@@ -16,9 +16,9 @@
 - [x] 목표 4 (T-20) — 마스킹 세 겹이 **업로드 직전** 한 번 더 돈다: `outgoing()` 이 자유 글 칸마다 `hermes_redact.redact` 를 통과시킨다(plain·locked 모두). 생성 단계 치환은 `hermes-summarize.py` `SUMMARY_PROMPT` 와 `hermes-agent.py note`(agent-teaching 목표 9) 지시문에 "실제 사람 이름·주소·연락처·계좌·차량번호는 역할·종류로" 한 줄. 자동 정답지에 `git config user.name`·최근 커밋 작성자·명부 이름·OS 사용자명을 더한다(`hermes_secret_values` 옆 새 모듈, 값은 출력 금지). 꼴 규칙에 한국 주소(`시·도 + 구·군 + 로·길 + 번지`)·계좌번호 추가. — 검증: `hermes-redact-boundary-test.sh` 에 업로드 게이트 절 + `hermes-redact` 단위 테스트에 주소·계좌·작성자 이름 3건
 - [x] 목표 5 (T-19·T-21) — 설치기(`project-claude.sh`, hermes 프리셋)가 원격 공개 여부를 판별해 `sync.json` 을 쓴다: 비공개 → `{"push": true, "mode": "plain"}` + 첫 push · 공개/미상 → `{"push": false}` + 설치 로그 한 줄(켜는 법). 이미 `sync.json` 이 있으면 손대지 않는다. `CLAUDECODE` 가 있으면 전체 건너뜀. 판별은 `gh repo view --json visibility` → 실패 시 미상. — 검증: `tests/sync-autoenable-test.sh`(gh 스텁으로 PRIVATE/PUBLIC/실패 세 경우 + 기존 sync.json 보존 + CLAUDECODE 건너뜀)
 - [x] 목표 6 — 세션 시작 pull 훅·Stop push 훅이 plain 모드에서 age 없이 돈다(age 확인은 locked 모드에서만). — 검증: 9절 "age 없음" 을 plain 모드에서는 정상 pull 로 바꿔 단언
-- [ ] 목표 7 — 안내서·CLAUDE.md 절 갱신: `docs/hermes-sync-guide.md` 를 "기본은 자동(설치기), 열쇠는 공개 저장소 옵션" 으로 다시 쓰고 hermes.conf 의 "기억 운반" 절도 맞춘다. `hermes_sync_fragments.py`·`hermes-sync.py` 머리말 갱신 — 검증: `grep` 으로 "세션 밖 터미널" 이 옵션 절에만
-- [ ] 목표 8 — roundtrip 목표 5 시연: 비공개 임시 bare 원격에서 설치기 → 자동 켜짐 → 게이트QA `teach`/note 1건 → push → 두 번째 clone pull → MEMORY.md 일치. — 검증: 시연 기록(roundtrip §7)
-- [ ] 목표 9 — 설치 폐로·의존 계층·고아 검사 — `install-closure-test` · `dep-contract-test` · `run-all.sh --check-orphans`
+- [x] 목표 7 — 안내서·CLAUDE.md 절 갱신: `docs/hermes-sync-guide.md` 를 "기본은 자동(설치기), 열쇠는 공개 저장소 옵션" 으로 다시 쓰고 hermes.conf 의 "기억 운반" 절도 맞춘다. `hermes_sync_fragments.py`·`hermes-sync.py` 머리말 갱신 — 검증: `grep` 으로 "세션 밖 터미널" 이 옵션 절에만
+- [x] 목표 8 — roundtrip 목표 5 시연: 비공개 임시 bare 원격에서 설치기 → 자동 켜짐 → 게이트QA `teach`/note 1건 → push → 두 번째 clone pull → MEMORY.md 일치. — 검증: 시연 기록(roundtrip §7)
+- [x] 목표 9 — 설치 폐로·의존 계층·고아 검사 — `install-closure-test` · `dep-contract-test` · `run-all.sh --check-orphans`
 
 ## 3. 비목표 (Out of Scope)
 
@@ -70,8 +70,15 @@
   ② 마스킹된 `pattern_key` 가 다른 행으로 갈라짐 → 경로의 원본 해시로 로컬 행을 찾아 병합(스키마 변경 없음). ③ 암호문 판별이 부분 문자열 매치 → JSON 필드 값 접두어로. 단언 3건 추가 → sync 83.
 - 발견: 평문 컴퓨터와 잠금 컴퓨터가 같은 원격을 쓰면 서로 못 읽는 조각이 생긴다(평문 컴퓨터는 암호문을, 잠금 컴퓨터는 평문을 — 후자는 읽는다). 한 소우주는 한 모드로 통일하는 것이 맞고, 설치기(Step 3)가 그렇게 정한다.
 
+- 2026-09-20 Step 4 완료: 안내서 재작성(기본 자동 · 열쇠는 옵션 절에만), hermes.conf CLAUDE.md 절, hermes-sync.py·hermes_sync_fragments.py 머리말. 목표 9: closure 9 · dep 21 · 고아 0(등록 77).
+- 목표 8 시연(임시 bare 원격, gh 스텁 PRIVATE, 세션 밖 흉내 `env -u CLAUDECODE`): 설치기 → `sync.json {"push": true, "mode": "plain", "visibility": "PRIVATE", "set_by": "installer"}` →
+  게이트QA 입사 + 기억 1건(전화번호 포함) → push 2건 → 두 번째 clone 설치·자동 켜기 → pull 2건 → MEMORY.md 머리말·본문 동일, 단 전화번호는 원격·두 번째 컴퓨터에서 `[REDACTED:PHONE]`(업로드 때 마스킹, 로컬 원본은 그대로 — T-20 설계).
+  세션 안 설치는 로그 "AI 세션 안 실행 — 운반 설정은 세션 밖 설치에서" 로 건너뜀 확인.
+- 발견: 자동 정답지가 명부의 에이전트 이름도 가린다(게이트QA → [REDACTED:NAME]). 비공개 저장소에선 무해하지만 과마스킹일 수 있다 — 실측 뒤 명부 이름 제외 여부 결정(backlog 후보).
+- 발견: `teach`/`note`(agent-teaching) 가 아직 없어 시연의 기억은 `record` 직접 호출로 넣었다. teaching 착수 시 같은 경로가 그대로 운반된다.
+
 ## 8. 회고 (완료 시 작성)
 
-- 잘된 것:
-- 잘못된 것:
-- 다음 룰 후보:
+- 잘된 것: 설계를 뒤집은 뒤 하루 안에 4 Step 을 닫았다. 기존 운반 코드·테스트 픽스처(bare 원격·열쇠)를 그대로 재사용해 평문 모드를 얹었고, 리뷰어 지적 3건이 실제 결함(집계 고정·병합 갈라짐·오탐)이었다.
+- 잘못된 것: 목표 2 의 "history:true + 열쇠 없음 거부" 를 Step 1 에서 체크해 놓고 실측은 Step 2 에서 했다(체크는 실측 뒤에). 복잡도 한도(11)를 세 함수가 넘어 커밋이 한 번 막혔다 — 분기가 늘 때 미리 나눴어야 했다.
+- 다음 룰 후보: "설치기가 판별·설정하는 것은 사람 절차로 두지 않는다"(T-21 일반화) · "마스킹 정답지에 기계가 아는 값만" 을 R 룰로.
