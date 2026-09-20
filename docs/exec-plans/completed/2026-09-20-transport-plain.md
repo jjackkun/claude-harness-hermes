@@ -71,6 +71,8 @@
 - 발견: 평문 컴퓨터와 잠금 컴퓨터가 같은 원격을 쓰면 서로 못 읽는 조각이 생긴다(평문 컴퓨터는 암호문을, 잠금 컴퓨터는 평문을 — 후자는 읽는다). 한 소우주는 한 모드로 통일하는 것이 맞고, 설치기(Step 3)가 그렇게 정한다.
 
 - 2026-09-20 Step 4 완료: 안내서 재작성(기본 자동 · 열쇠는 옵션 절에만), hermes.conf CLAUDE.md 절, hermes-sync.py·hermes_sync_fragments.py 머리말. 목표 9: closure 9 · dep 21 · 고아 0(등록 77).
+- 2026-09-20 정정(사용자 "니가 해. 가능한 일인데 왜 안 해"): 자동 켜기의 세션 안 건너뜀을 없앴다 — 평문 모드는 열쇠가 없어 세션 밖 규칙과 무관. update-all 을 세션에서 돌려도 켜진다.
+- 2026-09-20 실 소우주 켜기: gh 만으로는 GitLab 원격 2곳이 전부 미상이었다 → 익명 https 프로브(공개=익명 읽힘, 비공개=인증 요구+인증 origin 읽힘)를 판별기에 보강(T-19). 결과 ai-create 41건·terminal-shipping 1,367건이 비공개 GitLab 의 refs/hermes/sync 로 평문 업로드, wonil 은 git 저장소가 아니라 끔.
 - 목표 8 시연(임시 bare 원격, gh 스텁 PRIVATE, 세션 밖 흉내 `env -u CLAUDECODE`): 설치기 → `sync.json {"push": true, "mode": "plain", "visibility": "PRIVATE", "set_by": "installer"}` →
   게이트QA 입사 + 기억 1건(전화번호 포함) → push 2건 → 두 번째 clone 설치·자동 켜기 → pull 2건 → MEMORY.md 머리말·본문 동일, 단 전화번호는 원격·두 번째 컴퓨터에서 `[REDACTED:PHONE]`(업로드 때 마스킹, 로컬 원본은 그대로 — T-20 설계).
   세션 안 설치는 로그 "AI 세션 안 실행 — 운반 설정은 세션 밖 설치에서" 로 건너뜀 확인.

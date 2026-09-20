@@ -46,14 +46,22 @@ D="$TMP/D"; mk "$D"; echo '{"push": true, "mode": "locked", "history": true}' > 
 assert "사람이 정한 값 그대로" "True locked None" "$(pol "$D")"
 assert "로그에 '그대로 둔다'" 1 "$(grep -c '그대로 둔다' <<<"$OUT")"
 
-echo "[5] AI 세션 안(CLAUDECODE)이면 건너뜀"
+echo "[5] AI 세션 안(CLAUDECODE)에서도 켠다 — 평문 모드는 열쇠가 없다"
 E="$TMP/E"; mk "$E"
-OUT="$(CLAUDECODE=1 PATH="$STUB:$PATH" bash -c "source '$REPO_ROOT/lib/logging.sh'; source '$REPO_ROOT/lib/sync_autoenable.sh'; sync_autoenable '$E'" 2>&1)"
-assert "sync.json 안 만듦" none "$(pol "$E")"
-assert "로그에 세션 안 안내" 1 "$(grep -c 'AI 세션 안' <<<"$OUT")"
+OUT="$(CLAUDECODE=1 GH_STUB_VIS=PRIVATE PATH="$STUB:$PATH" bash -c "source '$REPO_ROOT/lib/logging.sh'; source '$REPO_ROOT/lib/sync_autoenable.sh'; sync_autoenable '$E'" 2>&1)"
+assert "세션 안에서도 sync.json 평문으로 켜짐" "True plain PRIVATE" "$(pol "$E")"
 
 echo "[6] origin 없으면 gh 를 부르지 않고 미상"
 F="$TMP/F"; mk "$F"; git -C "$F" remote remove origin; run "$F" GH_STUB_VIS=PRIVATE
 assert "origin 없음 → unknown" "False None unknown" "$(pol "$F")"
+
+echo "[7] gh 가 못 답해도(GitLab 등) 익명 프로브로 판별 — 강제값으로 실측"
+G="$TMP/G"; mk "$G"; run "$G" GH_STUB_FAIL=1 HARNESS_SYNC_PROBE=private
+assert "프로브 private → 평문 켜짐" "True plain PRIVATE" "$(pol "$G")"
+H="$TMP/H"; mk "$H"; run "$H" GH_STUB_FAIL=1 HARNESS_SYNC_PROBE=public
+assert "프로브 public → 끔" "False None PUBLIC" "$(pol "$H")"
+I="$TMP/I"; mk "$I"; git -C "$I" remote set-url origin "git@gitlab.example.com:me/repo.git"
+assert "ssh origin → https 변환" "https://gitlab.example.com/me/repo.git" "$(bash -c "source '$REPO_ROOT/lib/sync_autoenable.sh'; _sync_https_url 'git@gitlab.example.com:me/repo.git'")"
+assert "로컬 경로 origin 은 프로브 대상 아님(빈 값)" "" "$(bash -c "source '$REPO_ROOT/lib/sync_autoenable.sh'; _sync_https_url '/tmp/bare'")"
 
 echo; echo "sync-autoenable: PASS=$PASS FAIL=$FAIL"; [[ $FAIL -eq 0 ]]
