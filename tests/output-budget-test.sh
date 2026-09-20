@@ -116,6 +116,36 @@ grep -q "claude-posttooluse-output-budget.sh" "$CONF" \
 grep -q "POST_TOOL_USE_HOOKS.*Bash::.*output-budget" "$CONF" \
   && ok "Bash 매처로 등록된다" || bad "매처 등록이 없다"
 
+# ── 6b. 명령 머리를 path 칸에 남긴다 (2026-09-20, 목표 5 "명령별 분포") ─────
+payload_cmd() { # payload_cmd <명령> — stdout 10B
+  python3 -c "
+import json,sys
+print(json.dumps({'hook_event_name':'PostToolUse','tool_name':'Bash',
+  'tool_input':{'command':sys.argv[1]},'duration_ms':7,
+  'tool_response':{'stdout':'x'*10,'stderr':'','interrupted':False}}))
+" "$1"
+}
+last_path() { tail -1 "$EVENTS" | python3 -c "import json,sys; print(json.load(sys.stdin).get('path'))"; }
+payload_cmd 'cd /srv/app && TOKEN=abc123 SECRET=zz python3 scripts/foo.py --token=xyz | tail -3' | run >/dev/null
+[[ "$(last_path)" == "cmd:python3 foo.py" ]] && ok "cd·환경변수 걷어내고 인터프리터+스크립트 basename 만 남긴다" \
+                                            || bad "명령 머리가 '$(last_path)' (기대 cmd:python3 foo.py)"
+grep -q 'abc123\|xyz\|SECRET' "$EVENTS" && bad "환경변수 값·옵션 값이 기록에 새었다" || ok "값(토큰·옵션)은 기록에 남지 않는다"
+payload_cmd 'bash tests/run-all.sh --check-orphans' | run >/dev/null
+[[ "$(last_path)" == "cmd:bash run-all.sh" ]] && ok "bash 스크립트는 'bash <이름>'" || bad "머리가 '$(last_path)'"
+payload_cmd 'ls -la /tmp' | run >/dev/null
+[[ "$(last_path)" == "cmd:ls" ]] && ok "일반 명령은 첫 토큰만" || bad "머리가 '$(last_path)'"
+payload_cmd '' | run >/dev/null
+[[ "$(last_path)" == "cmd:-" ]] && ok "빈 명령은 '-'" || bad "빈 명령 머리가 '$(last_path)'"
+# 명령별 분포 보고 — 2026-09-20 이전 형식(path 빈 칸)도 한 줄 심어 옛 기록 처리를 본다
+printf '{"ts": 1789477479, "rule": "R-out", "verdict": "pass", "stage": "posttooluse", "path": null, "detail": "141B 97ms"}\n' >> "$EVENTS"
+REPORT="$REPO_ROOT/assets/hooks/out_report.py"
+ROUT=$(python3 "$REPORT" --events "$EVENTS" 2>&1); RC=$?
+[[ $RC -eq 0 ]] && ok "out_report.py 가 rc 0" || bad "out_report.py rc=$RC: $ROUT"
+echo "$ROUT" | grep -q '^python3 foo.py ' && ok "분포 표에 명령 머리 행이 있다" || bad "분포 표에 머리 행이 없다: $ROUT"
+echo "$ROUT" | grep -q '^(머리 없음)' && ok "옛 기록(머리 없음)도 한 줄로 센다" || bad "머리 없는 옛 기록을 버렸다"
+echo "$ROUT" | grep -q '^probe ' && ok "이전 시험의 probe 도 집계됨" || bad "probe 행 없음"
+python3 "$REPORT" --events "$TMP/없음.jsonl" >/dev/null 2>&1; [[ $? -eq 2 ]] && ok "기록 없으면 rc 2" || bad "기록 없을 때 rc 가 2 가 아니다"
+
 # ── 7. 저장소 실제 기록을 오염시키지 않았는가 ────────────────────────────
 [[ -f "$EVENTS" ]] && ok "시험 이벤트는 임시 디렉터리에만 남았다" \
                    || bad "임시 이벤트 파일이 없다 — 실제 .harness 에 썼을 수 있다"

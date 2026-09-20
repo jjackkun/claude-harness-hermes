@@ -51,8 +51,27 @@ import json, os, sys
 
 THRESHOLD = int(os.environ.get("R_OUT_THRESHOLD", "8192"))
 
+_INTERP = ("python3", "python", "bash", "sh", "node", "npm", "npx", "pnpm", "yarn", "git", "make",
+           "go", "cargo", "docker", "uv", "poetry", "timeout", "nohup", "sudo")
+def head_of(cmd):
+    """명령 머리 — 어떤 종류의 명령이 큰 출력을 내는지 셀 수 있는 최소 식별자(계획 목표 5 '명령별 분포').
+    `cd X &&`·`VAR=값` 을 걷어내고 첫 토큰(+인터프리터면 둘째 토큰의 basename). 값·옵션은 남기지 않는다(비밀값 방지)."""
+    text = str(cmd or "").strip()
+    while text.startswith("cd ") and ("&&" in text or ";" in text):
+        text = text.split("&&", 1)[1] if "&&" in text else text.split(";", 1)[1]
+        text = text.strip()
+    toks = [t for t in text.replace("|", " | ").split() if t]
+    while toks and "=" in toks[0] and not toks[0].startswith("-"):
+        toks.pop(0)
+    if not toks:
+        return "-"
+    head = toks[0].rsplit("/", 1)[-1]
+    if head in _INTERP and len(toks) > 1 and not toks[1].startswith("-") and "=" not in toks[1] and toks[1] != "|":
+        head += " " + toks[1].rsplit("/", 1)[-1]
+    return head[:48]
+HEAD = "-"
 def emit(verdict, nbytes, dur, payload=None):
-    print(f"{verdict} {nbytes} {dur}")
+    print(f"{verdict} {nbytes} {dur} {HEAD}")
     print(json.dumps(payload, ensure_ascii=False) if payload else "")
     sys.exit(0)
 
@@ -72,6 +91,7 @@ if not isinstance(d, dict):
 
 tr = d.get("tool_response")
 dur = d.get("duration_ms") or 0
+HEAD = head_of((d.get("tool_input") or {}).get("command")) if isinstance(d.get("tool_input"), dict) else "-"
 
 # 판정 불가는 통과가 아니다. `pass` 로 세면 분모가 부풀어 발화율이 실제보다 낮아진다
 # — gate_report.py 의 _row() 가 skipped 를 분모에서 빼도록 정의한 이유다.
@@ -111,15 +131,16 @@ rm -f "$PAYLOAD_FILE"
 # 내장 read 로만 가른다. 이 훅은 **세션 내 모든 Bash 호출**에 걸리므로 프로세스 하나가
 # 곧 세션 전체의 곱셈이 된다 — sed 3 + awk 3 을 쓰던 판을 걷어냈다(2026-09-08 검토).
 # 주입 JSON 은 json.dumps 산출이라 항상 한 줄이다.
-VERDICT="" NBYTES="" DUR="" JSON=""
-{ read -r VERDICT NBYTES DUR; read -r JSON; } <<< "$PARSED"
+VERDICT="" NBYTES="" DUR="" HEAD="" JSON=""
+{ read -r VERDICT NBYTES DUR HEAD; read -r JSON; } <<< "$PARSED"
 
 [[ -n "${VERDICT:-}" ]] || exit 0
 
+# path 칸에 명령 머리(cmd:<머리>)를 남긴다 — 2026-09-20, 목표 5 "명령별 분포" 를 내려면 어떤 명령이었는지가 있어야 한다.
 case "$VERDICT" in
-  pass)    gate_emit R-out pass    posttooluse "" "${NBYTES}B ${DUR}ms" ;;
-  warn)    gate_emit R-out warn    posttooluse "" "${NBYTES}B ${DUR}ms (임계 ${R_OUT_THRESHOLD}B 초과)" ;;
-  skipped) gate_emit R-out skipped posttooluse "" "출력 크기 판정 불가" ;;
+  pass)    gate_emit R-out pass    posttooluse "cmd:${HEAD:--}" "${NBYTES}B ${DUR}ms" ;;
+  warn)    gate_emit R-out warn    posttooluse "cmd:${HEAD:--}" "${NBYTES}B ${DUR}ms (임계 ${R_OUT_THRESHOLD}B 초과)" ;;
+  skipped) gate_emit R-out skipped posttooluse "cmd:${HEAD:--}" "출력 크기 판정 불가" ;;
 esac
 
 # 임계 미만이면 아무것도 출력하지 않는다 — 관측이 스스로 컨텍스트를 태우면 본말전도다.
