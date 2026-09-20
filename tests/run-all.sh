@@ -129,6 +129,7 @@ REGISTERED_TESTS=(
   hermes-soul-inject-test.sh
   hermes-memory-events-test.sh
   hermes-handoff-test.sh
+  hermes-teaching-test.sh
   hermes-skill-layers-test.sh
   hermes-skill-inject-test.sh
   hermes-skill-extends-test.sh

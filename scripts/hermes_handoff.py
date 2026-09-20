@@ -176,7 +176,20 @@ def resolve(db: str, project: str, handoff_id: str, how: str, actor: str,
         event.update(_finished_fields(db, project, handoff_id, done_when))
     else:
         event.update(_return_fields(db, handoff_id, how, reason, cause))
-    return emit(db, project, event)
+    event_id = emit(db, project, event)
+    if how == "finished":
+        _open_review_after(db, project, handoff_id, actor, event)
+    return event_id
+
+
+def _open_review_after(db: str, project: str, handoff_id: str, actor: str, event: dict) -> None:
+    """C-21: 하급자가 끝내면 바로 위 rank 에게 리뷰 봉투가 자동으로 열린다. 실패해도 finished 는 이미 남았다 — 세우지 않는다."""
+    try:
+        from hermes_review_chain import open_review           # 같은 tier(2) — 늦게 불러 순환을 피한다
+        verified = (event.get("evidence") or {}).get("reason", "none")
+        open_review(db, project, handoff_id, actor, verified)
+    except Exception as exc:                                  # noqa: BLE001
+        print(f"[hermes-handoff] 리뷰 봉투 개봉 실패(finished 는 기록됨): {exc}", file=sys.stderr)
 
 
 def _return_fields(db: str, handoff_id: str, how: str, reason: str, cause: str) -> dict:

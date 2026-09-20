@@ -14,9 +14,9 @@ teaching.md 개요의 실측 그대로: 학습 재료가 사람의 대화(Stop �
 
 ## 2. 목표 (What — 검증 가능한 형태)
 
-- [ ] 목표 1 (C-21) — `resolve(…, "finished")` 가 닫히면 같은 unit 바로 위 rank 에게 `review` 봉투가 자동으로 열린다(위 rank 없으면 `human`).
+- [x] 목표 1 (C-21) — `resolve(…, "finished")` 가 닫히면 같은 unit 바로 위 rank 에게 `review` 봉투가 자동으로 열린다(위 rank 없으면 `human`).
   `inputs` 는 원 봉투 id·커밋·done_when 결과 참조만 — 검증: `bash tests/hermes-teaching-test.sh` 리뷰 절(픽스처 조직 2단·에이전트 2명)
-- [ ] 목표 2 (C-21) — 리뷰 봉투를 `approved`/`corrected(about, body)` 로 닫으면 리뷰받은 에이전트의 `memory_events` 에 `memory.added`
+- [x] 목표 2 (C-21) — 리뷰 봉투를 `approved`/`corrected(about, body)` 로 닫으면 리뷰받은 에이전트의 `memory_events` 에 `memory.added`
   (`about` 필수, `source_event=review:<봉투 id>`)가 남는다. `about` 없는 `corrected` 는 거부. `about` 은 `<domain>/<slug>` 형식만 받는다
   (domain 고정 집합 gate·test·git·debug·workflow·file·sync·agent, slug 는 `^[A-Za-z0-9][A-Za-z0-9._-]*$` ≤128자), `kind` 는 observation·preference·fact·decision·note 5종,
   본문·about 에 비밀 패턴 `(api[_-]?key|token|secret|password|authorization|credentials?|auth)` 뒤 값은 `[REDACTED]` — 검증: 같은 테스트 기억 절(형식 위반 3종 거부)
@@ -71,6 +71,11 @@ teaching.md 개요의 실측 그대로: 학습 재료가 사람의 대화(Stop �
 - 2026-09-20: 승격 뒤 원 기억은 남기고 `memory.revised` 로 표시 — 근거: 같은 문서 쟁점 4(ECC `evolved_from`), INSERT 전용(C-14)과 일치. confidence 감쇠는 두 곳 다 미구현이라 채택 안 함.
 
 ## 7. 발견·예외
+
+- 2026-09-20 Step 1·2 완료: `hermes_review_chain.py`(reviewer_for·open_review·close_review·record_teaching·check_about, tier 2) + `hermes_handoff.resolve(finished)` 뒤 자동 개봉 + `derive_kind` 가 `system:` 행위자를 지시로.
+  테스트 `hermes-teaching-test.sh` 24단언(리뷰어 선택·자동 개봉·human 폴백·닫기→기억·마스킹·MEMORY.md·리뷰의 리뷰 없음·about 형식 5종 거부·corrected 누적 3) · handoff 55 · dep 21.
+- 설계와 다른 점: journal 에 `handoff.review` kind 를 추가하지 않았다 — task.assigned 의 intent "리뷰: …" + decision `constraints=review-of=…;reviewee=…;verified=…` 로 표시(CHECK 마이그레이션 회피). 판정(approved/corrected)은 memory_events.source_event 에 남는다.
+- 순환 import: review_chain 과 handoff 는 같은 tier 2 에서 서로 함수 안에서 늦게 부른다(depcheck 는 같은 tier 상호 참조 허용).
 
 ## 8. 회고 (완료 시 작성)
 

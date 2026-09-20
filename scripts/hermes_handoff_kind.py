@@ -46,7 +46,7 @@ def _rank_index(project: str, rank: str):
 
 def derive_kind(project: str, frm: str, to: str) -> tuple:
     """(kind, 확정 여부). 확정이 아니면 호출측이 `(미상)` 을 표시한다."""
-    if frm and frm.startswith("human:"):
+    if frm and frm.startswith(("human:", "system:")):       # 사람·기계 규칙(리뷰 사슬 등)이 여는 봉투는 지시 — 거절 불가(H-01)
         return "지시", True
     a, b = _agent_org(project, frm), _agent_org(project, to)
     if a is None or b is None:
