@@ -16,7 +16,7 @@
 
 - [ ] 목표 1 — `python3 scripts/hermes-dashboard.py --project-dir <소우주>` 가 `.hermes/dashboard.html` 하나를 쓴다(외부 자원 0, 모델 호출 0)
   — 검증: `bash tests/hermes-dashboard-test.sh` (생성·`<script src`/`<link href` 0·`claude` 호출 0)
-- [ ] 목표 2 — **에이전트 판**: 명부(이름·상태·분야/직급/조직), 열린 인계(kind·기한·blocked)·최근 소환 10건, 담당 없음 제안 수
+- [ ] 목표 2 — **에이전트 판**: 명부(이름·상태·분야/직급/조직), 열린 인계(kind·기한·blocked)·최근 소환 10건, 담당 없음 제안 수, **about 별 corrected 지적 누적 수**(agent-teaching 목표 6 이관: `memory_events.source_event LIKE 'review:%:corrected:%'`)
   — 검증: `bash tests/hermes-dashboard-test.sh` 에이전트 절 — 픽스처 명부 3명(1 은퇴)·인계 2건(1 blocked) 이 표에 그대로
 - [ ] 목표 3 — **스킬 판**: 층별 개수(S-01 네 층), 주입 상위 10·도움률, 강등 후보(`hermes_skill_yield.low_yield_skills` 재사용, 기준 중복 정의 금지),
   결정화 대기(`pattern_count` count≥3·crystallized=0) — 검증: `bash tests/hermes-dashboard-test.sh` 스킬 절 — 강등 후보 1개가 `python3 scripts/hermes-cleanup.py --db … ` dry-run (e) 와 같은 집합

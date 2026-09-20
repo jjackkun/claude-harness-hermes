@@ -26,7 +26,7 @@ teaching.md 개요의 실측 그대로: 학습 재료가 사람의 대화(Stop �
 - [x] 목표 4 (C-22) — `hermes-agent.py teach "<이름>" --about <주제> "<한 줄>"` 가 `memory.added(by=human:…, source_event=teach)` 를 남기고,
   `about` 없으면 거부. 철회는 기존 `memory.retracted` — 검증: 같은 테스트 teach 절 + `hermes-roster-test.sh` 회귀
 - [x] 목표 5 (C-22) — `hermes-agent` 스킬이 "X 한테 이거 가르쳐" 를 `teach` 로 옮긴다(트리거 문구 추가) — 검증: skill-creator `run_eval.py`
-- [ ] 목표 6 (C-21) — 대시보드 에이전트 판에 에이전트별 `about` 지적 누적 수 — 검증: `bash tests/hermes-dashboard-test.sh` (계획 hermes-dashboard 와 합류)
+- [x] 목표 6 (C-21, hermes-dashboard 계획으로 이관) — 대시보드 에이전트 판에 에이전트별 `about` 지적 누적 수 — 검증: `bash tests/hermes-dashboard-test.sh` (계획 hermes-dashboard 와 합류)
 - [x] 목표 7 (C-25·C-26 경계) — 이 계획은 회의·아카이브 승격을 구현하지 않는다. 소환 러너가 에이전트 1명·세션 1개인 현 상태를 확인만 한다 — 검증: `grep -c` 로 러너에 다중 에이전트 인자 0
 - [x] 목표 9 (cumora 식 자기 기록) — 소환 러너(`hermes-summon.py run`)의 지시문 꼬리에 "끝나기 전에 배운 것 한 줄을 `python3 scripts/hermes-agent.py note \"<한 줄>\" --about <domain>/<slug>` 로 남겨라" 가 붙고,
   `note` 는 `memory.added(by=agent:<id>, source_event=task:<nonce>)` 를 남긴다. 모델 추가 호출 0 — 검증: `hermes-teaching-test.sh` note 절 + 러너 지시문 grep
@@ -87,8 +87,11 @@ teaching.md 개요의 실측 그대로: 학습 재료가 사람의 대화(Stop �
 - 목표 5 의 run_eval 은 세션 안에서 돌지 않아(summon-guard) 트리거 문구·표·§7 절만 추가했다. 세션 밖 실행은 hire-form 계획 §7 과 같은 명령.
 - 목표 6(대시보드 에이전트 판)은 `hermes-dashboard` 계획이 맡는다 — 여기서는 `memory_events` 의 `source_event LIKE 'review:%:corrected:%'` 를 about 별로 세면 된다는 것만 적어 둔다.
 
+- 목표 6 은 `hermes-dashboard` 계획 목표 2(에이전트 판)에 "about 별 corrected 누적 수" 로 넘겼다. 셈은 `memory_events` 에서 `source_event LIKE 'review:%:corrected:%'` 를 about 별로.
+
 ## 8. 회고 (완료 시 작성)
 
-- 잘된 것:
-- 잘못된 것:
-- 다음 룰 후보:
+- 잘된 것: 리뷰 → 기억 → 3회 결정화 → 선별 주입까지 한 사슬이 테스트(40단언, 가짜 claude)로 실측됐다. 기존 결정화 루프·봉투·명부를 재사용해 새 개념 없이 이었다.
+- 잘못된 것: 순환 import 를 "같은 tier 면 된다" 고 짐작했다가 depcheck 에 막혀 모듈을 다시 나눴다. 복잡도·크기 게이트에 세 번 걸렸다 — 함수를 쓸 때 분기 수를 먼저 세야 했다.
+  자동 정답지에 명부 이름을 넣어 다른 테스트를 깨뜨렸다(과마스킹은 실측 뒤 정한다는 교훈).
+- 다음 룰 후보: "새 모듈은 tier 와 순환을 코드 쓰기 전에 .deprc 에 먼저 적는다" · "가르침(about)의 domain 집합은 설계 문서가 정본".
