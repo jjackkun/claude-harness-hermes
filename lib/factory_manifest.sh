@@ -17,7 +17,8 @@ _manifest_path() { printf '%s/%s' "$1" "$_MANIFEST_NAME"; }
 _manifest_sha() {
   local target="$1"
   if [[ -d "$target" ]]; then
-    (cd "$target" && find . -type f | LC_ALL=C sort | xargs -r sha256sum) | sha256sum | awk '{print $1}'
+    # -print0/-z/-0: 공백·탭이 든 이름을 xargs 가 쪼개 빈 목록 해시(e3b0c4…)가 되던 결함(2026-09-20 리뷰). 개행이 든 이름은 여전히 미지원.
+    (cd "$target" && find . -type f -print0 | LC_ALL=C sort -z | xargs -0 -r sha256sum) | sha256sum | awk '{print $1}'
   else
     sha256sum "$target" | awk '{print $1}'
   fi

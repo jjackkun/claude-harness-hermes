@@ -118,10 +118,24 @@ _coexist_merge() {
 # 설치는 공장 저장소 안에서 돌므로 이 질문은 언제나 답할 수 있다. 최근 60커밋만 본다(그보다 오래된 사본은 어차피 재검토 대상).
 _coexist_is_old_factory() {
   local factory="$1" src_rel="$2" ours_sha="$3" c
-  for c in $(git -C "$factory" log --format=%H -60 -- "$src_rel" 2>/dev/null); do
+  for c in $(git -C "$factory" log --format=%H -200 -- "$src_rel" 2>/dev/null); do
     [[ "$(git -C "$factory" show --end-of-options "$c:$src_rel" 2>/dev/null | sha256sum | awk '{print $1}')" == "$ours_sha" ]] && return 0
   done
   return 1
+}
+
+# ours 가 공장 이력의 옛 판이면 하류 수정이 아니다 → 그냥 전달(b). 전달했으면 0.
+# 2026-09-20 doctor 실측: 소우주 3곳의 pre-commit·훅이 옛 공장판인데 manifest 는 현재판 sha 라 c 갈래가 "하류 수정" 으로 보고 영원히 놔뒀다
+# (backlog coexist-old-factory-detection). c 판정 앞에서 이 검사를 한 번 한다 — git log 는 c 갈래에서만 돈다.
+_coexist_deliver_if_old() {
+  local factory="$1" src_rel="$2" ours_sha="$3" src="$4" real="$5" mode="$6" claude_dir="$7" kind="$8" name="$9"
+  _coexist_is_old_factory "$factory" "$src_rel" "$ours_sha" || return 1
+  if ! _coexist_write "$src" "$real" "$mode"; then
+    echo "[factory-coexist WARN] 쓰기 실패, 이전 판 유지: $real" >&2; return 0
+  fi
+  rm -f "$real.factory-new"
+  manifest_add "$claude_dir" "$kind" "$name" "$real" "$src_rel" "$mode" || true
+  COEXIST_LAST_BRANCH=b; return 0
 }
 
 # 덮지 않고 공장 판을 옆에 세운다. pre-commit(R-merge)이 이 파일을 보고 커밋을 막는다.
@@ -187,7 +201,9 @@ install_factory_file() {
   fi
 
   # c — 공장은 그대로고 하류만 고쳤다 → 손대지 않는다. manifest 도 그대로(수정 신호를 지우지 않는다)
+  #     단, ours 가 옛 공장판이면 하류 수정이 아니라 전파 누락이다 → 전달(2026-09-20).
   if [[ -n "$base_sha" && "$base_sha" == "$theirs_sha" ]]; then
+    _coexist_deliver_if_old "$factory" "$src_rel" "$ours_sha" "$src" "$real" "$mode" "$claude_dir" "$kind" "$name" && return 0
     COEXIST_LAST_BRANCH=c; return 0
   fi
 
@@ -213,8 +229,9 @@ install_factory_file() {
   # manifest 에는 **base(=theirs) 의 sha** 를 적어 다음부터 진짜 base 를 알게 한다. ours 의 sha 를 적으면 안 된다 —
   # 하류 판이 "설치판" 으로 오인돼 다음 설치에서 b 로 덮인다(작성 중 스스로 낸 오류, 테스트 전 정정).
   if [[ "$(_manifest_sha "$base_file")" == "$theirs_sha" ]]; then
-    manifest_add "$claude_dir" "$kind" "$name" "$base_file" "$src_rel" "$mode" || true
     rm -f "$base_file"
+    _coexist_deliver_if_old "$factory" "$src_rel" "$ours_sha" "$src" "$real" "$mode" "$claude_dir" "$kind" "$name" && return 0
+    manifest_add "$claude_dir" "$kind" "$name" "$src" "$src_rel" "$mode" || true   # base(=theirs) 의 sha — src 와 같은 내용
     COEXIST_LAST_BRANCH=c; return 0
   fi
   if _coexist_merge "$real" "$base_file" "$src" "$mode"; then

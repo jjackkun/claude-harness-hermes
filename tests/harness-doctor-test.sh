@@ -89,6 +89,14 @@ D --factory-self > "$T/f2.out" 2>&1; RC=$?
 assert "실제 공장: 폐로 rc 0" 0 "$RC"
 [[ $RC -ne 0 ]] && cat "$T/f2.out"
 
+echo "== 3b절 sha 일치 — 공백 든 파일 이름 (리뷰 HIGH, 2026-09-20)"
+SP="$T/spacedir"; mkdir -p "$SP/sub dir"; printf 'x\n' > "$SP/a b.txt"; printf 'y\n' > "$SP/sub dir/c.txt"; printf 'z\n' > "$SP/plain.txt"
+BASH_SHA="$(bash -c "source '$REPO_ROOT/lib/factory_manifest.sh'; _manifest_sha '$SP'")"
+PY_SHA="$(python3 -c "
+import importlib.util; s=importlib.util.spec_from_file_location('d','$DOC'); m=importlib.util.module_from_spec(s); s.loader.exec_module(m); print(m._sha_target('$SP'))")"
+assert "bash _manifest_sha == python _sha_target (공백 이름 포함)" "$BASH_SHA" "$PY_SHA"
+assert "빈 목록 해시가 아니다(xargs 쪼개짐 결함 재발 방지)" 0 "$([[ "$BASH_SHA" == e3b0c442* ]] && echo 1 || echo 0)"
+
 echo "== 4절 update-all 배선"
 assert "update-all 이 doctor 를 부른다" 1 "$([[ $(grep -c 'harness-doctor.py' "$REPO_ROOT/update-all.sh") -ge 1 ]] && echo 1 || echo 0)"
 sed -i '/^adhd$/d' "$P/.claude/presets.lock" 2>/dev/null; echo "adhd" >> "$P/.claude/presets.lock"

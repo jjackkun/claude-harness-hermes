@@ -301,5 +301,27 @@ assert "옛 항목 field(src) → 빈 줄, 종료 0" "" "$(manifest_field "$C" s
 assert "옛 항목 verify 가 죽지 않음(2=미존재)" 2 "$(manifest_verify "$C" skills legacy "$P/nope"; echo $?)"
 
 echo ""
+echo "== 9. 옛 공장판 보존 결함 (2026-09-20 doctor 실측 — backlog coexist-old-factory-detection) =="
+# c 갈래: manifest 가 현재판 sha 인데 파일은 옛 공장판 → 하류 수정이 아니라 전파 누락 → 전달(b)
+OLD9=$'# V1\n#1\n#2\n#3\n# B\n#4\n#5\n#6\n# C\n'; NEW9=$'# V2\n#1\n#2\n#3\n# B\n#4\n#5\n#6\n# C\n'
+rm -f "$D" "$D.factory-new"             # 앞 절의 하류 상태를 비운다 → a 갈래로 v1 설치
+fac "$OLD9" c-old-v1; run 755
+fac "$NEW9" c-old-v2; run                # v2 전달(b) → manifest = v2
+printf '%s' "$OLD9" > "$D"               # 파일만 옛 판으로 (ai-create pre-commit 상태 재현)
+run
+assert "c-old: ours 가 옛 공장판이면 c 가 아니라 b(전달)" b "$COEXIST_LAST_BRANCH"
+assert "c-old: 현재판이 들어옴" "# V2" "$(sed -n 1p "$D")"
+assert "c-old: manifest 가 현재 파일과 일치" 0 "$(manifest_verify "$C" hook "$N" "$D"; echo $?)"
+# 사실상-c 갈래: manifest sha 가 ours·theirs 어느 쪽도 아닌데 base 복원이 theirs 와 같고 ours 는 옛 판 → 전달(b)
+printf 'garbage\n' > "$TMP/g9"; manifest_add "$C" hook "$N" "$TMP/g9" "assets/hooks/h.py" 755
+printf '%s' "$OLD9" > "$D"
+run
+assert "사실상-c: 옛 판이면 전달(b)" b "$COEXIST_LAST_BRANCH"
+assert "사실상-c: 현재판이 들어옴" "# V2" "$(sed -n 1p "$D")"
+# 대조: 진짜 하류 수정(이력에 없는 내용)은 여전히 c 로 보존된다
+printf '# LOCAL9\n%s' "$NEW9" > "$D"; run
+assert "c 유지: 진짜 하류 수정은 손대지 않음" c "$COEXIST_LAST_BRANCH"
+assert "c 유지: 하류 수정 살아 있음" "# LOCAL9" "$(sed -n 1p "$D")"
+
 echo "PASS=$PASS FAIL=$FAIL"
 [[ $FAIL -eq 0 ]]

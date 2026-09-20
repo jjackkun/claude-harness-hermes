@@ -40,7 +40,7 @@ def _sha_target(path):
             full = os.path.join(root, f)
             if not os.path.islink(full):
                 rels.append("./" + os.path.relpath(full, path).replace(os.sep, "/"))
-    rels.sort(key=lambda s: s.encode("utf-8"))
+    rels.sort(key=lambda s: s.encode("utf-8", "surrogateescape"))   # LC_ALL=C sort 와 같은 바이트 순서; 비UTF-8 이름도 죽지 않는다
     listing = "".join(f"{_sha_file(os.path.join(path, r[2:]))}  {r}\n" for r in rels)
     return hashlib.sha256(listing.encode("utf-8")).hexdigest()
 
