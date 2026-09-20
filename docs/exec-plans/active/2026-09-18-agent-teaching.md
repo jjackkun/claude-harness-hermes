@@ -16,14 +16,21 @@ teaching.md 개요의 실측 그대로: 학습 재료가 사람의 대화(Stop �
 - [ ] 목표 1 (C-21) — `resolve(…, "finished")` 가 닫히면 같은 unit 바로 위 rank 에게 `review` 봉투가 자동으로 열린다(위 rank 없으면 `human`).
   `inputs` 는 원 봉투 id·커밋·done_when 결과 참조만 — 검증: `bash tests/hermes-teaching-test.sh` 리뷰 절(픽스처 조직 2단·에이전트 2명)
 - [ ] 목표 2 (C-21) — 리뷰 봉투를 `approved`/`corrected(about, body)` 로 닫으면 리뷰받은 에이전트의 `memory_events` 에 `memory.added`
-  (`about` 필수, `source_event=review:<봉투 id>`)가 남는다. `about` 없는 `corrected` 는 거부 — 검증: 같은 테스트 기억 절
+  (`about` 필수, `source_event=review:<봉투 id>`)가 남는다. `about` 없는 `corrected` 는 거부. `about` 은 `<domain>/<slug>` 형식만 받는다
+  (domain 고정 집합 gate·test·git·debug·workflow·file·sync·agent, slug 는 `^[A-Za-z0-9][A-Za-z0-9._-]*$` ≤128자), `kind` 는 observation·preference·fact·decision·note 5종,
+  본문·about 에 비밀 패턴 `(api[_-]?key|token|secret|password|authorization|credentials?|auth)` 뒤 값은 `[REDACTED]` — 검증: 같은 테스트 기억 절(형식 위반 3종 거부)
 - [ ] 목표 3 (C-21) — 같은 `about` 의 `corrected` 3회 → 그 에이전트 개인 스킬 결정화(기존 결정화 루프, 철회 보류·도움률 강등 적용)
-  — 검증: 같은 테스트 결정화 절(`claude` 가짜 실행파일)
+  결정화되면 원 기억은 지우지 않고 `memory.revised`(body="스킬 <이름> 으로 승격", revises=원 memory_id) 한 건씩 남기며, MEMORY.md 는 그 about 을 한 줄로 접는다
+  — 검증: 같은 테스트 결정화 절(`claude` 가짜 실행파일, 승격 뒤 `memory_events` 행 수 = 원 3 + revised 3)
 - [ ] 목표 4 (C-22) — `hermes-agent.py teach "<이름>" --about <주제> "<한 줄>"` 가 `memory.added(by=human:…, source_event=teach)` 를 남기고,
   `about` 없으면 거부. 철회는 기존 `memory.retracted` — 검증: 같은 테스트 teach 절 + `hermes-roster-test.sh` 회귀
 - [ ] 목표 5 (C-22) — `hermes-agent` 스킬이 "X 한테 이거 가르쳐" 를 `teach` 로 옮긴다(트리거 문구 추가) — 검증: skill-creator `run_eval.py`
 - [ ] 목표 6 (C-21) — 대시보드 에이전트 판에 에이전트별 `about` 지적 누적 수 — 검증: `bash tests/hermes-dashboard-test.sh` (계획 hermes-dashboard 와 합류)
 - [ ] 목표 7 (C-25·C-26 경계) — 이 계획은 회의·아카이브 승격을 구현하지 않는다. 소환 러너가 에이전트 1명·세션 1개인 현 상태를 확인만 한다 — 검증: `grep -c` 로 러너에 다중 에이전트 인자 0
+- [ ] 목표 9 (cumora 식 자기 기록) — 소환 러너(`hermes-summon.py run`)의 지시문 꼬리에 "끝나기 전에 배운 것 한 줄을 `python3 scripts/hermes-agent.py note \"<한 줄>\" --about <domain>/<slug>` 로 남겨라" 가 붙고,
+  `note` 는 `memory.added(by=agent:<id>, source_event=task:<nonce>)` 를 남긴다. 모델 추가 호출 0 — 검증: `hermes-teaching-test.sh` note 절 + 러너 지시문 grep
+- [ ] 목표 10 (주입 선별) — 세션 시작 훅이 MEMORY.md 전체 대신 **핀 전체 + 이번 봉투 about/키워드 일치 상위 6 + 최근 4** 만 넣고, 4,096 B 를 넘으면
+  ECC 식 마커 `[…잘림 N B — 원문 <경로>]` 를 붙인다(기존 clipped 재사용). `hermes-agent.py pin <이름> <memory_id>` 가 핀을 토글한다 — 검증: `hermes-teaching-test.sh` 주입 절(기억 15건 → 10건 + 마커)
 - [ ] 목표 8 — 설치 폐로·의존 계층 — 검증: `bash tests/install-closure-test.sh` · `bash tests/dep-contract-test.sh` · `bash tests/run-all.sh --check-orphans`
 
 ## 3. 비목표 (Out of Scope)
@@ -35,7 +42,8 @@ teaching.md 개요의 실측 그대로: 학습 재료가 사람의 대화(Stop �
 
 ## 4. 영향 영역
 
-- 코드: `scripts/hermes_handoff.py`(finished → review 봉투 자동 개봉, approved/corrected 닫기), `scripts/hermes-agent.py`(`teach`),
+- 코드: `scripts/hermes_handoff.py`(finished → review 봉투 자동 개봉, approved/corrected 닫기), `scripts/hermes-agent.py`(`teach`·`note`·`pin`), `scripts/hermes-summon.py`(지시문 꼬리),
+  `scripts/hermes_memory_view.py`(승격 about 접기), `assets/hooks/claude-sessionstart-agent-soul.sh`(주입 선별),
   `assets/skills/hermes-agent/SKILL.md`(teach 트리거)
 - **신규 파일 목록**:
   - `scripts/hermes_review_chain.py` — finished 봉투에서 리뷰어(바로 위 rank 또는 human)를 고르고 review 봉투 칸을 조립·기억 이벤트로 옮긴다(표준 모듈 + roster/org/memory_events import)
@@ -55,6 +63,11 @@ teaching.md 개요의 실측 그대로: 학습 재료가 사람의 대화(Stop �
 
 - 2026-09-18: C-23·C-24 를 이 계획에서 뺀다 — 근거: 모양은 확정됐지만 관측(09-29) 전에 값·임계를 정하면 틀린 채 굳는다(설계 §3·§4).
 - 2026-09-18: 착수 조건을 "수습 1명 이상" 으로 — 근거: 명부 9곳 전부 `main` 1명이라 리뷰 사슬을 실 데이터로 검증할 대상이 없다.
+
+- 2026-09-20: 자기 기록은 cumora 식(프롬프트가 `note` 를 부르게) — 근거: `docs/audits/2026-09-19-memory-md-reference.md` 쟁점 1. ECC 식 도구 로그 관찰+observer 는 R3·비용으로 제외.
+- 2026-09-20: 주입은 핀 + about 일치 6 + 최근 4 — 근거: 같은 문서 쟁점 2(ECC 6 · cumora 10 사이). 의미검색은 R3 로 불가, 키워드 매칭(`hermes_search_fallback`) 재사용.
+- 2026-09-20: `about` = `<domain>/<slug>` · `kind` 5종 · redact 정규식 — 근거: 같은 문서 쟁점 3. 원격 평문 칸이라 봉투 누출 게이트도 통과해야 한다.
+- 2026-09-20: 승격 뒤 원 기억은 남기고 `memory.revised` 로 표시 — 근거: 같은 문서 쟁점 4(ECC `evolved_from`), INSERT 전용(C-14)과 일치. confidence 감쇠는 두 곳 다 미구현이라 채택 안 함.
 
 ## 7. 발견·예외
 
