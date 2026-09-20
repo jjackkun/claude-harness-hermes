@@ -42,7 +42,9 @@ if [[ ! -f "$VALUES_MOD" ]]; then
   VALUES_MOD=$(find "$REPO_ROOT" -name hermes_secret_values.py -not -path '*/.git/*' | head -1)
 fi
 [[ -f "$VALUES_MOD" ]] || { echo "hermes_secret_values.py 를 못 찾았다"; exit 1; }
-cp "$VALUES_MOD" .
+# 검사기는 정답지 모듈을 자기 폴더(.git/hooks/)와 <프로젝트>/scripts/ 에서만 찾는다 — 실제 설치 배치대로 둔다.
+# (2026-09-20: 루트에 복사하고 있어 모듈을 못 찾았고, 이 시험은 조용히 계속 빨갰다 — CI 60회 연속 실패의 하나)
+mkdir -p scripts; cp "$VALUES_MOD" scripts/
 
 cat > .env <<EOF
 SOME_ID=$FAKE_ID
@@ -66,7 +68,7 @@ grep -q 'mixed.md' <<<"$OUT" && ok "자리표시자 옆 평문을 잡았다"    
 grep -q 'id_only'  <<<"$OUT" && bad "아이디를 오탐으로 잡았다"       || ok "아이디는 놓아줬다"
 
 # ④ 정답지가 없어도 (모듈 미탐색) 차단기는 계속 돌아야 한다
-rm -f hermes_secret_values.py .env
+rm -f scripts/hermes_secret_values.py .env
 python3 "$CHECKER" >/dev/null 2>&1
 [[ $? -le 2 ]] && ok "정답지가 없어도 죽지 않는다" || bad "정답지가 없을 때 죽었다"
 

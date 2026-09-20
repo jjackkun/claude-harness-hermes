@@ -1,5 +1,7 @@
 # check-secrets-false-positives — P9 가 멀쩡한 코드를 비밀값으로 본다
 
+> **완료 → `docs/exec-plans/completed/2026-09-20-check-secrets-false-positives.md`** (2026-09-20). 아래 "하류가 이미 고쳤다" 는 추정은 실측으로 틀렸다 — 완료 기록 §1 참고.
+
 > 출처: `completed/2026-09-20-agent-eval-regression.md` §7 · `completed/2026-09-20-identity-files-edit-guard.md` §7.
 
 ## 실측 오탐 2종 (2026-09-20)

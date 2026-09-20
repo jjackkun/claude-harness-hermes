@@ -19,6 +19,7 @@ assert() {
 }
 T="$(mktemp -d)"; trap 'rm -rf "$T"' EXIT
 export HOME="$T/home"; mkdir -p "$HOME" "$T/bin" "$T/out"
+unset CI   # GitHub Actions 는 CI=true — 러너의 CI 거부는 4절에서만 켜서 본다(2026-09-20: 이 시험이 CI 에서만 빨갰다)
 
 echo "== 1절 시나리오 픽스처"
 python3 - "$REPO_ROOT/tests/agent-evals" > "$T/fx.out" <<'EOF'

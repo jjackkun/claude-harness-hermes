@@ -184,6 +184,97 @@ def _is_exempt(span: tuple[int, int], exempt: list[tuple[int, int]]) -> bool:
     return any(start < e and s < end for s, e in exempt)
 
 
+# ── 라벨 규칙의 면제 ─────────────────────────────────────────────────────────
+# ⚠️ **여기를 넓히지 않는다.** 면제를 하나 더할 때마다 tests/check-secrets-label-exempt-test.sh 의
+#    "걸려야 하는 줄" 이 하나라도 통과로 바뀌면 멈춘다. 오탐으로 뒤덮인 차단기는 "끄고 싶은 것" 이 되지만,
+#    감도를 깎은 차단기는 잡던 것을 놓친다.
+CODE_SUFFIXES = (".py", ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".svelte", ".go", ".rs", ".sh")
+IDENT_REF_RE = re.compile(r"[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*")
+
+
+def _is_ident_ref(value: str) -> bool:
+    """값이 **식별자 참조 하나**뿐인가 (terminal-shipping 하류판에서 되돌려 받음, 2026-09-08 리뷰 HIGH 반영).
+
+    `body.password)` 처럼 닫는 문장부호가 딸려 와도 참조다. 뒤에 그 외의 것이 남으면 아니다(`Hunter2!xyz`).
+    🔴 맨 낱말 하나는 **숫자가 없을 때만** 참조로 본다 — `Hunter2Password9` 같은 가장 흔한 토큰 모양을 면제하지 않기 위해.
+    점 경로는 속성 접근이 분명하므로 그대로 둔다.
+    """
+    m = IDENT_REF_RE.match(value)
+    if not m or value[m.end():].strip(")]},;"):
+        return False
+    ref = m.group(0)
+    return "." in ref or not any(c.isdigit() for c in ref)
+
+
+_NAME_ECHO_RE = re.compile(r"^\s*([A-Z][A-Z0-9_]*)\s*[:=]\s*[\"']([a-z][a-z0-9_]*)[\"']\s*,?\s*$")
+_ECHO_FORBIDDEN_SUFFIX = ("PASSWORD", "PASSWD", "PW", "SECRET", "TOKEN", "CRED")
+
+
+def _is_name_echo(line: str) -> bool:
+    """값이 곧 그 상수의 이름인 줄(`LLM_API_KEY = "llm_api_key"`) — 키 이름 상수만. 줄 끝까지 다 맞아야 하고 비밀 접미 이름은 제외."""
+    m = _NAME_ECHO_RE.match(line)
+    if not m or m.group(1).lower() != m.group(2):
+        return False
+    return not m.group(1).endswith(_ECHO_FORBIDDEN_SUFFIX)
+
+
+def _kv_exempt(path: str, line: str, m: "re.Match[str]") -> bool:
+    """`라벨=값`(CREDENTIAL) 중 리터럴이 아닌 것 — 하류판이 2026-08-22 에 실제로 낸 오탐 셋.
+    ① 코드 파일의 따옴표 없는 식별자 참조(YAML 의 `password: hunter2abc` 는 따옴표 없이도 진짜라 확장자로 가둔다)
+    ② 키 이름 상수 ③ 따옴표 값 뒤에 비ASCII 가 바로 붙는 시험 더미(`"access-값"`)."""
+    value = m.group(3)
+    start = m.start(3)
+    quoted = start > 0 and line[start - 1] in ("'", '"')
+    if not quoted and path.endswith(CODE_SUFFIXES) and _is_ident_ref(value):
+        return True
+    if _is_name_echo(line):
+        return True
+    if not quoted:
+        return False
+    tail = line[m.end():m.end() + 1]
+    return bool(tail) and ord(tail) > 127 and value.isascii()
+
+
+_ENV_CALL_RE = re.compile(r"(?:[A-Za-z_][\w.]*[(\[]|(?:process\.env|import\.meta\.env|os\.environ)\.\w+)")
+_REGEX_LITERAL_RE = re.compile(r"(?:re\.compile\(\s*)?[rR][bB]?[\"'].*(?:\\[sSdDwWbBx]|\[\^|\(\?[:=!P<]|\]\?|\)[+*?])")
+_LONG_LITERAL_RE = re.compile(r"[\"']([^\"']{6,})[\"']")
+
+
+def _env_exempt(path: str, line: str, m: "re.Match[str]") -> bool:
+    """`NAME_KEY = 값`(ENV_SECRET) 중 값이 리터럴이 아닌 것 (2026-09-20 실측 오탐: env 에서 읽는 코드 · 정규식 상수).
+    ① `$변수` 참조는 어디서든 면제(CI·셸).
+    ② **코드 파일에서만**: 정규식 리터럴(`r"…"`·`re.compile(r"…")` + 메타문자), 호출·첨자·환경 루트로 시작하는 값.
+       단 그 줄의 6자 이상 따옴표 리터럴 중 **변수 이름과 다르고 자리표시자도 아닌 것**이 있으면 면제하지 않는다 —
+       `os.environ.get("API_KEY", "진짜비밀")` 의 기본값을 통과시키지 않기 위해서다.
+    비코드 파일(.env·YAML)의 `DB_PASSWORD=pa(ss` 는 값이지 호출이 아니다 — ① 말고는 면제 없음."""
+    value = m.group(2)
+    if value.lstrip("\"'").startswith("$") or _is_name_echo(line):     # $변수 참조 · 키 이름 상수(비밀 접미 이름은 _is_name_echo 가 제외)
+        return True
+    if not path.endswith(CODE_SUFFIXES):
+        return False
+    rest = line[m.start(2):]
+    if _REGEX_LITERAL_RE.match(rest):
+        return True
+    if not _ENV_CALL_RE.match(value):
+        return False
+    name = m.group(1).lower()
+    return all(lit.lower() == name or PLACEHOLDER_RE.search(lit) for lit in _LONG_LITERAL_RE.findall(rest))
+
+
+def _label_hits(path: str, line: str) -> list:
+    """`라벨=값` 두 규칙(KV_RULE·ENV_RULE)을 적용하고 면제를 건다 — scan 은 "어느 줄을 어떤 순서로", 여기는 "라벨 규칙이 무엇을 면제하나"."""
+    found = []
+    kind, pattern = KV_RULE
+    m = pattern.search(line)
+    if m and not CODE_EXPR_RE.search(line) and not _kv_exempt(path, line, m):
+        found.append((kind, m.span(), f"{m.group(1)}={m.group(3)[:12]}"))
+    kind, pattern = ENV_RULE
+    m = pattern.search(line)
+    if m and not _env_exempt(path, line, m):
+        found.append((kind, m.span(), f"{m.group(1)}={m.group(2)[:12]}"))
+    return found
+
+
 def scan(path: str, text: str, secret_values: dict) -> list[tuple[int, str, str]]:
     """(줄번호, 종류, 발췌) 목록을 반환한다."""
     hits: list[tuple[int, str, str]] = []
@@ -205,15 +296,8 @@ def scan(path: str, text: str, secret_values: dict) -> list[tuple[int, str, str]
             if m:
                 record(kind, m.span(), m.group(0)[:24])
 
-        kind, pattern = KV_RULE
-        m = pattern.search(line)
-        if m and not CODE_EXPR_RE.search(line):
-            record(kind, m.span(), f"{m.group(1)}={m.group(3)[:12]}")
-
-        kind, pattern = ENV_RULE
-        m = pattern.search(line)
-        if m:
-            record(kind, m.span(), f"{m.group(1)}={m.group(2)[:12]}")
+        for kind, span, excerpt in _label_hits(path, line):
+            record(kind, span, excerpt)
     return hits
 
 
