@@ -22,6 +22,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from hermes_org import OrgError, ensure_unit_ids, load_org, match_agents  # noqa: E402
 from hermes_memory_view import write_memory_md  # noqa: E402
 from hermes_review_chain import TeachingError, record_teaching  # noqa: E402
+from hermes_soul_draft import draft_soul, is_untouched_draft  # noqa: E402
 from hermes_owner_memory import no_owner_since, record_no_owner  # noqa: E402
 from hermes_roster import (  # noqa: E402
     RosterError, add_agent, find_agent, load_roster, save_roster, transition)
@@ -57,15 +58,7 @@ def _write_identity(project: str, agent: dict) -> str:
     os.makedirs(os.path.join(folder, "skills"), exist_ok=True)
     template = _SOUL_TEMPLATE if os.path.isfile(_SOUL_TEMPLATE) else _SOUL_FACTORY
     with open(template, encoding="utf-8") as fh:
-        soul = fh.read()
-    fill = {
-        "AGENT_ID": agent["agent_id"], "NAME": agent["name"], "STATUS": agent["status"],
-        "ORG": json.dumps(agent.get("org") or {}, ensure_ascii=False),
-        "TEMPLATE": agent.get("template") or "(없음)",
-        "CREATED_AT": agent["created_at"], "CREATED_BY": agent["created_by"],
-    }
-    for key, value in fill.items():
-        soul = soul.replace("{{" + key + "}}", value)
+        soul = draft_soul(project, agent, fh.read())     # 기계 초안(조직 값) — 사람은 읽고 고쳐 승인한다(D-01)
     soul_path = os.path.join(folder, "SOUL.md")
     if not os.path.exists(soul_path):          # 사람이 고친 SOUL 을 덮지 않는다
         with open(soul_path, "w", encoding="utf-8") as fh:
@@ -200,6 +193,26 @@ def cmd_refresh_memory(args) -> int:
     return 0
 
 
+def cmd_soul_draft(args) -> int:
+    """기존 에이전트의 SOUL 이 아직 초안(표시 줄·틀 괄호)이면 조직 값으로 다시 채운다. 사람이 고친 SOUL 은 건드리지 않는다."""
+    project = args.project
+    agent = find_agent(load_roster(project), args.name)
+    if not agent:
+        raise RosterError(f"명부에 없는 에이전트: {args.name}")
+    soul_path = os.path.join(_agent_dir(project, agent["agent_id"]), "SOUL.md")
+    if not is_untouched_draft(soul_path):
+        print(f"그대로: {agent['name']} 의 SOUL 은 사람이 승인한 것 — 다시 채우지 않는다")
+        return 0
+    template = _SOUL_TEMPLATE if os.path.isfile(_SOUL_TEMPLATE) else _SOUL_FACTORY
+    with open(template, encoding="utf-8") as fh:
+        soul = draft_soul(project, agent, fh.read())
+    os.makedirs(os.path.dirname(soul_path), exist_ok=True)
+    with open(soul_path, "w", encoding="utf-8") as fh:
+        fh.write(soul)
+    print(f"초안 갱신: {os.path.relpath(soul_path, project)} — 읽고 고친 뒤 초안 표시 줄을 지우면 승인")
+    return 0
+
+
 def cmd_teach(args) -> int:
     """사람이 특정 에이전트에게 직접 가르친다(C-22): memory.added(source_event=teach:human:<이름>). about 필수."""
     project = args.project
@@ -272,6 +285,8 @@ def main() -> int:
     nt.add_argument("body"); nt.add_argument("--about", required=True)
     pn = sub.add_parser("pin", help="기억 하나를 핀/해제 — 주입에 항상 포함")
     pn.add_argument("name"); pn.add_argument("memory_id")
+    sd = sub.add_parser("soul-draft", help="SOUL 초안을 조직 값으로 (다시) 채운다 — 사람이 승인한 SOUL 은 건드리지 않음")
+    sd.add_argument("name")
     args = ap.parse_args()
     try:
         if args.cmd == "hire":
@@ -280,7 +295,7 @@ def main() -> int:
             return cmd_transition(args)
         return {"list": cmd_list, "whoami": cmd_whoami, "match": cmd_match, "no-owner": cmd_no_owner,
                 "refresh-memory": cmd_refresh_memory, "teach": cmd_teach, "note": cmd_note,
-                "pin": cmd_pin}[args.cmd](args)
+                "pin": cmd_pin, "soul-draft": cmd_soul_draft}[args.cmd](args)
     except (RosterError, OrgError, TeachingError) as exc:
         print(f"[hermes-agent] 거부: {exc}", file=sys.stderr)
         return 2

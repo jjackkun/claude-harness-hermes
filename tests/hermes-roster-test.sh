@@ -128,6 +128,17 @@ assert "whoami 기본은 main" 1 "$(A whoami | grep -c '(main, active)')"
 assert "HERMES_AGENT_ID 로 행위자 지정" 1 "$(HERMES_AGENT_ID="$AID" A whoami | grep -c '유저기획')"
 
 echo ""
+echo "== 4b. SOUL 초안 — 기계가 채우고 사람이 승인 (계획 agent-hire-form 목표 5 재정의) =="
+A hire 초안담당 --org "QA,담당,공통" >/dev/null 2>&1
+SD="$P/.hermes/agents/$(roster_field 초안담당 agent_id)/SOUL.md"
+assert "역할 문단이 조직 값으로 채워짐" 1 "$(grep -c '공통 조직에서 QA 을(를) 맡는 담당' "$SD")"
+assert "틀의 괄호 안내가 남지 않음" 0 "$(grep -c '이 에이전트가 맡는 일 한 문단' "$SD")"
+assert "초안 표시 줄 있음(승인 전)" 1 "$(grep -c '^> 초안 — 기계가' "$SD")"
+A soul-draft 초안담당 >/dev/null; assert "초안 상태면 soul-draft 가 다시 채움(rc 0)" 0 "$?"
+sed -i '/^> 초안 — 기계가/d' "$SD"; echo "- 말투: 짧게" >> "$SD"
+A soul-draft 초안담당 >/dev/null
+assert "사람이 승인한 SOUL 은 덮지 않음(추가한 줄 유지)" 1 "$(grep -c '말투: 짧게' "$SD")"
+
 echo "== 5. git 추적 6경로 (목표 14) =="
 cd "$P"
 # git 2.25 의 check-ignore -q 는 부정 패턴(!…) 일치에도 exit 0 이라 -v 로 매치된 패턴을 보고 판정한다(2026-09-20 실측).
