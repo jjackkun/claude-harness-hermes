@@ -36,7 +36,8 @@ tier: 3  scripts/hermes-sync.py
 # 명부·조직(계획 2026-09-15-agent-identity): yaml_subset 은 표준 모듈만, org 는 uuid7·yaml_subset,
 # roster 는 org·uuid7, CLI 는 roster·org.
 tier: 0  scripts/hermes_yaml_subset.py
-tier: 2  scripts/hermes_soul_draft.py   # SOUL 초안(조직 값으로 채움) — org(1) 를 쓴다
+tier: 0  scripts/hermes_role_templates.py scripts/hermes-template-import.py   # 역할 템플릿 읽기·ECC 변환기 — 표준 모듈만 (계획 2026-09-20-role-templates)
+tier: 2  scripts/hermes_soul_draft.py   # SOUL 초안(조직 값 + 역할 템플릿 절) — org(1)·role_templates(0) 를 쓴다
 tier: 1  scripts/hermes_org.py
 tier: 2  scripts/hermes_roster.py
 tier: 3  scripts/hermes_review.py scripts/hermes-agent.py

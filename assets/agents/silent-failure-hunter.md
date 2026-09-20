@@ -5,6 +5,7 @@ model: sonnet
 effort: high
 tools: [Read, Grep, Glob, Bash]
 ---
+<!-- origin: ECC (everything-claude-code, MIT) — 위임용 서브에이전트. 입사용 역할 템플릿은 assets/templates/agent/roles/ (다른 층) -->
 
 # Silent Failure Hunter Agent
 

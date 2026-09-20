@@ -120,6 +120,8 @@ python3 scripts/hermes-agent.py hire "<이름>" --org "<분야>,<직급>,<조직
 
 ## 1. 입사 (hire)
 
+분야를 알면 `python3 scripts/hermes-agent.py templates --discipline <분야>` 로 맞는 역할 템플릿 후보(ECC 68 + cumora 4, `origin` 표시)를 보이고 고르게 한다 — 고른 이름을 `--template` 에 넣으면 그 절이 SOUL 초안에 들어간다. 없는 이름은 거부(exit 2).
+
 ```bash
 python3 scripts/hermes-agent.py hire "<이름>" --org "<분야>,<직급>,<조직>" [--template <템플릿>]
 ```

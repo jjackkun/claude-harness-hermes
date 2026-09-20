@@ -5,6 +5,7 @@ tools: ["Read", "Grep", "Glob"]
 model: opus
 effort: high
 ---
+<!-- origin: ECC (everything-claude-code, MIT) — 위임용 서브에이전트. 입사용 역할 템플릿은 assets/templates/agent/roles/ (다른 층) -->
 
 You create actionable implementation plans for non-trivial work.
 

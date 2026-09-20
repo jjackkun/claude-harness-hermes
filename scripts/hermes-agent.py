@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """에이전트 명부 CLI — 사람이 부르는 진입점. 입사·전환은 사람만 한다(C-03).
 
-  hire <이름> --org <discipline,rank,unit> [--template <직무>]   입사 → probation
+  hire <이름> --org <discipline,rank,unit> [--template <직무>]   입사 → probation (템플릿 절이 SOUL 초안에 들어간다)
+  templates [--discipline <분야>]                                역할 템플릿 목록(ECC 68 + cumora 4)
   promote <이름>     정식 전환 (probation → active)
   retire <이름>      은퇴(소프트) — 이름은 남고 재사용 금지
   rehire <이름>      복직 (retired → active)
@@ -22,6 +23,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from hermes_org import OrgError, ensure_unit_ids, load_org, match_agents  # noqa: E402
 from hermes_memory_view import write_memory_md  # noqa: E402
 from hermes_review_chain import TeachingError, record_teaching  # noqa: E402
+from hermes_role_templates import TemplateError, list_templates, load_template  # noqa: E402
 from hermes_soul_draft import draft_soul, is_untouched_draft  # noqa: E402
 from hermes_owner_memory import no_owner_since, record_no_owner  # noqa: E402
 from hermes_roster import (  # noqa: E402
@@ -87,8 +89,22 @@ def _record_created(project: str, agent: dict) -> None:
         print(f"[hermes-agent WARN] agent.created 를 이력에 못 남김: {exc}", file=sys.stderr)
 
 
+def cmd_templates(args) -> int:
+    """역할 템플릿 목록(이름·출처·분야 힌트·한 줄). --discipline 으로 분야 힌트 필터."""
+    rows = list_templates(args.project, args.discipline)
+    if not rows:
+        print("역할 템플릿 없음" + (f" (분야 {args.discipline})" if args.discipline else "") + " — scripts/templates/agent/roles/ 를 확인")
+        return 0
+    for r in rows:
+        print(f"{r['name']:28} {r['origin']:7} {r['discipline_hint'] or '-':6} {r['description'][:70]}")
+    print(f"({len(rows)}개) 입사: hermes-agent.py hire <이름> --org <분야,직급,조직> --template <템플릿>")
+    return 0
+
+
 def cmd_hire(args) -> int:
     project = args.project
+    if args.template:
+        load_template(project, args.template)      # 없는 템플릿은 입사 전에 거부(TemplateError → exit 2)
     ensure_unit_ids(project)
     org = load_org(project)
     roster = load_roster(project)
@@ -98,7 +114,8 @@ def cmd_hire(args) -> int:
     folder = _write_identity(project, agent)
     _record_created(project, agent)
     print(f"입사: {agent['name']} ({agent['agent_id']}) status={agent['status']} org={agent['org']}")
-    print(f"정체성: {os.path.relpath(folder, project)}/  — SOUL.md 를 채우십시오(사람 승인으로만 수정)")
+    print(f"정체성: {os.path.relpath(folder, project)}/  — SOUL.md 초안을 읽고 고친 뒤 초안 줄을 지우면 승인"
+          + (f" (템플릿 {args.template} 절 포함)" if args.template else ""))
     return 0
 
 
@@ -203,6 +220,14 @@ def cmd_soul_draft(args) -> int:
     if not is_untouched_draft(soul_path):
         print(f"그대로: {agent['name']} 의 SOUL 은 사람이 승인한 것 — 다시 채우지 않는다")
         return 0
+    if getattr(args, "template", None):
+        load_template(project, args.template)                     # 없는 템플릿은 거부(exit 2)
+        agent["template"] = f"{args.template}@factory"            # 명부에도 남긴다(list 에 보임)
+        roster = load_roster(project)
+        for a in roster["agents"]:
+            if a["agent_id"] == agent["agent_id"]:
+                a["template"] = agent["template"]
+        save_roster(project, roster)
     template = _SOUL_TEMPLATE if os.path.isfile(_SOUL_TEMPLATE) else _SOUL_FACTORY
     with open(template, encoding="utf-8") as fh:
         soul = draft_soul(project, agent, fh.read())
@@ -285,8 +310,10 @@ def main() -> int:
     nt.add_argument("body"); nt.add_argument("--about", required=True)
     pn = sub.add_parser("pin", help="기억 하나를 핀/해제 — 주입에 항상 포함")
     pn.add_argument("name"); pn.add_argument("memory_id")
+    tp = sub.add_parser("templates", help="역할 템플릿 목록(ECC 68 + cumora 4) — hire --template 에 쓴다")
+    tp.add_argument("--discipline")
     sd = sub.add_parser("soul-draft", help="SOUL 초안을 조직 값으로 (다시) 채운다 — 사람이 승인한 SOUL 은 건드리지 않음")
-    sd.add_argument("name")
+    sd.add_argument("name"); sd.add_argument("--template", help="역할 템플릿을 붙여 초안을 다시 채운다(명부 template 갱신)")
     args = ap.parse_args()
     try:
         if args.cmd == "hire":
@@ -295,8 +322,8 @@ def main() -> int:
             return cmd_transition(args)
         return {"list": cmd_list, "whoami": cmd_whoami, "match": cmd_match, "no-owner": cmd_no_owner,
                 "refresh-memory": cmd_refresh_memory, "teach": cmd_teach, "note": cmd_note,
-                "pin": cmd_pin, "soul-draft": cmd_soul_draft}[args.cmd](args)
-    except (RosterError, OrgError, TeachingError) as exc:
+                "pin": cmd_pin, "soul-draft": cmd_soul_draft, "templates": cmd_templates}[args.cmd](args)
+    except (RosterError, OrgError, TeachingError, TemplateError) as exc:
         print(f"[hermes-agent] 거부: {exc}", file=sys.stderr)
         return 2
 
