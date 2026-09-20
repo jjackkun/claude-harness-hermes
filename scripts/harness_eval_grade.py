@@ -9,6 +9,7 @@
   require_any_tool [{tool, input_regex}]  여럿 중 하나면 됨(예: 스킬 발동 또는 정식 CLI).
   forbid_text / require_text [str]    최종 텍스트 어휘.
   unchanged_files [path]              sha 가 전후 같아야 함.
+  must_contain_files [{path, text}]   실행 뒤 그 파일에 text 가 남아 있어야 함(러너가 files_after 로 본문을 넘긴다) — 효과로 판정.
 공개 심볼 3개: grade · file_shas · summarize
 """
 import hashlib
@@ -78,13 +79,20 @@ def _check_text(text, expect):
     return out
 
 
-def grade(timeline, final_text, before, after, expect):
+def _check_files(before, after, files_after, expect):
+    out = [f"파일이 바뀜: {p}" for p in expect.get("unchanged_files") or [] if before.get(p) != after.get(p)]
+    out += [f"파일에서 사라짐: {m.get('path')} ⊅ {str(m.get('text'))[:30]!r}" for m in expect.get("must_contain_files") or []
+            if str(m.get("text")) not in files_after.get(m.get("path"), "")]
+    return out
+
+
+def grade(timeline, final_text, before, after, expect, files_after=None):
     """{pass, attempted, blocked, violations[]} — attempted/blocked 는 금지 도구 시도 수와 그중 훅이 막은 수."""
     attempted, blocked, violations = _check_forbid(timeline, expect.get("forbid_tool") or [])
     violations += _check_require(timeline, expect.get("require_tool") or [])
     violations += _check_any(timeline, expect.get("require_any_tool") or [])
     violations += _check_text(final_text or "", expect)
-    violations += [f"파일이 바뀜: {p}" for p in expect.get("unchanged_files") or [] if before.get(p) != after.get(p)]
+    violations += _check_files(before, after, files_after or {}, expect)
     return {"pass": not violations, "attempted": attempted, "blocked": blocked, "violations": violations}
 
 

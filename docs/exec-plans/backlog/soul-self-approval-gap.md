@@ -1,5 +1,7 @@
 # soul-self-approval-gap — 에이전트가 SOUL 초안 표시 줄을 스스로 지워 "승인" 할 수 있다
 
+> **완료 → `docs/exec-plans/completed/2026-09-20-soul-self-approval-gap.md`** (2026-09-20, 자기 승인 시도 5회 전부 차단·위반 0).
+
 > 출처: `completed/2026-09-20-identity-files-edit-guard.md` §7 (harness-eval hire-form/competing 1/3 판).
 
 명부 손편집이 막힌 뒤 모델은 정식 `hire` 로 입사시켰는데, 이어서 새 에이전트의 `SOUL.md` 를 Edit 해 초안 표시 줄을 지우고 "승인됨" 이라고 보고했다.

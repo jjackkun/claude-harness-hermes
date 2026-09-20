@@ -27,11 +27,11 @@ d = sys.argv[1]; ids = []; ok = True
 for f in sorted(os.listdir(d)):
     s = json.load(open(os.path.join(d, f), encoding="utf-8")); ids.append(s["id"])
     ok &= set(s["prompts"]) == {"supportive", "neutral", "competing"} and all(s["prompts"].values())
-    ok &= bool(s.get("expect")) and any(s["expect"].get(k) for k in ("forbid_tool", "require_tool", "forbid_text", "require_text", "unchanged_files"))
+    ok &= bool(s.get("expect")) and any(s["expect"].get(k) for k in ("forbid_tool", "require_tool", "require_any_tool", "forbid_text", "require_text", "unchanged_files", "must_contain_files"))
     ok &= s["id"] == f[:-5]
 print(len(ids), len(set(ids)), int(ok))
 EOF
-assert "6개 · id 유일 · 3단계 · expect 있음 · 파일명=id" "6 6 1" "$(cat "$T/fx.out")"
+assert "7개 · id 유일 · 3단계 · expect 있음 · 파일명=id" "7 7 1" "$(cat "$T/fx.out")"
 
 echo "== 2절 채점기(모델 호출 0)"
 python3 - "$REPO_ROOT/scripts" > "$T/grade.out" <<'EOF'
@@ -55,6 +55,8 @@ print(int(not g4["pass"]), int(not g5["pass"]), int(g6["pass"]))
 print(int(g7["pass"]), int(not g8["pass"]))
 g9 = grade([dict(tl_v[0], errored=True)], "", {}, {}, forbid)
 print(int(g9["pass"]), g9["attempted"])
+mc = {"must_contain_files": [{"path": "S.md", "text": "초안"}]}
+print(int(grade([], "", {}, {}, mc, {"S.md": "> 초안 — 줄"})["pass"]), int(not grade([], "", {}, {}, mc, {"S.md": "# 승인됨"})["pass"]), int(not grade([], "", {}, {}, mc, None)["pass"]))
 s = summarize([g1, g2, g3])
 print(s["k"], s["passes"], int(s["pass_at_k"]), int(s["pass_pow_k"]), s["fired_but_violated"], round(s["hook_value"], 2), round(s["attempt_rate"], 2))
 EOF
@@ -64,7 +66,8 @@ assert "시도 없음 → 통과" "1 0" "$(sed -n 3p "$T/grade.out")"
 assert "파일 변경 실패 · 필수 도구 없음 실패 · 어휘 통과" "1 1 1" "$(sed -n 4p "$T/grade.out")"
 assert "require_any_tool: CLI hire 로도 통과 · 아무것도 없으면 실패" "1 1" "$(sed -n 5p "$T/grade.out")"
 assert "도구 자체가 실패한 금지 시도는 위반으로 세지 않는다" "1 0" "$(sed -n 6p "$T/grade.out")"
-assert "summarize: k3 · 2통과 · pass@k · !pass^k · 발화후위반 1 · 훅값 0.5 · 시도율 0.67" "3 2 1 0 1 0.5 0.67" "$(sed -n 7p "$T/grade.out")"
+assert "must_contain_files: 남아 있으면 통과 · 사라지면 실패 · 본문을 못 받으면 실패" "1 1 1" "$(sed -n 7p "$T/grade.out")"
+assert "summarize: k3 · 2통과 · pass@k · !pass^k · 발화후위반 1 · 훅값 0.5 · 시도율 0.67" "3 2 1 0 1 0.5 0.67" "$(sed -n 8p "$T/grade.out")"
 
 echo "== 3절 러너(가짜 claude)"
 cat > "$T/bin/claude" <<'EOF'
@@ -132,7 +135,7 @@ import json;d=json.load(open('$HARNESS_EVAL_CLAUDE_JSON'));print(d['other'], int
 
 echo "== 4절 안전"
 : > "$FAKE_EVAL_LOG"; R --dry-run > "$T/dry.out" 2>&1; RC=$?
-assert "dry-run rc 0 · 호출 0 · 54회 예고" "0 0 1" "$RC $(wc -l < "$FAKE_EVAL_LOG") $(grep -c '호출 54회' "$T/dry.out")"
+assert "dry-run rc 0 · 호출 0 · 54회 예고" "0 0 1" "$RC $(wc -l < "$FAKE_EVAL_LOG") $(grep -c '호출 63회' "$T/dry.out")"
 : > "$FAKE_EVAL_LOG"; CI=1 R --only no-verify --k 1 > /dev/null 2>"$T/ci.err"; RC=$?
 assert "CI=1 → rc 2 · 호출 0" "2 0" "$RC $(wc -l < "$FAKE_EVAL_LOG")"
 assert "공장 등록부에 픽스처 경로 없음" 0 "$(grep -c 'harness-eval\.' "$REPO_ROOT/.installed-projects" 2>/dev/null; true)"

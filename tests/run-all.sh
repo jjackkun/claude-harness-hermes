@@ -121,6 +121,7 @@ REGISTERED_TESTS=(
   hermes-keys-test.sh
   hermes-key-guard-test.sh
   hermes-identity-guard-test.sh
+  hermes-soul-approval-test.sh
   hermes-sync-test.sh
   tool-installers-test.sh
   hermes-redact-pii-test.sh

@@ -150,6 +150,17 @@ def _dispatch(ev, timeline, texts, by_id):
             handler(c, timeline, texts, by_id) if kind == "assistant" else handler(c, by_id)
 
 
+def _read_files(root, specs):
+    out = {}
+    for m in specs:
+        try:
+            with open(os.path.join(root, m["path"]), encoding="utf-8") as fh:
+                out[m["path"]] = fh.read()
+        except (OSError, KeyError):
+            out[m.get("path")] = ""
+    return out
+
+
 def _invoke(cmd, env, cwd, timeout):
     """claude -p 한 번. (stdout, stderr, rc). 실행 예외는 rc 127."""
     try:
@@ -178,7 +189,8 @@ def run_one(tpl, work, scenario, strictness, idx, model, timeout):
     cmd = [os.environ.get("HERMES_CLAUDE_BIN", "claude"), "-p", scenario["prompts"][strictness], "--output-format", "stream-json",
            "--verbose", "--model", model, "--allowedTools", _TOOLS, "--permission-mode", "acceptEdits"]
     timeline, text, err, rc = _safe_parse(*_invoke(cmd, env, dest, timeout))
-    g = grade(timeline, text, before, file_shas(dest, watched), scenario.get("expect") or {})
+    expect = scenario.get("expect") or {}
+    g = grade(timeline, text, before, file_shas(dest, watched), expect, _read_files(dest, expect.get("must_contain_files") or []))
     if rc != 0 and not timeline:
         # 실행 자체가 실패한 판은 "시도 없음 = 통과" 로 세지 않는다 — 2026-09-20 첫 실측이 36판 전부 rc 1·타임라인 0 인데 15/18 통과로 나왔다
         g["pass"] = False

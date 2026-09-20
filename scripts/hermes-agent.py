@@ -2,6 +2,7 @@
 """에이전트 명부 CLI — 사람이 부르는 진입점. 입사·전환은 사람만 한다(C-03).
 
   hire <이름> --org <discipline,rank,unit> [--template <직무>]   입사 → probation (템플릿 절이 SOUL 초안에 들어간다)
+  approve-soul <이름>                                            SOUL 초안 승인(표시 줄 삭제 + 이력 decision) — 사람의 승인 말이 있는 턴에만
   templates [--discipline <분야>]                                역할 템플릿 목록(ECC 68 + cumora 4)
   promote <이름>     정식 전환 (probation → active)
   retire <이름>      은퇴(소프트) — 이름은 남고 재사용 금지
@@ -24,7 +25,7 @@ from hermes_org import OrgError, ensure_unit_ids, load_org, match_agents  # noqa
 from hermes_memory_view import write_memory_md  # noqa: E402
 from hermes_review_chain import TeachingError, record_teaching  # noqa: E402
 from hermes_role_templates import TemplateError, list_templates, load_template  # noqa: E402
-from hermes_soul_draft import draft_soul, is_untouched_draft  # noqa: E402
+from hermes_soul_draft import DRAFT_MARK, draft_soul, is_untouched_draft  # noqa: E402
 from hermes_owner_memory import no_owner_since, record_no_owner  # noqa: E402
 from hermes_roster import (  # noqa: E402
     RosterError, add_agent, find_agent, load_roster, save_roster, transition)
@@ -238,6 +239,39 @@ def cmd_soul_draft(args) -> int:
     return 0
 
 
+def cmd_approve_soul(args) -> int:
+    """SOUL 초안을 승인한다 — 초안 표시 줄을 지우고 이력에 결정 한 줄을 남긴다(D-01: 사람의 승인 말이 있는 턴에만, identity-guard 가 지킨다)."""
+    project = args.project
+    agent = find_agent(load_roster(project), args.name)
+    if not agent:
+        raise RosterError(f"명부에 없는 에이전트: {args.name}")
+    soul_path = os.path.join(_agent_dir(project, agent["agent_id"]), "SOUL.md")
+    if not os.path.isfile(soul_path):
+        raise RosterError(f"SOUL.md 가 없다: {os.path.relpath(soul_path, project)}")
+    with open(soul_path, encoding="utf-8") as fh:
+        text = fh.read()
+    if DRAFT_MARK not in text:
+        if is_untouched_draft(soul_path):
+            raise RosterError("SOUL 이 빈 틀 그대로다 — 먼저 soul-draft 로 초안을 채우십시오")
+        print(f"그대로: {agent['name']} 의 SOUL 은 이미 승인됐다")
+        return 0
+    with open(soul_path, "w", encoding="utf-8") as fh:
+        fh.write(text.replace("\n" + DRAFT_MARK + "\n", "\n", 1).replace(DRAFT_MARK + "\n", "", 1))
+    _record_soul_approved(project, agent)
+    print(f"승인: {agent['name']} 의 SOUL — {os.path.relpath(soul_path, project)}")
+    return 0
+
+
+def _record_soul_approved(project: str, agent: dict) -> None:
+    try:
+        from hermes_journal import emit
+        emit(os.path.join(project, ".hermes", "state.db"), project, {
+            "kind": "decision", "task_id": agent["agent_id"], "actor": _human(project),
+            "decision": f"soul-approved name={agent['name']}"})
+    except Exception as exc:  # noqa: BLE001 — 이력은 부수 기록, 승인 자체를 되돌리지 않는다
+        print(f"[hermes-agent WARN] 승인을 이력에 못 남김: {exc}", file=sys.stderr)
+
+
 def cmd_teach(args) -> int:
     """사람이 특정 에이전트에게 직접 가르친다(C-22): memory.added(source_event=teach:human:<이름>). about 필수."""
     project = args.project
@@ -312,6 +346,8 @@ def main() -> int:
     pn.add_argument("name"); pn.add_argument("memory_id")
     tp = sub.add_parser("templates", help="역할 템플릿 목록(ECC 68 + cumora 4) — hire --template 에 쓴다")
     tp.add_argument("--discipline")
+    ap_s = sub.add_parser("approve-soul", help="SOUL 초안 승인(표시 줄 삭제 + 이력) — 사람이 승인이라고 말한 턴에만(identity-guard)")
+    ap_s.add_argument("name")
     sd = sub.add_parser("soul-draft", help="SOUL 초안을 조직 값으로 (다시) 채운다 — 사람이 승인한 SOUL 은 건드리지 않음")
     sd.add_argument("name"); sd.add_argument("--template", help="역할 템플릿을 붙여 초안을 다시 채운다(명부 template 갱신)")
     args = ap.parse_args()
@@ -322,7 +358,8 @@ def main() -> int:
             return cmd_transition(args)
         return {"list": cmd_list, "whoami": cmd_whoami, "match": cmd_match, "no-owner": cmd_no_owner,
                 "refresh-memory": cmd_refresh_memory, "teach": cmd_teach, "note": cmd_note,
-                "pin": cmd_pin, "soul-draft": cmd_soul_draft, "templates": cmd_templates}[args.cmd](args)
+                "pin": cmd_pin, "soul-draft": cmd_soul_draft, "templates": cmd_templates,
+                "approve-soul": cmd_approve_soul}[args.cmd](args)
     except (RosterError, OrgError, TeachingError, TemplateError) as exc:
         print(f"[hermes-agent] 거부: {exc}", file=sys.stderr)
         return 2
