@@ -29,10 +29,15 @@ FILE="age-v1.3.2-$PLAT.tar.gz"
 tar -czf "$SRC/$FILE" -C "$SRC" age/age age/age-keygen
 GOOD_SHA="$(sha256sum "$SRC/$FILE" | cut -d' ' -f1)"
 
+# 시스템 도구는 그대로 쓰되 **age · age-keygen 만 뺀** PATH 를 만든다. /usr/bin 을 그대로 넣으면 age 가 깔린 기계(CI 러너 — 2026-09-20 부터 apt 로 설치)에서
+# "없으면 설치한다" 시나리오가 성립하지 않는다(실측: [2]·[3] 이 통째로 빨갰다).
+SYSBIN="$TMP/sysbin"; mkdir -p "$SYSBIN"
+find /usr/bin /bin -maxdepth 1 \( -type f -o -type l \) ! -name age ! -name age-keygen -exec ln -sf -t "$SYSBIN" {} + 2>/dev/null
+
 run() { # run <expected_sha> <bin_dir> [PATH 앞머리] → 로그를 $OUT 에, 배열은 전역
   local sha="$1" bin="$2" pre="${3:-}"
   OUT="$(
-    export PATH="${pre:+$pre:}/usr/bin:/bin"
+    export PATH="${pre:+$pre:}$SYSBIN"
     export HARNESS_TOOL_SOURCE_DIR="$SRC" HARNESS_TOOL_EXPECTED_SHA256="$sha" HARNESS_TOOL_BIN_DIR="$bin"
     source "$REPO_ROOT/lib/logging.sh"; source "$REPO_ROOT/lib/tool_installers.sh"
     REQUIRED_BINS=(age age-keygen)

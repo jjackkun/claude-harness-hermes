@@ -40,6 +40,9 @@ CI 가 늘 빨가면 빨간 것이 정보가 아니다. 오늘 하루 이 세션
 | tool-installers · sync-autoenable | **run-all 이 설치기 옵트아웃을 전역 export**(이 세션에서 넣음) → 그 기능을 검증하는 두 테스트가 통째로 꺼짐. 로컬 단독 실행은 통과라 몰랐다 | 두 테스트가 스스로 켠다(네트워크 0 은 픽스처·스텁이 보장) |
 | hermes-keys · hermes-sync | CI 러너에 age 없음 | `ci.yml` 에 age 설치 단계 |
 
+**CI 에 age 를 깔자 드러난 2건**(a49aab0 의 CI: 실패 8 → 2): ① apt 의 age 는 버전을 `v` 없이 찍는다(`1.1.1`) — keys 테스트의 단언을 `v?` 로. ② tool-installers 테스트가 PATH 에 `/usr/bin` 을 통째로 넣어 러너의 시스템 age 를 발견 —
+"없으면 설치한다" 시나리오가 성립하지 않았다 → 시스템 도구를 심링크로 모으되 age·age-keygen 만 뺀 PATH 를 쓴다.
+
 **로컬 전용 4건도 찾았다**(CI 는 통과): 이 기계의 git 2.25 에서 `git init -b`(2.28+)가 실패하고 `check-ignore -q` 가 부정 패턴에도 0 을 돌려준다 —
 hermes-loop · hermes-cleanup-step5 · memory-symlink-roundtrip · hermes-history-export 를 버전에 기대지 않게 고쳤다(roster 테스트가 이미 쓰던 `-v` 방식).
 

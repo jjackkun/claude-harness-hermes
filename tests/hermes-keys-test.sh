@@ -171,7 +171,7 @@ assert "첫 컴퓨터가 그 자물쇠로 마스터를 감쌀 수 있다" 1 "$(l
 echo "== 8. doctor =="
 K doctor >"$TMP/doctor.out" 2>&1
 assert "doctor 종료 코드 0" 0 "$?"
-assert "age 버전 표시" 1 "$(grep -c 'age: v' "$TMP/doctor.out")"
+assert "age 버전 표시" 1 "$(grep -cE 'age: v?[0-9]' "$TMP/doctor.out")"   # 배포판 패키지(apt 1.1.1)는 v 없이 찍는다 — CI 러너에서 실측(2026-09-20)
 assert "권한 경고 없음" 0 "$(grep -c '⚠' "$TMP/doctor.out")"
 chmod 644 "$KEYS/master.key"
 K doctor >"$TMP/doctor2.out" 2>&1
