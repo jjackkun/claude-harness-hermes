@@ -7,7 +7,7 @@
 # 목록은 git 에 커밋된다 — 다른 컴퓨터의 clone 도 어느 파일이 공장 것인지 알아야
 # 변조 감지·정리가 동작한다. (.dev-setting-manifest.json 과 다른 점)
 #
-# 공개 함수 4개: manifest_add · manifest_read · manifest_prune · manifest_verify
+# 공개 함수 6개: manifest_add · manifest_read · manifest_prune · manifest_field · manifest_mark · manifest_verify
 
 _MANIFEST_NAME=".factory-manifest.json"
 
@@ -126,6 +126,31 @@ except (json.JSONDecodeError, AttributeError):
 for i in items:
     if i.get("kind") == os.environ["M_KIND"] and i.get("name") == os.environ["M_NAME"]:
         print(i.get(os.environ["M_FIELD"], "") or ""); break
+PYEOF
+}
+
+# manifest_mark <claude_dir> <kind> <name> <field> <value>
+# 기존 항목에 필드 하나를 적는다(항목이 없으면 아무것도 하지 않는다). manifest_add 는 항목을 새로 써서 이 필드를 지운다 — 의도된 동작이다.
+# 쓰는 곳: 공존 설치가 충돌로 세워 둔 공장판의 sha(parked_sha) — 사람이 해소했는지 다음 설치가 알아보는 근거(2026-09-20).
+manifest_mark() {
+  local p; p="$(_manifest_path "$1")"
+  [[ -f "$p" ]] || return 0
+  M_KIND="$2" M_NAME="$3" M_FIELD="$4" M_VALUE="$5" python3 - "$p" <<'PYEOF'
+import json, os, sys
+p = sys.argv[1]
+try:
+    data = json.load(open(p, encoding="utf-8"))
+except (json.JSONDecodeError, AttributeError):
+    sys.exit(0)
+hit = False
+for i in data.get("items", []):
+    if i.get("kind") == os.environ["M_KIND"] and i.get("name") == os.environ["M_NAME"]:
+        i[os.environ["M_FIELD"]] = os.environ["M_VALUE"]; hit = True
+if hit:
+    tmp = p + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+    os.replace(tmp, p)
 PYEOF
 }
 

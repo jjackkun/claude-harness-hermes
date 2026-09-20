@@ -323,5 +323,30 @@ printf '# LOCAL9\n%s' "$NEW9" > "$D"; run
 assert "c 유지: 진짜 하류 수정은 손대지 않음" c "$COEXIST_LAST_BRANCH"
 assert "c 유지: 하류 수정 살아 있음" "# LOCAL9" "$(sed -n 1p "$D")"
 
+echo "== 10. 충돌 해소 기록 — 사람이 합치고 .factory-new 를 지우면 다시 세우지 않는다 (2026-09-20 terminal-shipping 실측) =="
+rm -f "$D" "$D.factory-new"
+B10=$'# K1\n#1\n#2\n#3\n# K5\n#4\n#5\n#6\n# K9\n'
+fac "$B10" r-base; run 755                                   # 설치(a)
+sed -i '1s/.*/# K1_local/' "$D"                              # 하류가 1행을 고침
+fac "$(printf '%s' "$B10" | sed '1s/.*/# K1_fac/')"$'\n' r-fac    # 공장도 1행을 고침 → 충돌 (명령 치환이 끝 줄바꿈을 자르므로 다시 붙인다 — 안 붙이면 9행이 가짜 충돌을 낸다)
+run
+assert "x 충돌로 세워짐" x "$COEXIST_LAST_BRANCH"
+assert "x 세워 둔 공장판의 sha 가 manifest 에 남는다(parked_sha)" "$(_manifest_sha "$S")" "$(manifest_field "$C" hook "$N" parked_sha)"
+run
+assert "아직 안 풀었으면(.factory-new 있음) 계속 충돌" x "$COEXIST_LAST_BRANCH"
+sed -i '1s/.*/# K1_merged_by_human/' "$D"; rm -f "$D.factory-new"   # 사람이 합치고 지움
+run
+assert "r 해소 인정 — 다시 세우지 않는다" r "$COEXIST_LAST_BRANCH"
+assert "r .factory-new 가 되살아나지 않는다" 0 "$([[ -e "$D.factory-new" ]] && echo 1 || echo 0)"
+assert "r 사람이 합친 판이 그대로" "# K1_merged_by_human" "$(sed -n 1p "$D")"
+assert "r base 가 그 공장판으로 올라감" "$(_manifest_sha "$S")" "$(manifest_field "$C" hook "$N" sha256)"
+assert "r 무출력(G6)" "" "$(cat "$TMP/err")"
+run
+assert "그 뒤 공장이 그대로면 c(손대지 않음)" c "$COEXIST_LAST_BRANCH"
+fac "$(printf '%s' "$B10" | sed '1s/.*/# K1_fac/;9s/.*/# K9_fac2/')"$'\n' r-fac2   # 공장이 다른 자리(9행)를 개정
+run
+assert "그 뒤 공장 개정은 새 base 에서 병합된다(d)" d "$COEXIST_LAST_BRANCH"
+assert "d 사람이 합친 1행 유지 + 공장 9행 반영" "# K1_merged_by_human|# K9_fac2" "$(sed -n 1p "$D")|$(sed -n 9p "$D")"
+
 echo "PASS=$PASS FAIL=$FAIL"
 [[ $FAIL -eq 0 ]]

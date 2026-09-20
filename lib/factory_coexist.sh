@@ -239,7 +239,18 @@ install_factory_file() {
     echo "[factory-merge MERGED] $name — 하류 수정과 공장 개정을 합쳤습니다(구문 검사 통과)" >&2
     COEXIST_LAST_BRANCH=d
   else
+    # r — 병합은 여전히 충돌이지만, 지난 설치가 **같은 공장판**으로 세워 뒀고(parked_sha == theirs) 사람이 합친 뒤 .factory-new 를 지웠다 → 해소된 것.
+    #     다시 세우지 않는다. base 를 theirs 로 올려 다음 공장 개정부터는 올바른 base 에서 병합된다.
+    #     (2026-09-20 실측: 해소 기록이 없어 전파할 때마다 같은 충돌이 되살아나 하류의 커밋을 R-merge 가 다시 막았다.)
+    local parked_sha
+    parked_sha="$(manifest_field "$claude_dir" "$kind" "$name" parked_sha)"
+    if [[ -n "$parked_sha" && "$parked_sha" == "$theirs_sha" && ! -e "$real.factory-new" ]]; then
+      manifest_add "$claude_dir" "$kind" "$name" "$src" "$src_rel" "$mode" || true
+      rm -f "$base_file"
+      COEXIST_LAST_BRANCH=r; return 0
+    fi
     _coexist_park "$src" "$real" "CONFLICT" "$name"
+    manifest_mark "$claude_dir" "$kind" "$name" parked_sha "$theirs_sha" || true   # 사람이 이 판에 대해 해소했는지 다음 설치가 알아본다
     COEXIST_LAST_BRANCH=x
   fi
   rm -f "$base_file"
