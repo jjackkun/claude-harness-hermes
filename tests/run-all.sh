@@ -130,6 +130,7 @@ REGISTERED_TESTS=(
   hermes-memory-events-test.sh
   hermes-handoff-test.sh
   hermes-teaching-test.sh
+  hermes-dashboard-test.sh
   hermes-skill-layers-test.sh
   hermes-skill-inject-test.sh
   hermes-skill-extends-test.sh

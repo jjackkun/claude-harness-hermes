@@ -14,15 +14,15 @@
 
 ## 2. 목표 (What — 검증 가능한 형태)
 
-- [ ] 목표 1 — `python3 scripts/hermes-dashboard.py --project-dir <소우주>` 가 `.hermes/dashboard.html` 하나를 쓴다(외부 자원 0, 모델 호출 0)
+- [x] 목표 1 — `python3 scripts/hermes-dashboard.py --project-dir <소우주>` 가 `.hermes/dashboard.html` 하나를 쓴다(외부 자원 0, 모델 호출 0)
   — 검증: `bash tests/hermes-dashboard-test.sh` (생성·`<script src`/`<link href` 0·`claude` 호출 0)
-- [ ] 목표 2 — **에이전트 판**: 명부(이름·상태·분야/직급/조직), 열린 인계(kind·기한·blocked)·최근 소환 10건, 담당 없음 제안 수, **about 별 corrected 지적 누적 수**(agent-teaching 목표 6 이관: `memory_events.source_event LIKE 'review:%:corrected:%'`)
+- [x] 목표 2 — **에이전트 판**: 명부(이름·상태·분야/직급/조직), 열린 인계(kind·기한·blocked)·최근 소환 10건, 담당 없음 제안 수, **about 별 corrected 지적 누적 수**(agent-teaching 목표 6 이관: `memory_events.source_event LIKE 'review:%:corrected:%'`)
   — 검증: `bash tests/hermes-dashboard-test.sh` 에이전트 절 — 픽스처 명부 3명(1 은퇴)·인계 2건(1 blocked) 이 표에 그대로
-- [ ] 목표 3 — **스킬 판**: 층별 개수(S-01 네 층), 주입 상위 10·도움률, 강등 후보(`hermes_skill_yield.low_yield_skills` 재사용, 기준 중복 정의 금지),
+- [x] 목표 3 — **스킬 판**: 층별 개수(S-01 네 층), 주입 상위 10·도움률, 강등 후보(`hermes_skill_yield.low_yield_skills` 재사용, 기준 중복 정의 금지),
   결정화 대기(`pattern_count` count≥3·crystallized=0) — 검증: `bash tests/hermes-dashboard-test.sh` 스킬 절 — 강등 후보 1개가 `python3 scripts/hermes-cleanup.py --db … ` dry-run (e) 와 같은 집합
-- [ ] 목표 4 — **학습 루프 판**: 요약 수·마지막 드림 시각·다음 드림 가능 시각(throttle 20h)·진화 건수 — 검증: `bash tests/hermes-dashboard-test.sh` 루프 절 — 픽스처 `dream_log` 2행으로 값 일치
-- [ ] 목표 5 — **건강 판**: 게이트 발화율 상위 5(`gate_report.py` 재사용)·리뷰 빚(`.claude/.review-dirty`)·활성 계획 목록 — 검증: `bash tests/hermes-dashboard-test.sh` 건강 절 — 픽스처 이벤트 20건
-- [ ] 목표 6 — **우주 페이지**: `python3 scripts/hermes-dashboard.py --universe` 가 `.installed-projects` 를 훑어 소우주별 한 행
+- [x] 목표 4 — **학습 루프 판**: 요약 수·마지막 드림 시각·다음 드림 가능 시각(throttle 20h)·진화 건수 — 검증: `bash tests/hermes-dashboard-test.sh` 루프 절 — 픽스처 `dream_log` 2행으로 값 일치
+- [x] 목표 5 — **건강 판**: 게이트 발화율 상위 5(`gate_report.py` 재사용)·리뷰 빚(`.claude/.review-dirty`)·활성 계획 목록 — 검증: `bash tests/hermes-dashboard-test.sh` 건강 절 — 픽스처 이벤트 20건
+- [x] 목표 6 — **우주 페이지**: `python3 scripts/hermes-dashboard.py --universe` 가 `.installed-projects` 를 훑어 소우주별 한 행
   (에이전트 수·스킬 수·도움률·강등 후보 수·마지막 드림·factory_commit 일치 여부)을 `.hermes/universe-dashboard.html` 에 쓴다.
   hermes 미설치 프로젝트는 "미설치" 로 표시(kis-trading 사례) — 검증: `bash tests/hermes-dashboard-test.sh` 우주 절 — 임시 레지스트리 3곳(1 미설치)
 - [ ] 목표 7 — `/hermes-dashboard` 스킬: 생성 후 경로를 알리고, 세션 시작 훅이 하루 1회 갱신(드림 throttle 과 같은 마커 방식, 백그라운드)
@@ -69,6 +69,13 @@
 - 2026-09-18: 하루 1회 자동 갱신은 드림과 같은 throttle 마커 방식 — 근거: 이미 검증된 패턴(`claude-sessionstart-dream.sh`), 세션 시작 지연 0(백그라운드).
 
 ## 7. 발견·예외
+
+- 2026-09-20 Step 1~3 완료: `hermes_dashboard_data.py`(tier 3, 네 판 dict + 우주 행) · `hermes_dashboard_html.py`(tier 0, 인라인 CSS, 루프 보고서와 같은 토큰, 다크 모드) · `hermes-dashboard.py`(CLI).
+  테스트 `hermes-dashboard-test.sh` 39단언(dict 직접 단언 + HTML 생성·외부 자원 0·미설치 표시·factory 일치·DB 없는 소우주). 복잡도 한도 때문에 판별 헬퍼로 나눴다.
+- 열린 인계: `hermes_handoff_queue.queue` 는 되묻기(question)를 닫힘으로 보므로 "막힘" 은 따로 모았다(question·declined 뒤 finished·expired 없는 봉투).
+- 소환 픽스처는 `hermes_summons.issue` 로 만들었다 — 세션 안 summons 직접 쓰기 가드(RV-06)를 테스트도 지킨다.
+- `.gitignore` 추가 불필요: `.hermes/*` 가 이미 무시라 dashboard.html·universe-dashboard.html 은 커밋에서 빠진다.
+- R6: 프런트 스킬(impeccable)을 불렀으나 설계 맥락 질문(teach)은 돌리지 않았다 — 맥락은 계획서(사람 운영자·한눈에·보고서와 같은 결)가 이미 정했고 사용자가 폼 질문을 거부했다.
 
 ## 8. 회고 (완료 시 작성)
 

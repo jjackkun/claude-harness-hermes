@@ -84,3 +84,7 @@ forbid: assets/hooks/*.py -> scripts/*.py
 optional: assets/hooks/check-secrets.py -> hermes_secret_values
 # 커밋 게이트 훅(표준 모듈만, 다른 scripts 를 import 하지 않는다) — 2026-09-20 자기 계약 검사가 미등록으로 잡음
 tier: 0  scripts/hooks/complexity.py scripts/hooks/coverage_probe.py scripts/hooks/depcheck.py scripts/hooks/design_cover.py scripts/hooks/doc_counts.py scripts/hooks/gate_event.py scripts/hooks/gate_report.py
+# 대시보드(계획 2026-09-18-hermes-dashboard): html 은 표준 모듈만, data 는 handoff_queue·owner_memory(2)·skill_layers(1)·skill_yield(0)·hooks/gate_report(0) 를 쓴다
+tier: 0  scripts/hermes_dashboard_html.py
+tier: 3  scripts/hermes_dashboard_data.py
+tier: 4  scripts/hermes-dashboard.py
