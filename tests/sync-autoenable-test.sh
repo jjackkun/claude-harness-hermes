@@ -3,6 +3,7 @@
 #   1. PRIVATE → sync.json {push:true, mode:plain} + 첫 push 로 refs/hermes/sync 생성
 #   2. PUBLIC  → {push:false} · 3. gh 실패 → unknown, push:false · 4. 이미 있는 sync.json 보존 · 5. CLAUDECODE 있으면 아무것도 안 함
 set -uo pipefail
+export HARNESS_SYNC_AUTOENABLE=1   # run-all.sh 가 전역으로 0 을 내보낸다 — 이 테스트는 바로 그 기능을 검증하므로 스스로 켠다(gh·프로브를 스텁으로 대체하므로 네트워크 0). 2026-09-20: 이것 없이 CI 에서 통째로 빨갰다
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"; S="$REPO_ROOT/scripts"
 TMP=$(mktemp -d); trap 'rm -rf "$TMP"' EXIT
 export HOME="$TMP/fakehome"; mkdir -p "$HOME"

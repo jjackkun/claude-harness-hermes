@@ -21,7 +21,7 @@ PROJ="$T/proj"
 DB="$PROJ/.hermes/state.db"
 
 # git 픽스처 — 루프 브랜치(G14)·진전 판정 검증용
-git -C "$PROJ" init -q -b main
+git -C "$PROJ" init -q; git -C "$PROJ" symbolic-ref HEAD refs/heads/main   # `init -b` 는 git 2.28+ — 옛 git(2.25)에서는 저장소가 안 만들어져 G14 가 통째로 빨갰다(2026-09-20)
 git -C "$PROJ" -c user.email=t@test -c user.name=t commit --allow-empty -qm "init"
 MAIN_HEAD=$(git -C "$PROJ" rev-parse main)
 
@@ -301,7 +301,7 @@ print('A_NONE' if res is None else 'A_FAIL:' + repr(res))
 # (b) 실제 git 저장소이지만 loop/<id> 체크아웃이 실패하도록 ref 를 막아둠
 # → 격리 실패이므로 None 대신 RuntimeError 를 던져야 함
 repo = tempfile.mkdtemp()
-subprocess.run(['git', 'init', '-q', '-b', 'main'], cwd=repo, check=True)
+subprocess.run(['git', 'init', '-q'], cwd=repo, check=True); subprocess.run(['git', 'symbolic-ref', 'HEAD', 'refs/heads/main'], cwd=repo, check=True)   # init -b 는 git 2.28+
 subprocess.run(['git', '-c', 'user.email=t@test', '-c', 'user.name=t',
                  'commit', '--allow-empty', '-qm', 'init'], cwd=repo, check=True)
 refs_dir = os.path.join(repo, '.git', 'refs', 'heads')

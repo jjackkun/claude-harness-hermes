@@ -29,3 +29,6 @@ public-claude.sh|global-claude.md.tpl|~/.claude/CLAUDE.md 전역 템플릿. 프�
 # ── Codex 설치 경로 — 훅·스크립트 루프는 2026-09-17 install_factory_file 로 전환. 남은 둘은 판정 대상이 아니다.
 codex_installers.sh|cp "$f" "$dest"|docs/ 템플릿 신규 생성 — 바로 위 `[[ -e "$dest" ]] && continue`(harness_installers 와 같은 꼴).
 project-codex.sh|hooks.json|이번 설치가 .codex/ 에 생성한 hooks.json 을 플러그인 번들로 옮기는 것 — 공장 원본이 없어 base 대조가 성립하지 않는 생성물.
+
+# ── 외부 도구 설치기 — 배포 파일을 임시 폴더로 가져온다(오프라인·테스트 경로). 소우주의 추적 파일을 쓰지 않는다
+tool_installers.sh|cp "$HARNESS_TOOL_SOURCE_DIR/$1" "$3"|HARNESS_TOOL_SOURCE_DIR 픽스처에서 tmp 로 복사(sha256 대조 전 단계). 목적지는 mktemp — 공존 엔진 대상 아님.

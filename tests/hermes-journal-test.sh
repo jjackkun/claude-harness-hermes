@@ -190,7 +190,12 @@ assert "journal 에도 decision 이벤트로 남는다" "1" "$(q "select count(*
 
 echo ""
 echo "== 6-e. 로테이션 제외 (목표 10) =="
-assert "rotate 스킬에 제외 문장" "1" "$(grep -c 'journal_events.*로테이션 대상이 아니다' "$REPO_ROOT/.hermes/skills/rotate-ephemeral-work-logs.md")"
+ROTATE_SKILL="$REPO_ROOT/.hermes/skills/rotate-ephemeral-work-logs.md"   # 결정화 스킬 — .hermes/skills/ 는 .gitignore 라 그 스킬을 만든 기계에만 있다
+if [[ -f "$ROTATE_SKILL" ]]; then
+  assert "rotate 스킬에 제외 문장" "1" "$(grep -c 'journal_events.*로테이션 대상이 아니다' "$ROTATE_SKILL")"
+else
+  echo "  SKIP — rotate-ephemeral-work-logs.md 없음(기계 로컬 스킬). 통과로 세지 않는다 (2026-09-20: CI·다른 기계에서 늘 빨갰다)"
+fi
 assert "cleanup 이 journal_events 를 지우지 않음" "0" "$(grep -c 'DELETE FROM journal_events' "$REPO_ROOT/scripts/hermes-cleanup.py")"
 
 echo ""

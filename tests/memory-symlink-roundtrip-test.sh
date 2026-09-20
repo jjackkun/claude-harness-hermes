@@ -101,7 +101,9 @@ GP="$T/gitproj"; mkdir -p "$GP/.claude/memory"
 printf 'x\n' > "$GP/.claude/memory/x.md"
 install_harness_gitignore "$GP" "claude"
 # git check-ignore: 무시되면 exit 0(파일명 출력), 추적되면 exit 1
-if ( cd "$GP" && git check-ignore -q .claude/memory/x.md ); then ig=1; else ig=0; fi
+# git 2.25 의 check-ignore 는 부정 패턴(!…)에 맞아도 exit 0 을 돌려준다 — -v 로 맞은 패턴을 보고 '!' 로 시작하면 추적으로 읽는다(roster 테스트와 같은 방식, 2026-09-20).
+_ignored() { local m; m="$(cd "$1" && git check-ignore -v "$2" 2>/dev/null | awk -F'\t' '{print $1}' | sed -E 's/^[^:]*:[0-9]+://')"; [[ -n "$m" && "${m:0:1}" != "!" ]]; }
+if _ignored "$GP" .claude/memory/x.md; then ig=1; else ig=0; fi
 assert ".claude/memory/x.md 는 무시되지 않음(추적)" 0 "$ig"
 
 echo "== 8. 자가치유 가드: 심링크가 날아가도 SessionStart 훅이 재링크 =="

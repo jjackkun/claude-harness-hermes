@@ -248,6 +248,10 @@ if [[ -n "$PY_OWN_FILES" ]]; then
   [[ -z "$PYTEST_BIN" ]] && command -v pytest >/dev/null 2>&1 && PYTEST_BIN="pytest"
   if [[ -z "$PYTEST_DIR" || -z "$PYTEST_BIN" ]]; then
     gate_add R-test skipped precommit "" "pytest 또는 테스트 디렉터리 없음"
+    # 조용히 건너뛰지 않는다 — 판정 불가를 통과처럼 보이게 하면 "게이트가 돌았다" 고 착각한다(2026-09-20: 이 줄이 없어 스모크 테스트가 09-08 부터 빨갰다).
+    WARNINGS+=("
+[R-test] 건너뜀 — pytest 또는 테스트 디렉터리(tests · backend/tests)가 없다. 이번 커밋의 파이썬 변경은 검증되지 않았다.
+  근거: docs/design-docs/core-beliefs.md#r-test")
   fi
   if [[ -n "$PYTEST_DIR" ]] && [[ -n "$PYTEST_BIN" ]]; then
     # 세 상태를 구분한다. 예전에는 "실패" 와 "실행 불가" 가 한 덩어리였고,

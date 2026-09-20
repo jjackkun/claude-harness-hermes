@@ -6,6 +6,7 @@
 #   4. REQUIRED_BINS 가 비면 아무 줄도 내지 않는다
 # 실행: bash tests/tool-installers-test.sh
 set -uo pipefail
+export HARNESS_TOOL_INSTALL=1   # run-all.sh 가 전역으로 0 을 내보낸다 — 이 테스트는 바로 그 기능을 검증하므로 스스로 켠다(픽스처(HARNESS_TOOL_SOURCE_DIR)만 쓰므로 네트워크 0). 2026-09-20: 이것 없이 CI 에서 통째로 빨갰다
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 TMP=$(mktemp -d); trap 'rm -rf "$TMP"' EXIT
 export HOME="$TMP/fakehome"; mkdir -p "$HOME"

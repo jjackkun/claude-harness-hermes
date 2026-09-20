@@ -58,7 +58,9 @@ mkdir -p "$G/.hermes/units/U1/skills" "$G/.hermes/outbox/E1"
 echo x > "$G/.hermes/units/U1/skills/team.md"
 echo y > "$G/.hermes/units/U1/notes.txt"
 echo z > "$G/.hermes/outbox/E1/envelope.json"
-chk() { git -C "$G" check-ignore -q "$1" && echo ignored || echo tracked; }
+# git 2.25 의 check-ignore 는 부정 패턴(!…)에 맞아도 exit 0 을 돌려준다 — -v 로 맞은 패턴을 보고 '!' 로 시작하면 추적으로 읽는다(roster 테스트와 같은 방식, 2026-09-20).
+chk() { local m; m="$(git -C "$G" check-ignore -v "$1" 2>/dev/null | awk -F'\t' '{print $1}' | sed -E 's/^[^:]*:[0-9]+://')"
+        [[ -n "$m" && "${m:0:1}" != "!" ]] && echo ignored || echo tracked; }
 assert "단위 스킬 team.md 추적" tracked "$(chk .hermes/units/U1/skills/team.md)"
 assert "units/*/ 그 밖 파일 무시" ignored "$(chk .hermes/units/U1/notes.txt)"
 assert "outbox/ 무시(봉투는 배달로 나감)" ignored "$(chk .hermes/outbox/E1/envelope.json)"

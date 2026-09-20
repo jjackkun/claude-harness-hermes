@@ -197,14 +197,18 @@ assert "하네스 사본만이면 R-test 단계에 들어가지도 않는다" "1
 # 그 경로는 설계상 경고다. "단계에 들어갔는가" 가 여기서 확인 가능한 성질이다.
 echo "y = 2" > project_module.py
 git add project_module.py
-.git/hooks/pre-commit 2>&1 | grep -q '\[R-test\]'
+# 출력을 먼저 받는다 — pipefail 아래에서 `훅 | grep -q` 는 훅의 종료코드(pytest 가 뜨는 기계에서는 차단 = 1)를 돌려준다.
+# 2026-09-20: pytest 가 실행되는 기계·CI 에서는 [R-test] 가 찍혔는데도 이 단언이 늘 빨갰다.
+RT_OUT=$(.git/hooks/pre-commit 2>&1 || true)
+grep -q '\[R-test\]' <<<"$RT_OUT"
 assert "프로젝트 .py 가 섞이면 R-test 단계가 돈다" "0" "$?"
 git rm --cached -q project_module.py >/dev/null 2>&1 || true; rm -f project_module.py
 # hermes 스크립트도 하네스 소유다 — scripts/ 바로 아래라 경로 규칙이 다르다.
 # 2026-08-25 전파에서 ai-create 가 이것 때문에 DB 미기동 pytest 에 막혔다.
 echo "z = 3" > scripts/hermes-probe.py
 git add scripts/hermes-probe.py
-.git/hooks/pre-commit 2>&1 | grep -q '\[R-test\]'
+RT_OUT=$(.git/hooks/pre-commit 2>&1 || true)
+grep -q '\[R-test\]' <<<"$RT_OUT"
 assert "hermes 스크립트만이면 R-test 가 돌지 않는다" "1" "$?"
 git rm --cached -q scripts/hermes-probe.py >/dev/null 2>&1 || true; rm -f scripts/hermes-probe.py
 git rm --cached -q scripts/hooks/harness_copy_probe.py project_module.py >/dev/null 2>&1 || true

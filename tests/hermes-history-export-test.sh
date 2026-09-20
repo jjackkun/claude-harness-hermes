@@ -80,7 +80,9 @@ install_harness_gitignore "$GP" "claude"
 if ( cd "$GP" && git check-ignore -q .hermes/history/sess-1/0000.jsonl ); then ig=1; else ig=0; fi
 assert "새 조각은 무시된다(원문이 코드 브랜치로 안 나간다)" 1 "$ig"
 # 대조 단언 — conf 로드 실패로 GITIGNORE_ENTRIES 가 비면 위 단언이 가짜로 통과한다
-if ( cd "$GP" && git check-ignore -q .hermes/factory.json ); then ig2=1; else ig2=0; fi
+# git 2.25 의 check-ignore 는 부정 패턴(!…)에 맞아도 exit 0 을 돌려준다 — -v 로 맞은 패턴을 보고 '!' 로 시작하면 추적으로 읽는다(roster 테스트와 같은 방식, 2026-09-20).
+_ignored() { local m; m="$(cd "$1" && git check-ignore -v "$2" 2>/dev/null | awk -F'\t' '{print $1}' | sed -E 's/^[^:]*:[0-9]+://')"; [[ -n "$m" && "${m:0:1}" != "!" ]]; }
+if _ignored "$GP" .hermes/factory.json; then ig2=1; else ig2=0; fi
 assert "대조: factory.json 은 예외로 추적된다(conf 로드 증명)" 0 "$ig2"
 
 echo "== 5. 재색인: 빈 DB + 조각 → session_history 복원 =="
