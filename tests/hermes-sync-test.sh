@@ -183,5 +183,40 @@ OUT_E="$(HOME="$TMP/homeE" python3 "$E/scripts/hermes-sync.py" --project "$E" pu
 assert "거부 서버: '이식 불가 — 사람 판단'" 1 "$(grep -c '이식 불가 — 사람 판단' <<<"$OUT_E")"
 
 echo ""
+echo "== 11. 기억 왕복 — A 의 memory_events → 원격 암호문 → B 의 memory_events·MEMORY.md (계획 agent-memory-roundtrip 목표 2) =="
+AID="$(python3 -c "import json,sys;print(json.load(open(sys.argv[1]))['agents'][0]['agent_id'])" "$A/.hermes/agents.json" 2>/dev/null || PYTHONPATH="$S" python3 -c "from hermes_uuid7 import uuid7_str;print(uuid7_str())")"
+[[ -f "$A/.hermes/agents.json" ]] && cp "$A/.hermes/agents.json" "$B/.hermes/"   # 명부는 커밋 파일 — clone 으로 받는 것을 흉내
+PYTHONPATH="$S" python3 - "$A/.hermes/state.db" "$AID" "$UNI" <<'PY'
+import sqlite3, sys
+from hermes_memory_events import record, ensure_memory_schema
+from hermes_uuid7 import uuid7_str
+con = sqlite3.connect(sys.argv[1]); ensure_memory_schema(con)
+aid, uni = sys.argv[2], sys.argv[3]
+def ev(**k): return record(con, {"memory_id": uuid7_str(), "agent_id": aid, "universe_id": uni, **k})
+ev(ts="2026-09-20T00:00:01", kind="memory.added", about="gate/r-size", body="400줄 넘기 전에 파일을 나눈다", source_event="review:1")
+m2 = ev(ts="2026-09-20T00:00:02", kind="memory.added", about="sync/keys", body="열쇠는 세션 안에서 만든다", source_event="review:2")
+ev(ts="2026-09-20T00:00:03", kind="memory.retracted", revises=m2, body="틀렸다 — 열쇠는 세션 밖에서(T-11)", source_event="review:3")
+con.commit(); con.close()
+PY
+SYNC_A push >"$TMP/pushMem.out" 2>&1
+assert "원격에 기억 조각 3(이벤트 1개 = 파일 1개)" 3 "$(remote_ls | grep -c "^memory/$AID/")"
+MPATH="$(remote_ls | grep "^memory/$AID/" | head -1)"
+assert "원격 기억 본문은 암호문(평문 0)" 0 "$(git -C "$A" show "refs/hermes/sync-remote:$MPATH" | grep -c '파일을 나눈다\|열쇠는 세션')"
+assert "원격 기억의 기계 칸(about)은 평문" 1 "$(git -C "$A" show "refs/hermes/sync-remote:$MPATH" | grep -c '"about"')"
+SYNC_B pull >"$TMP/pullMem.out" 2>&1
+assert "B 에 기억 3건 적재" 3 "$(rows "$B" "select count(*) from memory_events where agent_id='$AID'")"
+assert "B 기억 본문 평문 복원" "400줄 넘기 전에 파일을 나눈다" "$(rows "$B" "select body from memory_events where about='gate/r-size'")"
+IDS_Q="select group_concat(memory_id) from (select memory_id from memory_events where agent_id='$AID' order by memory_id)"
+assert "A·B memory_id 집합 동일" "$(rows "$A" "$IDS_Q")" "$(rows "$B" "$IDS_Q")"
+BMD="$B/.hermes/agents/$AID/MEMORY.md"
+assert "B MEMORY.md 가 pull 만으로 생성" 1 "$([[ -f "$BMD" ]] && echo 1 || echo 0)"
+assert "B MEMORY.md 에 유효 기억" 1 "$(grep -c '400줄 넘기 전에' "$BMD")"
+assert "B MEMORY.md 에 철회된 기억 없음" 0 "$(grep -c '열쇠는 세션 안에서' "$BMD")"
+HOME="$HA" python3 "$A/scripts/hermes-agent.py" --project "$A" refresh-memory "$AID" >/dev/null 2>&1
+assert "A·B MEMORY.md 내용 동일" "$(md5sum < "$A/.hermes/agents/$AID/MEMORY.md")" "$(md5sum < "$BMD")"
+SYNC_B pull >"$TMP/pullMem2.out" 2>&1
+assert "재pull 새 항목 0(멱등)" 1 "$(grep -c '새 항목 0건' "$TMP/pullMem2.out")"
+
+echo ""
 echo "PASS=$PASS FAIL=$FAIL"
 [[ $FAIL -eq 0 ]]

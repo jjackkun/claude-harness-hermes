@@ -19,17 +19,17 @@
 - [x] 목표 1 — `memory_events` 에 이벤트가 쌓이거나 pull 로 들어오면 그 에이전트의 `MEMORY.md` 가 이벤트에서 다시 만들어진다.
   호출 지점 둘: `hermes-agent.py teach`·리뷰 닫기 등 `record` 뒤(같은 트랜잭션 밖, 실패해도 이벤트는 남음) + 세션 시작 훅(`claude-sessionstart-agent-soul.sh` 가 읽기 전).
   검증: `bash tests/hermes-memory-events-test.sh` 에 "record 뒤 MEMORY.md 갱신" 절 · 훅 절
-- [ ] 목표 2 — push → 빈 clone 에서 pull → 같은 `memory_id` 집합이 `memory_events` 에 있고 본문이 복호돼 있으며 `MEMORY.md` 가 같은 내용.
+- [x] 목표 2 — push → 빈 clone 에서 pull → 같은 `memory_id` 집합이 `memory_events` 에 있고 본문이 복호돼 있으며 `MEMORY.md` 가 같은 내용.
   검증: `bash tests/hermes-sync-test.sh` 에 기억 왕복 절(임시 bare 원격 + 열쇠 픽스처, 이벤트 3건 중 1건 철회)
-- [ ] 목표 3 — 복제(H-09, `hermes-propose.py template`)는 여전히 기억을 싣지 않는다 — 검증: 기존 propose 테스트에 `memory_events` 0건 단언 추가
-- [ ] 목표 4 — 운반 켜기 절차가 한 곳에 있고 실행 가능하다: 열쇠 만들기 → `.hermes/sync.json {"push": true}` → 첫 push → 다른 컴퓨터 join → pull.
+- [x] 목표 3 — 복제(H-09, `hermes-propose.py template`)는 여전히 기억을 싣지 않는다 — 검증: 기존 propose 테스트에 `memory_events` 0건 단언 추가
+- [x] 목표 4 — 운반 켜기 절차가 한 곳에 있고 실행 가능하다: 열쇠 만들기 → `.hermes/sync.json {"push": true}` → 첫 push → 다른 컴퓨터 join → pull.
   `docs/hermes-sync-guide.md`(신규 또는 기존 보강) + 세션 시작 훅의 H-10 안내문이 그 문서를 가리킨다 — 검증: 문서의 명령을 공장에서 그대로 실행해 `refs/hermes/sync` 생성
 - [ ] 목표 5 — 공장(이 저장소)에서 실제로 켠다: 게이트QA 의 `teach` 이벤트 1건 → push → 두 번째 clone 에서 pull → MEMORY.md 일치. 검증: 시연 기록(§7)
-- [ ] 목표 6 — `hermes_sync_fragments.py` 머리말의 "경로만 예약" 을 현재 상태로 고친다. 검증: `grep -c '경로만 예약' scripts/hermes_sync_fragments.py` = 0
+- [x] 목표 6 — `hermes_sync_fragments.py` 머리말의 "경로만 예약" 을 현재 상태로 고친다. 검증: `grep -c '경로만 예약' scripts/hermes_sync_fragments.py` = 0
 - [x] 목표 8 (2026-09-20 추가, 사용자: "필요한 도구면 setup·update-all 로 깔려야지 따로 설치하면 안 된다") — hermes 프리셋이 `REQUIRED_BINS+=(age age-keygen)` 을 선언하고
   설치기(`project-claude.sh`, 따라서 `setup`·`update-all` 모두)가 없으면 설치한다: 핀 고정 v1.3.2 배포 파일을 받아 sha256 대조 뒤 `~/.local/bin` 에 놓는다(apt 에 없는 Ubuntu 20.04 실측).
   대조 실패면 설치하지 않고 경고. 이미 있으면 건너뜀. 검증: `bash tests/tool-installers-test.sh`(있음→무동작 · 픽스처 설치 · 해시 불일치 거부) + 이 컴퓨터에서 재설치 뒤 `age --version`
-- [ ] 목표 7 — 설치 폐로·의존 계층: 새 훅/문서가 `hermes.conf`·`.deprc`·`run-all.sh` 에 있다 — 검증: `bash tests/install-closure-test.sh` · `bash tests/dep-contract-test.sh`
+- [x] 목표 7 — 설치 폐로·의존 계층: 새 훅/문서가 `hermes.conf`·`.deprc`·`run-all.sh` 에 있다 — 검증: `bash tests/install-closure-test.sh` · `bash tests/dep-contract-test.sh`
 
 ## 3. 비목표 (Out of Scope)
 
@@ -70,6 +70,10 @@
 - `rule_keys`(규칙 충돌 표시)를 제공하는 호출자가 운영 코드에 없다 — refresh 는 None 으로 부른다. 규칙 키 원천(설치된 룰 파일명?)은 별도 결정 필요.
 - 기존 결함 수정: `tests/hermes-roster-test.sh` 의 `ig()` 가 git 2.25 `check-ignore -q` 의 부정 패턴 exit 0 을 "무시" 로 읽어 4단언이 항상 빨갰다 — `-v` 로 매치 패턴을 보고 판정하도록 고침.
 - 환경: 이 컴퓨터에 `age` 가 없어 `hermes-sync-test.sh` 가 전제에서 멈췄다. 사용자: "필요한 도구면 setup·update-all 로 깔려야지 따로 설치하면 안 된다" → 목표 8 로 설치기에 넣음.
+- 2026-09-20 Step 2·3 완료: `hermes-sync-test.sh` 11절 기억 왕복(11단언: 원격 3조각·본문 암호문·about 평문·B 적재 3·평문 복원·id 집합 동일·MEMORY.md pull 생성·철회 제외·A/B 동일·멱등) → 53/53.
+  `hermes-propose-test.sh` 에 memory_events 미포함 단언(33/33). `hermes_sync_fragments.py` 머리말 정정. 안내서 `docs/hermes-sync-guide.md` + `hermes-keys.sh lock`(두 번째 컴퓨터 자물쇠만) 신설,
+  `doctor`·H-10 문구가 설치기·안내서를 가리킴, 소우주 CLAUDE.md 에 "기억 운반" 절(hermes.conf).
+- 목표 5(공장에서 실제 켜기)는 열쇠 생성이 T-11(세션 밖 사람) 이라 에이전트가 못 한다 — 사용자가 터미널에서 안내서 1단계를 실행해야 진행.
 - 2026-09-20 목표 8 완료: `lib/tool_installers.sh`(핀 v1.3.2 · sha256 4플랫폼 · 대조 실패 시 미설치 · `HARNESS_TOOL_INSTALL=0` 옵트아웃) + `preset.sh` `REQUIRED_BINS` 칸 + hermes.conf 선언 +
   `project-claude.sh` 단계·요약 줄. 실측: terminal-shipping 재설치 로그 `tool → age v1.3.2 (linux-amd64, sha256 대조 통과) → ~/.local/bin` · `age --version` = v1.3.2.
   테스트: `tool-installers-test.sh` 10단언(네트워크 0). 설치기를 부르는 테스트 13개 + run-all 에 옵트아웃을 넣어 테스트가 다운로드를 타지 않게 함.

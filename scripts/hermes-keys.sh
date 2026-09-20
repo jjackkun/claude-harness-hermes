@@ -3,6 +3,7 @@
 #
 #   init           마스터 열쇠 + 이 컴퓨터 자물쇠를 만들고 마스터를 감싸 등록한다
 #   add-computer   다른 컴퓨터의 자물쇠로 마스터를 한 번 더 감싼다
+#   lock           이 컴퓨터 자물쇠만 만들고(없으면) 보여 준다 — 두 번째 컴퓨터가 합류할 때. 마스터는 만들지 않는다
 #   emergency      비상 열쇠를 만들고 24단어로 한 번만 보여 준다(옮겨 적기 → 재입력 확인)
 #   revoke         자물쇠 등록을 지운다(그 열쇠로는 새로 감싸지 않는다)
 #   rotate-master  마스터를 새로 만든다 — 새 조각부터 적용, 옛 마스터는 보관(G-4)
@@ -48,7 +49,7 @@ cmd_doctor() {
   if command -v age >/dev/null 2>&1 && command -v age-keygen >/dev/null 2>&1; then
     echo "  age: $(age --version)"
   else
-    echo "  age: 없음 — 설치 필요(apt install age 또는 GitHub 릴리스 바이너리)"
+    echo "  age: 없음 — 설치기가 깐다: 공장에서 bash update-all.sh (lib/tool_installers.sh, 핀 고정)"
   fi
   _py "$uid" <<'PY'
 import os, stat, sys
@@ -113,6 +114,27 @@ open(os.path.join(out, f"{name}.pub"), "w", encoding="utf-8").write(lock + "\n")
 open(os.path.join(out, f"master.{name}.age"), "wb").write(wrap_master(uid, lock))
 print(f"[hermes-keys] 등록됨: 지문 {name}")
 print("[hermes-keys] 다음 push 에서 원격 keys/ 로 올라갑니다.")
+PY
+}
+
+cmd_lock() {
+  local uid; uid="$(_universe)"
+  _py "$uid" <<'PY'
+import os, sys
+sys.path.insert(0, os.environ["PYTHONPATH"])
+import hermes_crypto as crypto
+from hermes_keys import fingerprint, key_path
+uid = sys.argv[1]
+if not crypto.age_available():
+    print("[hermes-keys] age 가 없다 — 설치기가 깐다: 공장에서 bash update-all.sh", file=sys.stderr); sys.exit(1)
+path = key_path(uid, "computer")
+if os.path.isfile(path):
+    lock = crypto.public_key(path); made = "이미 있음"
+else:
+    lock = crypto.generate_identity(path); made = "새로 만듦"
+print(f"[hermes-keys] 이 컴퓨터 자물쇠({made}, 지문 {fingerprint(lock)}):")
+print(lock)
+print("[hermes-keys] 다음: 마스터가 있는 컴퓨터에서 `hermes-keys.sh add-computer <위 자물쇠>` → push, 이 컴퓨터에서 `hermes-sync.py pull`.")
 PY
 }
 
@@ -238,6 +260,7 @@ main() {
   case "$cmd" in
     init)          cmd_init ;;
     add-computer)  cmd_add_computer "${rest[0]:-}" ;;
+    lock)          cmd_lock ;;
     emergency)     cmd_emergency ;;
     revoke)        cmd_revoke "${rest[0]:-}" ;;
     rotate-master) HERMES_UNIVERSE_ID="$(_universe)" cmd_rotate_master ;;

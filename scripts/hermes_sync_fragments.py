@@ -6,7 +6,7 @@
   history/<session_id>/<순번>.enc                          — 턴 조각(마스터 자물쇠로 통째)
   history/<session_id>/<순번>.superseded                   — 압축 표시
   journal/<YYYY>/<MM>/<DD>/<event_id>.json                 — 기계 칸 평문, 자유 글 3칸 암호문(J-07)
-  memory/…                                                 — 계획 4 (경로만 예약)
+  memory/<agent_id>/<memory_id>.json                        — 기억 이벤트 1개 = 파일 1개, body 만 암호문(C-14·C-20; 왕복 실측 2026-09-20)
 
 "새 것" 판정은 state.db 의 sync_cursor(받은 경로)·sync_outbox(올린 경로) 두 표로 한다.
 계획: docs/exec-plans/active/2026-09-15-sync-transport-encryption.md 목표 2·8·10·11

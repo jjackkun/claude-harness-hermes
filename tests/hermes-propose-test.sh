@@ -146,6 +146,16 @@ for aid, soul in ((a1, "# 깨끗한담당\n\n## 역할\n회귀 테스트를 맡�
     open(os.path.join(d, "MEMORY.md"), "w").write("# 기억\n\n- 2026-09-17 회귀 3건 작성(비밀메모)\n")
     open(os.path.join(d, "skills", "retry.md"), "w").write("---\nname: retry\ndescription: 재시도\n---\n# retry\n지수 백오프로 3회.\n")
 PY
+# 기억 이벤트(원본)도 복제에 실리지 않는다 — 계획 agent-memory-roundtrip 목표 3 (H-09)
+PYTHONPATH="$S" python3 - "$DB" <<'PY'
+import sqlite3, sys
+from hermes_memory_events import record, ensure_memory_schema
+from hermes_uuid7 import uuid7_str
+con = sqlite3.connect(sys.argv[1]); ensure_memory_schema(con)
+record(con, {"memory_id": uuid7_str(), "agent_id": "01a0b100-0000-7000-8000-000000000001", "universe_id": "u", "ts": "2026-09-20T00:00:01",
+             "kind": "memory.added", "about": "gate/r-size", "body": "이벤트비밀 400줄 규칙", "source_event": "review:x"})
+con.commit(); con.close()
+PY
 prop --reason "QA 역할을 다른 소우주에서도 쓰려고" template 깨끗한담당 >"$TMP/tpl.out" 2>&1; assert "깨끗한 에이전트 → 봉투 작성(rc 0)" 0 "$?"
 assert "본문에 에이전트 이름 없음(이름은 소우주 사실)" no "$(has "$(python3 -c "import sys;sys.path.insert(0,'$S');from hermes_envelope import list_envelopes,read_envelope;e=[x for x in list_envelopes('$P') if x['kind']=='template'];print(read_envelope('$P',e[-1]['envelope_id'])['body'] if e else '')")" '깨끗한담당')"
 TENV="$(python3 -c "import sys;sys.path.insert(0,'$S');from hermes_envelope import list_envelopes;e=[x for x in list_envelopes('$P') if x['kind']=='template'];print(e[-1]['envelope_id'] if e else '')")"
@@ -155,6 +165,7 @@ assert "본문에 SOUL 역할" yes "$(has "$TBODY" '회귀 테스트를 맡는�
 assert "본문에 개인 스킬" yes "$(has "$TBODY" '지수 백오프로 3회')"
 assert "본문에 SOUL 머리말(agent_id) 없음" no "$(has "$TBODY" 'agent_id:')"
 assert "본문에 기억(MEMORY) 없음" no "$(has "$TBODY" '비밀메모')"
+assert "본문에 기억 이벤트(memory_events) 없음" no "$(has "$TBODY" '이벤트비밀')"
 assert "봉투 agent_id 는 기계 id" 1 "$(python3 -c "import sys;sys.path.insert(0,'$S');from hermes_envelope import read_envelope;print(1 if read_envelope('$P','$TENV')['agent_id']=='01a0b100-0000-7000-8000-000000000001' else 0)")"
 prop --reason r template 누출담당 >/dev/null 2>&1; assert "SOUL 에 소우주 이름 → 거부(누출 게이트)" 3 "$?"
 prop --reason r template 없는담당 >/dev/null 2>&1; assert "명부에 없는 에이전트 → 거부" 2 "$?"

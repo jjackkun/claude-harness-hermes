@@ -30,7 +30,7 @@ from hermes_sync_fragments import (  # noqa: E402
 from hermes_universe import universe_id  # noqa: E402
 
 NO_STORE = "원격에 기억 저장소(refs/hermes/sync)가 없습니다"
-MSG_KEYLESS = "열쇠가 없습니다 — 조각 {n}건을 열 수 없습니다. 다른 컴퓨터에서 hermes-keys.sh add-computer 로 이 컴퓨터 자물쇠를 등록하십시오(H-10)"
+MSG_KEYLESS = "열쇠가 없습니다 — 조각 {n}건을 열 수 없습니다. 다른 컴퓨터에서 hermes-keys.sh add-computer 로 이 컴퓨터 자물쇠를 등록하십시오(H-10, 절차: docs/hermes-sync-guide.md)"
 NOTHING = "기억 0건 — 저장소·열쇠는 있으나 받은 조각이 없습니다"
 UNSUPPORTED = "이식 불가 — 사람 판단: 서버가 refs/hermes/sync 를 거부합니다(T-15)"
 

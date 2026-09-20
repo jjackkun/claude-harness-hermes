@@ -154,6 +154,20 @@ printf '새 조각' | age -r "$NEW_LOCK" -o "$TMP/frag2.age"
 assert "새 조각은 새 마스터로 열림" "새 조각" "$(age --decrypt -i "$KEYS/master.key" "$TMP/frag2.age")"
 
 echo ""
+echo "== 9. lock — 두 번째 컴퓨터는 자물쇠만 만든다, 마스터 없음 (계획 agent-memory-roundtrip 목표 4) =="
+HOME2="$TMP/fakehome2"; mkdir -p "$HOME2"; KEYS2="$HOME2/.hermes/keys/$UNI"
+HOME="$HOME2" bash "$PROJ/scripts/hermes-keys.sh" lock --project "$PROJ" >"$TMP/lock.out" 2>&1
+assert "lock 종료 코드 0" 0 "$?"
+assert "컴퓨터 열쇠 생성(0600)" 600 "$(mode "$KEYS2/computer.key")"
+assert "마스터 열쇠는 만들지 않음" 0 "$([[ -f "$KEYS2/master.key" ]] && echo 1 || echo 0)"
+LOCK1="$(grep -E '^age1' "$TMP/lock.out")"
+assert "자물쇠(age1…) 출력" 1 "$([[ "$LOCK1" == age1* ]] && echo 1 || echo 0)"
+HOME="$HOME2" bash "$PROJ/scripts/hermes-keys.sh" lock --project "$PROJ" >"$TMP/lock2.out" 2>&1
+assert "재실행은 같은 자물쇠(이미 있음)" "$LOCK1" "$(grep -E '^age1' "$TMP/lock2.out")"
+assert "재실행 안내에 '이미 있음'" 1 "$(grep -c '이미 있음' "$TMP/lock2.out")"
+K add-computer "$LOCK1" >/dev/null 2>&1
+assert "첫 컴퓨터가 그 자물쇠로 마스터를 감쌀 수 있다" 1 "$(ls "$KEYS/wrapped/"master.*.age | grep -c "$(py "from hermes_keys import fingerprint;print(fingerprint('$LOCK1'))")")"
+
 echo "== 8. doctor =="
 K doctor >"$TMP/doctor.out" 2>&1
 assert "doctor 종료 코드 0" 0 "$?"
