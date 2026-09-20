@@ -23,7 +23,11 @@ import sqlite3
 import hermes_crypto as crypto
 from hermes_history_fragments import fragment_dir, superseded_names
 from hermes_keys import key_path
-from hermes_sync_learning import outgoing_learning
+from hermes_sync_learning import open_text, outgoing_learning, seal_text
+try:
+    from hermes_redact import redact as _redact
+except ImportError:            # 마스킹 모듈이 없는 옛 설치본 — 잠그기만 한다
+    _redact = None
 
 _FREE_TEXT = ("intent", "lesson", "decision")
 _SYNC_SQL = """
@@ -56,16 +60,27 @@ def outgoing(con, project: str, universe_id: str, person: str, policy: dict = No
     """아직 올리지 않은 것들을 {원격 경로: 바이트} 로. 조각은 마스터 자물쇠로 잠근다.
     T-17: 기본은 발전 재료(요약·패턴·기억·작업 이력). 대화 원문(history/)은 정책 `"history": true` 일 때만."""
     policy = policy or {}
+    plain = policy.get("mode", "locked") == "plain"          # T-18: 비공개 저장소는 평문, 열쇠 없음
     done = _pushed(con) | _imported(con)
-    lock = crypto.public_key(key_path(universe_id, "master"))
+    lock = None if plain else crypto.public_key(key_path(universe_id, "master"))
     out = {}
-    out.update(_outgoing_keys(universe_id, person, done))
-    if policy.get("history"):
-        out.update(_outgoing_history(project, lock, done))
-    out.update(_outgoing_journal(con, lock, done))
-    out.update(_outgoing_memory(con, lock, done))
-    out.update(outgoing_learning(con, lock, done))
+    if not plain:
+        out.update(_outgoing_keys(universe_id, person, done))
+        if policy.get("history"):                              # 원문은 잠금 모드에서만 (T-17)
+            out.update(_outgoing_history(project, lock, done))
+    out.update(_outgoing_journal(con, lock, done, project))
+    out.update(_outgoing_memory(con, lock, done, project))
+    out.update(outgoing_learning(con, lock, done, project))
     return out
+
+
+def _free_text(lock, text, project: str):
+    """자유 글 한 칸: 업로드 직전 마스킹 게이트(T-20) → 잠금 모드면 암호문, 평문 모드면 그대로."""
+    if not text:
+        return text
+    if _redact is not None:
+        text = _redact(text, project_dir=project)
+    return seal_text(lock, text)
 
 
 def _outgoing_keys(universe_id: str, person: str, done: set) -> dict:
@@ -99,7 +114,7 @@ def _outgoing_history(project: str, lock: str, done: set) -> dict:
     return out
 
 
-def _outgoing_journal(con, lock: str, done: set) -> dict:
+def _outgoing_journal(con, lock, done: set, project: str = None) -> dict:
     out = {}
     try:
         rows = con.execute("SELECT * FROM journal_events ORDER BY ts, event_id").fetchall()
@@ -112,14 +127,14 @@ def _outgoing_journal(con, lock: str, done: set) -> dict:
         remote = f"journal/{day}/{event['event_id']}.json"
         if remote in done:
             continue
-        for field in _FREE_TEXT:          # 자유 글 3칸만 암호문(J-07). 기계 칸은 평문.
+        for field in _FREE_TEXT:          # 자유 글 3칸만 마스킹+잠금(J-07·T-20). 기계 칸은 평문.
             if event.get(field):
-                event[field] = crypto.encrypt_to([lock], event[field].encode(), armor=True).decode()
+                event[field] = _free_text(lock, event[field], project)
         out[remote] = json.dumps(event, ensure_ascii=False, sort_keys=True).encode()
     return out
 
 
-def _outgoing_memory(con, lock: str, done: set) -> dict:
+def _outgoing_memory(con, lock, done: set, project: str = None) -> dict:
     """기억 이벤트를 memory/<agent_id>/<memory_id>.json 으로. body 만 암호문(6절)."""
     out = {}
     try:
@@ -133,7 +148,7 @@ def _outgoing_memory(con, lock: str, done: set) -> dict:
         if remote in done:
             continue
         if event.get("body"):
-            event["body"] = crypto.encrypt_to([lock], event["body"].encode(), armor=True).decode()
+            event["body"] = _free_text(lock, event["body"], project)
         out[remote] = json.dumps(event, ensure_ascii=False, sort_keys=True).encode()
     return out
 
@@ -145,7 +160,7 @@ def import_memory(con, universe_id: str, remote: str, data: bytes, when: str) ->
     except (ValueError, UnicodeDecodeError):
         return False
     if event.get("body"):
-        event["body"] = crypto.decrypt_with(key_path(universe_id, "master"), event["body"].encode()).decode()
+        event["body"] = open_text(universe_id, event["body"])     # 암호문이면 복호, 평문이면 그대로
     try:
         from hermes_memory_events import ensure_memory_schema, record
         ensure_memory_schema(con)
@@ -209,10 +224,9 @@ def import_journal(con, universe_id: str, remote: str, data: bytes, when: str) -
         event = json.loads(data.decode("utf-8"))
     except (ValueError, UnicodeDecodeError):
         return False
-    master = key_path(universe_id, "master")
     for field in _FREE_TEXT:
         if event.get(field):
-            event[field] = crypto.decrypt_with(master, event[field].encode()).decode()
+            event[field] = open_text(universe_id, event[field])   # 암호문이면 복호, 평문이면 그대로
     try:
         from hermes_journal_schema import ensure_schema, validate
         ensure_schema(con)

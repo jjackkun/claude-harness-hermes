@@ -26,6 +26,7 @@ tier: 0  scripts/hermes_journal_schema.py scripts/hermes_journal_views.py script
 # 암호 계층(계획 2026-09-15-sync-transport-encryption Step 2): crypto·mnemonic 은 표준 모듈만,
 # keys 는 crypto 를 쓴다.
 tier: 0  scripts/hermes_crypto.py scripts/hermes_mnemonic.py
+tier: 0  scripts/hermes_known_values.py   # 마스킹 자동 정답지(T-20 ③): 표준 모듈만. redact 가 부른다
 tier: 1  scripts/hermes_keys.py
 # 운반 계층: sync_ref 는 git 만, sync_fragments 는 crypto(0)·history_fragments(0)·keys(1)·
 # journal_schema(0) 을 쓰고, hermes-sync.py 는 그 둘과 universe 를 쓴다.

@@ -261,5 +261,46 @@ HOME="$HF" python3 "$F/scripts/hermes-sync.py" --project "$F" push >/dev/null 2>
 assert "정책 history:true 면 원문이 올라간다(옵션)" 1 "$(FLS | grep -c '^history/sess-F/0000\.enc$')"
 
 echo ""
+echo "== 14. 평문 모드 — 열쇠 없이 요약·기억·이력이 오간다, 업로드 직전 마스킹, 원문은 거부 (T-18·T-20, 계획 transport-plain 목표 3·4) =="
+P="$TMP/P"; HP="$TMP/homeP"; Q="$TMP/Q"; HQ="$TMP/homeQ"; mk_clone "$P" "$HP"; mk_clone "$Q" "$HQ"
+cp "$A/.hermes/universe.id" "$P/.hermes/"; cp "$A/.hermes/universe.id" "$Q/.hermes/"; cp "$P/.hermes/agents.json" "$Q/.hermes/" 2>/dev/null || true
+echo '{"push": true, "mode": "plain"}' > "$P/.hermes/sync.json"; echo '{"push": true, "mode": "plain"}' > "$Q/.hermes/sync.json"
+PAID="$(python3 -c "import json,sys;print(json.load(open(sys.argv[1]))['agents'][0]['agent_id'])" "$P/.hermes/agents.json" 2>/dev/null || PYTHONPATH="$S" python3 -c "from hermes_uuid7 import uuid7_str;print(uuid7_str())")"
+PYTHONPATH="$S" python3 - "$P/.hermes/state.db" "$PAID" "$UNI" <<'PY'
+import sqlite3, sys
+from hermes_memory_events import record, ensure_memory_schema
+from hermes_uuid7 import uuid7_str
+con = sqlite3.connect(sys.argv[1]); ensure_memory_schema(con)
+record(con, {"memory_id": uuid7_str(), "agent_id": sys.argv[2], "universe_id": sys.argv[3], "ts": "2026-09-20T03:00:00",
+             "kind": "memory.added", "about": "gate/r-size", "body": "400줄 넘기 전에 파일을 나눈다 — 담당 jjackkun 연락처 010-1234-5678, 계좌 110-123-456789",
+             "source_event": "review:p"})
+con.commit(); con.close()
+PY
+HOME="$HP" python3 "$P/scripts/hermes-journal.py" --project "$P" emit --json '{"kind":"task.started","task_id":"tp","intent":"고객 사무실(서울 강남구 테헤란로 12) 방문 뒤 정리","actor":"agent:main"}' >/dev/null
+KEYS_BEFORE="$(remote_ls | grep -c '^keys/')"
+OUT_P="$(PATH="$NOAGE" HOME="$HP" python3 "$P/scripts/hermes-sync.py" --project "$P" push 2>&1)"; RC_P=$?
+assert "평문 push: 열쇠도 age 도 없이 rc 0" 0 "$RC_P"
+assert "평문 push: age 없음 안내가 안 나온다" 0 "$(grep -c 'age 가 없어' <<<"$OUT_P")"
+PLS() { git -C "$P" fetch -q origin "+refs/hermes/sync:refs/hermes/sync-remote" 2>/dev/null; git -C "$P" ls-tree -r --name-only refs/hermes/sync-remote 2>/dev/null; }
+MP="$(PLS | grep "^memory/$PAID/" | head -1)"
+assert "원격 기억 본문이 평문" 1 "$(git -C "$P" show "refs/hermes/sync-remote:$MP" | grep -c '파일을 나눈다')"
+assert "업로드 직전 마스킹: 전화" 1 "$(git -C "$P" show "refs/hermes/sync-remote:$MP" | grep -c 'REDACTED:PHONE')"
+assert "업로드 직전 마스킹: 계좌" 1 "$(git -C "$P" show "refs/hermes/sync-remote:$MP" | grep -c 'REDACTED:ACCOUNT')"
+assert "업로드 직전 마스킹: git 작성자 이름(자동 정답지)" 0 "$(git -C "$P" show "refs/hermes/sync-remote:$MP" | grep -c 'jjackkun')"
+JP="$(PLS | grep '^journal/' | grep -v "$(remote_ls | grep '^journal/' | head -1 | xargs basename 2>/dev/null)" | tail -1)"
+assert "이력 자유 글도 평문+주소 마스킹" 1 "$(git -C "$P" show "refs/hermes/sync-remote:$JP" | grep -c 'REDACTED:ADDRESS')"
+assert "평문 모드는 keys/ 를 올리지 않는다" "$KEYS_BEFORE" "$(PLS | grep -c '^keys/')"
+OUT_Q="$(PATH="$NOAGE" HOME="$HQ" python3 "$Q/scripts/hermes-sync.py" --project "$Q" pull 2>&1)"; RC_Q=$?
+assert "평문 pull: 열쇠·age 없이 rc 0" 0 "$RC_Q"
+assert "평문 pull: 열쇠 없음(H-10) 안내가 안 나온다" 0 "$(grep -c 'H-10' <<<"$OUT_Q")"
+assert "Q 에 기억 적재(평문)" 1 "$(rows "$Q" "select count(*) from memory_events where agent_id='$PAID'")"
+assert "Q MEMORY.md 생성" 1 "$([[ -f "$Q/.hermes/agents/$PAID/MEMORY.md" ]] && echo 1 || echo 0)"
+assert "Q 이력 intent 복원(주소는 가려진 채)" 1 "$(rows "$Q" "select count(*) from journal_events where task_id='tp' and intent like '%REDACTED:ADDRESS%'")"
+assert "Q 는 원문(.enc)·keys 를 대기 목록에 두지 않는다(재pull 0건)" 1 "$(PATH="$NOAGE" HOME="$HQ" python3 "$Q/scripts/hermes-sync.py" --project "$Q" pull 2>&1 | grep -c '새 항목 0건')"
+echo '{"push": true, "mode": "plain", "history": true}' > "$P/.hermes/sync.json"
+HOME="$HP" python3 "$P/scripts/hermes-sync.py" --project "$P" push >/dev/null 2>&1
+assert "평문 + history:true → push 거부 exit 2" 2 "$?"
+
+echo ""
 echo "PASS=$PASS FAIL=$FAIL"
 [[ $FAIL -eq 0 ]]

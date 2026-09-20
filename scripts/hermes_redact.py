@@ -27,6 +27,10 @@ try:
     from hermes_secret_values import load_secret_values
 except ImportError:      # 단독 배포 등으로 모듈이 없으면 형태 규칙만 쓴다.
     load_secret_values = None
+try:
+    from hermes_known_values import load_known_names
+except ImportError:      # 옛 설치본
+    load_known_names = None
 
 # 라벨=값에서 가릴 값: ASCII 자격증명처럼 보이는 토큰만 (한글 단어 제외).
 # 첫 글자에 특수문자를 허용한다 — `!Passw0rd` 처럼 특수문자로 시작하는 비밀번호를
@@ -49,6 +53,10 @@ _RULES = [
     (re.compile(r"\b\d{4}[ -]\d{4}[ -]\d{4}[ -]\d{4}\b"), "[REDACTED:CARD]"),
     # 한국 휴대전화
     (re.compile(r"\b01[016789][- ]?\d{3,4}[- ]?\d{4}\b"), "[REDACTED:PHONE]"),
+    # 한국 주소(T-20 ②): 시·도 + … + 로/길 + 번지. 날짜·버전은 안 걸린다
+    (re.compile(r"(?:서울|부산|대구|인천|광주|대전|울산|세종|경기|강원|충북|충남|전북|전남|경북|경남|제주)[^\n,]{0,24}?[가-힣]+(?:로|길)\s?\d+(?:-\d+)?(?:번지)?"), "[REDACTED:ADDRESS]"),
+    # 계좌번호 꼴: 3~6-2~4-6~8 · 6-2-6. 전화(3-4-4)·주민번호(6-7)·날짜(4-2-2)와 겹치지 않는다
+    (re.compile(r"\b(?:\d{3,6}-\d{2,4}-\d{6,8}|\d{6}-\d{2}-\d{6})\b"), "[REDACTED:ACCOUNT]"),
     # 공급자 접두 토큰
     (re.compile(r"\bghp_[A-Za-z0-9]{36}\b"), "[REDACTED:TOKEN]"),       # GitHub PAT
     (re.compile(r"\bgithub_pat_[A-Za-z0-9_]{22,}"), "[REDACTED:TOKEN]"),
@@ -100,6 +108,21 @@ def _mask_env_values(text: str, project_dir) -> str:
     return out
 
 
+def _mask_known_names(text: str, project_dir) -> str:
+    """기계가 이미 아는 실제 사람 이름(git 작성자·명부·OS 사용자명)을 치환한다 — 사용자 목록 없음(T-20 ③)."""
+    if load_known_names is None:
+        return text
+    try:
+        names = load_known_names(project_dir or os.getcwd())
+    except Exception:    # 정답지 조회 실패가 마스킹 전체를 죽이면 안 된다.
+        return text
+    out = text
+    for name in names:
+        if name in out:
+            out = out.replace(name, "[REDACTED:NAME]")
+    return out
+
+
 def project_dir_for_db(db_path):
     """`<project>/.hermes/state.db` 경로에서 프로젝트 루트를 되짚는다.
 
@@ -123,6 +146,7 @@ def redact(text, project_dir=None):
     # 값 기반이 먼저다. 형태 규칙이 값의 일부만 [REDACTED:*] 로 바꿔 놓으면
     # 남은 조각이 정답지와 더 이상 일치하지 않아 원문이 살아남는다.
     out = _mask_env_values(text, project_dir)
+    out = _mask_known_names(out, project_dir)
     for pattern, repl in _RULES:
         out = pattern.sub(repl, out)
     out = _KV_RE.sub(_mask_kv, out)

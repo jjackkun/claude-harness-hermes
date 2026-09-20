@@ -91,9 +91,12 @@ def _classify(project: str, uid: str, policy: dict) -> str:
         return UNSUPPORTED if exc.unsupported else f"[hermes-sync] fetch 실패: {exc}"
     if not has_store:
         return NO_STORE
-    frags = [p for p in ref.list_remote(project) if p.startswith("history/") and p.endswith(".enc")]
-    if not _has_master(uid):
-        return MSG_KEYLESS.format(n=len(frags))
+    if _mode(policy) == "plain":
+        frags = [p for p in ref.list_remote(project) if not p.startswith(("history/", "keys/"))]
+    else:
+        frags = [p for p in ref.list_remote(project) if p.startswith("history/") and p.endswith(".enc")]
+        if not _has_master(uid):
+            return MSG_KEYLESS.format(n=len(frags))
     con = _connect(project)
     pending = incoming_paths(con, frags)
     imported = con.execute("SELECT COUNT(*) FROM sync_cursor").fetchone()[0]
@@ -120,10 +123,15 @@ def _precheck(args, verb: str):
     if not policy.get("push") and not args.force_policy:
         print(f"[hermes-sync] 이식 꺼짐(로컬 전용) — .hermes/sync.json 에 {{\"push\": true}} 로 켭니다")
         return None
-    if not crypto.age_available():
+    if _mode(policy) == "locked" and not crypto.age_available():   # 평문 모드는 age 가 필요 없다(T-18)
         print(f"[hermes-sync] age 가 없어 {verb} 을 건너뜁니다")
         return None
     return policy
+
+
+def _mode(policy: dict) -> str:
+    """'plain' 또는 'locked'. 칸이 없으면 locked(구버전 정책 파일 호환)."""
+    return "plain" if str(policy.get("mode", "locked")).lower() == "plain" else "locked"
 
 
 def cmd_push(args) -> int:
@@ -131,7 +139,10 @@ def cmd_push(args) -> int:
     policy = _precheck(args, "push")
     if policy is None:
         return 0
-    if not _has_master(uid):
+    if _mode(policy) == "plain" and policy.get("history"):
+        print("[hermes-sync] 거부: 대화 원문(history)은 잠금 모드에서만 올립니다 — sync.json 의 \"history\" 를 빼거나 \"mode\": \"locked\" 로", file=sys.stderr)
+        return 2
+    if _mode(policy) == "locked" and not _has_master(uid):
         print("[hermes-sync] 마스터 열쇠가 없어 push 를 보류합니다 (hermes-keys.sh init 또는 pull 로 합류)")
         return 0
     con = _connect(project)
@@ -152,11 +163,13 @@ def cmd_push(args) -> int:
     return 0
 
 
-def _import_all(con, project: str, uid: str, paths) -> int:
+def _import_all(con, project: str, uid: str, paths, plain: bool = False) -> int:
     got = 0
     touched = set()
     for path in paths:
         data = ref.read_blob(project, path)
+        if plain and b"-----BEGIN AGE" in data:
+            continue           # 잠금 모드 컴퓨터가 올린 암호문 — 열쇠 없는 평문 컴퓨터의 몫이 아니다(T-18). 표시도 남기지 않는다
         if path.startswith("history/"):
             got += import_fragment(con, project, uid, path, data, _now())
         elif path.startswith("journal/"):
@@ -203,13 +216,17 @@ def cmd_pull(args) -> int:
         print(UNSUPPORTED if exc.unsupported else f"[hermes-sync] fetch 실패: {exc}")
         return 0
     remote_paths = ref.list_remote(project)
-    _try_join(project, uid, remote_paths, _person(project))
-    if not _has_master(uid):
-        n = sum(1 for p in remote_paths if p.endswith(".enc"))
-        print("[hermes] " + MSG_KEYLESS.format(n=n))
-        return 0
+    if _mode(policy) == "plain":
+        # 평문 모드: 열쇠 없이 평문 조각만. 원문(.enc)·열쇠(keys/)는 이 컴퓨터 몫이 아니다 — 대기 목록에도 넣지 않는다.
+        remote_paths = [p for p in remote_paths if not p.startswith(("history/", "keys/"))]
+    else:
+        _try_join(project, uid, remote_paths, _person(project))
+        if not _has_master(uid):
+            n = sum(1 for p in remote_paths if p.endswith(".enc"))
+            print("[hermes] " + MSG_KEYLESS.format(n=n))
+            return 0
     con = _connect(project)
-    got = _import_all(con, project, uid, incoming_paths(con, remote_paths))
+    got = _import_all(con, project, uid, incoming_paths(con, remote_paths), plain=(_mode(policy) == "plain"))
     con.close()
     print(f"[hermes-sync] 새 항목 {got}건 받음")
     return 0
