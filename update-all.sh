@@ -92,7 +92,7 @@ run_target() {
   local registry lock_rel script
   case "$target" in
     claude)
-      registry="$DEV_SETTING_DIR/.installed-projects"
+      registry="${HARNESS_REGISTRY_FILE:-$DEV_SETTING_DIR/.installed-projects}"   # 테스트 픽스처용 override
       lock_rel=".claude/presets.lock"
       script="$DEV_SETTING_DIR/project-claude.sh"
       ;;
@@ -161,6 +161,12 @@ run_target() {
     fi
     preset_args=("${live_presets[@]}")
 
+    # 재설치 전 진단 한 줄(계획 2026-09-20-install-doctor-repair 목표 4) — lock 어긋남은 재설치로 사라질 항목이라 미리 보인다. 진단 실패는 재설치를 막지 않는다.
+    if [[ "$target" == claude && -f "$DEV_SETTING_DIR/scripts/harness-doctor.py" ]]; then
+      python3 "$DEV_SETTING_DIR/scripts/harness-doctor.py" "$path" --brief 2>/dev/null | sed 's/^/  /' || true
+      local drift; drift="$(python3 "$DEV_SETTING_DIR/scripts/harness-doctor.py" "$path" --json 2>/dev/null | python3 -c 'import json,sys; d=json.load(sys.stdin); print(" ".join(d.get("lock_drift") or []))' 2>/dev/null || true)"
+      [[ -n "$drift" ]] && echo -e "  ${YELLOW}⚠ 재설치로 사라질 항목(lock 에 프리셋 없음): $drift${RESET}"
+    fi
     if bash "$script" "$path" "${preset_args[@]}"; then
       echo -e "  ${GREEN}✔ 완료 — $(basename "$path")${RESET}"
       OK=$((OK + 1))

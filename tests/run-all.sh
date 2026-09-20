@@ -128,6 +128,7 @@ REGISTERED_TESTS=(
   hermes-summon-guard-test.sh
   hermes-soul-inject-test.sh
   hermes-role-templates-test.sh
+  harness-doctor-test.sh
   hermes-memory-events-test.sh
   hermes-handoff-test.sh
   hermes-teaching-test.sh

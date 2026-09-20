@@ -1,5 +1,7 @@
 # 설치 doctor / repair — 소우주 설치 상태 진단·복구 명령
 
+> **완료 → `docs/exec-plans/completed/2026-09-20-install-doctor-repair.md`** (2026-09-20). 남은 후속은 backlog `coexist-old-factory-detection`.
+
 > 출처: `docs/audits/2026-09-19-ecc-gap-list.md` (ECC v2.2.1 대비 결핍 목록, 사용자 "다 필요한 것들" 확정 2026-09-19) — #1 (가치 상)
 
 ## 문제
