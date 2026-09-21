@@ -115,29 +115,30 @@ def _user_assets(project, items):
 
 
 def _manifest_untracked(project):
-    """설치 목록이 git 에 **안 들어가는가**. I-02 는 "목록은 커밋된다" 를 전제하는데, 프로젝트 자체 `.gitignore` 가
-    `.claude/*` 를 통째로 무시하면 그 전제가 조용히 깨진다(2026-09-21 ai-create·kis-trading 실측).
+    """설치 목록이 git 에 **안 들어가는가**. I-02 는 "목록은 커밋된다" 를 전제한다 — 다른 컴퓨터의 clone 도
+    어느 파일이 공장 것인지 알아야 변조 감지·공존 설치 base 가 동작한다.
 
-    판정은 git 에게 묻는다 — 규칙 문자열을 우리가 해석하면 순서·부정 규칙에서 틀린다.
-    git 저장소가 아니면 판정 대상이 아니다(None 이 아니라 False — 보고에 줄을 내지 않는다).
+    돌려주는 값은 사유다: `"ignored"`(무시 규칙에 덮임 — 커밋할 수조차 없다) · `"uncommitted"`(규칙엔 안 걸리는데
+    아직 add 되지 않음) · `""`(문제 없음). 판정은 git 에게 묻는다 — 규칙 문자열을 우리가 해석하면 순서·부정 규칙에서 틀린다.
+    git 저장소가 아니면 판정 대상이 아니다.
     """
     rel = os.path.join(".claude", ".factory-manifest.json")
     if not os.path.isfile(os.path.join(project, rel)):
-        return False
+        return ""
     try:
         inside = subprocess.run(["git", "-C", project, "rev-parse", "--is-inside-work-tree"],
                                 capture_output=True, text=True, timeout=10)
         if inside.returncode != 0 or inside.stdout.strip() != "true":
-            return False
+            return ""
         tracked = subprocess.run(["git", "-C", project, "ls-files", "--error-unmatch", rel],
                                  capture_output=True, text=True, timeout=10)
         if tracked.returncode == 0:
-            return False
+            return ""
         ignored = subprocess.run(["git", "-C", project, "check-ignore", "-q", rel],
                                  capture_output=True, text=True, timeout=10)
-        return ignored.returncode == 0
+        return "ignored" if ignored.returncode == 0 else "uncommitted"
     except (OSError, subprocess.SubprocessError):
-        return False
+        return ""
 
 
 def diagnose(project, factory=_FACTORY):
@@ -186,9 +187,12 @@ def _render(project, rep, brief=False):
         if rep[key]:
             lines.append(f"  {title}:")
             lines.extend(f"    - {x}" for x in rep[key])
-    if rep.get("manifest_untracked"):
-        lines.append("  설치 목록이 git 에 추적되지 않음 — `.claude/*` 무시 규칙에 덮였다."
-                     " 다른 컴퓨터의 clone 은 진단 불가(매니페스트 없음)·공존 설치 base 없음이 된다")
+    if rep.get("manifest_untracked") == "ignored":
+        lines.append("  설치 목록이 git 에 추적되지 않음 — 무시 규칙에 덮였다(커밋할 수조차 없다)."
+                     " 그 규칙 뒤에 !.claude/.factory-manifest.json 한 줄을 두십시오")
+    elif rep.get("manifest_untracked") == "uncommitted":
+        lines.append("  설치 목록이 git 에 추적되지 않음 — 무시되지는 않으나 아직 커밋되지 않았다."
+                     " 이대로 clone 하면 진단 불가(매니페스트 없음)·공존 설치 base 없음이 된다")
     if rep["stale"]:
         lines.append(f"  갱신 대기 {len(rep['stale'])}건 — 공장 HEAD {str(rep['head'])[:8]} 와 다른 factory_commit (update-all 로 맞춘다)")
     return "\n".join(lines)

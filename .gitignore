@@ -41,6 +41,7 @@ docs/superpowers/plans/
 .claude/.last-install.txt
 .claude/presets.lock
 .harness/
+!.claude/.factory-manifest.json
 !.claude/memory/
 !.claude/memory/**
 .hermes/*

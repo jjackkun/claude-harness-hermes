@@ -4,73 +4,73 @@
     {
       "name": "architect",
       "kind": "agents",
-      "factory_commit": "88f93293c14bee5def8869897b99c0c2e990c62e",
+      "factory_commit": "a4878a02d584faba0cf47ce198b6372320365f58",
       "sha256": "55f91b85638420efccd4bdf1d8614fa2049708ebe87b0dabb832f43e345a59a9"
     },
     {
       "name": "architect-lite",
       "kind": "agents",
-      "factory_commit": "88f93293c14bee5def8869897b99c0c2e990c62e",
+      "factory_commit": "a4878a02d584faba0cf47ce198b6372320365f58",
       "sha256": "98e326da522f5aad062a7c704d04b965e2fe257c899cfb413d9589bda933791d"
     },
     {
       "name": "code-reviewer",
       "kind": "agents",
-      "factory_commit": "88f93293c14bee5def8869897b99c0c2e990c62e",
+      "factory_commit": "a4878a02d584faba0cf47ce198b6372320365f58",
       "sha256": "23fa466f284818e81bb1124f9d0667d9f53e48671cbbc186edd7eef6678ff5e0"
     },
     {
       "name": "doc-updater",
       "kind": "agents",
-      "factory_commit": "88f93293c14bee5def8869897b99c0c2e990c62e",
+      "factory_commit": "a4878a02d584faba0cf47ce198b6372320365f58",
       "sha256": "36fd808d106b092911d5566a6f74e310e9d45d2ad2597db45e6a883374d2c840"
     },
     {
       "name": "docs-lookup",
       "kind": "agents",
-      "factory_commit": "88f93293c14bee5def8869897b99c0c2e990c62e",
+      "factory_commit": "a4878a02d584faba0cf47ce198b6372320365f58",
       "sha256": "7c8d582c294638c1c7cd01474a8ff034ebf7f0759ddd4f1d00e44fa27911f3f1"
     },
     {
       "name": "performance-optimizer",
       "kind": "agents",
-      "factory_commit": "88f93293c14bee5def8869897b99c0c2e990c62e",
+      "factory_commit": "a4878a02d584faba0cf47ce198b6372320365f58",
       "sha256": "9f77430dba0209e158f5bfe8808859281d03a576544e33efd56e42748d5dcf20"
     },
     {
       "name": "planner",
       "kind": "agents",
-      "factory_commit": "88f93293c14bee5def8869897b99c0c2e990c62e",
+      "factory_commit": "a4878a02d584faba0cf47ce198b6372320365f58",
       "sha256": "365beee4857b3ca686513fb7961a0a48d017f6190658fa84cf67fe7eb2e3f8c4"
     },
     {
       "name": "planner-lite",
       "kind": "agents",
-      "factory_commit": "88f93293c14bee5def8869897b99c0c2e990c62e",
+      "factory_commit": "a4878a02d584faba0cf47ce198b6372320365f58",
       "sha256": "c7d7bb383c9874c70f13d08d273bb6bf02a3b9c8fbb1d743829166d188272895"
     },
     {
       "name": "refactor-cleaner",
       "kind": "agents",
-      "factory_commit": "88f93293c14bee5def8869897b99c0c2e990c62e",
+      "factory_commit": "a4878a02d584faba0cf47ce198b6372320365f58",
       "sha256": "5a27d09b84185437dcf6aed7cd134a836851480aa83b5a400226bf692c8329be"
     },
     {
       "name": "silent-failure-hunter",
       "kind": "agents",
-      "factory_commit": "88f93293c14bee5def8869897b99c0c2e990c62e",
+      "factory_commit": "a4878a02d584faba0cf47ce198b6372320365f58",
       "sha256": "55904395e0b7bd312c08480cbe4d832c702f8aa1856b38d3d399f30a88b7994c"
     },
     {
       "name": "tdd-guide",
       "kind": "agents",
-      "factory_commit": "88f93293c14bee5def8869897b99c0c2e990c62e",
+      "factory_commit": "a4878a02d584faba0cf47ce198b6372320365f58",
       "sha256": "f26dc837a94ca8e3b68f365234164366adb4d5e9d8303bdb71693424b85b8a9b"
     },
     {
       "name": ".git/hooks/check-component-structure.mjs",
       "kind": "githook",
-      "factory_commit": "88f93293c14bee5def8869897b99c0c2e990c62e",
+      "factory_commit": "a4878a02d584faba0cf47ce198b6372320365f58",
       "sha256": "bb31f4bc176e5bee81fc65587fd5d6660d85e148bc331fb7511aa4f6e3303717",
       "src": "assets/hooks/check-component-structure.mjs",
       "mode": "755"
@@ -78,7 +78,7 @@
     {
       "name": ".git/hooks/check-secrets.py",
       "kind": "githook",
-      "factory_commit": "88f93293c14bee5def8869897b99c0c2e990c62e",
+      "factory_commit": "a4878a02d584faba0cf47ce198b6372320365f58",
       "sha256": "598db12240aa154f0ec67c2593ee4543ad5062c1cb3a23cceaba83cf001510a3",
       "src": "assets/hooks/check-secrets.py",
       "mode": "755"
@@ -86,7 +86,7 @@
     {
       "name": ".git/hooks/complexity.py",
       "kind": "githook",
-      "factory_commit": "88f93293c14bee5def8869897b99c0c2e990c62e",
+      "factory_commit": "a4878a02d584faba0cf47ce198b6372320365f58",
       "sha256": "298b1dc55ee839daabc287f277c97c3015d35aaec0cad1903815e7d06d36584f",
       "src": "assets/hooks/complexity.py",
       "mode": "755"
@@ -94,7 +94,7 @@
     {
       "name": ".git/hooks/coverage_probe.py",
       "kind": "githook",
-      "factory_commit": "88f93293c14bee5def8869897b99c0c2e990c62e",
+      "factory_commit": "a4878a02d584faba0cf47ce198b6372320365f58",
       "sha256": "2af1011bfc72696824064c1dd1c42047387d9229bec2fb8474bca344fafa59ba",
       "src": "assets/hooks/coverage_probe.py",
       "mode": "755"
@@ -102,7 +102,7 @@
     {
       "name": ".git/hooks/depcheck.py",
       "kind": "githook",
-      "factory_commit": "88f93293c14bee5def8869897b99c0c2e990c62e",
+      "factory_commit": "a4878a02d584faba0cf47ce198b6372320365f58",
       "sha256": "efdfbd8b93ab7d3c78d21c30afcaff3a8698084f37438a1bc5ad4eb73ab48e1c",
       "src": "assets/hooks/depcheck.py",
       "mode": "755"
@@ -110,7 +110,7 @@
     {
       "name": ".git/hooks/design_cover.py",
       "kind": "githook",
-      "factory_commit": "88f93293c14bee5def8869897b99c0c2e990c62e",
+      "factory_commit": "a4878a02d584faba0cf47ce198b6372320365f58",
       "sha256": "adebe8436a2cb2345d36f40170d16ccc9cbff0fa397ef5b9df101ba4554b1077",
       "src": "assets/hooks/design_cover.py",
       "mode": "644"
@@ -118,7 +118,7 @@
     {
       "name": ".git/hooks/doc_counts.py",
       "kind": "githook",
-      "factory_commit": "88f93293c14bee5def8869897b99c0c2e990c62e",
+      "factory_commit": "a4878a02d584faba0cf47ce198b6372320365f58",
       "sha256": "88a50a2c58622cda3f6f75b7840ef53d5bd11f23cc3a2ab33fd2acb973c9e913",
       "src": "assets/hooks/doc_counts.py",
       "mode": "755"
@@ -126,7 +126,7 @@
     {
       "name": ".git/hooks/gate_emit.sh",
       "kind": "githook",
-      "factory_commit": "88f93293c14bee5def8869897b99c0c2e990c62e",
+      "factory_commit": "a4878a02d584faba0cf47ce198b6372320365f58",
       "sha256": "700ecc0b49e309b0933a9636d596bad8ba2ab3902d19f8266e3f94ca0547b13b",
       "src": "assets/hooks/gate_emit.sh",
       "mode": "755"
@@ -134,7 +134,7 @@
     {
       "name": ".git/hooks/gate_event.py",
       "kind": "githook",
-      "factory_commit": "88f93293c14bee5def8869897b99c0c2e990c62e",
+      "factory_commit": "a4878a02d584faba0cf47ce198b6372320365f58",
       "sha256": "011a69a4ed9176be1edc3ea7141bf41322ffe341d139f1204fca98d1dd25f4a0",
       "src": "assets/hooks/gate_event.py",
       "mode": "755"
@@ -142,7 +142,7 @@
     {
       "name": ".git/hooks/hermes_secret_values.py",
       "kind": "githook",
-      "factory_commit": "88f93293c14bee5def8869897b99c0c2e990c62e",
+      "factory_commit": "a4878a02d584faba0cf47ce198b6372320365f58",
       "sha256": "7f20e2918c94e67ee40254c16374477750fc72b2c00f741d289c6f78c652f006",
       "src": "scripts/hermes_secret_values.py",
       "mode": "755"
@@ -150,7 +150,7 @@
     {
       "name": ".git/hooks/plan_state.py",
       "kind": "githook",
-      "factory_commit": "88f93293c14bee5def8869897b99c0c2e990c62e",
+      "factory_commit": "a4878a02d584faba0cf47ce198b6372320365f58",
       "sha256": "82ab17878fcbd9e8b3780859a72491b6cb9bac76655f01ce968bbdb1795cf602",
       "src": "assets/hooks/plan_state.py",
       "mode": "755"
@@ -158,7 +158,7 @@
     {
       "name": ".git/hooks/pre-commit",
       "kind": "githook",
-      "factory_commit": "88f93293c14bee5def8869897b99c0c2e990c62e",
+      "factory_commit": "a4878a02d584faba0cf47ce198b6372320365f58",
       "sha256": "309e32ea144b87390d927be2a14acdd92eaa992404d98fefee959c730de15c04",
       "src": "assets/hooks/pre-commit.sh",
       "mode": "755"
@@ -166,7 +166,7 @@
     {
       "name": "scripts/hooks/claude-posttooluse-dead-file-warn.sh",
       "kind": "hook",
-      "factory_commit": "88f93293c14bee5def8869897b99c0c2e990c62e",
+      "factory_commit": "a4878a02d584faba0cf47ce198b6372320365f58",
       "sha256": "4b64c94cc4e90a7bb07f6155fba619b65b5f73b64001cf995761ac7621b78be0",
       "src": "assets/hooks/claude-posttooluse-dead-file-warn.sh",
       "mode": "755"
@@ -174,7 +174,7 @@
     {
       "name": "scripts/hooks/claude-posttooluse-factory-tamper-warn.sh",
       "kind": "hook",
-      "factory_commit": "88f93293c14bee5def8869897b99c0c2e990c62e",
+      "factory_commit": "a4878a02d584faba0cf47ce198b6372320365f58",
       "sha256": "d8675854874ca4e245c26352efddfec73e353f4e7357d638c541dd7cfaa837ed",
       "src": "assets/hooks/claude-posttooluse-factory-tamper-warn.sh",
       "mode": "755"
@@ -182,7 +182,7 @@
     {
       "name": "scripts/hooks/claude-posttooluse-hermes-assist.sh",
       "kind": "hook",
-      "factory_commit": "88f93293c14bee5def8869897b99c0c2e990c62e",
+      "factory_commit": "a4878a02d584faba0cf47ce198b6372320365f58",
       "sha256": "9fbe23a9ba55afeb1d1afd288f4d9b76872d4edfbaa62f0bda3e7b3574a3ddb6",
       "src": "assets/hooks/claude-posttooluse-hermes-assist.sh",
       "mode": "755"
@@ -190,7 +190,7 @@
     {
       "name": "scripts/hooks/claude-posttooluse-output-budget.sh",
       "kind": "hook",
-      "factory_commit": "88f93293c14bee5def8869897b99c0c2e990c62e",
+      "factory_commit": "a4878a02d584faba0cf47ce198b6372320365f58",
       "sha256": "dd4f740335b318c60b490864b014701146c087547930f86ffea7088c3da03bdc",
       "src": "assets/hooks/claude-posttooluse-output-budget.sh",
       "mode": "755"
@@ -198,7 +198,7 @@
     {
       "name": "scripts/hooks/claude-posttooluse-review-record.sh",
       "kind": "hook",
-      "factory_commit": "88f93293c14bee5def8869897b99c0c2e990c62e",
+      "factory_commit": "a4878a02d584faba0cf47ce198b6372320365f58",
       "sha256": "7383a95376c1affd588e808b4524d494f23e08cf7c5f89c50d728ef6b86c462d",
       "src": "assets/hooks/claude-posttooluse-review-record.sh",
       "mode": "755"
@@ -206,7 +206,7 @@
     {
       "name": "scripts/hooks/claude-posttooluse-review-reminder.sh",
       "kind": "hook",
-      "factory_commit": "88f93293c14bee5def8869897b99c0c2e990c62e",
+      "factory_commit": "a4878a02d584faba0cf47ce198b6372320365f58",
       "sha256": "573d012e81fb8138e938258e8d3ce6545998c924185fd39818fca3e817662751",
       "src": "assets/hooks/claude-posttooluse-review-reminder.sh",
       "mode": "755"
@@ -214,7 +214,7 @@
     {
       "name": "scripts/hooks/claude-posttooluse-size-warn.sh",
       "kind": "hook",
-      "factory_commit": "88f93293c14bee5def8869897b99c0c2e990c62e",
+      "factory_commit": "a4878a02d584faba0cf47ce198b6372320365f58",
       "sha256": "f26b5f2290de95c0e04e3454860df616e60140f64f4b590020b8f71436c84ed0",
       "src": "assets/hooks/claude-posttooluse-size-warn.sh",
       "mode": "755"
@@ -222,7 +222,7 @@
     {
       "name": "scripts/hooks/claude-precompact-summary.sh",
       "kind": "hook",
-      "factory_commit": "88f93293c14bee5def8869897b99c0c2e990c62e",
+      "factory_commit": "a4878a02d584faba0cf47ce198b6372320365f58",
       "sha256": "0c28c1ce892e9b35f9ffb228216e89cbc13cdf361297d616ca7ac5fa2460be0c",
       "src": "assets/hooks/claude-precompact-summary.sh",
       "mode": "755"
@@ -230,7 +230,7 @@
     {
       "name": "scripts/hooks/claude-pretooluse-agent-guard.sh",
       "kind": "hook",
-      "factory_commit": "88f93293c14bee5def8869897b99c0c2e990c62e",
+      "factory_commit": "a4878a02d584faba0cf47ce198b6372320365f58",
       "sha256": "805303652e5b00a138c7184c45ebc9f861807824ce80dad272a2fa5bdb0b7a32",
       "src": "assets/hooks/claude-pretooluse-agent-guard.sh",
       "mode": "755"
@@ -238,7 +238,7 @@
     {
       "name": "scripts/hooks/claude-pretooluse-bash-guard.sh",
       "kind": "hook",
-      "factory_commit": "88f93293c14bee5def8869897b99c0c2e990c62e",
+      "factory_commit": "a4878a02d584faba0cf47ce198b6372320365f58",
       "sha256": "e5641128f4e9dfaa6a67169e368ddbb0bac7b8c0056e9fbe31408aee35c23541",
       "src": "assets/hooks/claude-pretooluse-bash-guard.sh",
       "mode": "755"
@@ -246,7 +246,7 @@
     {
       "name": "scripts/hooks/claude-pretooluse-identity-guard.sh",
       "kind": "hook",
-      "factory_commit": "88f93293c14bee5def8869897b99c0c2e990c62e",
+      "factory_commit": "a4878a02d584faba0cf47ce198b6372320365f58",
       "sha256": "5cf1456bb2d46c232f5a8e26e9fd079c167003d05613b7eeffb88c364bd8fa74",
       "src": "assets/hooks/claude-pretooluse-identity-guard.sh",
       "mode": "755"
@@ -254,7 +254,7 @@
     {
       "name": "scripts/hooks/claude-pretooluse-iface-guard.sh",
       "kind": "hook",
-      "factory_commit": "88f93293c14bee5def8869897b99c0c2e990c62e",
+      "factory_commit": "a4878a02d584faba0cf47ce198b6372320365f58",
       "sha256": "228eb669b1f2b5d49560ab4a3cc60a8f6a26a8df25e69175df00a5cc82364883",
       "src": "assets/hooks/claude-pretooluse-iface-guard.sh",
       "mode": "755"
@@ -262,7 +262,7 @@
     {
       "name": "scripts/hooks/claude-pretooluse-key-guard.sh",
       "kind": "hook",
-      "factory_commit": "88f93293c14bee5def8869897b99c0c2e990c62e",
+      "factory_commit": "a4878a02d584faba0cf47ce198b6372320365f58",
       "sha256": "ecd5f83e638f41ed77bb65421a8a158bc0d698f26d0abea3e91fa09a554f169f",
       "src": "assets/hooks/claude-pretooluse-key-guard.sh",
       "mode": "755"
@@ -270,7 +270,7 @@
     {
       "name": "scripts/hooks/claude-pretooluse-plan-declare.sh",
       "kind": "hook",
-      "factory_commit": "88f93293c14bee5def8869897b99c0c2e990c62e",
+      "factory_commit": "a4878a02d584faba0cf47ce198b6372320365f58",
       "sha256": "6f6c4e6cbcea78edd84396718ed23d9125eb5cbe3f457c0f9ba69ce496eb6c0f",
       "src": "assets/hooks/claude-pretooluse-plan-declare.sh",
       "mode": "755"
@@ -278,7 +278,7 @@
     {
       "name": "scripts/hooks/claude-pretooluse-summon-guard.sh",
       "kind": "hook",
-      "factory_commit": "88f93293c14bee5def8869897b99c0c2e990c62e",
+      "factory_commit": "a4878a02d584faba0cf47ce198b6372320365f58",
       "sha256": "e3a3014b079a104734f99f4d11fbc14564cf2c414a0caa7baa5eb7848fbe3df8",
       "src": "assets/hooks/claude-pretooluse-summon-guard.sh",
       "mode": "755"
@@ -286,7 +286,7 @@
     {
       "name": "scripts/hooks/claude-pretooluse-summons-write-guard.sh",
       "kind": "hook",
-      "factory_commit": "88f93293c14bee5def8869897b99c0c2e990c62e",
+      "factory_commit": "a4878a02d584faba0cf47ce198b6372320365f58",
       "sha256": "ec8e18f5b6d4e85b816398ec2237bf3ab509de45082bd151205a402cd33f1439",
       "src": "assets/hooks/claude-pretooluse-summons-write-guard.sh",
       "mode": "755"
@@ -294,7 +294,7 @@
     {
       "name": "scripts/hooks/claude-sessionstart-agent-soul.sh",
       "kind": "hook",
-      "factory_commit": "88f93293c14bee5def8869897b99c0c2e990c62e",
+      "factory_commit": "a4878a02d584faba0cf47ce198b6372320365f58",
       "sha256": "2d6ea42ef48ccc73bcde7aa82e0bb980758988362fa307b3cb121e88559bd559",
       "src": "assets/hooks/claude-sessionstart-agent-soul.sh",
       "mode": "755"
@@ -302,7 +302,7 @@
     {
       "name": "scripts/hooks/claude-sessionstart-dashboard.sh",
       "kind": "hook",
-      "factory_commit": "88f93293c14bee5def8869897b99c0c2e990c62e",
+      "factory_commit": "a4878a02d584faba0cf47ce198b6372320365f58",
       "sha256": "ae25b2aab0510ee762a20389ba1445b5f6779bf66391db6e8bfe230856a2532c",
       "src": "assets/hooks/claude-sessionstart-dashboard.sh",
       "mode": "755"
@@ -310,7 +310,7 @@
     {
       "name": "scripts/hooks/claude-sessionstart-doc-gardening.sh",
       "kind": "hook",
-      "factory_commit": "88f93293c14bee5def8869897b99c0c2e990c62e",
+      "factory_commit": "a4878a02d584faba0cf47ce198b6372320365f58",
       "sha256": "9c97753e88cad28178968e2ffe778dbca3bd9403450297d629ad7b1767cf4b02",
       "src": "assets/hooks/claude-sessionstart-doc-gardening.sh",
       "mode": "755"
@@ -318,7 +318,7 @@
     {
       "name": "scripts/hooks/claude-sessionstart-dream.sh",
       "kind": "hook",
-      "factory_commit": "88f93293c14bee5def8869897b99c0c2e990c62e",
+      "factory_commit": "a4878a02d584faba0cf47ce198b6372320365f58",
       "sha256": "f2bd74ca18f9a0e94ff21dd7c0cbc8611e3780f47cfd0786d418e1923db630a7",
       "src": "assets/hooks/claude-sessionstart-dream.sh",
       "mode": "755"
@@ -326,7 +326,7 @@
     {
       "name": "scripts/hooks/claude-sessionstart-factory-link-check.sh",
       "kind": "hook",
-      "factory_commit": "88f93293c14bee5def8869897b99c0c2e990c62e",
+      "factory_commit": "a4878a02d584faba0cf47ce198b6372320365f58",
       "sha256": "71c37f282752137cefd203b6182fb4d8d2852e5c273c7d9e9337cc6a5f23b124",
       "src": "assets/hooks/claude-sessionstart-factory-link-check.sh",
       "mode": "755"
@@ -334,7 +334,7 @@
     {
       "name": "scripts/hooks/claude-sessionstart-handoff-expiry.sh",
       "kind": "hook",
-      "factory_commit": "88f93293c14bee5def8869897b99c0c2e990c62e",
+      "factory_commit": "a4878a02d584faba0cf47ce198b6372320365f58",
       "sha256": "c45248dba82d74a299d040a9cc131d585685053f9862be60bdf07a7c5527afd3",
       "src": "assets/hooks/claude-sessionstart-handoff-expiry.sh",
       "mode": "755"
@@ -342,7 +342,7 @@
     {
       "name": "scripts/hooks/claude-sessionstart-history-reindex.sh",
       "kind": "hook",
-      "factory_commit": "88f93293c14bee5def8869897b99c0c2e990c62e",
+      "factory_commit": "a4878a02d584faba0cf47ce198b6372320365f58",
       "sha256": "4e8ed7cbe9fe89acad01ef5d2d79349936f5ecc9d87d77725f463a66eccc50d4",
       "src": "assets/hooks/claude-sessionstart-history-reindex.sh",
       "mode": "755"
@@ -350,7 +350,7 @@
     {
       "name": "scripts/hooks/claude-sessionstart-install-uncommitted-warn.sh",
       "kind": "hook",
-      "factory_commit": "88f93293c14bee5def8869897b99c0c2e990c62e",
+      "factory_commit": "a4878a02d584faba0cf47ce198b6372320365f58",
       "sha256": "396d5c5a0b8a7dc1fb17dd154811d26b6646c08387136ad2794bd2ca947285b3",
       "src": "assets/hooks/claude-sessionstart-install-uncommitted-warn.sh",
       "mode": "755"
@@ -358,7 +358,7 @@
     {
       "name": "scripts/hooks/claude-sessionstart-lifecycle-lint.sh",
       "kind": "hook",
-      "factory_commit": "88f93293c14bee5def8869897b99c0c2e990c62e",
+      "factory_commit": "a4878a02d584faba0cf47ce198b6372320365f58",
       "sha256": "02bcae4aab1383222e864a636028333d99dd18f78a3ebff523cac1eaa8503cf9",
       "src": "assets/hooks/claude-sessionstart-lifecycle-lint.sh",
       "mode": "755"
@@ -366,7 +366,7 @@
     {
       "name": "scripts/hooks/claude-sessionstart-memory-guard.sh",
       "kind": "hook",
-      "factory_commit": "88f93293c14bee5def8869897b99c0c2e990c62e",
+      "factory_commit": "a4878a02d584faba0cf47ce198b6372320365f58",
       "sha256": "f8588184811450dba643623a90e0b8677344ec92fc1ea01665b91a749eafb83a",
       "src": "assets/hooks/claude-sessionstart-memory-guard.sh",
       "mode": "755"
@@ -374,7 +374,7 @@
     {
       "name": "scripts/hooks/claude-sessionstart-mutation-probe.sh",
       "kind": "hook",
-      "factory_commit": "88f93293c14bee5def8869897b99c0c2e990c62e",
+      "factory_commit": "a4878a02d584faba0cf47ce198b6372320365f58",
       "sha256": "490312ef41dd49fd183b7d243e1a0a0818ecbf8c61a393f2771fc5e9b8fba824",
       "src": "assets/hooks/claude-sessionstart-mutation-probe.sh",
       "mode": "755"
@@ -382,7 +382,7 @@
     {
       "name": "scripts/hooks/claude-sessionstart-outbox-status.sh",
       "kind": "hook",
-      "factory_commit": "88f93293c14bee5def8869897b99c0c2e990c62e",
+      "factory_commit": "a4878a02d584faba0cf47ce198b6372320365f58",
       "sha256": "5715cb632b65468ac1699aa03d17514cc9969c490d8234d057650a3fc465282b",
       "src": "assets/hooks/claude-sessionstart-outbox-status.sh",
       "mode": "755"
@@ -390,7 +390,7 @@
     {
       "name": "scripts/hooks/claude-sessionstart-owner-proposals.sh",
       "kind": "hook",
-      "factory_commit": "88f93293c14bee5def8869897b99c0c2e990c62e",
+      "factory_commit": "a4878a02d584faba0cf47ce198b6372320365f58",
       "sha256": "f24aed2682eb3415f1231c7cda0a42c4db37d6e52774e06aa00910c0508614c7",
       "src": "assets/hooks/claude-sessionstart-owner-proposals.sh",
       "mode": "755"
@@ -398,7 +398,7 @@
     {
       "name": "scripts/hooks/claude-sessionstart-summons-verify.sh",
       "kind": "hook",
-      "factory_commit": "88f93293c14bee5def8869897b99c0c2e990c62e",
+      "factory_commit": "a4878a02d584faba0cf47ce198b6372320365f58",
       "sha256": "07dd5685e5ef59ff93a2c72022f8a9d49e7d71405a009ac991716221a45ffff6",
       "src": "assets/hooks/claude-sessionstart-summons-verify.sh",
       "mode": "755"
@@ -406,7 +406,7 @@
     {
       "name": "scripts/hooks/claude-sessionstart-sync-pull.sh",
       "kind": "hook",
-      "factory_commit": "88f93293c14bee5def8869897b99c0c2e990c62e",
+      "factory_commit": "a4878a02d584faba0cf47ce198b6372320365f58",
       "sha256": "48ab2ae47433993f223665a79f0460fce343a430107606a333b160568d6eff74",
       "src": "assets/hooks/claude-sessionstart-sync-pull.sh",
       "mode": "755"
@@ -414,7 +414,7 @@
     {
       "name": "scripts/hooks/claude-stop-journal-gap.sh",
       "kind": "hook",
-      "factory_commit": "88f93293c14bee5def8869897b99c0c2e990c62e",
+      "factory_commit": "a4878a02d584faba0cf47ce198b6372320365f58",
       "sha256": "17b40b6580e03d6bf6322c22eddde451e4c17d58408d41a739e29051dd1334ad",
       "src": "assets/hooks/claude-stop-journal-gap.sh",
       "mode": "755"
@@ -422,7 +422,7 @@
     {
       "name": "scripts/hooks/claude-stop-retrospective.sh",
       "kind": "hook",
-      "factory_commit": "88f93293c14bee5def8869897b99c0c2e990c62e",
+      "factory_commit": "a4878a02d584faba0cf47ce198b6372320365f58",
       "sha256": "70cb692338c04beb6d44db1fe35fc88db58f930dbcd25edb9ccfd55498cf2b35",
       "src": "assets/hooks/claude-stop-retrospective.sh",
       "mode": "755"
@@ -430,7 +430,7 @@
     {
       "name": "scripts/hooks/claude-subagentstop-journal.sh",
       "kind": "hook",
-      "factory_commit": "88f93293c14bee5def8869897b99c0c2e990c62e",
+      "factory_commit": "a4878a02d584faba0cf47ce198b6372320365f58",
       "sha256": "03f8d7c80388f7864840f343f435ee6295daf5d5af0d465728af6763492515e6",
       "src": "assets/hooks/claude-subagentstop-journal.sh",
       "mode": "755"
@@ -438,7 +438,7 @@
     {
       "name": "scripts/hooks/claude-userpromptsubmit-dispatch.sh",
       "kind": "hook",
-      "factory_commit": "88f93293c14bee5def8869897b99c0c2e990c62e",
+      "factory_commit": "a4878a02d584faba0cf47ce198b6372320365f58",
       "sha256": "62490246efe812861e33a42938ab637e856b9c88be4cffe2f01abd028bf60a24",
       "src": "assets/hooks/claude-userpromptsubmit-dispatch.sh",
       "mode": "755"
@@ -446,7 +446,7 @@
     {
       "name": "scripts/hooks/claude-userpromptsubmit-mistake-detect.sh",
       "kind": "hook",
-      "factory_commit": "88f93293c14bee5def8869897b99c0c2e990c62e",
+      "factory_commit": "a4878a02d584faba0cf47ce198b6372320365f58",
       "sha256": "4eaa3a9a5d384d633817fcd691f1bbead94793d380109b3042022b4ec2f8e16f",
       "src": "assets/hooks/claude-userpromptsubmit-mistake-detect.sh",
       "mode": "755"
@@ -454,7 +454,7 @@
     {
       "name": "scripts/hooks/claude-userpromptsubmit-reminders.sh",
       "kind": "hook",
-      "factory_commit": "88f93293c14bee5def8869897b99c0c2e990c62e",
+      "factory_commit": "a4878a02d584faba0cf47ce198b6372320365f58",
       "sha256": "38369f65a2432b9476f3fe275714c4460da1058eb24817a362c4e7ad244fc0f6",
       "src": "assets/hooks/claude-userpromptsubmit-reminders.sh",
       "mode": "755"
@@ -462,7 +462,7 @@
     {
       "name": "scripts/hooks/claude-userpromptsubmit-soul-approval-intent.sh",
       "kind": "hook",
-      "factory_commit": "88f93293c14bee5def8869897b99c0c2e990c62e",
+      "factory_commit": "a4878a02d584faba0cf47ce198b6372320365f58",
       "sha256": "35ad2e3a5eb48572795e4c419e7fce7d7960e45867373e0f72ae749d970c6c92",
       "src": "assets/hooks/claude-userpromptsubmit-soul-approval-intent.sh",
       "mode": "755"
@@ -470,7 +470,7 @@
     {
       "name": "scripts/hooks/complexity.py",
       "kind": "hook",
-      "factory_commit": "88f93293c14bee5def8869897b99c0c2e990c62e",
+      "factory_commit": "a4878a02d584faba0cf47ce198b6372320365f58",
       "sha256": "298b1dc55ee839daabc287f277c97c3015d35aaec0cad1903815e7d06d36584f",
       "src": "assets/hooks/complexity.py",
       "mode": "755"
@@ -478,7 +478,7 @@
     {
       "name": "scripts/hooks/coverage_probe.py",
       "kind": "hook",
-      "factory_commit": "88f93293c14bee5def8869897b99c0c2e990c62e",
+      "factory_commit": "a4878a02d584faba0cf47ce198b6372320365f58",
       "sha256": "2af1011bfc72696824064c1dd1c42047387d9229bec2fb8474bca344fafa59ba",
       "src": "assets/hooks/coverage_probe.py",
       "mode": "755"
@@ -486,7 +486,7 @@
     {
       "name": "scripts/hooks/depcheck.py",
       "kind": "hook",
-      "factory_commit": "88f93293c14bee5def8869897b99c0c2e990c62e",
+      "factory_commit": "a4878a02d584faba0cf47ce198b6372320365f58",
       "sha256": "efdfbd8b93ab7d3c78d21c30afcaff3a8698084f37438a1bc5ad4eb73ab48e1c",
       "src": "assets/hooks/depcheck.py",
       "mode": "755"
@@ -494,7 +494,7 @@
     {
       "name": "scripts/hooks/design_cover.py",
       "kind": "hook",
-      "factory_commit": "88f93293c14bee5def8869897b99c0c2e990c62e",
+      "factory_commit": "a4878a02d584faba0cf47ce198b6372320365f58",
       "sha256": "adebe8436a2cb2345d36f40170d16ccc9cbff0fa397ef5b9df101ba4554b1077",
       "src": "assets/hooks/design_cover.py",
       "mode": "755"
@@ -502,7 +502,7 @@
     {
       "name": "scripts/hooks/doc-gardening-drift.sh",
       "kind": "hook",
-      "factory_commit": "88f93293c14bee5def8869897b99c0c2e990c62e",
+      "factory_commit": "a4878a02d584faba0cf47ce198b6372320365f58",
       "sha256": "2314bcc8a6a46a66b2cdab05aaeb5951353bc4520a94b752c3fd413da500de7f",
       "src": "assets/hooks/doc-gardening-drift.sh",
       "mode": "755"
@@ -510,7 +510,7 @@
     {
       "name": "scripts/hooks/doc_counts.py",
       "kind": "hook",
-      "factory_commit": "88f93293c14bee5def8869897b99c0c2e990c62e",
+      "factory_commit": "a4878a02d584faba0cf47ce198b6372320365f58",
       "sha256": "88a50a2c58622cda3f6f75b7840ef53d5bd11f23cc3a2ab33fd2acb973c9e913",
       "src": "assets/hooks/doc_counts.py",
       "mode": "755"
@@ -518,7 +518,7 @@
     {
       "name": "scripts/hooks/gate_emit.sh",
       "kind": "hook",
-      "factory_commit": "88f93293c14bee5def8869897b99c0c2e990c62e",
+      "factory_commit": "a4878a02d584faba0cf47ce198b6372320365f58",
       "sha256": "700ecc0b49e309b0933a9636d596bad8ba2ab3902d19f8266e3f94ca0547b13b",
       "src": "assets/hooks/gate_emit.sh",
       "mode": "755"
@@ -526,7 +526,7 @@
     {
       "name": "scripts/hooks/gate_event.py",
       "kind": "hook",
-      "factory_commit": "88f93293c14bee5def8869897b99c0c2e990c62e",
+      "factory_commit": "a4878a02d584faba0cf47ce198b6372320365f58",
       "sha256": "011a69a4ed9176be1edc3ea7141bf41322ffe341d139f1204fca98d1dd25f4a0",
       "src": "assets/hooks/gate_event.py",
       "mode": "755"
@@ -534,7 +534,7 @@
     {
       "name": "scripts/hooks/gate_report.py",
       "kind": "hook",
-      "factory_commit": "88f93293c14bee5def8869897b99c0c2e990c62e",
+      "factory_commit": "a4878a02d584faba0cf47ce198b6372320365f58",
       "sha256": "2761e82eb64d6dda5537c9729d62221e536edb8f721f974a8b4424beccb98ca8",
       "src": "assets/hooks/gate_report.py",
       "mode": "755"
@@ -542,7 +542,7 @@
     {
       "name": "scripts/hooks/iface_width.py",
       "kind": "hook",
-      "factory_commit": "88f93293c14bee5def8869897b99c0c2e990c62e",
+      "factory_commit": "a4878a02d584faba0cf47ce198b6372320365f58",
       "sha256": "05d46edc0b1f7569326abb85ad05dc1071d14fcec3bad43ffbafa364e2fcb319",
       "src": "assets/hooks/iface_width.py",
       "mode": "755"
@@ -550,7 +550,7 @@
     {
       "name": "scripts/hooks/out_report.py",
       "kind": "hook",
-      "factory_commit": "88f93293c14bee5def8869897b99c0c2e990c62e",
+      "factory_commit": "a4878a02d584faba0cf47ce198b6372320365f58",
       "sha256": "c1b0d018dc0f281d40178656a9552d881ee2a398cc2e0d9f2883fe4736bc0307",
       "src": "assets/hooks/out_report.py",
       "mode": "755"
@@ -558,7 +558,7 @@
     {
       "name": "scripts/hooks/plan_state.py",
       "kind": "hook",
-      "factory_commit": "88f93293c14bee5def8869897b99c0c2e990c62e",
+      "factory_commit": "a4878a02d584faba0cf47ce198b6372320365f58",
       "sha256": "82ab17878fcbd9e8b3780859a72491b6cb9bac76655f01ce968bbdb1795cf602",
       "src": "assets/hooks/plan_state.py",
       "mode": "755"
@@ -566,7 +566,7 @@
     {
       "name": "lint-configs/harness-max-lines.config.js",
       "kind": "lint",
-      "factory_commit": "88f93293c14bee5def8869897b99c0c2e990c62e",
+      "factory_commit": "a4878a02d584faba0cf47ce198b6372320365f58",
       "sha256": "e1958ed21cfa0b4a4095acb291912f4298624c6202258bd464a7acf20a359d53",
       "src": "assets/lint-configs/eslint/max-lines.config.js",
       "mode": "644"
@@ -574,97 +574,97 @@
     {
       "name": "adhd",
       "kind": "rules",
-      "factory_commit": "88f93293c14bee5def8869897b99c0c2e990c62e",
+      "factory_commit": "a4878a02d584faba0cf47ce198b6372320365f58",
       "sha256": "32ae2a62a5e0fcdbcc6bb6fa1b9aa538eb1c9763eeac66ebc403ee9895ed796b"
     },
     {
       "name": "harness",
       "kind": "rules",
-      "factory_commit": "88f93293c14bee5def8869897b99c0c2e990c62e",
+      "factory_commit": "a4878a02d584faba0cf47ce198b6372320365f58",
       "sha256": "e312ff388f587810be39768ee51e666eac7dfb6f48a0dcc78505146af0e14b50"
     },
     {
       "name": "harness-boundary-check",
       "kind": "skills",
-      "factory_commit": "88f93293c14bee5def8869897b99c0c2e990c62e",
+      "factory_commit": "a4878a02d584faba0cf47ce198b6372320365f58",
       "sha256": "4d123d155fdf816123916e3f276aa4c7e023cb30b282ab54d37661494fc9b814"
     },
     {
       "name": "harness-promote-rule",
       "kind": "skills",
-      "factory_commit": "88f93293c14bee5def8869897b99c0c2e990c62e",
+      "factory_commit": "a4878a02d584faba0cf47ce198b6372320365f58",
       "sha256": "a33b14b9a03b6b9c01ab8eee304892dd9c80c00ef84c3f115fa7f004d7993fad"
     },
     {
       "name": "harness-reasoning-sandwich",
       "kind": "skills",
-      "factory_commit": "88f93293c14bee5def8869897b99c0c2e990c62e",
+      "factory_commit": "a4878a02d584faba0cf47ce198b6372320365f58",
       "sha256": "b61ab73611dc71f5386ed265cf0da9a4cd3dc8d2cb2488ba8d03e686232f1eb3"
     },
     {
       "name": "hermes-agent",
       "kind": "skills",
-      "factory_commit": "88f93293c14bee5def8869897b99c0c2e990c62e",
+      "factory_commit": "a4878a02d584faba0cf47ce198b6372320365f58",
       "sha256": "466727495f446bcb0860be06fae7f61341fd53da934eedf0f03bf76cc29cd26e"
     },
     {
       "name": "hermes-crystallize",
       "kind": "skills",
-      "factory_commit": "88f93293c14bee5def8869897b99c0c2e990c62e",
+      "factory_commit": "a4878a02d584faba0cf47ce198b6372320365f58",
       "sha256": "d6f6a935c1b3b2a8af832738f98e18c9788eb031dedcc33bcc0eed455ac62fd8"
     },
     {
       "name": "hermes-dashboard",
       "kind": "skills",
-      "factory_commit": "88f93293c14bee5def8869897b99c0c2e990c62e",
+      "factory_commit": "a4878a02d584faba0cf47ce198b6372320365f58",
       "sha256": "00f5aea761cf88f9f88e2f2bba0d1d291d5891633c9221eb9b7759341c0962c6"
     },
     {
       "name": "hermes-dream",
       "kind": "skills",
-      "factory_commit": "88f93293c14bee5def8869897b99c0c2e990c62e",
+      "factory_commit": "a4878a02d584faba0cf47ce198b6372320365f58",
       "sha256": "0f9e0edaa9325eaba1abb5b912ac5a60d013ff74ad80099fa4602cfd4fc24a71"
     },
     {
       "name": "hermes-loop",
       "kind": "skills",
-      "factory_commit": "88f93293c14bee5def8869897b99c0c2e990c62e",
+      "factory_commit": "a4878a02d584faba0cf47ce198b6372320365f58",
       "sha256": "db02717197ecd5a2be6d343cc13b1f679667cc3f7a1ad22ea9d240dfdb07a8ae"
     },
     {
       "name": "hermes-recall",
       "kind": "skills",
-      "factory_commit": "88f93293c14bee5def8869897b99c0c2e990c62e",
+      "factory_commit": "a4878a02d584faba0cf47ce198b6372320365f58",
       "sha256": "034bc2c7e9341a5f8b396a497f1986d7383e9773ab36e971c0b65ef73c7954ba"
     },
     {
       "name": "hermes-status",
       "kind": "skills",
-      "factory_commit": "88f93293c14bee5def8869897b99c0c2e990c62e",
+      "factory_commit": "a4878a02d584faba0cf47ce198b6372320365f58",
       "sha256": "c5ea2e8b667ec4b9832a75d0ff2f36956851124466931ed19742aee794173d70"
     },
     {
       "name": "mcp-builder",
       "kind": "skills",
-      "factory_commit": "88f93293c14bee5def8869897b99c0c2e990c62e",
+      "factory_commit": "a4878a02d584faba0cf47ce198b6372320365f58",
       "sha256": "5471952028dbccf773eb1a1c7ddde65222b7e413becd8741d34cc6164b1dc5d6"
     },
     {
       "name": "run-to-the-end",
       "kind": "skills",
-      "factory_commit": "88f93293c14bee5def8869897b99c0c2e990c62e",
+      "factory_commit": "a4878a02d584faba0cf47ce198b6372320365f58",
       "sha256": "973a6cfe1927c33b055fda0b7398937304e9569cc111e5fcd217f25608783c7c"
     },
     {
       "name": "skill-creator",
       "kind": "skills",
-      "factory_commit": "88f93293c14bee5def8869897b99c0c2e990c62e",
+      "factory_commit": "a4878a02d584faba0cf47ce198b6372320365f58",
       "sha256": "b685157054be22a0e9bdcadf80a1ae3f8af1926e81eb0a17e7c15b9fe057542e"
     },
     {
       "name": "structured-file-layout",
       "kind": "skills",
-      "factory_commit": "88f93293c14bee5def8869897b99c0c2e990c62e",
+      "factory_commit": "a4878a02d584faba0cf47ce198b6372320365f58",
       "sha256": "309afa5a8621d69b34c5fbe10a2119792e4cd564cc702768197486ea03bd0304"
     }
   ]
