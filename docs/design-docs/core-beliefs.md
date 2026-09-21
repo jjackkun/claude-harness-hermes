@@ -612,7 +612,6 @@ pre-commit 메시지의 `근거:` 링크가 이 앵커들을 가리킨다.
 - [R-plan](#r-plan) — 완료된 계획은 completed/ 로 이동 (차단)
 - [R-plan-missing](#r-plan-missing) — 코드 수정 시 계획 존재 (경고)
 - [R-plan-stale](#r-plan-stale) — 계획서가 코드를 따라오는가 (경고)
-- [R-precheck](#r-precheck) — 목표가 기댄 전제를 확인한 기록 (경고)
 - [R-retro](#r-retro) — 회고 없이 완료 처리 금지 (경고)
 
 <!--===HARNESS-RULES:END===-->
