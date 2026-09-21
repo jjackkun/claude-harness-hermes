@@ -13,6 +13,8 @@ tier: 0  lib/generate_settings.py lib/generate_settings_json.py
 tier: 0  scripts/hermes_skill_yield.py
 # R-config 판정기(계획 2026-09-21-claude-config-scan): 표준 모듈만.
 tier: 0  assets/hooks/claude_config_scan.py
+# 세션 고정 비용 표(계획 2026-09-21-context-budget): 표준 모듈만.
+tier: 0  assets/hooks/context_budget.py
 tier: 1  scripts/hermes-cleanup.py
 tier: 0  scripts/hermes-correlate.py scripts/hermes-evolve-skill.py
 tier: 0  scripts/hermes-increment.py scripts/hermes-manager.py scripts/hermes-message.py

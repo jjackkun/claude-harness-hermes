@@ -14,7 +14,8 @@ import sys
 from datetime import datetime, timedelta, timezone
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "hooks"))
-import gate_report  # noqa: E402
+import gate_report
+import context_budget  # noqa: E402  (세션 고정 비용, 계획 2026-09-21-context-budget)  # noqa: E402
 from hermes_handoff_queue import queue  # noqa: E402
 from hermes_owner_memory import open_proposals  # noqa: E402
 from hermes_skill_layers import LAYERS  # noqa: E402
@@ -156,7 +157,18 @@ def _health_pane(project: str) -> dict:
             debt = sorted({line.split("  ", 1)[-1].strip() for line in fh if line.startswith(("edit:", "first:"))})
     active_dir = os.path.join(project, "docs", "exec-plans", "active")
     plans = sorted(f for f in os.listdir(active_dir) if f.endswith(".md")) if os.path.isdir(active_dir) else []
-    return {"gates_top": gates, "review_debt": debt, "active_plans": plans}
+    return {"gates_top": gates, "review_debt": debt, "active_plans": plans,
+            "fixed_context": _fixed_context(project)}
+
+
+def _fixed_context(project: str) -> dict:
+    """세션 고정 비용 — 매 세션 시작에 들어오는 문서·설명의 합. 본문(스킬·에이전트)은 호출 때만이라 빠진다."""
+    try:
+        budget = context_budget.collect(project)
+    except Exception:  # noqa: BLE001 — 관측이 대시보드를 죽이지 않는다
+        return {"bytes": 0, "tokens": 0, "top": []}
+    top = sorted(((k, v["bytes"]) for k, v in budget["always"].items()), key=lambda kv: -kv[1])[:3]
+    return {"bytes": budget["always_total"], "tokens": budget["always_total"] // 3, "top": top}
 
 
 def collect(project: str) -> dict:

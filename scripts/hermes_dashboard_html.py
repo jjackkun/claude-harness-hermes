@@ -123,7 +123,18 @@ def _health(h: dict) -> str:
     return (f'<h2 id="health">건강</h2><p class="lead">게이트가 얼마나 걸리고, 리뷰 빚이 얼마고, 무엇이 진행 중인가.</p>'
             f"<h3>게이트 발화율 상위 5</h3>{_table(['규칙', '기회', '경고', '차단', '발화율'], gates, numeric=(1, 2, 3, 4))}"
             f"<h3>리뷰 빚 ({len(h['review_debt'])})</h3>{_table(['파일'], debt)}"
-            f"<h3>활성 계획 ({len(h['active_plans'])})</h3>{_table(['계획'], plans)}")
+            f"<h3>활성 계획 ({len(h['active_plans'])})</h3>{_table(['계획'], plans)}"
+            f"{_fixed_context(h.get('fixed_context') or {})}")
+
+
+def _fixed_context(fx: dict) -> str:
+    """세션 고정 비용 한 줄 — 무엇이 매 세션 컨텍스트를 먹는가(계획 context-budget)."""
+    if not fx.get("bytes"):
+        return ""
+    top = " · ".join(f"{_e(k)} {_e(v)}B" for k, v in fx.get("top", []))
+    return (f"<h3>세션 고정 비용</h3><p>{_e(fx['bytes'])} B ≈ {_e(fx['tokens'])} 토큰 "
+            f"<span class=\"mono\">({top})</span></p>"
+            f"<p class=\"lead\">토큰은 바이트÷3 근사. 스킬·에이전트 본문은 호출 때만 들어오므로 빠져 있다.</p>")
 
 
 def render_project(d: dict) -> str:
