@@ -13,3 +13,6 @@ metadata:
 **How to apply:** 소우주마다 `.claude/.last-install.txt`(설치 영수증)에 오른 경로만 올린다 —
 `git add $(git ls-files -co --exclude-standard $(cat .claude/.last-install.txt))`. 사용자 작업 파일은 건드리지 않는다([[feedback-git-add-own-files]]).
 push 가 원격 앞섬으로 거절되면 `pull --rebase`(force 금지), 생성물 충돌은 새 설치본으로. pre-commit 이 막으면 우회하지 말고 그 소우주를 보고.
+
+**예외 — zeroday-frontend:** 푸시하지 않는다(2026-09-21 사용자 "제로데이는 놔둬"). 사용자가 `develop` 에 미푸시 작업 커밋을 두고
+다른 세션에서 작업 중인 저장소다. 전파 때는 설치까지만 하고, 커밋·푸시 여부는 사용자가 정한다.
