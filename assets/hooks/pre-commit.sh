@@ -5,7 +5,7 @@
 #
 # 현재 실제 게이트는 18종이다 (위 헤더의 "4단 검사" 는 마커라서 그대로 둔다):
 #   차단 11 — R-size R-fmt R-lint R-test R-doc R-cx R-dep R-struct R-secret R-merge R-plan
-#   경고 7 — R-cov R-acc R-design-cover R-plan-missing R-plan-stale R-pipe R-retro
+#   경고 8 — R-cov R-acc R-design-cover R-plan-missing R-plan-stale R-pipe R-retro R-precheck
 # (lib/uninstall_helpers.sh `uninstall_pre_commit`, uninstall.sh 미리보기).
 #
 # 메시지 형식 (2026-04-17 Opus 4.7 튜닝):
@@ -787,6 +787,7 @@ fi
 
 # 9. R-retro — completed/ 로 옮긴 계획서에 회고가 있는가 (경고)
 # GATE: R-retro warn
+# GATE: R-precheck warn   # 9-ter — 같은 루프 안에서 「착수 전 확인한 사실」을 본다
 #
 # filter_files 를 쓸 수 없다. STAGED 는 --diff-filter=ACM 인데 git mv 는 rename(R100)
 # 으로 분류돼 그 필터에 잡히지 않는다(2026-08-13 실측). 자체 git 호출을 쓰되
@@ -815,6 +816,25 @@ if (( PLAN_STATE_OK )); then
         ;;
     esac
     [[ $rc -eq 0 ]] && gate_add R-retro warn precommit "$moved" "회고 없이 완료 처리"
+
+    # 9-ter. R-precheck — 목표가 기댄 전제를 확인한 기록이 있는가 (경고)
+    #
+    # R-retro 와 같은 계기(completed/ 로 옮기는 행위 = 완료 선언)에서 발화하되 대상이 다르다 —
+    # 그쪽은 §8 회고(무엇을 배웠나), 이쪽은 「착수 전 확인한 사실」(무엇을 전제했나).
+    # zeroday-frontend 하류판에서 흡수(2026-09-21). 계약: 0=비었음 1=채워짐 2=절 부재.
+    rc=0; python3 "$PLAN_STATE" precheck-empty "$moved" >/dev/null 2>&1 || rc=$?
+    case "$rc" in
+      0)
+        WARNINGS+=("
+[R-precheck] 목표의 전제를 확인한 기록이 없음: $moved
+  → 「착수 전 확인한 사실」 절에 목표가 기대는 값(폭·건수·설정)을 적으십시오.
+     확인 없이 세운 검증 조건은 정상 코드를 결함으로 읽게 만듭니다.
+  근거: docs/design-docs/core-beliefs.md#r-precheck")
+        gate_add R-precheck warn precommit "$moved" "전제 확인 기록 없음"
+        ;;
+      1) gate_add R-precheck pass precommit "$moved" "전제 확인 기록 있음" ;;
+      *) gate_add R-precheck skipped precommit "$moved" "절 부재(옛 템플릿)" ;;
+    esac
 
     # 9-bis. R-acc-2 — §2 목표가 미완인 채 완료 처리되는가 (경고)
     #

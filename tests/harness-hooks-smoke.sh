@@ -872,6 +872,46 @@ echo "$OUT" | grep -q "R-size 책임"
 assert "줄 수 경고가 나가면 책임 경고는 겹치지 않음" "1" "$?"
 git checkout -q -- rsize/ 2>/dev/null || true
 
+echo "== 34. R-precheck — 완료 계획서에 「착수 전 확인한 사실」이 비었으면 경고 (계획 adopt-downstream-plan-state) =="
+git reset -q; git checkout -- . 2>/dev/null || true
+mkdir -p docs/exec-plans/completed
+cat > docs/exec-plans/completed/precheck-empty-fixture.md << 'FIXTURE'
+# 완료 계획
+
+## 2. 목표
+
+- [x] 목표 — 검증: `true`
+
+## 2-bis. 착수 전 확인한 사실
+
+목표가 기대는 전제를 값으로 적는다. 조건에 기대지 않으면 "해당 없음" 과 이유를 남긴다.
+
+| 확인한 것 | 결과 |
+| --------- | ---- |
+
+## 8. 회고
+
+- 잘된 것: 있음
+FIXTURE
+git add docs/exec-plans/completed/precheck-empty-fixture.md
+PRECHECK_OUT=$(.git/hooks/pre-commit 2>&1); PRECHECK_RC=$?
+assert "R-precheck 는 차단하지 않음" "0" "$PRECHECK_RC"
+echo "$PRECHECK_OUT" | grep -q '\[R-precheck\]'
+assert "빈 절 → 경고 발화" "0" "$?"
+# 표에 데이터 행을 채우면 침묵한다 — 행은 반드시 그 절 **안**에 있어야 한다
+python3 - docs/exec-plans/completed/precheck-empty-fixture.md <<'PYF'
+import sys
+p = sys.argv[1]
+t = open(p, encoding="utf-8").read()
+t = t.replace("| --------- | ---- |\n", "| --------- | ---- |\n| 훅 수 | 16종 |\n", 1)
+open(p, "w", encoding="utf-8").write(t)
+PYF
+git add docs/exec-plans/completed/precheck-empty-fixture.md
+PRECHECK_OUT2=$(.git/hooks/pre-commit 2>&1)
+echo "$PRECHECK_OUT2" | grep -q '\[R-precheck\]'
+assert "채우면 침묵" "1" "$?"
+git reset -q; rm -f docs/exec-plans/completed/precheck-empty-fixture.md
+
 echo ""
 echo "== 결과 =="
 echo "  통과: $PASS / 실패: $FAIL"

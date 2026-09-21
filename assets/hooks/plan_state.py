@@ -32,7 +32,11 @@ PENDING_MAX_DEFAULT = 3
 
 # 체크박스만 센다. `- [foo.md](foo.md)` 같은 링크 불릿을 제외하기 위해
 # 대괄호 안을 공백/x/X 로 한정하고 닫는 괄호 뒤 공백을 요구한다.
-CHECKBOX_RE = re.compile(r"^\s*-\s*\[( |x|X)\]\s")
+# `~` 는 **보류**다(terminal-shipping 하류판에서 흡수, 2026-09-21). 완료로 세지 않는다 —
+# 보류 중인 목표가 완료로 읽히면 계획서가 끝난 것처럼 보인다.
+CHECKBOX_RE = re.compile(r"^\s*-\s*\[( |x|X|~)\]\s")
+# 완료로 인정하는 표식은 여기 한 곳에서만 정한다. 세 군데에 흩어져 있으면 하나를 빠뜨린다.
+DONE_MARKS = ("x", "X")
 
 RETRO_HEADING_RE = re.compile(r"^##\s*8[.)]")
 RETRO_FALLBACK_RE = re.compile(r"^##.*회고")
@@ -41,6 +45,17 @@ SECTION_END_RE = re.compile(r"^##\s")
 # §2 목표 섹션. 회고(§8)와 같은 방식으로 번호 우선, 제목 폴백.
 GOAL_HEADING_RE = re.compile(r"^##\s*2[.)]")
 GOAL_FALLBACK_RE = re.compile(r"^##.*목표")
+
+# 「착수 전 확인한 사실」 절(zeroday 하류판에서 흡수, 2026-09-21). 공장 템플릿은 §2-bis 다 —
+# 기존 절 번호(§7 발견·예외·§8 회고)를 흔들지 않으려고 번호를 끼우지 않았다. 그래서 **제목이 정본**이고
+# 번호는 보조다.
+PRECHECK_HEADING_RE = re.compile(r"^##.*착수 전 확인한 사실")
+PRECHECK_FALLBACK_RE = re.compile(r"^##\s*2-bis[.)]?")
+TABLE_SEPARATOR_RE = re.compile(r"^\|[\s:|-]+\|$")
+PRECHECK_HEADER_CELLS = ("확인한 것", "결과")
+PRECHECK_NOT_APPLICABLE = "해당 없음"
+# 템플릿 안내 문장은 「해당 없음」을 **따옴표 안에** 쓴다 — 그것은 기록이 아니라 설명이다.
+PRECHECK_QUOTED_NA = re.compile(r"[\"\u201c\u2018`]\s*해당 없음\s*[\"\u201d\u2019`]")
 
 # §4 영향 영역. 신규 파일 선언이 여기 있다.
 IMPACT_HEADING_RE = re.compile(r"^##\s*4[.)]")
@@ -93,7 +108,7 @@ def count_boxes(lines):
         if not match:
             continue
         total += 1
-        if match.group(1) in ("x", "X"):
+        if match.group(1) in DONE_MARKS:
             done += 1
     return total, done
 
@@ -137,12 +152,40 @@ def is_retro_empty(lines):
     return True
 
 
+def _precheck_is_record(stripped):
+    """이 줄 하나가 '확인한 기록' 인가. 안내 산문·표 머리·구분선은 아니다."""
+    if PRECHECK_QUOTED_NA.search(stripped):
+        return False                                  # 템플릿 안내 문장
+    if PRECHECK_NOT_APPLICABLE in stripped:
+        return True                                   # 사람이 적은 「해당 없음」
+    if not stripped.startswith("|") or TABLE_SEPARATOR_RE.match(stripped):
+        return False
+    cells = [c.strip() for c in stripped.strip("|").split("|")]
+    if any(c in PRECHECK_HEADER_CELLS for c in cells):
+        return False
+    return any(cells)
+
+
+def _is_precheck_empty(lines):
+    """「착수 전 확인한 사실」에 기록이 하나도 없으면 True. 절이 없으면 None(판정불가).
+
+    **표의 데이터 행만 기록으로 센다.** 이 절 본문에는 템플릿 안내 산문이 늘 들어 있어, 실질 텍스트 유무로
+    판정하면 아무것도 안 채운 템플릿조차 '채워짐' 이 되어 게이트가 조용히 죽는다
+    (zeroday-frontend 2026-09-16 실측 — 그쪽 R4 가 정확히 그 꼴이었다).
+    `is_retro_empty` 와 같은 선을 지킨다 — 기계는 '쓰지 않았음' 까지만 본다.
+    """
+    body = _section_body(lines, PRECHECK_HEADING_RE, PRECHECK_FALLBACK_RE)
+    if body is None:
+        return None
+    return not any(_precheck_is_record(line.strip()) for line in body if line.strip())
+
+
 def pending_items(lines, max_count):
     """미완료 체크박스 줄을 최대 max_count 개 돌려준다."""
     items = []
     for line in lines:
         match = CHECKBOX_RE.match(line)
-        if match and match.group(1) == " ":
+        if match and match.group(1) not in DONE_MARKS:
             items.append(line.strip())
             if len(items) >= max_count:
                 break
@@ -164,7 +207,7 @@ def _goal_items(lines):
         match = CHECKBOX_RE.match(line)
         if match:
             items.append({
-                "checked": match.group(1) in ("x", "X"),
+                "checked": match.group(1) in DONE_MARKS,
                 "text": line.strip(),
                 "verified": bool(INLINE_CODE_RE.search(line)),
             })
@@ -246,6 +289,7 @@ BATCH_COMMANDS = {
 SINGLE_COMMANDS = {
     "is-complete": lambda lines, argv: 0 if is_complete(lines) else 1,
     "retro-empty": lambda lines, argv: 0 if is_retro_empty(lines) else 1,
+    "precheck-empty": lambda lines, argv: _precheck_rc(lines),
     "pending": lambda lines, argv: _print_pending(lines, argv),
     "goals-unverified": lambda lines, argv: _report_goals(
         lines, lambda item: not item["verified"]),
@@ -263,6 +307,14 @@ def _print_declared(lines):
     for path in found:
         print(path)
     return 0 if found else 1
+
+
+def _precheck_rc(lines):
+    """0=비었음 1=채워짐 2=절 부재. retro-empty 와 같은 계약(0 이 '안 썼다')."""
+    empty = _is_precheck_empty(lines)
+    if empty is None:
+        return 2
+    return 0 if empty else 1
 
 
 def _print_pending(lines, argv):

@@ -391,6 +391,73 @@ CXMAIN=$(python3 "$REPO_ROOT/assets/hooks/complexity.py" --report "$MOD" 2>/dev/
   | awk '$3 == "main" { print $1 }')
 assert "main 복잡도가 기준선(13) 이하" "0" "$([[ "${CXMAIN:-99}" -le 13 ]] && echo 0 || echo 1)"
 
+echo "== 9. 보류 표식 `~` (terminal-shipping 하류판 흡수, 계획 adopt-downstream-plan-state) =="
+# 왜: 보류 중인 목표를 완료로 오판하지 않게 한다. 완료 판정은 DONE_MARKS 한 곳에서만 한다.
+cat > "$TMP/held.md" << 'EOF'
+# 계획
+
+- [x] 끝난 것
+- [~] 보류 중인 것
+EOF
+assert "[~] 가 있으면 완료 아님" "1" "$(rc is-complete "$TMP/held.md")"
+assert "pending 이 [~] 줄을 낸다" "1" "$(python3 "$MOD" pending "$TMP/held.md" | grep -c '\[~\]')"
+cat > "$TMP/held-goal.md" << 'EOF'
+# 계획
+
+## 2. 목표
+
+- [~] 보류 목표 — 검증: `bash x.sh`
+EOF
+assert "goals-pending 이 [~] 를 미완료로 센다" "1" "$(python3 "$MOD" goals-pending "$TMP/held-goal.md" | grep -c '보류 목표')"
+
+echo "== 10. precheck-empty — 착수 전 확인한 사실 (zeroday 하류판 흡수) =="
+# 왜: 표의 **데이터 행**만 기록으로 센다. 본문 산문으로 판정하면 아무것도 안 채운 템플릿이 '채워짐' 으로 읽혀
+# 게이트가 조용히 죽는다(zeroday 2026-09-16 실측 — R4 가 정확히 그 꼴이었다).
+cat > "$TMP/pre-empty.md" << 'EOF'
+# 계획
+
+## 2-bis. 착수 전 확인한 사실
+
+목표가 기대는 전제를 **값으로** 적는다. "확인했다" 가 아니라 무엇이 몇이었나.
+목표가 조건에 기대지 않으면 "해당 없음" 과 그 이유를 한 줄 남긴다.
+
+| 확인한 것 | 결과 |
+| --------- | ---- |
+
+## 3. 비목표
+EOF
+assert "템플릿 그대로(산문+빈 표) → 비었음(0)" "0" "$(rc precheck-empty "$TMP/pre-empty.md")"
+cat > "$TMP/pre-filled.md" << 'EOF'
+# 계획
+
+## 2-bis. 착수 전 확인한 사실
+
+| 확인한 것 | 결과 |
+| --------- | ---- |
+| 훅 등록 수 | 37개 |
+
+## 3. 비목표
+EOF
+assert "표에 데이터 행 → 채워짐(1)" "1" "$(rc precheck-empty "$TMP/pre-filled.md")"
+cat > "$TMP/pre-na.md" << 'EOF'
+# 계획
+
+## 2-bis. 착수 전 확인한 사실
+
+해당 없음 — 이 목표는 저장소 상태에 기대지 않는다.
+
+## 3. 비목표
+EOF
+assert "「해당 없음」 도 기록(1)" "1" "$(rc precheck-empty "$TMP/pre-na.md")"
+cat > "$TMP/pre-none.md" << 'EOF'
+# 계획
+
+## 3. 비목표
+EOF
+assert "절이 없으면 판정불가(2)" "2" "$(rc precheck-empty "$TMP/pre-none.md")"
+assert "템플릿에 절이 있다" "1" "$(grep -c '^## 2-bis\. 착수 전 확인한 사실' "$REPO_ROOT/assets/docs-templates/docs/exec-plans/template.md")"
+assert "절 번호는 그대로(§7 발견·예외)" "1" "$(grep -c '^## 7\. 발견·예외' "$REPO_ROOT/assets/docs-templates/docs/exec-plans/template.md")"
+
 echo ""
 echo "== 결과 =="
 echo "  통과: $PASS / 실패: $FAIL"
