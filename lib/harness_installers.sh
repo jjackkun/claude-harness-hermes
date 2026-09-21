@@ -136,6 +136,18 @@ install_harness_pre_commit() {
     fi
   fi
 
+  # claude_config_scan.py (R-config) — `.claude/` 설정이 연 위험 표면을 센다.
+  # 기준선(.claude-config-baseline)이 없는 프로젝트에서는 현재 항목 전부가 "새 항목" 이 되므로,
+  # 첫 경고를 본 사람이 기준선을 만들어 잠근다(R-cx 기준선과 같은 흐름).
+  local configscan_src="$ASSETS_DIR/hooks/claude_config_scan.py"
+  if [[ -f "$configscan_src" ]]; then
+    if _install_git_hook "$project_path" "$configscan_src" claude_config_scan.py; then
+      log_info "  hook    → .git/hooks/claude_config_scan.py"
+    else
+      log_warn "  hook    → .git/hooks/claude_config_scan.py 복사 실패"
+    fi
+  fi
+
   # coverage_probe.py (R-cov) — complexity.py 와 같은 부류.
   # 표준 라이브러리 trace 기반이라 프로젝트에 추가 설치를 요구하지 않는다.
   local covprobe_src="$ASSETS_DIR/hooks/coverage_probe.py"

@@ -439,6 +439,25 @@ R-plan-missing 도 같은 예외를 받는다 — 마지막 active 계획을 옮
 
 **검증 상태**: Provisional. 오탐 데이터를 `docs/audits/` 에 쌓은 뒤 차단 승격을 검토한다.
 
+## R-config — 설정이 연 위험 표면 {#r-config}
+
+`.claude/settings*.json`·`CLAUDE.md`·`.mcp.json`·규칙/스킬 문서가 스테이징되면 네 갈래를 세고, 기준선
+(`.claude-config-baseline`) 밖의 **새 항목만** 경고(차단 아님).
+
+| 갈래 | 무엇 |
+|---|---|
+| `unscoped` | 도구 전체를 연 allow — `Bash` · `Bash(*)` · `*` |
+| `destructive` | 파괴적 명령을 **와일드카드와 함께** 허용 — `Bash(rm:*)` · `Bash(docker run *)` |
+| `hook` | 훅 command 가 저장소 밖 절대경로이거나 네트워크에서 받아 실행(`curl … \| sh`) |
+| `mcp` · `injection` | `.mcp.json` 의 원격 출처 · 문서의 고전 인젝션 문구 |
+
+**구체 명령 허용은 세지 않는다.** 2026-09-21 실측: 12곳의 파괴적-접두 항목 166건이 전부
+`Bash(rm -f .claude/.review-dirty)` 같은 좁은 허용이었고 인자 무관(`rm:*`) 형식은 0건이었다. 전부 경고했다면
+소음만 남고 게이트는 꺼졌을 것이다. 같은 이유로 `Bash(ls:*)` 는 위험이 아니다 — 범위 있는 `:*` 는 정상 형식이다.
+
+`check-secrets`(P9)와 대상이 다르다: 그쪽은 코드 속 **값**, 이쪽은 설정이 허용한 **권한**.
+차단하지 않는 이유: 권한 정책은 사람이 정한다. 차단하면 커밋이 막혀 우회가 상시화된다.
+
 ## R-precheck — 목표가 기댄 전제를 확인한 기록 {#r-precheck}
 
 `completed/` 로 옮기는 계획서의 「착수 전 확인한 사실」(§2-bis)이 비어 있으면 경고(차단 아님).

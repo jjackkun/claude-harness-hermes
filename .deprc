@@ -11,6 +11,8 @@ tier: 0  assets/hooks/complexity.py assets/hooks/depcheck.py assets/hooks/plan_s
 tier: 0  lib/generate_settings.py lib/generate_settings_json.py
 # 스킬 수익률(계획 2026-09-18-skill-yield-junk): yield 는 표준 모듈만(0), cleanup 이 import 하므로 cleanup 은 1.
 tier: 0  scripts/hermes_skill_yield.py
+# R-config 판정기(계획 2026-09-21-claude-config-scan): 표준 모듈만.
+tier: 0  assets/hooks/claude_config_scan.py
 tier: 1  scripts/hermes-cleanup.py
 tier: 0  scripts/hermes-correlate.py scripts/hermes-evolve-skill.py
 tier: 0  scripts/hermes-increment.py scripts/hermes-manager.py scripts/hermes-message.py

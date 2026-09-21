@@ -101,6 +101,7 @@ REGISTERED_TESTS=(
   hermes-pipeline-test.sh
   precompact-summary-test.sh
   manifest-tracking-test.sh
+  claude-config-scan-test.sh
   hermes-loop-test.sh
   hermes-redact-test.sh
   hermes-redact-boundary-test.sh

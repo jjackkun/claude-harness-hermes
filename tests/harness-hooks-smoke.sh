@@ -912,6 +912,30 @@ echo "$PRECHECK_OUT2" | grep -q '\[R-precheck\]'
 assert "채우면 침묵" "1" "$?"
 git reset -q; rm -f docs/exec-plans/completed/precheck-empty-fixture.md
 
+echo "== 35. R-config — 설정이 연 새 위험만 경고 (계획 claude-config-scan) =="
+git reset -q; git checkout -- . 2>/dev/null || true
+# 설정 파일이 스테이징되지 않으면 침묵한다(무관한 커밋에 소음을 내지 않는다)
+echo "x = 1" > config_unrelated.py
+git add config_unrelated.py
+CFG_OUT=$(.git/hooks/pre-commit 2>&1)
+echo "$CFG_OUT" | grep -q '\[R-config\]'
+assert "설정 파일이 없으면 침묵" "1" "$?"
+git reset -q; rm -f config_unrelated.py
+# 도구 전체를 여는 allow 를 넣으면 경고한다
+python3 - .claude/settings.json <<'PYF'
+import json, sys
+p = sys.argv[1]
+d = json.load(open(p))
+d.setdefault("permissions", {}).setdefault("allow", []).append("Bash")
+json.dump(d, open(p, "w"), ensure_ascii=False, indent=2)
+PYF
+git add .claude/settings.json
+CFG_OUT2=$(.git/hooks/pre-commit 2>&1); CFG_RC=$?
+assert "R-config 는 차단하지 않음" "0" "$CFG_RC"
+echo "$CFG_OUT2" | grep -q '\[R-config\]'
+assert "새 위험(Bash 전체) 경고" "0" "$?"
+git reset -q; git checkout -- .claude/settings.json 2>/dev/null || true
+
 echo ""
 echo "== 결과 =="
 echo "  통과: $PASS / 실패: $FAIL"

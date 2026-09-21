@@ -5,7 +5,7 @@
 #
 # 현재 실제 게이트는 18종이다 (위 헤더의 "4단 검사" 는 마커라서 그대로 둔다):
 #   차단 11 — R-size R-fmt R-lint R-test R-doc R-cx R-dep R-struct R-secret R-merge R-plan
-#   경고 8 — R-cov R-acc R-design-cover R-plan-missing R-plan-stale R-pipe R-retro R-precheck
+#   경고 9 — R-cov R-acc R-design-cover R-plan-missing R-plan-stale R-pipe R-retro R-precheck R-config
 # (lib/uninstall_helpers.sh `uninstall_pre_commit`, uninstall.sh 미리보기).
 #
 # 메시지 형식 (2026-04-17 Opus 4.7 튜닝):
@@ -783,6 +783,31 @@ if [[ -n "$WORK_FILES" && -f "$DIRTY_FILE" ]]; then
   fi
 elif [[ -n "$WORK_FILES" ]]; then
   gate_add R-pipe pass precommit "" "리뷰 빚 없음"
+fi
+
+# 8-ter. R-config — `.claude/` 설정이 연 위험 표면 (경고)
+# GATE: R-config warn
+#
+# check-secrets(P9)는 코드 속 값을, 이쪽은 **설정이 허용한 권한**을 본다. 설정 파일이 스테이징됐을 때만 발화한다 —
+# 매 커밋 훑으면 무관한 변경에도 소음이 된다. 기준선(.claude-config-baseline) 밖의 **새 항목만** 보고한다.
+CONFIG_FILES=$(filter_files '^(\.claude/settings(\.local)?\.json|CLAUDE\.md|AGENTS\.md|\.mcp\.json)$|^\.claude/(rules|skills)/')
+CONFIG_SCAN="$(dirname "$0")/claude_config_scan.py"
+if [[ -n "$CONFIG_FILES" ]]; then
+  if [[ ! -f "$CONFIG_SCAN" ]] || ! command -v python3 >/dev/null 2>&1; then
+    gate_add R-config skipped precommit "" "claude_config_scan.py 또는 python3 없음"
+  else
+    CONFIG_NEW=$(python3 "$CONFIG_SCAN" --root . 2>/dev/null || true)
+    if [[ -n "$CONFIG_NEW" ]]; then
+      WARNINGS+=("
+[R-config] 설정이 새 위험을 열었습니다:
+$(printf '%s\n' "$CONFIG_NEW" | sed 's/^/    - /')
+  → 필요한 권한이면 .claude-config-baseline 에 그 줄을 추가하십시오(기준선은 줄어들기만 합니다).
+  근거: docs/design-docs/core-beliefs.md#r-config")
+      gate_add R-config warn precommit "" "새 위험 항목 $(printf '%s\n' "$CONFIG_NEW" | grep -c .)건"
+    else
+      gate_add R-config pass precommit "" "새 위험 없음"
+    fi
+  fi
 fi
 
 # 9. R-retro — completed/ 로 옮긴 계획서에 회고가 있는가 (경고)

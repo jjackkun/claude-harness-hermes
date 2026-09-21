@@ -1,0 +1,3 @@
+# R-config 기준선 — 도입 시점(2026-09-21)에 이미 있던 항목. 줄어들기만 한다.
+# 갈래: unscoped(도구 전체) · destructive(파괴적 명령 인자 무관) · hook(밖 경로·네트워크 실행) · mcp · injection
+unscoped:settings.local.json:Artifact
