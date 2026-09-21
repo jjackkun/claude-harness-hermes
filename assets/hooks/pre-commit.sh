@@ -5,7 +5,7 @@
 #
 # 현재 실제 게이트는 18종이다 (위 헤더의 "4단 검사" 는 마커라서 그대로 둔다):
 #   차단 11 — R-size R-fmt R-lint R-test R-doc R-cx R-dep R-struct R-secret R-merge R-plan
-#   경고 9 — R-cov R-acc R-design-cover R-plan-missing R-plan-stale R-pipe R-retro R-precheck R-config
+#   경고 10 — R-cov R-acc R-design-cover R-plan-missing R-plan-stale R-pipe R-retro R-precheck R-config R-eval
 # (lib/uninstall_helpers.sh `uninstall_pre_commit`, uninstall.sh 미리보기).
 #
 # 메시지 형식 (2026-04-17 Opus 4.7 튜닝):
@@ -808,6 +808,38 @@ $(printf '%s\n' "$CONFIG_NEW" | sed 's/^/    - /')
       gate_add R-config pass precommit "" "새 위험 없음"
     fi
   fi
+fi
+
+# 8-quater. R-eval — 규칙·강제 파일이 바뀌었으면 harness-eval 을 돌릴 때라고 알린다 (경고)
+# GATE: R-eval warn
+#
+# harness-eval 을 만든 이유가 "규칙이 작동하는지 잰 적이 없어 두 달 몰랐다" 였는데, 그 도구도 아무것에도
+# 불리지 않았다(2026-09-21 반대 심문). 게이트는 모델을 부르지 않는다(R3) — **돌릴 때라고 알리기만** 한다.
+# `scripts/harness-eval.py` 가 있는 저장소(공장)에서만 판정한다. 명령이 없는 곳에서 명령을 권하지 않는다.
+EVAL_RUNNER="scripts/harness-eval.py"
+if [[ -f "$EVAL_RUNNER" ]]; then
+  EVAL_FILES=$(filter_files '^assets/rules/|^assets/hooks/claude-pretooluse-|^assets/skills/hermes-agent/|^tests/agent-evals/')
+  if [[ -n "$EVAL_FILES" ]]; then
+    EVAL_LAST=$(ls -t .harness/evals/*.json 2>/dev/null | head -1 || true)
+    if [[ -n "$EVAL_LAST" ]]; then
+      EVAL_DAYS=$(( ( $(date +%s) - $(stat -c %Y "$EVAL_LAST") ) / 86400 ))
+      EVAL_AGE="${EVAL_DAYS}일 전"
+    else
+      EVAL_AGE="기록 없음"
+    fi
+    WARNINGS+=("
+[R-eval] 규칙·강제 파일이 바뀌었습니다 — harness-eval 마지막 실행: $EVAL_AGE
+$(printf '%s\n' "$EVAL_FILES" | sed 's/^/    - /')
+  → 이 변경이 에이전트 행동을 바꾸는지 재려면(모델 호출이 든다 — 사람이 터미널에서):
+     python3 scripts/harness-eval.py --dry-run     # 호출 수 확인
+     python3 scripts/harness-eval.py --k 2
+  근거: docs/design-docs/core-beliefs.md#r-eval")
+    gate_add R-eval warn precommit "" "마지막 실행 $EVAL_AGE · 바뀐 파일 $(printf '%s\n' "$EVAL_FILES" | grep -c .)건"
+  else
+    gate_add R-eval pass precommit "" "규칙·강제 파일 변경 없음"
+  fi
+else
+  gate_add R-eval skipped precommit "" "harness-eval 없는 저장소(소우주)"
 fi
 
 # 9. R-retro — completed/ 로 옮긴 계획서에 회고가 있는가 (경고)

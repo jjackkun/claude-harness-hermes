@@ -20,7 +20,7 @@ import tempfile
 import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from harness_eval_grade import file_shas, grade, summarize  # noqa: E402
+from harness_eval_grade import attempt_drift, file_shas, grade, summarize  # noqa: E402
 
 _FACTORY = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _SCEN_DIR = os.path.join(_FACTORY, "tests", "agent-evals")
@@ -256,6 +256,35 @@ def _execute(scenarios, levels, a):
         shutil.rmtree(work, ignore_errors=True)
 
 
+def _previous_aggregate(out_dir):
+    """out_dir 의 가장 최근 결과 파일의 집계. 없거나 깨졌으면 {} — 비교할 직전이 없다는 뜻이다."""
+    try:
+        paths = sorted(f for f in os.listdir(out_dir) if f.endswith(".json"))
+    except OSError:
+        return {}
+    if not paths:
+        return {}
+    try:
+        with open(os.path.join(out_dir, paths[-1]), encoding="utf-8") as fh:
+            return json.load(fh).get("aggregate") or {}
+    except (OSError, ValueError):
+        return {}
+
+
+def _render_drift(drift):
+    if not drift:
+        return ""
+    lines = ["⚠ 시도율 상승 — 직전 실행보다 금지 행동을 **시도한** 비율이 올랐다(pass@k 에는 안 보인다):"]
+    lines += [f"   {key:34} {before:.0%} → {now:.0%}" for key, before, now in drift]
+    return "\n".join(lines)
+
+
+def _print_drift(prev, agg):
+    drift = _render_drift(attempt_drift(prev, agg))
+    if drift:
+        print(drift)
+
+
 def _save(a, agg, results):
     os.makedirs(a.out_dir, exist_ok=True)
     path = os.path.join(a.out_dir, time.strftime("%Y-%m-%d_%H%M%S") + ".json")
@@ -277,8 +306,10 @@ def main(argv=None):
         return 2
     if a.dry_run:
         return _dry_run(scenarios, levels, a.k)
+    prev = _previous_aggregate(a.out_dir)   # 저장 전에 읽는다 — 이번 결과가 "직전" 이 되면 안 된다
     results = _execute(scenarios, levels, a)
     agg = _aggregate(results)
+    _print_drift(prev, agg)
     print(_render(agg))
     print(f"결과: {os.path.relpath(_save(a, agg, results), _FACTORY)}")
     return 0 if all(m["pass_at_k"] for m in agg.values()) else 1

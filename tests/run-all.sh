@@ -104,6 +104,7 @@ REGISTERED_TESTS=(
   claude-config-scan-test.sh
   context-budget-test.sh
   edit-factcheck-rate-test.sh
+  eval-reminder-test.sh
   hermes-loop-test.sh
   hermes-redact-test.sh
   hermes-redact-boundary-test.sh
