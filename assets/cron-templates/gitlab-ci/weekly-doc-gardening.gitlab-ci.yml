@@ -3,6 +3,8 @@
 # ↑ 설치기가 배치 시점에 본문 해시로 치환한다. 이 줄을 지우면 재설치 때
 #   "사용자 수정본" 으로 취급되어 갱신이 멈춘다 (lib/harness_installers.sh).
 #
+# 세션 시작 훅(claude-sessionstart-doc-gardening.sh)은 exec-plans 편차만 본다. 이 워크플로는 그 위에
+# CLAUDE.md dead-link · R 룰 미강제 · 룰 승격 후보 셋을 더 본다 — 둘은 겹치지 않는다(2026-09-21).
 # GitHub Actions 판과 동일한 4종 검사. GitLab Schedules 에서 주 1회 실행하도록 설정.
 #
 # ## 설치 절차
@@ -68,8 +70,9 @@ doc-gardening:
 
       # (3) core-beliefs R 룰 ↔ 강제 장치 매칭
       if [ -f docs/design-docs/core-beliefs.md ]; then
-        while IFS= read -r rule; do
-          rid=$(echo "$rule" | grep -oE '^R[0-9]+')
+        # 앵커(^R)를 두면 `## R5 …` 를 매치 못 해 grep 이 1 을 돌려주고 set -e 가 단계를 죽인다.
+      while IFS= read -r rule; do
+          rid=$(echo "$rule" | grep -oE 'R[0-9]+' | head -1) || true
           [ -z "$rid" ] && continue
           if ! grep -rq "$rid" --include='*.py' --include='*.ts' --include='*.js' --include='*.sh' . 2>/dev/null; then
             echo "- [rule-unenforced] \`$rid\` 에 대응하는 테스트/린터 강제가 발견되지 않음" >> "$report"

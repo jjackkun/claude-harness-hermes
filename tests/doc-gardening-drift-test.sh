@@ -141,6 +141,64 @@ assert "INFO 가 아니라 log_warn 로 보고" "0" "$_rc"
 grep -q 'gitlab-ci.yml" 2>/dev/null; then' "$REPO_ROOT/lib/harness_installers.sh"; _rc=$?
 assert "실제 include 유무를 grep 으로 검사" "0" "$_rc"
 
+echo "== 6. 워크플로 검사 본문이 끝까지 돈다 (계획 2026-09-21-weekly-gardening-red) =="
+# 왜: 3단계의 `rid=$(echo "$rule" | grep -oE '^R[0-9]+')` 가 `## R5 …` 를 매치하지 못해 grep 이 1 을 돌려주고
+# set -euo pipefail 이 첫 반복에서 단계를 죽였다 — 08-30~09-20 네 번 연속 실패, 3·4단계는 한 번도 실행된 적이 없다.
+# 정규식을 grep 으로 확인하는 시험은 같은 부류(중간에 죽는 검사)를 또 놓친다. 그래서 **본문을 실제로 돌린다.**
+extract_body() { # extract_body <템플릿> <시작표지> — 검사 스크립트 본문만 꺼내 들여쓰기를 벗긴다
+  python3 - "$1" "$2" <<'PY'
+import sys
+text = open(sys.argv[1], encoding="utf-8").read()
+marker = sys.argv[2]
+body = text.split(marker, 1)[1]
+out, indent = [], None
+for line in body.split("\n"):
+    if line.strip().startswith("- name: Open issue") or line.startswith("  artifacts:") or line.startswith("  rules:"):
+        break
+    if not line.strip():
+        out.append("")
+        continue
+    if indent is None:
+        indent = len(line) - len(line.lstrip())
+    if len(line) - len(line.lstrip()) < indent and line.strip():
+        break
+    out.append(line[indent:])
+print("\n".join(out))
+PY
+}
+run_body() { # run_body <본문파일> → rc, GITHUB_OUTPUT 는 $TMP/gh-out
+  : > "$TMP/gh-out"
+  ( cd "$REPO_ROOT" && GITHUB_OUTPUT="$TMP/gh-out" CI_PROJECT_DIR="$REPO_ROOT" bash "$1" >"$TMP/body.log" 2>&1 )
+}
+extract_body "$REPO_ROOT/assets/cron-templates/github-actions/weekly-doc-gardening.yml" "        run: |" > "$TMP/gh-body.sh"
+run_body "$TMP/gh-body.sh"; _rc=$?
+assert "GitHub 템플릿 본문이 rc 0 으로 끝난다" "0" "$_rc"
+grep -q 'has_drift=' "$TMP/gh-out"; _rc=$?
+assert "has_drift 를 GITHUB_OUTPUT 에 쓴다" "0" "$_rc"
+
+# 자기 검사 — 옛 앵커 정규식을 되돌려 심으면 빨강이어야 한다(통과만 보는 시험 금지)
+python3 - "$TMP/gh-body.sh" "$TMP/gh-body-old.sh" <<'PY'
+import sys
+src, dst = sys.argv[1], sys.argv[2]
+text = open(src, encoding="utf-8").read()
+fixed = """rid=$(echo "$rule" | grep -oE 'R[0-9]+' | head -1) || true"""
+broken = """rid=$(echo "$rule" | grep -oE '^R[0-9]+')"""
+assert fixed in text, "본문에서 교정된 줄을 찾지 못함 — 자기 검사 패턴이 낡았다"
+open(dst, "w", encoding="utf-8").write(text.replace(fixed, broken))
+PY
+_rc=$?
+assert "자기 검사 픽스처 생성" "0" "$_rc"
+run_body "$TMP/gh-body-old.sh"; _rc=$?
+assert "옛 정규식을 심으면 빨강(자기 검사)" "1" "$_rc"
+
+extract_body "$REPO_ROOT/assets/cron-templates/gitlab-ci/weekly-doc-gardening.gitlab-ci.yml" "  script:" > "$TMP/gl-body.sh"
+grep -q 'R\[0-9\]' "$TMP/gl-body.sh"; _rc=$?
+assert "GitLab 템플릿에도 R 룰 검사가 있다" "0" "$_rc"
+! grep -qF "grep -oE '^R[0-9]" "$REPO_ROOT/assets/cron-templates/gitlab-ci/weekly-doc-gardening.gitlab-ci.yml"; _rc=$?
+assert "GitLab 템플릿에 앵커 정규식이 남아 있지 않다" "0" "$_rc"
+! grep -qF "grep -oE '^R[0-9]" "$REPO_ROOT/.github/workflows/weekly-doc-gardening.yml"; _rc=$?
+assert "공장 설치본도 갱신됐다" "0" "$_rc"
+
 echo ""
 echo "== 결과 =="
 echo "  통과: $PASS / 실패: $FAIL"

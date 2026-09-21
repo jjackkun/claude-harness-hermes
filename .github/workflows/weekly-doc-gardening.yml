@@ -11,6 +11,8 @@
 #   - ARCHITECTURE.md 에 언급된 디렉터리가 실제로 있는가
 #   - core-beliefs.md 의 R 룰이 코드/테스트에 대응하는 강제 장치를 가지고 있는가
 #
+# 세션 시작 훅(claude-sessionstart-doc-gardening.sh)은 exec-plans 편차만 본다. 이 워크플로는 그 위에
+# CLAUDE.md dead-link · R 룰 미강제 · 룰 승격 후보 셋을 더 본다 — 둘은 겹치지 않는다(2026-09-21).
 # 결과: Issue 를 하나 생성하거나, 아무 문제 없으면 조용히 종료.
 
 name: weekly-doc-gardening
@@ -59,8 +61,10 @@ jobs:
 
           # (3) core-beliefs R 룰 ↔ 강제 장치
           if [[ -f docs/design-docs/core-beliefs.md ]]; then
+            # 앵커(^R)를 두면 `## R5 …` 를 매치 못 해 grep 이 1 을 돌려주고 set -e 가 단계를 죽인다
+            # (08-30~09-20 네 번 연속 실패, 3·4단계 미실행). 매치 실패는 건너뛰기여야 한다.
             while IFS= read -r rule; do
-              rid=$(echo "$rule" | grep -oE '^R[0-9]+')
+              rid=$(echo "$rule" | grep -oE 'R[0-9]+' | head -1) || true
               [[ -z "$rid" ]] && continue
               if ! grep -rq "$rid" --include='*.py' --include='*.ts' --include='*.js' --include='*.sh' . 2>/dev/null; then
                 echo "- [rule-unenforced] \`$rid\` 에 대응하는 테스트/린터 강제가 발견되지 않음" >> "$report"
