@@ -58,7 +58,11 @@ assert "factory.json 에 remote_url·installed_version(40자)" "ok" "$(python3 -
 import json; d=json.load(open('$PROJ/.hermes/factory.json'))
 print('ok' if d['remote_url'] and len(d['installed_version'])==40 else d)")"
 assert "factory.json 은 git 추적 대상(무시 아님)" "1" "$(git -C "$PROJ" check-ignore -v .hermes/factory.json | grep -c '!.hermes/factory.json')"
-assert "manifest 는 gitignore 마커에 없음" "0" "$(grep -c 'factory-manifest' "$PROJ/.gitignore")"
+# I-02: 설치 목록은 커밋된다 — factory.json 과 같은 방식으로 **예외 줄**을 둔다(2026-09-21).
+# 예전엔 "블록에 언급조차 없어야 한다" 로 적었는데, 그러면 프로젝트가 `.claude/*` 를 무시할 때
+# 목록이 조용히 빠진다(ai-create·kis-trading 실측). 무시되지 않는지를 git 에게 직접 묻는다.
+assert "manifest 예외 줄" "1" "$(grep -c '!\.claude/\.factory-manifest\.json' "$PROJ/.gitignore")"
+assert "manifest 는 무시되지 않는다" "1" "$(git -C "$PROJ" check-ignore -q .claude/.factory-manifest.json && echo 0 || echo 1)"
 
 echo ""
 echo "== 2. 재설치 멱등 =="

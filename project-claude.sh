@@ -182,6 +182,8 @@ printf '%s\n' "${PRESETS[@]}" > "$CLAUDE_DIR/presets.lock"
 log_info "Saved presets → .claude/presets.lock"
 
 
+warn_manifest_untracked "$PROJECT_PATH"
+
 receipt_end "$PROJECT_PATH"
 
 # 머신 로컬 레지스트리에 등록 (dry-run 제외, 중복 방지). 판정은 lib/registry.sh 한 곳.

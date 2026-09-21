@@ -586,6 +586,22 @@ install_harness_gc_workflows() {
 # .gitignore 에 머신 로컬 항목(settings.local.json 등)을 마커 블록으로 추가/갱신.
 # 마커 사이만 교체하므로 재실행 시 중복이 쌓이지 않고, 마커 밖의 사용자 항목은 보존.
 #   target: claude | codex
+# 설치 목록이 실제로 git 에 들어가는가 — 무시 규칙 해석은 git 에게 맡긴다.
+# 2026-09-21 실측: 12곳 중 2곳(ai-create·kis-trading)에서 `.claude/*` 규칙에 덮여 추적되지 않았고,
+# 아무도 그 사실을 말해 주지 않았다. doctor 도 같은 판정을 낸다(scripts/harness-doctor.py).
+warn_manifest_untracked() {
+  local project_path="$1"
+  local rel=".claude/.factory-manifest.json"
+  [[ -f "$project_path/$rel" ]] || return 0
+  git -C "$project_path" rev-parse --is-inside-work-tree >/dev/null 2>&1 || return 0
+  git -C "$project_path" ls-files --error-unmatch "$rel" >/dev/null 2>&1 && return 0
+  git -C "$project_path" check-ignore -q "$rel" 2>/dev/null || return 0
+  log_warn "  manifest → 설치 목록이 git 에 추적되지 않습니다 ($rel)"
+  log_warn "            ↳ 프로젝트 .gitignore 의 `.claude/*` 규칙이 하네스 예외보다 뒤에 있습니다"
+  log_warn "            ↳ 이대로면 다른 컴퓨터의 clone 에서 doctor 는 진단 불가, 공존 설치는 base 없음이 됩니다"
+  log_warn "            ↳ 고치려면 그 규칙 **뒤**에 !.claude/.factory-manifest.json 한 줄을 두고 커밋하십시오"
+}
+
 install_harness_gitignore() {
   local project_path="$1"
   local target="$2"
@@ -609,6 +625,10 @@ install_harness_gitignore() {
       # 게이트 발화 기록. 개발자 로컬 사건이라 커밋하면 매 커밋 diff 노이즈가 된다.
       # 근거: docs/exec-plans/active/2026-09-03-gate-telemetry.md §6
       ".harness/"
+      # 설치 목록은 커밋돼야 한다(I-02) — 다른 컴퓨터의 clone 도 어느 파일이 공장 것인지 알아야
+      # 변조 감지·공존 설치 base 가 동작한다. 단 프로젝트 자체 규칙이 이 블록보다 **뒤**에서
+      # `.claude/*` 를 무시하면 이 예외는 덮인다 — 그래서 설치 끝에 실제 추적 여부를 git 에 묻고 경고한다.
+      "!.claude/.factory-manifest.json"
       "!.claude/memory/"
       "!.claude/memory/**"
     ) ;;

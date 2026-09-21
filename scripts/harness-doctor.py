@@ -114,6 +114,32 @@ def _user_assets(project, items):
     return out
 
 
+def _manifest_untracked(project):
+    """설치 목록이 git 에 **안 들어가는가**. I-02 는 "목록은 커밋된다" 를 전제하는데, 프로젝트 자체 `.gitignore` 가
+    `.claude/*` 를 통째로 무시하면 그 전제가 조용히 깨진다(2026-09-21 ai-create·kis-trading 실측).
+
+    판정은 git 에게 묻는다 — 규칙 문자열을 우리가 해석하면 순서·부정 규칙에서 틀린다.
+    git 저장소가 아니면 판정 대상이 아니다(None 이 아니라 False — 보고에 줄을 내지 않는다).
+    """
+    rel = os.path.join(".claude", ".factory-manifest.json")
+    if not os.path.isfile(os.path.join(project, rel)):
+        return False
+    try:
+        inside = subprocess.run(["git", "-C", project, "rev-parse", "--is-inside-work-tree"],
+                                capture_output=True, text=True, timeout=10)
+        if inside.returncode != 0 or inside.stdout.strip() != "true":
+            return False
+        tracked = subprocess.run(["git", "-C", project, "ls-files", "--error-unmatch", rel],
+                                 capture_output=True, text=True, timeout=10)
+        if tracked.returncode == 0:
+            return False
+        ignored = subprocess.run(["git", "-C", project, "check-ignore", "-q", rel],
+                                 capture_output=True, text=True, timeout=10)
+        return ignored.returncode == 0
+    except (OSError, subprocess.SubprocessError):
+        return False
+
+
 def diagnose(project, factory=_FACTORY):
     """{ok, tampered, missing, lock_drift, stale, user_assets, total, head, lock} — 읽기 전용."""
     items = _load_manifest(project)
@@ -125,6 +151,9 @@ def diagnose(project, factory=_FACTORY):
            "stale": [], "user_assets": _user_assets(project, items)}
     for it in items:
         _classify(project, it, expected, head, rep)
+    # 정보 항목 — ok 를 거짓으로 만들지 않는다. 그 프로젝트의 `.gitignore` 선택이고,
+    # 실패로 찍으면 doctor 가 늘 빨강이라 아무도 안 본다. "보이게 한다" 가 목적이다.
+    rep["manifest_untracked"] = _manifest_untracked(project)
     rep["ok"] = not (rep["tampered"] or rep["missing"] or rep["lock_drift"])
     return rep
 
@@ -157,6 +186,9 @@ def _render(project, rep, brief=False):
         if rep[key]:
             lines.append(f"  {title}:")
             lines.extend(f"    - {x}" for x in rep[key])
+    if rep.get("manifest_untracked"):
+        lines.append("  설치 목록이 git 에 추적되지 않음 — `.claude/*` 무시 규칙에 덮였다."
+                     " 다른 컴퓨터의 clone 은 진단 불가(매니페스트 없음)·공존 설치 base 없음이 된다")
     if rep["stale"]:
         lines.append(f"  갱신 대기 {len(rep['stale'])}건 — 공장 HEAD {str(rep['head'])[:8]} 와 다른 factory_commit (update-all 로 맞춘다)")
     return "\n".join(lines)
