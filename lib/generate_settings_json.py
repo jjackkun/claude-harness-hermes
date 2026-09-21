@@ -212,6 +212,7 @@ def main(output_path: str) -> int:
     user_prompt_submit = list(dict.fromkeys(_read_lines(tmpdir, "user_prompt_submit")))
     session_start = _read_lines(tmpdir, "session_start")
     subagent_stop = _read_lines(tmpdir, "subagent_stop")
+    pre_compact = _read_lines(tmpdir, "pre_compact")
     pre_tool_use = _read_lines(tmpdir, "pre_tool_use")
     post_tool_use = _read_lines(tmpdir, "post_tool_use")
     permissions_allow = _read_lines(tmpdir, "permissions_allow")
@@ -264,6 +265,8 @@ def main(output_path: str) -> int:
     for key, cmds, timeout in (
         ("Stop", stop, 30),
         ("SubagentStop", subagent_stop, 30),
+        # PreCompact: 압축 직전. 요약을 백그라운드로 던지고 즉시 끝나므로 타임아웃은 Stop 과 같다.
+        ("PreCompact", pre_compact, 30),
         ("SessionStart", session_start, None),
         ("UserPromptSubmit", user_prompt_submit, None),
     ):

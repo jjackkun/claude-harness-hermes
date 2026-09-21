@@ -99,6 +99,7 @@ REGISTERED_TESTS=(
   hermes-evolve-vocab-test.sh
   windows-smoke.sh
   hermes-pipeline-test.sh
+  precompact-summary-test.sh
   hermes-loop-test.sh
   hermes-redact-test.sh
   hermes-redact-boundary-test.sh
