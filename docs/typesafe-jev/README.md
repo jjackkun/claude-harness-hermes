@@ -15,6 +15,7 @@
 | 순서 | 파일 | 내용 |
 |---|---|---|
 | 1 | [proposal.md](proposal.md) | **기획서** — 무엇을 하고 무엇을 하지 않는가, 단계와 판단 기준 |
+| 1-1 | [playwright-in-sessions.md](playwright-in-sessions.md) | **세션 안 Playwright 루프 실측** — Jev 가 들어갈 가장 큰 자리, 러너 구조와 먼저 할 일 |
 | 2 | [decision-points.md](decision-points.md) | 하네스 판단 지점 18곳 — 어디를 Jev 로 넘길 수 있고 어디는 안 되는가 |
 | 3 | [fact-check.md](fact-check.md) | 주장별 출처와 확인 상태 (공식 확인 · 사용자 화면 · 미확인) |
 | 4 | [source-notes.md](source-notes.md) | 원본 PDF 정리본 — 질문 순서대로, 잘려서 읽을 수 없는 곳 포함 |

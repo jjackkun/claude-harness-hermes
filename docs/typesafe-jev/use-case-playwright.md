@@ -74,4 +74,4 @@ PDF 는 Threads 사례 중 "가장 반응이 뜨거웠던 분야" 라고 소개�
 - **임계값이 두 개다.** 16쪽은 0.8 미만에서 Vision LLM 으로 넘긴다고 했고, 23쪽은 0.7 이하에서 고가 LLM 으로 넘기라고 했다. 둘 다 근거가 제시되지 않았다. 과제마다 실측해서 정할 값이다.
 - **"수백 KB DOM 을 그대로" 넣을 수 있는지**는 입력 한도에 달렸다. 공식 문서에서 입력 한도를 찾지 못했다([fact-check.md](fact-check.md)).
 - **무상태가 늘 이득은 아니다.** 여러 페이지에 걸친 목표(예: 3단계 결제 흐름)에서는 "지금 어디까지 했나" 를 호출하는 쪽 코드가 `state` 에 직접 넣어 줘야 한다. PDF 는 이 부분을 다루지 않는다.
-- **이 저장소와의 관계**: Playwright 는 `assets/skills/webapp-testing/examples/` 의 예제 스크립트 3개(요소 탐색·콘솔 로그·정적 HTML 자동화)에만 있고, 모델이 다음 행동을 고르는 에이전트 루프는 없다. 소우주 앱에 붙이는 일은 기획서 §6 "하지 않는 것" 에 따라 프로젝트마다 따로 정한다 — [proposal.md](proposal.md).
+- **이 사용자와의 관계**: 저장소 코드에는 Playwright 루프가 없지만(`assets/skills/webapp-testing/examples/` 예제 3개뿐), **Claude Code 세션이 Playwright MCP 로 바로 이 루프를 돌고 있다** — 2,794턴 · 입력 약 13억 토큰 · 단계당 컨텍스트 46.5만. PDF 의 표(Claude 턴당 기록 누적)가 이 사용자의 기록에서 실제로 나타난다. 측정과 구조는 [playwright-in-sessions.md](playwright-in-sessions.md).

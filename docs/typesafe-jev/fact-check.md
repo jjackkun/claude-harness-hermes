@@ -34,6 +34,16 @@
 | 무료 크레딧 | **매달 $5** (`Monthly credit`, Sep 20, 2026 지급 → Oct 20, 2026 만료) | **사용자 화면** — 공식 사이트·문서에는 언급 없음 |
 | 크레딧 차감 순서 | 만료가 가까운 것부터 ("Credits closest to expiring are used first") | 사용자 화면 |
 | 자동 결제 | `Auto-recharge: Off`, 카드 미등록 → 소진 시 호출 정지 | 사용자 화면 |
+| 입력의 학습 사용 | "We will not train or fine tune any artificial intelligence or machine learning models on your prompts or other Input." | 공식 (`typesafe.ai/privacy`, 2026-09-21) |
+| 입력 보관 기간 | "for as long as reasonably necessary to provide you with the Services, **or otherwise in support of our business or commercial purposes**" — 기한 없음 | 공식 (같은 문서) |
+| 입력의 제3자 제공 | "We will not disclose any Input to a third party other than our service providers." | 공식 (같은 문서) |
+| 저장 위치 | 미국 | 공식 (같은 문서) |
+| 보관하지 않는 옵션 | 언급 없음 | 공식 (같은 문서) |
+| 보관 안 함 (ZDR) | "zero data retention (ZDR) for enterprise customers" — **기업 고객만.** 조건·절차 비공개 | 공식 (`docs.typesafe.ai/models`, 2026-09-21) |
+| 데이터 처리 부속서 (DPA) | 서비스 계약에 포함. 유출 시 "within 72 hours" 통지, EU SCC(Module 2)·UK Addendum. 보관은 "as long as necessary taking into account the purpose" — 기한 없음 | 공식 (`typesafe.ai/legal/data-processing`) |
+| 보안 인증 (SOC 2 · ISO 27001) | Trust Center(`trust.typesafe.ai`)가 스크립트로 그려져 읽지 못함 | **미확인** |
+| 제3자 평가 | Opper(2026-09-18 확인): 미국 경로 ZDR "Not established", 이전 방식 "unknown". GitHub `fdsimms/todo#2781`: "US-hosted, with zero data retention available on the enterprise tier only" 를 이유로 도입 거절 | 제3자 — 원문 확인 |
+| 사용권 조항 | 무제한·영구·취소 불가 사용권은 **Feedback**(사용자 의견)에 대한 것, API 입력이 아님. API 전용 약관이 따로 있는지는 미확인 | 공식 (`typesafe.ai/terms`) |
 | $5 로 쓸 수 있는 양 | 5 ÷ 0.042 = **약 1억 1,900만 입력 토큰 / 월** | 위 두 값으로 계산 |
 
 ## 스킬 저장소
