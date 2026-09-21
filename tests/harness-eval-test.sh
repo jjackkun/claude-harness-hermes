@@ -6,6 +6,7 @@
 #   - 3절 러너: 가짜 claude(FAKE_EVAL_MODE=blocked|violate|clean|skill) 로 pass@k·pass^k·발화후위반 수치, JSON 저장, 종료코드
 #   - 4절 안전: --dry-run 은 가짜를 부르지 않는다 · CI=1 이면 rc 2 · 픽스처는 임시 폴더(등록부 오염 0)
 #   - 5절 시도율 상승: 직전 결과보다 attempt_rate 가 오른 칸만 알린다(첫 실행·내려감은 침묵)
+#   - 6절 스킬 발동: trigger-eval.json → 픽스처 안 진짜 스킬 이름으로 정밀도·재현율 · --no-inject 는 state.db 제거
 #
 # 실행: bash tests/harness-eval-test.sh
 
@@ -76,6 +77,8 @@ cat > "$T/bin/claude" <<'EOF'
 #!/usr/bin/env bash
 # 가짜 claude — 인자는 무시하고 FAKE_EVAL_MODE 대로 stream-json 을 낸다. 부를 때마다 표식을 남긴다.
 echo "called" >> "${FAKE_EVAL_LOG:?}"
+# 주입 훅 스위치 확인용 — 부른 순간 작업 폴더에 .hermes/state.db 가 있었나(1/0)
+[[ -n "${FAKE_DB_LOG:-}" ]] && { [[ -f .hermes/state.db ]] && echo 1 || echo 0; } >> "$FAKE_DB_LOG"
 # 진짜 claude 처럼 자기 cwd 항목에 키를 덧붙인다 — 정리가 키 모양에 기대면 항목이 남는다(2026-09-20 실측 36개 잔류)
 python3 - "$HARNESS_EVAL_CLAUDE_JSON" "$PWD" <<'PYEOF'
 import json, sys
@@ -161,6 +164,35 @@ D="$T/drift"; mkdir -p "$D"
 printf '{"aggregate": {"no-verify/neutral": {"attempt_rate": 0.0}}}' > "$D/2000-01-01_000000.json"
 FAKE_EVAL_MODE=blocked python3 "$RUN" --out-dir "$D" --workers 1 --timeout 30 --only no-verify --strictness neutral --k 1 > "$T/d2.out" 2>/dev/null
 assert "0% → 100% → 알림 머리 + 칸" "1 1" "$(grep -c '시도율 상승' "$T/d2.out") $(grep -c 'no-verify/neutral.*0% → 100%' "$T/d2.out")"
+
+echo "== 6절 스킬 발동 평가(계획 2026-09-21-skill-trigger-eval-in-project)"
+# 9-20 skill-creator 평가는 가짜 이름·빈 루트라 재현율이 평가 방식에 갇혔다. 여기서는 설치된 픽스처 안에서 진짜 스킬 이름을 센다.
+assert "변환: 12 질의 → 시나리오 12 · 발동은 require · 비발동은 forbid · 주입 끔은 state.db 제거" "12 6 6 12" "$(python3 -c "
+import sys, json; sys.path.insert(0, '$REPO_ROOT/scripts')
+from harness_eval_trigger import to_scenarios
+q = json.load(open('$REPO_ROOT/assets/skills/hermes-agent/evals/trigger-eval.json'))
+sc = to_scenarios('hermes-agent', q, inject=False)
+print(len(sc), sum('require_tool' in s['expect'] for s in sc), sum('forbid_tool' in s['expect'] for s in sc),
+      sum(s['setup']['remove'] == ['.hermes/state.db'] for s in sc))")"
+assert "지표: 아무것도 발동 안 함 → 재현율 0 · 오발동 0 · 정확도 50%" "0.0 0 0.5" "$(python3 -c "
+import sys; sys.path.insert(0, '$REPO_ROOT/scripts')
+from harness_eval_trigger import trigger_metrics
+q = [{'query': 'a', 'should_trigger': True}, {'query': 'b', 'should_trigger': False}]
+res = [{'scenario': 'trig-01', 'timeline': []}, {'scenario': 'trig-02', 'timeline': []}]
+m = trigger_metrics('hermes-agent', q, res); print(m['recall'], m['false_triggers'], m['accuracy'])")"
+assert "지표: 다른 스킬 호출은 발동이 아니다" "0.0" "$(python3 -c "
+import sys; sys.path.insert(0, '$REPO_ROOT/scripts')
+from harness_eval_trigger import trigger_metrics
+q = [{'query': 'a', 'should_trigger': True}]
+res = [{'scenario': 'trig-01', 'timeline': [{'tool': 'Skill', 'input': {'skill': 'hermes-agent-skill-x'}}]}]
+print(trigger_metrics('hermes-agent', q, res)['recall'])")"
+: > "$FAKE_EVAL_LOG"; R --trigger hermes-agent --dry-run > "$T/tdry.out" 2>&1; RC=$?
+assert "dry-run: 12 질의 × 단계 1 × k3 = 호출 36회 예고 · 실제 호출 0" "0 1 0" "$RC $(grep -c '호출 36회' "$T/tdry.out") $(wc -l < "$FAKE_EVAL_LOG")"
+: > "$FAKE_EVAL_LOG"; export FAKE_DB_LOG="$T/db.log"; : > "$FAKE_DB_LOG"
+FAKE_EVAL_MODE=skill R --trigger hermes-agent --no-inject --k 1 > "$T/trig.out" 2>/dev/null
+unset FAKE_DB_LOG
+assert "모두 발동 → 재현율 100% · 정밀도 50%(비발동 6 도 발동)" "1 1" "$(grep -c '재현율 100%' "$T/trig.out") $(grep -c '정밀도 50%' "$T/trig.out")"
+assert "--no-inject: 12 번 모두 실행 사본에 state.db 없음" "12 0" "$(wc -l < "$T/db.log") $(grep -c '^1$' "$T/db.log")"
 
 echo; echo "PASS=$PASS FAIL=$FAIL"
 [[ $FAIL -eq 0 ]]

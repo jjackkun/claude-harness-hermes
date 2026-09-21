@@ -21,6 +21,7 @@ import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from harness_eval_grade import attempt_drift, file_shas, grade, summarize  # noqa: E402
+from harness_eval_trigger import LEVEL, render_metrics, to_scenarios, trigger_metrics  # noqa: E402
 
 _FACTORY = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _SCEN_DIR = os.path.join(_FACTORY, "tests", "agent-evals")
@@ -101,6 +102,10 @@ def _prepare(tpl, dest, scenario):
         os.makedirs(os.path.dirname(full), exist_ok=True)
         with open(full, "w", encoding="utf-8") as fh:
             fh.write(body)
+    for rel in (scenario.get("setup") or {}).get("remove", []):   # 발동 평가의 주입 끔 — 실행 사본에서만 치운다
+        full = os.path.join(dest, rel)
+        if os.path.lexists(full):
+            os.remove(full)
     subprocess.run(["git", "-C", dest, "add", "-A"], check=True)   # 커밋하지 않는다 — 픽스처 게이트를 우회하지 않고, 커밋은 시나리오의 몫이다
 
 
@@ -236,7 +241,38 @@ def _parse_args(argv):
     ap.add_argument("--workers", type=int, default=3); ap.add_argument("--model", default="claude-haiku-4-5-20251001")
     ap.add_argument("--timeout", type=int, default=120); ap.add_argument("--scen-dir", default=_SCEN_DIR)
     ap.add_argument("--out-dir", default=os.path.join(_FACTORY, ".harness", "evals"))
-    return ap.parse_args(argv)
+    ap.add_argument("--trigger", default="", help="스킬 발동 평가 — assets/skills/<스킬>/evals/trigger-eval.json 을 픽스처 안에서 돌린다")
+    ap.add_argument("--no-inject", action="store_true", help="발동 평가에서 세션 훅의 스킬 주입을 끈다(실행 사본의 .hermes/state.db 제거)")
+    a = ap.parse_args(argv)
+    if a.trigger:   # 행동 평가와 결과 폴더를 나눈다 — 섞이면 시도율 상승 비교의 "직전" 이 발동 평가가 돼 조용히 꺼진다
+        a.out_dir = os.path.join(a.out_dir, f"trigger-{a.trigger}" + ("-noinject" if a.no_inject else ""))
+    return a
+
+
+def _trigger_queries(skill):
+    with open(os.path.join(_FACTORY, "assets", "skills", skill, "evals", "trigger-eval.json"), encoding="utf-8") as fh:
+        return json.load(fh)
+
+
+def _load(a):
+    """(시나리오, 단계) — 발동 평가면 질의를 시나리오로 바꾸고 한 단계만, 아니면 tests/agent-evals."""
+    if a.trigger:
+        return to_scenarios(a.trigger, _trigger_queries(a.trigger), inject=not a.no_inject), [LEVEL]
+    only = {x.strip() for x in a.only.split(",") if x.strip()} or None
+    return load_scenarios(only, a.scen_dir), [x for x in a.strictness.split(",") if x in STRICTNESS]
+
+
+def _report(a, prev, results):
+    """표·결과 저장. 발동 평가는 측정이라 rc 0, 행동 평가는 pass@k 전부여야 rc 0."""
+    agg = _aggregate(results)
+    if a.trigger:
+        print(render_metrics(trigger_metrics(a.trigger, _trigger_queries(a.trigger), results), inject=not a.no_inject))
+        print(f"결과: {os.path.relpath(_save(a, agg, results), _FACTORY)}")
+        return 0
+    _print_drift(prev, agg)
+    print(_render(agg))
+    print(f"결과: {os.path.relpath(_save(a, agg, results), _FACTORY)}")
+    return 0 if all(m["pass_at_k"] for m in agg.values()) else 1
 
 
 def _execute(scenarios, levels, a):
@@ -298,21 +334,14 @@ def main(argv=None):
     if os.environ.get("CI"):
         print("[harness-eval] CI 에서는 돌리지 않는다(설계 agent-eval-llm-path.md 결정 2) — 로컬·수동만", file=sys.stderr)
         return 2
-    only = {x.strip() for x in a.only.split(",") if x.strip()} or None
-    levels = [x for x in a.strictness.split(",") if x in STRICTNESS]
-    scenarios = load_scenarios(only, a.scen_dir)
+    scenarios, levels = _load(a)
     if not scenarios:
         print("[harness-eval] 시나리오 없음", file=sys.stderr)
         return 2
     if a.dry_run:
         return _dry_run(scenarios, levels, a.k)
     prev = _previous_aggregate(a.out_dir)   # 저장 전에 읽는다 — 이번 결과가 "직전" 이 되면 안 된다
-    results = _execute(scenarios, levels, a)
-    agg = _aggregate(results)
-    _print_drift(prev, agg)
-    print(_render(agg))
-    print(f"결과: {os.path.relpath(_save(a, agg, results), _FACTORY)}")
-    return 0 if all(m["pass_at_k"] for m in agg.values()) else 1
+    return _report(a, prev, _execute(scenarios, levels, a))
 
 
 if __name__ == "__main__":
