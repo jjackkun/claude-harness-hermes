@@ -96,7 +96,7 @@
 
 ## 사람의 판단
 
-- [ ] 유용했다 → `assets/agents/devil-advocate.md` 를 `harness.conf` 의 `AGENTS` 에 등록하고 R7 표에 "물어보는" 행을 추가한다.
+- [x] 유용했다 (2026-09-21 사용자) → `assets/agents/devil-advocate.md` 를 `harness.conf` 의 `AGENTS` 에 등록하고 R7 표에 "물어보는" 행을 추가한다.
 - [ ] 유용하지 않았다 → 자산을 지우고 여기에 사유를 남긴다.
 
-판단 전까지 배포하지 않는다. 지금 이 파일과 `assets/agents/devil-advocate.md` 는 공장에만 있다.
+판단에 따라 `harness.conf` 에 등록하고 R7 에 문단을 추가해 12곳에 전파했다.
