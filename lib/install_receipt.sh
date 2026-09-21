@@ -11,6 +11,9 @@ _RECEIPT_NAME=".last-install.txt"
 _RECEIPT_MARK=""
 # 설치기가 쓰지 않는 큰 디렉터리. 여기 안은 스캔하지 않는다.
 _RECEIPT_PRUNE=(.git node_modules .venv venv __pycache__)
+# SQLite 사이드카. 설치 산출물이 아니고, 체크포인트로 **스캔 도중 사라져** find 를 rc 1 로 만든다
+# (실측 2026-09-21: zeroday-frontend 전파 실패 — .hermes/state.db-shm/-wal).
+_RECEIPT_PRUNE_NAMES=('*.db-wal' '*.db-shm' '*.db-journal')
 
 # receipt_begin — 지금 이 순간을 표식으로 잡는다. 이 뒤에 쓰인 파일만 영수증에 오른다.
 receipt_begin() {
@@ -29,12 +32,21 @@ receipt_end() {
   [[ -n "$_RECEIPT_MARK" && -f "$_RECEIPT_MARK" ]] || return 0
   local receipt="$project/.claude/$_RECEIPT_NAME"
   local prune_expr=() name
-  for name in "${_RECEIPT_PRUNE[@]}"; do
+  for name in "${_RECEIPT_PRUNE[@]}" "${_RECEIPT_PRUNE_NAMES[@]}"; do
     prune_expr+=(-name "$name" -o)
   done
   unset 'prune_expr[-1]'
-  (cd "$project" && find . \( "${prune_expr[@]}" \) -prune -o \( -type f -o -type l \) -cnewer "$_RECEIPT_MARK" -print) \
-    | sed 's|^\./||' | grep -vxF ".claude/$_RECEIPT_NAME" | LC_ALL=C sort > "$receipt"
+  # 영수증은 보고물이다 — 설치 성공을 뒤집을 권한이 없다. 스캔 중 파일이 사라지면(다른 프로세스·체크포인트)
+  # find 가 rc 1 을 내는데, 호출부가 `set -euo pipefail` 이라 그대로 두면 설치 전체가 죽는다.
+  # 그래서 rc 를 받아 경고로 낮춘다. 삼키지는 않는다 — 영수증이 불완전할 수 있다고 말한다.
+  local scanned rc=0
+  scanned="$( (cd "$project" && find . \( "${prune_expr[@]}" \) -prune -o \( -type f -o -type l \) -cnewer "$_RECEIPT_MARK" -print) )" || rc=$?
+  if [[ $rc -ne 0 ]]; then
+    log_warn "영수증 스캔이 일부 경로를 읽지 못했습니다 (find rc=$rc) — 스캔 도중 사라진 파일일 수 있습니다. 영수증이 불완전할 수 있습니다"
+  fi
+  # 필터에 grep 을 쓰지 않는다 — 남는 줄이 없으면 grep 이 rc 1 을 내고, 같은 `set -e` 에 또 걸린다.
+  printf '%s\n' "$scanned" | sed 's|^\./||' | LC_ALL=C sort \
+    | awk -v skip=".claude/$_RECEIPT_NAME" 'NF && $0 != skip' > "$receipt"
   rm -f "$_RECEIPT_MARK"; _RECEIPT_MARK=""
   log_info "원격과 갈라진 소우주라면 설치물은 병합하지 말고(옛 판 덩어리가 섞여 잡종이 된다) 병합 뒤 재설치로 재정렬 → python3 <공장>/scripts/harness-doctor.py <소우주> 가 깨끗인지 확인"
   log_info "이번 설치가 쓴 파일 $(wc -l < "$receipt")건 → .claude/$_RECEIPT_NAME (커밋: git add \$(git ls-files -co --exclude-standard \$(cat .claude/$_RECEIPT_NAME)))"

@@ -85,6 +85,50 @@ assert "커밋 뒤 영수증 경로 중 미커밋 0" "0" "$(cd "$PROJ" && git st
 rm -f "$RECEIPT"
 assert "영수증 없으면 훅 조용" "" "$(run_hook)"
 
+
+# ── 스캔 경합 (2026-09-21 zeroday-frontend 전파 실패) ────────────────────────
+# 영수증 스캔 도중 파일이 사라지면 find 가 rc 1 을 낸다. 호출부는 `set -euo pipefail` 이라
+# 그대로 두면 **설치 전체가 죽는다**. 영수증은 보고물이므로 설치를 뒤집어서는 안 된다.
+echo "[경합] 스캔 중 파일이 사라져도 설치를 죽이지 않는다"
+RACE="$TMP/race"; mkdir -p "$RACE/.claude/sub"
+# shellcheck disable=SC1090
+log_info() { echo "INFO $*"; }; log_warn() { echo "WARN $*"; }
+source "$REPO_ROOT/lib/install_receipt.sh"
+
+receipt_begin
+python3 -c "
+import sys
+for i in range(4000): open('$RACE/sub/f%04d.tmp'%i,'w').close()
+" 2>/dev/null || { mkdir -p "$RACE/sub"; python3 -c "
+for i in range(4000): open('$RACE/sub/f%04d.tmp'%i,'w').close()
+"; }
+( for i in $(seq 0 3999); do rm -f "$RACE/sub/f$(printf %04d "$i").tmp"; done ) &
+race_out=$( set -euo pipefail; receipt_end "$RACE" 2>&1 ); race_rc=$?
+wait
+assert "사라지는 파일이 있어도 rc 0" "0" "$race_rc"
+# 경합이 실제로 걸렸을 때만 경고가 나온다(타이밍). 걸렸으면 조용히 지나가지 않는지 본다.
+if grep -q "find rc=" <<<"$race_out"; then
+  assert "경합이 걸렸으면 경고로 알린다" "1" "$(grep -c '영수증이 불완전할 수 있습니다' <<<"$race_out")"
+else
+  assert "경합 미발생 — 경고 없음이 정상" "0" "$(grep -c '영수증이 불완전할 수 있습니다' <<<"$race_out")"
+fi
+
+echo "[사이드카] SQLite -wal/-shm 은 영수증에 오르지 않는다"
+SIDE="$TMP/side"; mkdir -p "$SIDE/.claude" "$SIDE/.hermes"
+receipt_begin
+touch "$SIDE/.hermes/state.db" "$SIDE/.hermes/state.db-wal" "$SIDE/.hermes/state.db-shm" "$SIDE/real.txt"
+receipt_end "$SIDE" >/dev/null 2>&1
+assert "state.db 는 오른다"   "1" "$(grep -c '^.hermes/state.db$' "$SIDE/.claude/.last-install.txt")"
+assert "-wal 은 안 오른다"     "0" "$(grep -c 'db-wal' "$SIDE/.claude/.last-install.txt")"
+assert "-shm 은 안 오른다"     "0" "$(grep -c 'db-shm' "$SIDE/.claude/.last-install.txt")"
+
+echo "[빈 영수증] 쓴 파일이 없어도 죽지 않는다"
+EMPTY="$TMP/empty"; mkdir -p "$EMPTY/.claude"
+receipt_begin
+empty_out=$( set -euo pipefail; receipt_end "$EMPTY" 2>&1 ); empty_rc=$?
+assert "빈 결과에서도 rc 0" "0" "$empty_rc"
+assert "영수증 0줄" "0" "$(wc -l < "$EMPTY/.claude/.last-install.txt")"
+
 echo ""
 echo "PASS=$PASS FAIL=$FAIL"
 [[ $FAIL -eq 0 ]]
