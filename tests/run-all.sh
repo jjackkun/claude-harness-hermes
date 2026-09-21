@@ -103,6 +103,7 @@ REGISTERED_TESTS=(
   manifest-tracking-test.sh
   claude-config-scan-test.sh
   context-budget-test.sh
+  edit-factcheck-rate-test.sh
   hermes-loop-test.sh
   hermes-redact-test.sh
   hermes-redact-boundary-test.sh
