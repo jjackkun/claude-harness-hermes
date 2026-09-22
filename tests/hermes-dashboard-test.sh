@@ -114,8 +114,11 @@ assert "다크 모드 토큰" 1 "$(grep -c 'prefers-color-scheme:dark' "$H")"
 assert "다섯째 칸: 승격 후보" 1 "$(grep -c 'id="rules"' "$H")"
 assert "두 번 나온 교훈은 검토 필요로 보인다" 1 "$(grep -c '훅 순서를 바꾸면' "$H")"
 assert "검토 필요 표지" 1 "$([[ $(grep -c '검토 필요' "$H") -ge 1 ]] && echo 1 || echo 0)"
-python3 "$S/hermes-dashboard.py" --universe --factory "$REPO_ROOT" --registry "$REG" >/dev/null; assert "우주 CLI rc 0" 0 "$?"
-UH="$REPO_ROOT/.hermes/dashboards/universe-dashboard.html"
+# 공장의 진짜 우주 대시보드는 건드리지 않는다 — 전에는 가짜 소우주(proj·nohermes) 표로 덮어썼다(2026-09-22 사용자 발견).
+REAL_UH="$REPO_ROOT/.hermes/dashboards/universe-dashboard.html"; before=$(stat -c %Y "$REAL_UH" 2>/dev/null || echo none)
+UH="$TMP/out/universe-dashboard.html"
+python3 "$S/hermes-dashboard.py" --universe --factory "$REPO_ROOT" --registry "$REG" --out "$UH" >/dev/null; assert "우주 CLI rc 0" 0 "$?"
+assert "시험이 공장의 진짜 우주 대시보드를 덮어쓰지 않는다" "$before" "$(stat -c %Y "$REAL_UH" 2>/dev/null || echo none)"
 assert "universe-dashboard.html 생성" 1 "$([[ -f "$UH" ]] && echo 1 || echo 0)"
 assert "미설치 소우주 표시" 1 "$(grep -c '>미설치<' "$UH")"
 assert "factory 일치 표시" 1 "$(grep -c '>일치<' "$UH")"
