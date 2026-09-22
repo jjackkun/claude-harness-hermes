@@ -53,15 +53,35 @@ run_step() { # run_step <이름> <명령...>
     return 0
   fi
   echo -e "${BOLD}── RUN: $name ──${RESET}"
-  if ( "$@" ); then
+  local rc=0 out=""
+  if [[ "${GITHUB_ACTIONS:-}" == "true" ]]; then
+    # CI 에서만 출력을 사본으로 남긴다 — 실패 시 annotation 으로 올리기 위해 (로그는 관리자만 읽는다)
+    out="$(mktemp)"
+    ( "$@" ) 2>&1 | tee "$out" || rc=$?
+  else
+    ( "$@" ) || rc=$?
+  fi
+  if [[ $rc -eq 0 ]]; then
     echo -e "${GREEN}── PASS: $name ──${RESET}"
     PASSED=$((PASSED+1))
   else
     echo -e "${RED}── FAIL: $name ──${RESET}"
     FAILED=$((FAILED+1))
     FAILED_NAMES+=("$name")
+    [[ -n "$out" ]] && _annotate_failure "$name" "$out"
   fi
+  [[ -n "$out" ]] && rm -f "$out"
   echo ""
+}
+
+# 실패한 테스트 이름과 출력 끝부분을 GitHub annotation 으로 남긴다.
+# annotation 은 공개 API(check-runs/<id>/annotations)로 읽혀 로그 권한 없이 원인을 볼 수 있다.
+ANNOTATE_TAIL_LINES=20   # annotation 한 건에 담을 출력 끝 줄 수 — 단언 실패 줄과 직전 맥락이 들어가는 폭
+_annotate_failure() { # _annotate_failure <이름> <출력 파일>
+  local name="$1" file="$2" body
+  body="$(tail -n "$ANNOTATE_TAIL_LINES" "$file" | sed 's/\x1b\[[0-9;]*m//g')"
+  body="${body//'%'/'%25'}"; body="${body//$'\r'/'%0D'}"; body="${body//$'\n'/'%0A'}"
+  echo "::error title=run-all FAIL: ${name}::${body}"
 }
 
 # 러너에 등록된 테스트 목록. tests/ 의 *-test.sh · *smoke*.sh 는 반드시 여기(또는 §2)에
