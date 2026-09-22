@@ -123,3 +123,32 @@ jobs:
               body,
               labels: ['harness', 'doc-gardening']
             });
+
+      # 앞 단계가 실패하면 알린다. schedule 워크플로는 보는 사람이 없어 08-30~09-20 네 번 연속
+      # 실패를 4주 동안 아무도 몰랐다. 제목을 고정해 열린 이슈가 있으면 댓글만 단다(매주 쌓이지 않게).
+      # 알림 자체가 실패해도 새 실패를 만들지 않는다 — 알림이 게이트가 되면 안 된다.
+      # 시험: tests/workflow-failure-notice-test.sh (이 script 를 node 로 실제로 돌린다)
+      - name: Report workflow failure
+        if: failure()
+        continue-on-error: true
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = '[doc-gardening] 워크플로 실패';
+            const { owner, repo } = context.repo;
+            const run = `${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`;
+            const body = `워크플로 \`${context.workflow}\` 가 실패했다 — ${run}\n\n` +
+              '검사가 죽으면 검사가 없는 것과 같다. 실행 로그에서 실패한 단계를 확인하라.';
+            try {
+              const { data: open } = await github.rest.issues.listForRepo({
+                owner, repo, state: 'open', labels: 'harness', per_page: 100,
+              });
+              const found = open.find((i) => i.title === title);
+              if (found) {
+                await github.rest.issues.createComment({ owner, repo, issue_number: found.number, body });
+              } else {
+                await github.rest.issues.create({ owner, repo, title, body, labels: ['harness'] });
+              }
+            } catch (e) {
+              core.warning(`실패 알림을 남기지 못했다: ${e.message}`);
+            }

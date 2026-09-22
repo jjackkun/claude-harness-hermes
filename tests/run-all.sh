@@ -118,6 +118,7 @@ REGISTERED_TESTS=(
   hermes-keywords-test.sh
   hermes-evolve-vocab-test.sh
   evolve-hint-source-test.sh
+  workflow-failure-notice-test.sh
   windows-smoke.sh
   hermes-pipeline-test.sh
   precompact-summary-test.sh

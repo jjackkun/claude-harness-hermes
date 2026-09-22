@@ -1,5 +1,7 @@
 # CI 워크플로가 실패해도 아무도 모른다
 
+> 2026-09-22 착수·완료 — `docs/exec-plans/completed/2026-09-22-ci-failure-notification.md`. 이 문서는 출처 기록으로 남긴다.
+
 > 출처: `docs/exec-plans/completed/2026-09-21-weekly-gardening-red.md` §8
 
 ## 문제
