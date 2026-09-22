@@ -4,3 +4,4 @@
 - [git add 는 내 세션 파일만](feedback-git-add-own-files.md) — `-A` 금지, 경로 나열; 내 작업이 낳은 헤르메스·설치 산출물은 포함
 - [전파 = 소우주 커밋·푸시까지](feedback-propagate-means-commit-push.md) — update-all 설치 뒤 12곳 각각 영수증 경로만 커밋·푸시
 - [rim-office 제외](project-rim-office-excluded.md) — 2026-09-22 전파 대상에서 뺌(11곳), 커밋·재등록 제안 금지
+- [ai-create 제외](project-ai-create-excluded.md) — 2026-09-22 전파 대상에서 뺌(이 컴퓨터 2곳), 풀·커밋 제안 금지
