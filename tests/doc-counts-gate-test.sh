@@ -148,6 +148,23 @@ fi
 grep -q 'DOC_RC' "$PC" && ok "pre-commit 이 종료코드를 구분한다" \
   || bad "판정 불가와 문서 오류를 같은 분기로 처리한다"
 
+# [HIGH] set -e 아래에서 `X_OUT=$(검사)` 가 실패하면 그 줄에서 훅이 죽는다 — 안내 없이
+# 커밋만 막힌다(2026-09-22 R-doc 이 이렇게 조용히 막았다). 대입은 `|| rc=$?` 로 받아야 한다.
+BARE=$(grep -nE '^[[:space:]]*[A-Z_]+_OUT=\$\(.*\)[[:space:]]*$' "$PC" || true)
+[[ -z "$BARE" ]] && ok "검사 출력 대입이 모두 실패를 받아 낸다 (set -e 조기 종료 없음)" \
+  || bad "set -e 아래 맨 대입 — 실패 시 안내 없이 훅이 죽는다: $BARE"
+
+# 행동 확인: 문서 수치가 틀린 저장소에서 R-doc 분기를 실제로 태워 안내가 나오는가
+SNIP=$(awk '/^  DOC_OUT=/{p=1} p{print} /^  esac$/{if(p) exit}' "$PC")
+BEH=$(cd "$TMP" && bash -c "set -euo pipefail
+FAIL=0; gate_add(){ :; }; CHECK_DOC=/bin/false; DOC_TARGETS=(x)
+python3(){ echo '수치가 다릅니다'; return 1; }
+$SNIP
+echo \"FAIL=\$FAIL\"" 2>&1 || true)
+echo "$BEH" | grep -q '고치는 법' && echo "$BEH" | grep -q 'FAIL=1' \
+  && ok "수치 불일치 시 안내를 출력하고 FAIL=1 로 이어간다" \
+  || bad "수치 불일치 분기가 안내 없이 끝난다: $(echo "$BEH" | tail -2 | tr '\n' ' ')"
+
 echo ""
 echo "  결과: $PASS 통과 / $FAIL 실패"
 [[ $FAIL -eq 0 ]]

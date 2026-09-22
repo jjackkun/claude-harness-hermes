@@ -332,8 +332,9 @@ elif ! command -v python3 >/dev/null 2>&1; then
   echo "[R-doc] python3 없음 — 문서 수치 검사를 건너뜁니다 (게이트가 꺼진 상태입니다)"
   gate_add R-doc skipped precommit "" "python3 없음"
 else
-  DOC_OUT=$(python3 "$CHECK_DOC" check "${DOC_TARGETS[@]}" 2>&1)
-  DOC_RC=$?
+  # set -e 아래 맨 대입은 rc=1 에서 훅을 죽여 아래 안내가 나오지 않는다 — `|| DOC_RC=$?` 로 받는다.
+  DOC_RC=0
+  DOC_OUT=$(python3 "$CHECK_DOC" check "${DOC_TARGETS[@]}" 2>&1) || DOC_RC=$?
   # 종료코드를 구분한다. "잴 수 없음"(2)을 "문서가 틀림"(1)으로 합치면 게이트가
   # 꺼진 상태가 문서 오류로 둔갑하고, 반대로 통과로 합치면 조용히 넘어간다.
   case "$DOC_RC" in
