@@ -15,8 +15,9 @@
 | 부류 | 누가 판단하나 | Jev 로 바꾸면 | 개수 |
 |---|---|---|---|
 | **A** | 세션 안의 Claude (에이전트·스킬·도구 고르기) | **줄지 않는다** — 판단이 Claude 의 턴 안에 녹아 있다 | 4 |
-| **B** | 스크립트의 규칙 (FTS·토큰 겹침·정규식·카운터) | 토큰은 원래 0. **정확도·회상이 오를 수 있고** Jev 크레딧·지연·외부 전송이 생긴다 | 7 |
+| **B** | 스크립트의 규칙 (FTS·토큰 겹침·정규식·카운터) | 토큰은 원래 0. **정확도·회상이 오를 수 있고** Jev 크레딧·지연·외부 전송이 생긴다 | 10 |
 | **C** | 백그라운드 `claude -p` | 고르는 일이면 **Claude 크레딧이 준다.** 글을 쓰는 일이면 Jev 가 할 수 없다 | 7 |
+| **D** | 일하는 `claude -p` 의 프롬프트 (매니저·루프·모델 선택) | 떼어 낼 라우팅 호출이 없다. 도는 횟수도 0 | 3 |
 
 C 에서 고르는 일은 둘뿐이고, 그 둘은 도는 횟수가 거의 0 이다(C1·C2).
 그래서 "토큰 절감" 은 이 저장소에서 측정 가능한 크기가 되지 않는다.
@@ -24,11 +25,15 @@ Jev 의 실제 이득은 **B 의 빈손 구간을 메우는 것**이다 — 기�
 
 실측은 모두 2026-09-21, `.hermes/hooks.log`(3,379줄)와 코드 기준이다.
 
+> **2026-09-22 보정 — 오케스트레이션.** A1 의 agent-guard 는 "검사만" 이 아니라 재라우팅 **권고**였다(B8). 루프·매니저·소환의
+> 규칙 판단(B9·B10)과 일하는 `claude -p` 안의 판단(D)이 빠져 있었다. 에이전트·모델을 고르는 **라우팅 전용 LLM 호출은 0개**이고
+> (전용 호출은 C2 스킬 폴백 하나, 꺼짐), 오케스트레이션 도구는 이 저장소에서 한 번도 돈 적이 없다.
+
 ## A. 세션 안의 Claude 가 판단하는 곳
 
 | # | 판단 | 지금 | Jev 로 바꾸면 |
 |---|---|---|---|
-| A1 | 어느 서브에이전트를 부를까 | Claude 가 `Agent` 도구의 `subagent_type` 을 고른다. `claude-pretooluse-agent-guard.sh` 는 고른 **뒤에** 검사만 한다 | 훅이 Jev 를 불러도 Claude 는 이미 토큰을 쓴 뒤다(PDF 10쪽 "내부 도구 방식" 과 같은 구조) |
+| A1 | 어느 서브에이전트를 부를까 | Claude 가 `Agent` 도구의 `subagent_type` 을 고른다. `claude-pretooluse-agent-guard.sh` 는 고른 **뒤에** 정규식으로 다른 에이전트를 권한다(B8) — 막지는 않는다 | 훅이 Jev 를 불러도 Claude 는 이미 토큰을 쓴 뒤다(PDF 10쪽 "내부 도구 방식" 과 같은 구조) |
 | A2 | 어느 스킬을 부를까 | Claude 가 스킬 목록 설명을 읽고 `Skill` 을 부른다 | 같음 |
 | A3 | 무엇을 검색할까·어느 파일을 볼까 | Claude 가 Grep·Read 를 고른다 | 훅은 컨텍스트를 **더할** 수만 있고 Claude 의 탐색을 뺄 수 없다 |
 | A4 | 사용자 요청이 단순 명령인가 | Claude 가 해석한다 | 앞단에서 가로챌 대상이 994건 중 3건(0.3%) — [proposal.md](proposal.md) §2 ① |
@@ -47,6 +52,9 @@ Jev 의 실제 이득은 **B 의 빈손 구간을 메우는 것**이다 — 기�
 | B5 | 소환 때 넣을 기억 | 과제 낱말 겹침 수 (`hermes_memory_select.py:30`) | 소환 때만 | 낮음~중간 — 겹침 0 일 때만 폴백 후보. 호출이 드물다 |
 | B6 | 세션의 실수 신호 | 정규식 (`hermes_save_session_signals.py:82`) | 세션 끝마다 | 낮음 — PDF 25쪽 "정규식은 새 로그를 놓친다" 에 해당하지만, 놓친 사례를 아직 모았는지 모른다 |
 | B7 | 루프가 헛도는가 | 무진전 카운터 `NO_PROGRESS_LIMIT = 3` (`hermes_loop.py:23`) | — | 없음 — 규칙으로 풀렸다 |
+| B8 | 서브에이전트 재라우팅 권고 | `general-purpose` + 도메인 정규식 → `fullstack-developer`·`database-reviewer`·`typescript-reviewer` 권고, `code-reviewer` + DB 신호 → `database-reviewer` 병행 권고. `additionalContext` 로 알림만 (`claude-pretooluse-agent-guard.sh:50-98`) | `R-agent` 11건 (`.harness/gate-events.jsonl`) | 낮음 — Choice(에이전트 목록) 모양이지만 건수가 작고, 권고라 오판 손해도 작다 |
+| B9 | 루프를 끝낼까 | LLM 판정 × 객관 신호 교차검증 — `goal-met` 인데 검증이 `fail` 이면 `continue` 로 강등 (`hermes-loop.py:38-42`), 진전 판정·상한 (`hermes_loop.py:266-272`) | **0** (`loops` 0행) | 없음 — 규칙이 LLM 판정을 거르는 자리다 |
+| B10 | 담당이 없을 때 누가 하나 | 대화형이면 `ask`, 헤드리스(`HERMES_HEADLESS=1`)면 main 이 맡고 제안 기록 (`hermes-summon.py:61-73`). `hermes-loop-run.sh`·`hermes-cron-run.sh` 는 행위자를 **항상 main 으로 고정** | **0** (`task.assigned` 0건) | 없음 — 규칙·고정값 |
 
 B 에서 Jev 는 **Claude 토큰을 줄이지 않는다.** 원래 모델을 안 쓰기 때문이다.
 얻는 것은 빈손·오판 감소이고, 치르는 것은 Jev 크레딧·호출 지연·프롬프트 외부 전송이다.
@@ -66,7 +74,19 @@ B 에서 Jev 는 **Claude 토큰을 줄이지 않는다.** 원래 모델을 안 
 | C6 | 스킬 진화 (`hermes-evolve-skill.py:47`) | 고친 스킬 문서 | 10회 | 못 한다 — 글쓰기 |
 | C7 | 세션 주제 묶기 (`hermes-lifecycle.py:322`) | 주제·세션 id·요약 | 28회 | 못 한다 — 요약문 포함 |
 
-`harness-eval` · `hermes-summon` · `hermes-loop` · `hermes-manager` · `hermes-cron-run.sh` 의 `claude -p` 는 **에이전트가 일을 하는** 호출이라 판단 지점이 아니다.
+`harness-eval` · `hermes-summon` · `hermes-loop` · `hermes-manager` · `hermes-cron-run.sh` 의 `claude -p` 는 **에이전트가 일을 하는** 호출이라 라우팅 전용 호출이 아니다.
+다만 그 안에 오케스트레이션 판단이 들어 있다 — 아래 D.
+
+## D. 일하는 `claude -p` 안의 오케스트레이션 판단 (2026-09-22 추가)
+
+라우팅만 하려고 따로 부르는 호출이 아니라, 일하는 세션의 프롬프트가 "무엇을 할지" 도 고르게 한다.
+PDF 24쪽의 "라우터를 Jev 로" 는 **별도 라우팅 호출을 없애는 것**이 이득이라, 이 구조에서는 떼어 낼 호출이 없다.
+
+| # | 무엇 | 지금 | 횟수 | Jev 로 |
+|---|---|---|---|---|
+| D1 | 매니저가 프로젝트별 오늘 할 항목 1~2개 고르기·계획서 없는 프로젝트 건너뛰기·블로커 재배분 | 매니저 `claude -p` 프롬프트 (`hermes-manager.py:76`, `:112`, `:143-151`) | **0** (`messages` 0행, crontab 없음) | 항목 고르기만 떼면 Choice 모양이지만 도는 적이 없다 |
+| D2 | 루프 반복마다 미완료 조건 하나 고르기, `continue`/`goal-met`/`blocked` 판정 | 루프 `claude -p` 프롬프트 (`hermes_loop_prompt.py:36`, `:59`) | **0** (`loop_steps` 0행) | 판정은 이미 B9 규칙이 거른다 |
+| D3 | 어느 모델로 돌릴까 | 서브에이전트는 `assets/agents/*.md` 의 `model:` 고정. loop·manager·summon·cron 의 `claude -p` 에는 **`--model` 이 없어 CLI 기본 모델**로 돈다. `--effort` 는 저장소에 0건 | — | 작업별 모델 고르기가 생기면 Choice 자리다. 배분이 맞는지 볼 데이터가 0건이라 `docs/exec-plans/backlog/agent-model-routing-blindspot.md`(2026-09-29 관측)가 먼저다 |
 
 ## 결론
 
