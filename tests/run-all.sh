@@ -97,6 +97,7 @@ REGISTERED_TESTS=(
   hook-stdin-dispatch-test.sh
   hermes-keywords-test.sh
   hermes-evolve-vocab-test.sh
+  evolve-hint-source-test.sh
   windows-smoke.sh
   hermes-pipeline-test.sh
   precompact-summary-test.sh

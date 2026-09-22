@@ -1,6 +1,7 @@
 # 스킬 진화 힌트가 사람이 쓰지 않은 글에서 나온다
 
 > 출처: `docs/typesafe-jev/decision-points.md` "발견" 절 (2026-09-21 Jev 판단 지점 조사 중)
+> 2026-09-22 백로그에서 착수 — 수정은 `docs/exec-plans/completed/2026-09-22-evolve-hint-false-positive.md`. 이 문서는 조사 기록으로 남긴다.
 
 ## 문제
 

@@ -76,5 +76,5 @@ B 에서 Jev 는 **Claude 토큰을 줄이지 않는다.** 원래 모델을 안 
 
 ## 발견 — Jev 와 별개
 
-- **진화 힌트가 사람이 쓰지 않은 글에서 나오고 턴마다 되풀이된다.** `pip` 292회, `docker` 290회 빈손. `pip` 는 `pipeline`·`pipefail`·`R-pipe` 가 부분 문자열로 걸린 것이 절반 이상이고, "피드백" 본문은 서브에이전트 반환·압축 요약·스킬 본문이었다. 공장에서 진화된 스킬은 0개지만 소우주 3곳에서 19개가 96번 고쳐졌고, 재현한 48번은 전부 비인간 글이 근거였다. B3 를 Jev 로 바꾸기 전에 입력부터 고쳐야 한다 — 백로그 `docs/exec-plans/backlog/evolve-hint-false-positive.md`.
+- **진화 힌트가 사람이 쓰지 않은 글에서 나오고 턴마다 되풀이된다.** `pip` 292회, `docker` 290회 빈손. `pip` 는 `pipeline`·`pipefail`·`R-pipe` 가 부분 문자열로 걸린 것이 절반 이상이고, "피드백" 본문은 서브에이전트 반환·압축 요약·스킬 본문이었다. 공장에서 진화된 스킬은 0개지만 소우주 3곳에서 19개가 96번 고쳐졌고, 재현한 48번은 전부 비인간 글이 근거였다. B3 를 Jev 로 바꾸기 전에 입력부터 고쳐야 한다 — 조사 기록 `docs/audits/2026-09-21-evolve-hint-false-positive.md`, 수정 계획 `docs/exec-plans/completed/2026-09-22-evolve-hint-false-positive.md`.
 - **B2 는 호출 여부가 기록되지 않는다.** assist 훅은 결과를 stderr 로만 `hooks.log` 에 남겨 몇 번 돌았고 몇 번 빈손이었는지 셀 수 없다. B1 처럼 `enter`·`injected`·`empty` 를 남겨야 B2 도 잴 수 있다.

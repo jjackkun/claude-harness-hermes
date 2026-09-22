@@ -12,6 +12,7 @@ from datetime import datetime
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from hermes_redact import project_dir_for_db, redact  # noqa: E402  (민감정보 마스킹 공유 헬퍼)
+from hermes_human_turn import HUMAN_MARK, is_human_entry  # noqa: E402  (사람 입력 판정)
 
 
 def connect_db(db_path: str) -> sqlite3.Connection:
@@ -50,7 +51,8 @@ def load_transcript(path: str) -> list:
                         obj = json.loads(line)
                         t = obj.get("type")
                         if t in ("user", "assistant") and "message" in obj:
-                            messages.append(obj["message"])
+                            # 바깥 표시(isMeta·origin 등)는 여기서 버려지므로 사람 여부를 사본에 남긴다.
+                            messages.append({**obj["message"], HUMAN_MARK: is_human_entry(obj)})
                     except json.JSONDecodeError:
                         continue
     except Exception as e:

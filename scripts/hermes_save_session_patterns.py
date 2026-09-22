@@ -10,6 +10,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from hermes_save_session_storage import connect_db  # noqa: E402
+from hermes_human_turn import is_human_message  # noqa: E402
 
 # C3 — 불용어 대폭 확장: 일반 단어가 스킬로 결정화되는 것을 차단한다.
 _STOPWORDS_EN = {
@@ -170,37 +171,34 @@ def extract_patterns(messages: list, db_path: str = None) -> list:
 
 def extract_evolution_hints(messages: list) -> list:
     """사용자 피드백에서 스킬 수정 힌트를 감지한다.
-    Returns: [(keyword, feedback_snippet), ...]
+    Returns: [(keyword, feedback_snippet), ...] — 많아야 1건.
+
+    가장 최근 **사람이 친** 메시지 하나만 본다. Stop 훅은 매 턴 전체 기록을 다시 넘기므로
+    전체를 훑으면 같은 교정이 턴마다 힌트가 되고, user 역할에는 스킬 본문·서브에이전트
+    반환·압축 요약도 섞여 있다(2026-09-21 재현 48번 전부 그 글이 근거).
+    키워드는 앞뒤가 영숫자가 아닐 때만 잡는다 — pipeline·pipefail·R-pipe 는 pip 가 아니다.
+    근거: docs/exec-plans/completed/2026-09-22-evolve-hint-false-positive.md
     """
     feedback_re = re.compile(
         r"(말고|대신|바꿔|수정|틀려|잘못|incorrect|wrong|instead|change\s+to|아니라|아니고)",
         re.IGNORECASE,
     )
     skill_keyword_re = re.compile(
+        r"(?<![A-Za-z0-9])"
         r"(pnpm|npm|yarn|poetry|pip|docker|fastapi|svelte|postgres|mysql|redis"
-        r"|pytest|vitest|eslint|prettier|ruff|mypy|버전|version)",
+        r"|pytest|vitest|eslint|prettier|ruff|mypy|버전|version)"
+        r"(?![A-Za-z0-9])",
         re.IGNORECASE,
     )
-    hints = []
-    seen = set()
-    for msg in messages:
-        if not isinstance(msg, dict):
-            continue
-        if msg.get("role") != "user":
-            continue
-        raw = msg.get("content", "")
-        if isinstance(raw, list):
-            content = " ".join(
-                p.get("text", "") for p in raw if isinstance(p, dict)
-            )
-        else:
-            content = str(raw)
-        if feedback_re.search(content) and skill_keyword_re.search(content):
-            kw_m = skill_keyword_re.search(content)
-            keyword = kw_m.group(1).lower() if kw_m else ""
-            snippet = content[:200].replace("\n", " ").strip()
-            key = (keyword, snippet[:50])
-            if key not in seen:
-                seen.add(key)
-                hints.append((keyword, snippet))
-    return hints
+    last = next((m for m in reversed(messages) if is_human_message(m)), None)
+    if last is None:
+        return []
+    raw = last.get("content", "")
+    if isinstance(raw, list):
+        content = " ".join(p.get("text", "") for p in raw if isinstance(p, dict))
+    else:
+        content = str(raw)
+    kw_m = skill_keyword_re.search(content)
+    if not (kw_m and feedback_re.search(content)):
+        return []
+    return [(kw_m.group(1).lower(), content[:200].replace("\n", " ").strip())]
