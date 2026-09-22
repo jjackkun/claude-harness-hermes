@@ -95,17 +95,37 @@ def _agents(a: dict) -> str:
             f"<h3>리뷰 지적 누적 (about 별)</h3>{_table(['에이전트', 'about', '횟수', ''], _correction_rows(a['corrections']), numeric=(2,))}")
 
 
+_ORIGINS = (("/.claude/skills/", "설치"), ("/.hermes/skills/", "결정화"), ("/.hermes/agents/", "개인"), ("/mesh/", "그물망"))
+
+
+def _skill_label(path: str) -> tuple:
+    """(이름, 출처). SKILL.md 는 폴더 이름이 곧 스킬 이름이다 — 파일 이름만 보이면 무엇인지 모른다(2026-09-22)."""
+    parts = path.rstrip("/").split("/")
+    name = parts[-2] if parts[-1] == "SKILL.md" and len(parts) > 1 else parts[-1].removesuffix(".md")
+    origin = next((label for marker, label in _ORIGINS if marker in path), "기타")
+    return name, origin
+
+
+def _skill_rows(items: list) -> list:
+    rows = []
+    for i in items:
+        name, origin = _skill_label(i["skill_path"])
+        rate = _pct(i["rate"]) + ("" if i.get("enough", True) else " " + _tag("판정 부족", "dim"))
+        rows.append([f'<span class="mono">{_e(name)}</span>', _tag(origin, "dim"), _e(i["injected"]),
+                     _e(i["judged"]), _e(i["helpful"]), rate])
+    return rows
+
+
 def _skills(s: dict) -> str:
     layers = "".join(f'<span><b>{n}</b> <span class="k">{_e(k)}</span></span>' for k, n in s["by_layer"].items())
-    top = [[f'<span class="mono">{_e(i["skill_path"].rsplit("/", 1)[-1])}</span>', _e(i["injected"]), _e(i["helpful"]), _e(_pct(i["rate"]))]
-           for i in s["top_injected"]]
-    demote = [[f'<span class="mono">{_e(d["skill_path"].rsplit("/", 1)[-1])}</span>', _e(d["injected"]), _e(d["helpful"]), _e(_pct(d["rate"]))]
-              for d in s["demote_candidates"]]
     pend = [[_e(p["key"]), _e(p["count"])] for p in s["pending_crystallize"]]
-    return (f'<h2 id="skills">스킬</h2><p class="lead">네 층에 몇 개, 무엇이 자주 들어가고, 무엇이 도움이 안 되나.</p>'
+    head = ["스킬", "출처", "주입", "판정", "도움", "도움률"]
+    return (f'<h2 id="skills">스킬</h2><p class="lead">네 층에 몇 개, 무엇이 자주 들어가고, 무엇이 도움이 안 되나. '
+            f'도움률은 <b>판정된 것</b> 중 도움 비율 — 판정 50 미만은 판정 부족.</p>'
             f'<div class="row">{layers}</div>'
-            f"<h3>주입 상위 10 · 도움률</h3>{_table(['스킬', '주입', '도움', '도움률'], top, numeric=(1, 2, 3))}"
-            f"<h3>강등 후보 (hermes-cleanup 과 같은 기준)</h3>{_table(['스킬', '주입', '도움', '도움률'], demote, numeric=(1, 2, 3))}"
+            f"<h3>주입 상위 10 · 도움률</h3>{_table(head, _skill_rows(s['top_injected']), numeric=(2, 3, 4))}"
+            f"<h3>강등 후보 (hermes-cleanup 과 같은 기준 — 판정 50 이상 · 도움률 5% 이하)</h3>"
+            f"{_table(head, _skill_rows(s['demote_candidates']), numeric=(2, 3, 4))}"
             f"<h3>결정화 대기 (3회 이상, 미결정화)</h3>{_table(['패턴 키', '횟수'], pend, numeric=(1,))}")
 
 

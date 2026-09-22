@@ -6,8 +6,11 @@ zeroday-frontend 실측(2026-09-18, 스킬 1,095 · 주입 3,471): 단일 영단
 본문은 유용한데 키가 압축 요약 속 흔한 코드 단어로 뽑혀 제목이 됐고, 그 제목이 거의 모든 프롬프트에 매칭됐다.
 
 두 장치:
-  - low_yield_skills(con): 주입 ≥ MIN_INJECTIONS 이고 도움률 ≤ MAX_HELPFUL_RATE 인 스킬. 둘 다 만족해야 한다 —
-    새 스킬(주입 적음)은 보호한다. 50회면 5% 기대 도움이 2.5회라 우연히 0 이 나올 확률 (0.95)^50 ≈ 7.7%.
+  - low_yield_skills(con): **판정** ≥ MIN_JUDGED 이고 판정된 것 중 도움률 ≤ MAX_HELPFUL_RATE 인 스킬. 둘 다 만족해야
+    한다 — 판정이 적은 스킬은 보호한다. 50회면 5% 기대 도움이 2.5회라 우연히 0 이 나올 확률 (0.95)^50 ≈ 7.7%.
+    판정 = skill_index.helpful_count + noop_count. `skill_injection.correlated` 는 "판정을 마쳤다" 표시일 뿐
+    도움이 아니다 — 2026-09-22 까지는 correlated/주입 을 도움률로 써서, 주입 424 · 판정 17(전부 도움) 인 스킬이
+    4% 로 강등 후보가 됐다(판단이 뒤집혀 있었다). 계획: docs/exec-plans/completed/2026-09-22-skill-yield-judged.md
   - is_generic_key(key): 단일 ASCII 토큰이 일반 코드 단어 목록에 있으면 참. 목록 밖 단일 토큰(`noticemanagementpage`)은
     거부하지 않는다 — 실측 도움률 85%.
 
@@ -18,7 +21,7 @@ zeroday-frontend 실측(2026-09-18, 스킬 1,095 · 주입 3,471): 단일 영단
 import re
 import sqlite3
 
-MIN_INJECTIONS = 50
+MIN_JUDGED = 50
 MAX_HELPFUL_RATE = 0.05
 
 # 압축 요약·코드에 흔히 나와 패턴 키로 잘못 뽑히는 단어. 규칙 주제일 수 없는 것만 넣는다.
@@ -46,20 +49,19 @@ def _has_table(con: sqlite3.Connection, name: str) -> bool:
         "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?", (name,)).fetchone() is not None
 
 
-def low_yield_skills(con: sqlite3.Connection, min_injections: int = MIN_INJECTIONS,
+def low_yield_skills(con: sqlite3.Connection, min_judged: int = MIN_JUDGED,
                      max_helpful_rate: float = MAX_HELPFUL_RATE) -> list:
-    """[{skill_path, injected, helpful, rate}] — 주입 충분·도움 희박한 로컬 스킬. 표가 없으면 []."""
+    """[{skill_path, injected, judged, helpful, rate}] — 판정 충분·도움 희박한 로컬 스킬. 표가 없으면 []."""
     if not (_has_table(con, "skill_injection") and _has_table(con, "skill_index")):
         return []
     rows = con.execute(
-        "SELECT i.skill_path, COUNT(*) AS injected, "
-        "SUM(CASE WHEN i.correlated THEN 1 ELSE 0 END) AS helpful "
-        "FROM skill_injection i JOIN skill_index s ON s.skill_path = i.skill_path "
-        "WHERE s.scope = 'local' GROUP BY i.skill_path").fetchall()
+        "SELECT s.skill_path, COUNT(i.skill_path), COALESCE(s.helpful_count, 0), COALESCE(s.noop_count, 0) "
+        "FROM skill_index s LEFT JOIN skill_injection i ON i.skill_path = s.skill_path "
+        "WHERE s.scope = 'local' GROUP BY s.skill_path").fetchall()
     out = []
-    for path, injected, helpful in rows:
-        helpful = helpful or 0
-        rate = helpful / injected if injected else 0.0
-        if injected >= min_injections and rate <= max_helpful_rate:
-            out.append({"skill_path": path, "injected": injected, "helpful": helpful, "rate": rate})
-    return sorted(out, key=lambda r: -r["injected"])
+    for path, injected, helpful, noop in rows:
+        judged = helpful + noop
+        rate = helpful / judged if judged else 0.0
+        if judged >= min_judged and rate <= max_helpful_rate:
+            out.append({"skill_path": path, "injected": injected, "judged": judged, "helpful": helpful, "rate": rate})
+    return sorted(out, key=lambda r: -r["judged"])

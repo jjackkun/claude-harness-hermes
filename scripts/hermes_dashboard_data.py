@@ -20,7 +20,7 @@ import context_budget  # noqa: E402  (세션 고정 비용, 계획 2026-09-21-co
 from hermes_handoff_queue import queue  # noqa: E402
 from hermes_owner_memory import open_proposals  # noqa: E402
 from hermes_skill_layers import LAYERS  # noqa: E402
-from hermes_skill_yield import low_yield_skills  # noqa: E402
+from hermes_skill_yield import MIN_JUDGED, low_yield_skills  # noqa: E402
 
 DREAM_THROTTLE_HOURS = 20
 
@@ -107,12 +107,15 @@ def _by_layer(con) -> dict:
 
 
 def _top_injected(con) -> list:
+    """주입 상위 10. 도움률 = 도움 ÷ **판정**(helpful + noop). correlated 는 "판정을 마쳤다" 표시라 도움이 아니다(2026-09-22)."""
     if not _has(con, "skill_injection"):
         return []
-    return [{"skill_path": p, "injected": n, "helpful": h or 0, "rate": (h or 0) / n if n else 0.0}
-            for p, n, h in con.execute(
-                "SELECT skill_path, COUNT(*), SUM(CASE WHEN correlated THEN 1 ELSE 0 END) "
-                "FROM skill_injection GROUP BY skill_path ORDER BY COUNT(*) DESC LIMIT 10")]
+    rows = con.execute(
+        "SELECT i.skill_path, COUNT(*), COALESCE(MAX(s.helpful_count), 0), COALESCE(MAX(s.noop_count), 0) "
+        "FROM skill_injection i LEFT JOIN skill_index s ON s.skill_path = i.skill_path "
+        "GROUP BY i.skill_path ORDER BY COUNT(*) DESC LIMIT 10").fetchall()
+    return [{"skill_path": p, "injected": n, "judged": h + o, "helpful": h,
+             "rate": h / (h + o) if h + o else None, "enough": h + o >= MIN_JUDGED} for p, n, h, o in rows]
 
 
 def _pending_crystallize(con) -> list:
@@ -228,10 +231,10 @@ def _universe_row(path: str, factory: str) -> dict:
         return row
     d = collect(path)
     inj = d["skills"]["top_injected"]
-    total = sum(i["injected"] for i in inj)
+    judged = sum(i["judged"] for i in inj)
     row.update({"agents": sum(1 for a in d["agents"]["roster"] if a["status"] != "retired"),
                 "skills": sum(d["skills"]["by_layer"].values()),
-                "helpful_rate": (sum(i["helpful"] for i in inj) / total) if total else None,
+                "helpful_rate": (sum(i["helpful"] for i in inj) / judged) if judged else None,
                 "demote_candidates": len(d["skills"]["demote_candidates"]),
                 "last_dream": d["learning"]["last_dream"], "factory_match": _factory_match(path, factory)})
     return row

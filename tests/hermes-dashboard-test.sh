@@ -40,10 +40,12 @@ for i in range(3):
     record(con, {'memory_id': uuid7_str(), 'agent_id': '$DB_', 'universe_id': 'u', 'ts': '2026-09-20T0%d:00:00' % i, 'kind': 'memory.added', 'about': 'gate/r-size', 'body': '지적 %d' % i, 'source_event': 'review:x%d:corrected:agent:$LA' % i})
 for i in range(12):
     issue(con, '$P', '$DB_', 'human:tester')
-con.execute(\"INSERT INTO skill_index (skill_path, keywords, scope) VALUES ('/s/a.md','a','local')\")
-con.execute(\"INSERT INTO skill_index (skill_path, keywords, scope) VALUES ('/s/b.md','b','local')\")
-for i in range(55): con.execute(\"INSERT INTO skill_injection (session_id, skill_path, correlated) VALUES ('s', '/s/a.md', 0)\")
+con.execute(\"INSERT INTO skill_index (skill_path, keywords, scope, helpful_count, noop_count) VALUES ('/s/a.md','a','local',0,55)\")
+con.execute(\"INSERT INTO skill_index (skill_path, keywords, scope, helpful_count, noop_count) VALUES ('/s/b.md','b','local',5,0)\")
+con.execute(\"INSERT INTO skill_index (skill_path, keywords, scope, helpful_count, noop_count) VALUES ('/p/.claude/skills/hermes-loop/SKILL.md','loop','universe',3,0)\")
+for i in range(55): con.execute(\"INSERT INTO skill_injection (session_id, skill_path, correlated) VALUES ('s', '/s/a.md', 1)\")
 for i in range(5):  con.execute(\"INSERT INTO skill_injection (session_id, skill_path, correlated) VALUES ('s', '/s/b.md', 1)\")
+for i in range(4):  con.execute(\"INSERT INTO skill_injection (session_id, skill_path, correlated) VALUES ('s', '/p/.claude/skills/hermes-loop/SKILL.md', ?)\", (1 if i < 3 else 0,))
 con.execute(\"INSERT INTO pattern_count (pattern_key, count, crystallized) VALUES ('세 번 본 패턴', 4, 0)\")
 con.execute(\"INSERT INTO pattern_count (pattern_key, count, crystallized) VALUES ('굳은 패턴', 5, 1)\")
 con.execute(\"INSERT INTO session_summary (session_id, project_id, slots_json) VALUES ('s1','p','{}')\")
@@ -68,7 +70,7 @@ assert "최근 소환 10건(12 중)" 10 "$(g "len(d['agents']['summons_recent'])
 assert "담당 없음 제안 0" 0 "$(g "d['agents']['owner_proposals']")"
 assert "about 별 corrected 누적(gate/r-size=3, 담당B)" "3 담당B" "$(g "str(d['agents']['corrections'][0]['count'])+' '+d['agents']['corrections'][0]['name']")"
 echo "== 스킬 판 (목표 3) =="
-assert "층별 개수 common=2" 2 "$(g "d['skills']['by_layer']['common']")"
+assert "층별 개수 common=3 (a·b·hermes-loop)" 3 "$(g "d['skills']['by_layer']['common']")"
 assert "주입 상위 1 = a.md 55건" "/s/a.md 55" "$(g "d['skills']['top_injected'][0]['skill_path']+' '+str(d['skills']['top_injected'][0]['injected'])")"
 assert "강등 후보 = a.md 1건(hermes_skill_yield 재사용)" "1 /s/a.md" "$(g "str(len(d['skills']['demote_candidates']))+' '+d['skills']['demote_candidates'][0]['skill_path']")"
 assert "결정화 대기 1(count≥3·미결정화)" "세 번 본 패턴" "$(g "d['skills']['pending_crystallize'][0]['key']")"
@@ -88,7 +90,7 @@ U="$(PYTHONPATH="$S" python3 -c "import json; from hermes_dashboard_data import 
 gu() { python3 -c "import json,sys; d=json.loads(sys.argv[1]); print(eval(sys.argv[2]))" "$U" "$1"; }
 assert "행 2" 2 "$(gu "len(d)")"
 assert "미설치 표시" False "$(gu "d[1]['installed']")"
-assert "설치 소우주: 에이전트 2(은퇴 제외)·스킬 2·강등 1" "2 2 1" "$(gu "str(d[0]['agents'])+' '+str(d[0]['skills'])+' '+str(d[0]['demote_candidates'])")"
+assert "설치 소우주: 에이전트 2(은퇴 제외)·스킬 3·강등 1" "2 3 1" "$(gu "str(d[0]['agents'])+' '+str(d[0]['skills'])+' '+str(d[0]['demote_candidates'])")"
 assert "factory_commit 일치" True "$(gu "d[0]['factory_match']")"
 echo "== DB 없는 소우주 (목표 1 전제) =="
 E="$TMP/empty"; mkdir -p "$E/.hermes"
@@ -108,7 +110,11 @@ assert "모델 호출 흔적 0" 0 "$(grep -ci 'claude' "$H")"
 assert "명부 이름·은퇴 표시" "1 1" "$(grep -c '담당B' "$H") $(grep -c '>retired<' "$H")"
 assert "막힌 인계 표시" 1 "$(grep -c '>막힘<' "$H")"
 assert "지적 누적 about" 1 "$(grep -c 'gate/r-size' "$H")"
-assert "강등 후보 a.md" 1 "$(grep -c '>a.md<' "$H")"
+assert "강등 후보 a (판정 55 · 도움 0)" 1 "$(grep -c '>a<' "$H")"
+assert "SKILL.md 는 폴더 이름(hermes-loop)으로 보인다" "yes" "$([[ $(grep -c '>hermes-loop<' "$H") -ge 1 ]] && echo yes || echo no)"
+assert "SKILL.md 라는 이름은 표에 나오지 않는다" 0 "$(grep -c '>SKILL.md<' "$H")"
+assert "출처 표시(설치 스킬)" "yes" "$([[ $(grep -c '>설치<' "$H") -ge 1 ]] && echo yes || echo no)"
+assert "판정이 적으면 '판정 부족'" "yes" "$([[ $(grep -c '판정 부족' "$H") -ge 1 ]] && echo yes || echo no)"
 assert "게이트 R-lint" 1 "$(grep -c 'R-lint' "$H")"
 assert "다크 모드 토큰" 1 "$(grep -c 'prefers-color-scheme:dark' "$H")"
 assert "다섯째 칸: 승격 후보" 1 "$(grep -c 'id="rules"' "$H")"

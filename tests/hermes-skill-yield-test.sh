@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # 도움 없는 스킬의 증거 기반 강등 + 일반 코드 단어 키 결정화 거부 (계획 2026-09-18-skill-yield-junk).
 #
-#   (a) low_yield_skills: 주입 ≥50 · 도움률 ≤5% 만 — 경계(50/5%)·주입 부족·도움 있음은 제외
+#   (a) low_yield_skills: 판정(도움+헛주입) ≥50 · 판정 중 도움률 ≤5% 만 — 경계(50/5%)·판정 부족·도움 있음은 제외
 #   (b) hermes-cleanup (e) dry-run: 목록만 보고, 파일·행 불변
 #   (c) hermes-cleanup (e) --apply: 파일·skill_index 행 삭제 + pattern_count 거부(-1)
 #   (d) is_generic_key + 결정화: 'index' 같은 키는 모델 호출 없이 REJECT (가짜 claude 가 불리면 실패)
@@ -26,15 +26,19 @@ python3 - "$DB" "$SK" <<'PY'
 import sqlite3, sys, os
 db, sk = sys.argv[1:3]
 con = sqlite3.connect(db)
-cases = {"index": (775, 0), "postgres": (146, 1), "edge50": (50, 2), "edge49": (49, 0), "jira-gate": (200, 150), "fresh": (3, 0)}
-for key, (inj, help_) in cases.items():
+# (주입, 도움, 헛주입) — 판정 = 도움 + 헛주입. correlated 는 "판정을 마쳤다" 표시일 뿐 도움이 아니다(2026-09-22).
+# unjudged: 주입 424 · 판정 17(전부 도움) — 옛 기준(correlated/주입 = 4%)이 강등 후보로 올리던 실측 사례.
+cases = {"index": (775, 0, 775), "postgres": (146, 1, 145), "edge50": (50, 2, 48), "edge49": (49, 0, 49),
+         "jira-gate": (200, 150, 50), "fresh": (3, 0, 3), "unjudged": (424, 17, 0)}
+for key, (inj, help_, noop) in cases.items():
     p = os.path.join(sk, key + ".md")
     open(p, "w").write("# %s\n\n## 규칙\n- [ ] r\n" % key)
-    con.execute("INSERT INTO skill_index (skill_path, keywords, scope, version, created_at, used_count) VALUES (?,?,'local',1,'2026-01-01',0)", (p, key))
+    con.execute("INSERT INTO skill_index (skill_path, keywords, scope, version, created_at, used_count, helpful_count, noop_count) "
+                "VALUES (?,?,'local',1,'2026-01-01',0,?,?)", (p, key, help_, noop))
     con.execute("INSERT OR IGNORE INTO pattern_count (pattern_key, count, crystallized) VALUES (?, 3, 1)", (key,))
     for i in range(inj):
         con.execute("INSERT INTO skill_injection (session_id, skill_path, injected_at, correlated, source) VALUES (?,?,?,?,'prompt')",
-                    ("s%d" % i, p, "2026-01-01", 1 if i < help_ else 0))
+                    ("s%d" % i, p, "2026-01-01", 1 if i < help_ + noop else 0))
 con.commit()
 PY
 
@@ -46,18 +50,18 @@ rows = y.low_yield_skills(sqlite3.connect(sys.argv[1]))
 print(",".join(sorted(os.path.basename(r["skill_path"])[:-3] for r in rows)))
 PY
 )
-assert "index·postgres·edge50 만 (경계 포함, 49회·도움 있음·신규 제외)" "edge50,index,postgres" "$GOT"
+assert "index·postgres·edge50 만 (판정 50 경계 포함 · 판정 49 · 도움 많음 · 신규 · 판정 부족 제외)" "edge50,index,postgres" "$GOT"
 
 echo "[b] cleanup dry-run"
 OUT=$(python3 "$S/hermes-cleanup.py" --db "$DB" --skills-dir "$SK" 2>&1)
 assert "(e) 절이 3개 보고" "1" "$(grep -c '(e) 도움 없는 스킬: 3개' <<<"$OUT")"
-assert "dry-run 은 파일 유지" "6" "$(ls "$SK" | wc -l | tr -d ' ')"
+assert "dry-run 은 파일 유지" "7" "$(ls "$SK" | wc -l | tr -d ' ')"
 
 echo "[c] cleanup --apply"
 OUT=$(python3 "$S/hermes-cleanup.py" --db "$DB" --skills-dir "$SK" --apply 2>&1)
-assert "파일 3개 삭제" "3" "$(ls "$SK" | wc -l | tr -d ' ')"
-assert "jira-gate·fresh·edge49 남음" "edge49.md fresh.md jira-gate.md" "$(ls "$SK" | sort | tr '\n' ' ' | sed 's/ $//')"
-assert "skill_index 행 3개 남음" "3" "$(python3 -c "import sqlite3,sys;print(sqlite3.connect(sys.argv[1]).execute(\"SELECT COUNT(*) FROM skill_index WHERE scope='local'\").fetchone()[0])" "$DB")"
+assert "파일 3개 삭제 (7 → 4)" "4" "$(ls "$SK" | wc -l | tr -d ' ')"
+assert "jira-gate·fresh·edge49·unjudged 남음 — 판정 17뿐인 스킬은 지우지 않는다" "edge49.md fresh.md jira-gate.md unjudged.md" "$(ls "$SK" | sort | tr '\n' ' ' | sed 's/ $//')"
+assert "skill_index 행 4개 남음" "4" "$(python3 -c "import sqlite3,sys;print(sqlite3.connect(sys.argv[1]).execute(\"SELECT COUNT(*) FROM skill_index WHERE scope='local'\").fetchone()[0])" "$DB")"
 assert "pattern_count 거부(-1) 표시" "3" "$(python3 -c "import sqlite3,sys;print(sqlite3.connect(sys.argv[1]).execute(\"SELECT COUNT(*) FROM pattern_count WHERE crystallized=-1 AND pattern_key IN ('index','postgres','edge50')\").fetchone()[0])" "$DB")"
 
 echo "[d] 일반 코드 단어 키는 결정화 전에 거부, 모델 미호출"

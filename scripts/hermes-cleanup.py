@@ -218,7 +218,7 @@ def clean_low_yield_skills(con: sqlite3.Connection, apply: bool) -> None:
     거부 표시를 남겨 같은 키로 재결정화되지 않게 하고, 본문의 규칙은 올바른 키로 다시 결정화될 수 있게 둔다.
     """
     targets = low_yield_skills(con)
-    print(f"== (e) 도움 없는 스킬: {len(targets)}개 (주입 ≥50 · 도움률 ≤5%)")
+    print(f"== (e) 도움 없는 스킬: {len(targets)}개 (판정 ≥50 · 판정 중 도움률 ≤5%)")
     for t in targets:
         print(f"   - {t['skill_path']}  주입 {t['injected']} · 도움 {t['helpful']}")
     if not apply:
