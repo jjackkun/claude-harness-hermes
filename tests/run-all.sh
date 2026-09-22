@@ -116,6 +116,7 @@ REGISTERED_TESTS=(
   hook-prune-test.sh
   hook-stdin-dispatch-test.sh
   hermes-keywords-test.sh
+  hermes-persona-source-test.sh
   hermes-evolve-vocab-test.sh
   evolve-hint-source-test.sh
   workflow-failure-notice-test.sh
