@@ -160,4 +160,19 @@ echo '{"source":"clear"}' | HERMES_DASHBOARD_SYNC=1 CLAUDE_PROJECT_DIR="$P" bash
 assert "clear 는 source 게이트에서 건너뜀" 1 "$(grep -c 'skip:source' "$P/.hermes/hooks.log")"
 echo '{"source":"startup"}' | HERMES_DASHBOARD_ON_SESSION_START=0 CLAUDE_PROJECT_DIR="$P" bash "$HOOK" >/dev/null; assert "끄기 변수 존중(rc 0)" 0 "$?"
 
+echo "== 세션 시작 훅 — 공장이면 우주 한 장도 (계획 2026-09-22-universe-dashboard-auto) =="
+# 공장 판별은 레지스트리(.installed-projects) 존재로 한다 — 우주 CLI 가 실제로 읽는 파일 그 자체라
+# 판별과 입력이 어긋날 수 없다. 소우주에는 이 파일이 없으므로 우주 한 장을 그리지 않는다.
+UHOOK="$P/.hermes/dashboards/universe-dashboard.html"
+rm -f "$MK" "$UHOOK" "$P/.installed-projects"
+echo '{"source":"startup"}' | HERMES_DASHBOARD_SYNC=1 CLAUDE_PROJECT_DIR="$P" bash "$HOOK" >/dev/null
+assert "레지스트리 없으면(소우주) 우주 페이지 미생성" 0 "$([[ -f "$UHOOK" ]] && echo 1 || echo 0)"
+printf '%s\n' "$P" > "$P/.installed-projects"
+rm -f "$MK"
+echo '{"source":"startup"}' | HERMES_DASHBOARD_SYNC=1 CLAUDE_PROJECT_DIR="$P" bash "$HOOK" >/dev/null
+assert "레지스트리 있으면(공장) 우주 페이지 생성" 1 "$([[ -f "$UHOOK" ]] && echo 1 || echo 0)"
+assert "소우주 한 장도 같은 실행에서 함께 생성" 1 "$([[ -f "$P/.hermes/dashboards/dashboard.html" ]] && echo 1 || echo 0)"
+assert "훅이 공장의 진짜 우주 대시보드를 덮어쓰지 않는다" "$before" "$(stat -c %Y "$REAL_UH" 2>/dev/null || echo none)"
+rm -f "$P/.installed-projects"
+
 echo; echo "hermes-dashboard: PASS=$PASS FAIL=$FAIL"; [[ $FAIL -eq 0 ]]
