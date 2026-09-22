@@ -24,12 +24,12 @@ description: 소우주(현재 프로젝트)의 에이전트·스킬·학습 루�
    ```bash
    python3 scripts/hermes-dashboard.py --project-dir .
    ```
-2. 출력된 경로(`.hermes/dashboard.html`)를 사용자에게 알린다. 브라우저 열기는 사용자 몫 — 세션은 파일을 열지 않는다.
+2. 출력된 경로(`.hermes/dashboards/dashboard.html`)를 사용자에게 알린다. 브라우저 열기는 사용자 몫 — 세션은 파일을 열지 않는다.
 3. 페이지에서 눈에 띄는 것 **셋 이내**를 한 줄씩 짚는다(예: 강등 후보 N개, 막힌 인계 N건, 결정화 임계에 닿은 about). 페이지 내용을 다시 나열하지 않는다.
 
 우주 전체(공장에서만):
 ```bash
-python3 scripts/hermes-dashboard.py --universe      # → .hermes/universe-dashboard.html — 소우주별 에이전트·스킬·도움률·강등 후보·드림·factory 일치
+python3 scripts/hermes-dashboard.py --universe      # → .hermes/dashboards/universe-dashboard.html — 소우주별 에이전트·스킬·도움률·강등 후보·드림·factory 일치
 ```
 
 ## 자동 갱신

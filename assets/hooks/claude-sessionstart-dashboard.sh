@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SessionStart 훅 — 소우주 대시보드(.hermes/dashboard.html)를 하루 1회 백그라운드로 갱신한다 (계획 2026-09-18-hermes-dashboard 목표 7).
+# SessionStart 훅 — 소우주 대시보드(.hermes/dashboards/dashboard.html)를 하루 1회 백그라운드로 갱신한다 (계획 2026-09-18-hermes-dashboard 목표 7).
 # 드림 훅과 같은 마커 방식: source 가 startup/resume 이고, 마커(.hermes/dashboard-last-run) mtime 이 throttle 시간 밖일 때만.
 # 세션 시작 지연 0 — 생성은 nohup 백그라운드. stdout 은 비운다(컨텍스트 오염 방지). 어떤 경우에도 exit 0.
 # 비활성화: HERMES_DISABLED=1 · HERMES_DASHBOARD_ON_SESSION_START=0 / 간격: HERMES_DASHBOARD_THROTTLE_HOURS(기본 24)

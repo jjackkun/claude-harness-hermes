@@ -127,6 +127,28 @@ def _health(h: dict) -> str:
             f"{_fixed_context(h.get('fixed_context') or {})}")
 
 
+_RULE_SHOW_PENDING = 10   # 보류는 최근 것만 — 전부는 완료 계획서 회고에 있다
+
+
+def _rule_rows(items: list) -> list:
+    return [[_e(i["count"]), _e(i["text"]), _e(i["latest"]),
+             '<span class="mono">' + _e(", ".join(f for f, _d in i["sources"][-2:])) + "</span>"] for i in items]
+
+
+def _rules(items: list) -> str:
+    """승격 후보 — 완료 계획서 회고의 "다음 룰 후보"(계획 2026-09-22-rule-candidates-dashboard)."""
+    by = {k: [i for i in items if i["status"] == k] for k in ("review", "pending", "promoted", "dropped")}
+    head = ["반복", "후보", "최근", "출처"]
+    rest = len(by["pending"]) - _RULE_SHOW_PENDING
+    more = f'<p class="lead">외 {rest}건 — docs/exec-plans/completed/ 회고의 "다음 룰 후보"</p>' if rest > 0 else ""
+    return (f'<h2 id="rules">승격 후보</h2><p class="lead">완료 계획서 회고의 "다음 룰 후보". 두 번 이상 나온 교훈은 '
+            f'{_tag("검토 필요", "warn")} — <span class="mono">harness-promote-rule</span> 스킬로 R 룰 승격을 검토한다.</p>'
+            f'<p>검토 필요 {len(by["review"])} · 보류 {len(by["pending"])} · 승격됨 {len(by["promoted"])} · 폐기 {len(by["dropped"])}</p>'
+            f"<h3>검토 필요 ({len(by['review'])})</h3>{_table(head, _rule_rows(by['review']), numeric=(0,))}"
+            f"<h3>보류 — 최근 {min(len(by['pending']), _RULE_SHOW_PENDING)}</h3>"
+            f"{_table(head, _rule_rows(by['pending'][:_RULE_SHOW_PENDING]), numeric=(0,))}{more}")
+
+
 def _fixed_context(fx: dict) -> str:
     """세션 고정 비용 한 줄 — 무엇이 매 세션 컨텍스트를 먹는가(계획 context-budget)."""
     if not fx.get("bytes"):
@@ -139,11 +161,11 @@ def _fixed_context(fx: dict) -> str:
 
 def render_project(d: dict) -> str:
     missing = '<p class="note">state.db 가 없다 — hermes 미설치이거나 초기화 전. 판이 비어 있다.</p>' if d.get("db_missing") else ""
-    nav = " · ".join(f'<a href="#{k}">{v}</a>' for k, v in (("agents", "에이전트"), ("skills", "스킬"), ("learning", "학습"), ("health", "건강")))
+    nav = " · ".join(f'<a href="#{k}">{v}</a>' for k, v in (("agents", "에이전트"), ("skills", "스킬"), ("learning", "학습"), ("health", "건강"), ("rules", "승격 후보")))
     return (f'<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
             f'<title>{_e(d["project"])} — 소우주 대시보드</title><style>{_CSS}</style></head><body><div class="wrap">'
             f'<p class="eyebrow">Hermes · 소우주</p><h1>{_e(d["project"])}</h1><p class="meta">{_e(d["generated_at"])} · {nav}</p>{missing}'
-            f'{_agents(d["agents"])}{_skills(d["skills"])}{_learning(d["learning"])}{_health(d["health"])}'
+            f'{_agents(d["agents"])}{_skills(d["skills"])}{_learning(d["learning"])}{_health(d["health"])}{_rules(d.get("rules", []))}'
             f'<footer>python3 scripts/hermes-dashboard.py --project-dir . · 보기 전용 · 외부 자원 0</footer></div></body></html>\n')
 
 

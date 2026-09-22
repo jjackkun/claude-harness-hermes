@@ -15,6 +15,7 @@ from datetime import datetime, timedelta, timezone
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "hooks"))
 import gate_report
+import hermes_rule_candidates as rule_candidates  # noqa: E402  (승격 후보, 계획 2026-09-22-rule-candidates-dashboard)
 import context_budget  # noqa: E402  (세션 고정 비용, 계획 2026-09-21-context-budget)  # noqa: E402
 from hermes_handoff_queue import queue  # noqa: E402
 from hermes_owner_memory import open_proposals  # noqa: E402
@@ -172,7 +173,7 @@ def _fixed_context(project: str) -> dict:
 
 
 def collect(project: str) -> dict:
-    """네 판 전부. DB 가 없으면 판은 비고 `db_missing` 이 True."""
+    """다섯 판 전부. DB 가 없으면 판은 비고 `db_missing` 이 True."""
     project = os.path.abspath(project)
     db = os.path.join(project, ".hermes", "state.db")
     out = {"project": os.path.basename(project), "path": project,
@@ -185,7 +186,16 @@ def collect(project: str) -> dict:
     finally:
         con.close()
     out["health"] = _health_pane(project)
+    out["rules"] = _rules_pane(project)
     return out
+
+
+def _rules_pane(project: str) -> list:
+    """승격 후보 — 완료 계획서 회고의 "다음 룰 후보". 관측이 대시보드를 죽이지 않는다."""
+    try:
+        return rule_candidates.collect(os.path.join(project, "docs", "exec-plans", "completed"))
+    except Exception:  # noqa: BLE001
+        return []
 
 
 def _factory_head(factory: str) -> str:

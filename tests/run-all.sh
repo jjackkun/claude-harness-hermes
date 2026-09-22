@@ -123,6 +123,7 @@ REGISTERED_TESTS=(
   hermes-persona-score-test.sh
   hermes-persona-inject-test.sh
   cli-prompt-stdin-test.sh
+  hermes-rule-candidates-test.sh
   hermes-evolve-vocab-test.sh
   evolve-hint-source-test.sh
   workflow-failure-notice-test.sh

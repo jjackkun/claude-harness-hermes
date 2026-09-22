@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """소우주·우주 대시보드 CLI (계획 2026-09-18-hermes-dashboard 목표 1·6).
 
-  --project-dir <소우주>     .hermes/dashboard.html 을 쓴다
-  --universe [--registry F]  공장의 .installed-projects 를 훑어 .hermes/universe-dashboard.html 을 쓴다
+  --project-dir <소우주>     .hermes/dashboards/dashboard.html 을 쓴다
+  --universe [--registry F]  공장의 .installed-projects 를 훑어 .hermes/dashboards/universe-dashboard.html 을 쓴다
 
 정적 HTML 한 파일, 외부 자원 0, 모델 호출 0. 데이터는 hermes_dashboard_data, 렌더는 hermes_dashboard_html.
 """
@@ -16,12 +16,22 @@ from hermes_dashboard_data import collect, collect_universe  # noqa: E402
 from hermes_dashboard_html import render_project, render_universe  # noqa: E402
 
 
-def _write(path: str, text: str) -> str:
+# 대시보드는 .hermes/ 의 DB·로그·마커와 섞이지 않게 한 폴더에 둔다(계획 2026-09-22-rule-candidates-dashboard).
+DASHBOARD_DIR = os.path.join(".hermes", "dashboards")
+
+
+def _write(root: str, name: str, text: str) -> str:
+    """<root>/.hermes/dashboards/<name> 에 쓰고, 옛 경로(<root>/.hermes/<name>)의 낡은 페이지는 지운다 —
+    남겨 두면 갱신이 멈춘 페이지를 최신으로 오인한다."""
+    path = os.path.join(root, DASHBOARD_DIR, name)
     os.makedirs(os.path.dirname(path), exist_ok=True)
     tmp = path + ".tmp"
     with open(tmp, "w", encoding="utf-8") as fh:
         fh.write(text)
     os.replace(tmp, path)
+    legacy = os.path.join(root, ".hermes", name)
+    if os.path.isfile(legacy):
+        os.remove(legacy)
     return path
 
 
@@ -36,12 +46,12 @@ def main() -> int:
         factory = os.path.abspath(args.factory or os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
         rows = collect_universe(factory, args.registry)
         now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-        out = _write(os.path.join(factory, ".hermes", "universe-dashboard.html"), render_universe(rows, os.path.basename(factory), now))
+        out = _write(factory, "universe-dashboard.html", render_universe(rows, os.path.basename(factory), now))
         print(f"우주 대시보드 → {out} (소우주 {len(rows)}곳)")
         return 0
     project = os.path.abspath(args.project_dir or os.getcwd())
     data = collect(project)
-    out = _write(os.path.join(project, ".hermes", "dashboard.html"), render_project(data))
+    out = _write(project, "dashboard.html", render_project(data))
     print(f"대시보드 → {out}" + (" (state.db 없음 — 판이 비어 있음)" if data["db_missing"] else ""))
     return 0
 
