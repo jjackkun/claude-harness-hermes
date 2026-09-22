@@ -22,7 +22,7 @@ tier: 0  scripts/hermes-prune.py scripts/hermes-reindex.py scripts/hermes_lifecy
 tier: 0  scripts/hermes_reuse.py scripts/hermes_secret_values.py scripts/hermes_skills.py
 tier: 0  scripts/hermes_skill_render.py
 tier: 0  scripts/hermes_keywords.py scripts/hermes_history_fragments.py
-tier: 0  scripts/hermes_persona_source.py scripts/hermes_persona_store.py
+tier: 0  scripts/hermes_persona_source.py scripts/hermes_persona_store.py scripts/hermes_persona_score.py
 tier: 1  scripts/hermes_persona_extract.py
 tier: 2  scripts/hermes-persona.py
 # 작업 이력(계획 2026-09-15-universe-id-journal). tier 는 실측 import 그래프에서 계산했다:

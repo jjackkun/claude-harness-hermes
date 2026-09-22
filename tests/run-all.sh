@@ -120,6 +120,7 @@ REGISTERED_TESTS=(
   hermes-persona-store-test.sh
   hermes-persona-extract-test.sh
   hermes-persona-distill-test.sh
+  hermes-persona-score-test.sh
   hermes-evolve-vocab-test.sh
   evolve-hint-source-test.sh
   workflow-failure-notice-test.sh
