@@ -14,16 +14,21 @@
 
 ## 2. 목표 (What — 검증 가능한 형태)
 
-- [ ] 목표 1 — `hermes-persona.py distill` 이 `~/.claude/projects/*/*.jsonl` 의 **사용자 발화만** 증분으로 읽어,
+- [ ] 목표 1 — 명령: `python3 -m pytest tests/test_hermes_persona_source.py -q` + `python3 scripts/hermes-persona.py distill --project <경로>` 두 번.
+   `hermes-persona.py distill` 이 `~/.claude/projects/*/*.jsonl` 의 **사용자 발화만** 증분으로 읽어,
   관찰을 7개 면(말투 · 코딩 스타일 · 기술 스택 · 작업 방식 · 환경 · 지시 · 싫어하는 것)으로 `global.db` 에 쌓는다.
   검증: 실제 대화 기록 1개 프로젝트로 돌려 관찰 ≥ 1, 두 번째 실행에서 새로 읽는 줄 0.
-- [ ] 목표 2 — 관찰마다 **근거 인용**과 **신뢰 등급**(t0 명시 지시 · t1 교정/중단 · t2 습관)이 붙는다. 인용 없는 관찰은 저장을 거부한다.
+- [ ] 목표 2 — 명령: `python3 -m pytest tests/test_hermes_persona_store.py -q -k quote`.
+   관찰마다 **근거 인용**과 **신뢰 등급**(t0 명시 지시 · t1 교정/중단 · t2 습관)이 붙는다. 인용 없는 관찰은 저장을 거부한다.
   검증: 인용 빈 관찰을 넣는 시험이 거부로 끝난다.
-- [ ] 목표 3 — 안정성 점수 `Σ 등급가중 · exp(-Δt/반감기) · ln(1+n)` 로 후보/활성을 가른다. 가중·반감기·문턱은 이름 붙은 상수와 근거 주석으로 둔다.
+- [ ] 목표 3 — 명령: `python3 -m pytest tests/test_hermes_persona_score.py -q`.
+   안정성 점수 `Σ 등급가중 · exp(-Δt/반감기) · ln(1+n)` 로 후보/활성을 가른다. 가중·반감기·문턱은 이름 붙은 상수와 근거 주석으로 둔다.
   검증: 같은 관찰이 오래전 1회면 후보에 머물고, 최근 여러 세션에서 반복되면 후보에 오르는 시험.
-- [ ] 목표 4 — **사람이 승인한 관찰만** SessionStart 에 주입한다. 후보는 `hermes-persona.py review` 로 보여 주고 `approve`/`reject` 로 정한다.
+- [ ] 목표 4 — 명령: `python3 -m pytest tests/test_hermes_persona_cli.py -q -k inject`.
+   **사람이 승인한 관찰만** SessionStart 에 주입한다. 후보는 `hermes-persona.py review` 로 보여 주고 `approve`/`reject` 로 정한다.
   검증: 승인 0건이면 주입 출력이 비어 있고, 승인 1건이면 그 문장만 나온다.
-- [ ] 목표 5 — LLM 에 보내기 전 `hermes_redact.py` 로 마스킹하고, 성향 표는 `refs/hermes/sync` 로 **올라가지 않는다.**
+- [ ] 목표 5 — 명령: `python3 -m pytest tests/test_hermes_persona_extract.py -q -k redact`.
+   LLM 에 보내기 전 `hermes_redact.py` 로 마스킹하고, 성향 표는 `refs/hermes/sync` 로 **올라가지 않는다.**
   검증: 전화번호가 든 발화가 추출 입력에서 `[REDACTED:PHONE]` 으로 바뀌는 시험, sync 대상 표 목록에 성향 표가 없다는 시험.
 
 ## 2-bis. 착수 전 확인한 사실 (2026-09-22)
