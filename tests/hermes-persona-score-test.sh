@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # 사용자 성향 Step 3 — 점수·세 갈래 판정(자동 활성 / 승인 때 질문 / 쌓기만)·합치기 분류.
 # 원칙: 스스로 정할 수 있는 것은 묻지 않는다. 애매한 것만 묻는다.
-# 근거: docs/exec-plans/active/2026-09-22-user-persona-distill-plan.md 목표 3 · §6
+# 근거: docs/exec-plans/completed/2026-09-22-user-persona-distill-plan.md 목표 3 · §6
 #
 # 실행: bash tests/hermes-persona-score-test.sh
 # 종료 코드: 0 = 모든 단언 통과, 1 = 실패

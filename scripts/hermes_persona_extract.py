@@ -6,7 +6,7 @@
 왜 인용을 기계가 다시 대조하는가:
   모델은 그럴듯한 성향을 지어낼 수 있다. 관찰마다 붙은 인용(quote)이 그 번호의 발화 안에
   **글자 그대로** 있어야만 받는다. 지어낸 성향이 매 세션 주입되면 되돌리기 어렵다.
-  근거: docs/exec-plans/active/2026-09-22-user-persona-distill-plan.md 목표 2 · §6
+  근거: docs/exec-plans/completed/2026-09-22-user-persona-distill-plan.md 목표 2 · §6
 """
 
 import json

@@ -3,7 +3,7 @@
 #
 # 배경: ~/.claude/projects/*/*.jsonl 5,006개 중 entrypoint=sdk-cli 4,895개는 헤르메스가 띄운
 # 한 턴짜리 기계 프롬프트다(요약기·결정화·드리밍). 사람 대화는 entrypoint=cli 뿐이다.
-# 근거: docs/exec-plans/active/2026-09-22-user-persona-distill-plan.md §7
+# 근거: docs/exec-plans/completed/2026-09-22-user-persona-distill-plan.md §7
 #
 # 실행: bash tests/hermes-persona-source-test.sh
 # 종료 코드: 0 = 모든 단언 통과, 1 = 실패

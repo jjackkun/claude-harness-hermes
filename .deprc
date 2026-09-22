@@ -22,9 +22,10 @@ tier: 0  scripts/hermes-prune.py scripts/hermes-reindex.py scripts/hermes_lifecy
 tier: 0  scripts/hermes_reuse.py scripts/hermes_secret_values.py scripts/hermes_skills.py
 tier: 0  scripts/hermes_skill_render.py
 tier: 0  scripts/hermes_keywords.py scripts/hermes_history_fragments.py
-tier: 0  scripts/hermes_persona_source.py scripts/hermes_persona_store.py scripts/hermes_persona_score.py
-tier: 1  scripts/hermes_persona_extract.py
-tier: 2  scripts/hermes-persona.py
+tier: 0  scripts/hermes_persona_source.py scripts/hermes_persona_store.py scripts/hermes_persona_score.py scripts/hermes_persona_decisions.py
+tier: 1  scripts/hermes_persona_extract.py scripts/hermes_persona_view.py
+tier: 2  scripts/hermes_persona_commands.py
+tier: 3  scripts/hermes-persona.py
 # 작업 이력(계획 2026-09-15-universe-id-journal). tier 는 실측 import 그래프에서 계산했다:
 # uuid7·universe·journal_schema·journal_views 는 의존 없음, journal 은 그 셋을 쓰고,
 # CLI 는 journal 을 쓰며, loop_decisions 는 hermes_loop(2) 와 journal(1) 을 쓴다.

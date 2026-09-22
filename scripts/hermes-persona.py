@@ -2,10 +2,12 @@
 """사용자 성향 CLI.
 
   distill  대화 기록의 사람 발화 → 관찰(global.db). 파일별 워터마크로 증분.
+  review   승인 대기·합치기 질문·자동 활성·자동 병합을 한 번에 본다
+  approve  승인 (라벨… | --all-pending)     reject  거부 (자동 활성도 빠진다)
+  merge    합치기 <합칠 라벨> <남길 라벨>    render  세션 시작에 넣을 글
 
-기본 대상은 **현재 프로젝트의 대화 기록만**이다(2026-09-22 사용자 결정: 공장부터 시험).
-review · approve · reject · render 는 Step 4 에서 더한다.
-근거: docs/exec-plans/active/2026-09-22-user-persona-distill-plan.md
+distill 기본 대상은 **현재 프로젝트의 대화 기록만**이다(2026-09-22 사용자 결정: 공장부터 시험).
+근거: docs/exec-plans/completed/2026-09-22-user-persona-distill-plan.md
 """
 
 import argparse
@@ -16,6 +18,7 @@ import sqlite3
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import hermes_persona_commands as commands  # noqa: E402
 import hermes_persona_store as store  # noqa: E402
 from hermes_persona_extract import build_batches, extract_observations  # noqa: E402
 from hermes_persona_source import read_new_utterances  # noqa: E402
@@ -68,16 +71,43 @@ def cmd_distill(args) -> int:
     return 1 if failed else 0
 
 
+def _decide_command(args) -> int:
+    con = sqlite3.connect(args.db)
+    store.ensure_schema(con)
+    handlers = {"review": commands.cmd_review, "merge": commands.cmd_merge, "render": commands.cmd_render,
+                "approve": lambda c, a: commands.cmd_decide(c, a, "approved"),
+                "reject": lambda c, a: commands.cmd_decide(c, a, "rejected")}
+    try:
+        return handlers[args.cmd](con, args)
+    finally:
+        con.close()
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
     d = sub.add_parser("distill", help="대화 기록에서 성향 관찰을 뽑는다")
-    d.add_argument("--db", default=DEFAULT_DB)
     d.add_argument("--projects-dir", default=DEFAULT_PROJECTS_DIR)
     d.add_argument("--project", default=os.getcwd(), help="이 프로젝트의 대화 기록만 (기본: 현재 폴더)")
     d.add_argument("--all-projects", action="store_true", help="모든 프로젝트의 대화 기록")
+    for name in ("review", "render"):
+        sub.add_parser(name)
+    for name in ("approve", "reject"):
+        p = sub.add_parser(name)
+        p.add_argument("labels", nargs="*")
+        if name == "approve":
+            p.add_argument("--all-pending", action="store_true")
+    m = sub.add_parser("merge")
+    m.add_argument("src")
+    m.add_argument("dst")
+    for p in sub.choices.values():
+        p.add_argument("--db", default=os.environ.get("HERMES_PERSONA_DB", DEFAULT_DB))
     args = ap.parse_args(argv)
-    return cmd_distill(args)
+    if args.cmd == "distill":
+        return cmd_distill(args)
+    if not os.path.isfile(args.db):
+        return 0 if args.cmd == "render" else 2   # 성향이 아직 없으면 주입할 것도 없다
+    return _decide_command(args)
 
 
 if __name__ == "__main__":

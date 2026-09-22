@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # 사용자 성향 추출 — distill 명령: 대화 기록 → 관찰 → global.db, 워터마크로 증분.
 # 가짜 claude 실행 파일(HERMES_CLAUDE_BIN)로 LLM 없이 잰다.
-# 근거: docs/exec-plans/active/2026-09-22-user-persona-distill-plan.md 목표 1
+# 근거: docs/exec-plans/completed/2026-09-22-user-persona-distill-plan.md 목표 1
 #
 # 실행: bash tests/hermes-persona-distill-test.sh
 # 종료 코드: 0 = 모든 단언 통과, 1 = 실패

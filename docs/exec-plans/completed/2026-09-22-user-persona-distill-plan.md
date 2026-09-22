@@ -24,10 +24,10 @@
 - [x] 목표 3 — 명령: `bash tests/hermes-persona-score-test.sh`.
    안정성 점수 `Σ 등급가중 · exp(-Δt/반감기) · ln(1+n)` 로 후보/활성을 가른다. 가중·반감기·문턱은 이름 붙은 상수와 근거 주석으로 둔다.
   검증: 같은 관찰이 오래전 1회면 후보에 머물고, 최근 여러 세션에서 반복되면 후보에 오르는 시험.
-- [ ] 목표 4 — 명령: `bash tests/hermes-persona-inject-test.sh`.
+- [x] 목표 4 — 명령: `bash tests/hermes-persona-inject-test.sh`.
    **사람이 승인했거나 자동 활성 기준(t0 + 2세션)을 넘은 관찰만** SessionStart 에 주입한다. 후보는 `hermes-persona.py review` 로 보여 주고 `approve`/`reject` 로 정한다.
   검증: 승인 0건이면 주입 출력이 비어 있고, 승인 1건이면 그 문장만 나온다.
-- [ ] 목표 5 — 명령: `bash tests/hermes-persona-extract-test.sh`.
+- [x] 목표 5 — 명령: `bash tests/hermes-persona-extract-test.sh`.
    LLM 에 보내기 전 `hermes_redact.py` 로 마스킹하고, 성향 표는 `refs/hermes/sync` 로 **올라가지 않는다.**
   검증: 전화번호가 든 발화가 추출 입력에서 `[REDACTED:PHONE]` 으로 바뀌는 시험, sync 대상 표 목록에 성향 표가 없다는 시험.
 
@@ -57,6 +57,9 @@
   - `scripts/hermes_persona_extract.py` — 마스킹한 발화 묶음을 `claude -p`(haiku)에 보내 7면 관찰 JSON 으로 받는다.
   - `scripts/hermes_persona_score.py` — 관찰 반복 이력으로 안정성 점수와 등급(후보/활성/퇴출)을 계산한다.
   - `scripts/hermes_persona_store.py` — `global.db` 의 성향 표 읽기·쓰기와 스키마 자가수리.
+  - `scripts/hermes_persona_decisions.py` — 사람·기계의 결정(승인·거부)과 합치기 별칭 저장. 관찰 원본은 고치지 않는다(Step 4 에서 추가).
+  - `scripts/hermes_persona_view.py` — 관찰 + 판정 + 결정을 합쳐 "지금 주입할 것 / 물을 것" 을 계산하고 주입 글을 만든다(Step 4 에서 추가).
+  - `scripts/hermes_persona_commands.py` — 결정 명령(review·approve·reject·merge·render)의 처리부. CLI 는 분기만 한다(Step 4 에서 추가).
   - `scripts/hermes-persona.py` — CLI: `distill` · `review` · `approve` · `reject` · `render`. (`distill` 은 Step 2 에서 먼저 — 목표 1 검증에 필요)
   - `scripts/hooks/claude-sessionstart-persona.sh` — 승인된 관찰만 상한 안에서 주입한다.
   - `tests/hermes-persona-{source,store,score,extract,inject}-test.sh` — 위 모듈별 시험(저장소 관례: bash + `tests/run-all.sh` 등록).
@@ -78,11 +81,11 @@
 - 산출: `hermes_persona_score.py`. 상수 초깃값은 OpenHuman 값(활성 1.5 · 후보 0.7 · 퇴출 0.4, 명시 지시 2배)을 출발점으로 두고 근거 주석에 출처를 적는다.
 - 검증: 목표 3 시험. 실측 뒤 조정하면 §6 에 기록.
 
-### Step 4. 검토·승인 CLI + 주입 훅 [Impl/Review]
+### Step 4. 검토·승인 CLI + 주입 훅 [Impl/Review] — ✅ 2026-09-22 (실데이터: 자동 활성 7 주입 1,011 B · 승인 대기 8 · 자동 병합 1)
 - 산출: `hermes-persona.py`, `claude-sessionstart-persona.sh`, 설정 등록.
 - 검증: 목표 4 시험. 실제 세션 1회에서 주입 확인.
 
-### Step 5. 문서 정합
+### Step 5. 문서 정합 — ✅ 2026-09-22 (`hermes.conf` CLAUDE 블록 원본 · 공장 `CLAUDE.md` · `hermes-engineering.md:95`)
 - `CLAUDE.md`·`hermes-engineering.md` 의 "사용자 성향" 문구를 실제 구현에 맞춘다. 소우주 전파 여부는 완료 뒤 따로 정한다.
 
 ## 6. 의사결정 로그
@@ -107,6 +110,10 @@
 - **60초로는 모자랐다** (2026-09-22): 요약기에서 가져온 60초 제한에 파일 3개가 걸렸다. 발화 53개(프롬프트 4,961자) 묶음이 90.4초·79.1초 → 180초로(최댓값×2). 실패한 파일은 워터마크가 멈춰 있어 다시 돌리니 이어서 읽혔다(설계대로).
 - **rc=0 인데 해석 실패** 1/2 — 모델이 JSON 앞뒤에 설명을 붙였다. 첫 `[` ~ 마지막 `]` 재시도로 받는다.
 - **실패 로그에 프롬프트가 통째로 찍혔다** — `TimeoutExpired` 문자열에 명령 인자가 실린다. 종류만 남기게 고쳤다(시험 있음).
+- **Step 4 리뷰(code-reviewer) 반영 5건**: HIGH — 거부한 라벨이 자동 병합으로 흡수되면 결정이 사라져 되살아났다 → 사람이 손댄 라벨은 흡수만 하고 흡수되지 않게, 합친 라벨의 결정은 거부 우선으로 잇는다.
+  MEDIUM — 사람 별칭 A→B→C 따라가기 · 훅 시간 제한 5초(render 실측 0.04초, sqlite 잠금 대기와 같은 값) · 문장 속 줄바꿈으로 가짜 줄 끼우기 차단. LOW — 대기 0건 `approve --all-pending` 은 rc 0.
+  시험을 쓰다 거짓 통과 1건(병합 뒤 대표 문장이 바뀌어 grep 이 빗나감)을 잡아 단언을 넓혔다.
+- **짧은 키는 유사도가 쉽게 높다**: `long-1`~`long-10` 0.92, `python-3`~`python-310` 0.89 — 실데이터에는 숫자 꼬리 키가 없지만, 생기면 자동 병합 문턱을 다시 본다.
 - **키가 갈라진다**: `clarification-seeking` 과 `clarification-seeking-direct` 처럼 같은 성향이 다른 키로 쌓인다. Step 3 점수 전에 합치기(사람 검토에서 병합 또는 문장 유사도) 필요.
 
 - **대화 기록의 98% 는 사람이 아니다** (2026-09-22 실측): `~/.claude/projects/*/*.jsonl` 5,006개 중 `entrypoint=sdk-cli` 4,895개는 전부 한 턴짜리 기계 프롬프트다
@@ -117,5 +124,16 @@
 ## 8. 회고 (완료 시 작성)
 
 - 잘된 것:
+  - **실데이터로 먼저 재고 설계를 고쳤다.** 대화 기록 98% 가 기계 프롬프트(sdk-cli)라는 것, 60초로는 모자란다는 것(90.4초),
+    rc=0 인데 해석 실패 — 셋 다 시험 fixture 로는 안 보이고 실제로 돌려서야 보였다.
+  - **"묻지 않는다" 원칙을 숫자로 닫았다.** 키 29개를 전부 묻지 않고 자동 7 · 질문 8 · 쌓기만 14 로 갈랐다(사용자 지적 반영).
+  - 리뷰 두 번(Step 2 · Step 4)이 시험이 못 본 결함을 잡았다 — 특히 "거부한 성향이 자동 병합으로 되살아남"(HIGH).
 - 잘못된 것:
+  - 시험 단언이 두 번 빗나갔다: 상한 시험의 키가 서로 닮아 병합됨, 병합 뒤 대표 문장이 바뀌어 grep 이 거짓 통과.
+    **"없어야 한다" 단언은 좁은 문자열보다 넓은 표지(성향 전체의 낱말)로** 걸어야 했다.
+  - 결정화 키워드 품질에 대해 같은 날 두 번 단정했다가 철회했다(backlog `crystallize-stability-score.md`). 재기 전에 말했다.
+  - 요약기에서 60초를 근거 없이 가져왔다 — "같은 경로니까 같은 값" 은 근거가 아니었다.
 - 다음 룰 후보:
+  - "구독 CLI 를 부르는 새 코드는 첫 실측에서 소요 시간을 재고 제한 시간을 그 값에서 정한다" — 사례 1건, 승격 보류.
+  - "부재를 단언하는 시험(0 이어야 한다)은 우연히 0 이 되는 길이 없는지 본다" — 사례 2건(이번 계획 안). 한 번 더 나오면 승격.
+- 남은 일(backlog 로): 프롬프트를 인자가 아니라 stdin 으로(`cli-prompt-via-stdin.md`) · 승인 대기 8건은 사용자 몫 · 소우주 전파는 따로 정한다.

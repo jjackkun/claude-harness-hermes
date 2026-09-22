@@ -8,7 +8,7 @@
   띄운 한 턴짜리 `claude -p` 기계 프롬프트다(요약기 3,771 · 결정화 881 · 드리밍 69 …).
   사람 대화는 `entrypoint=cli` 108개뿐이다(2026-09-22 실측). 기계 프롬프트를 성향으로
   읽으면 "5슬롯 JSON 을 갱신해 출력하라" 가 사용자 지시가 된다.
-  근거: docs/exec-plans/active/2026-09-22-user-persona-distill-plan.md §7
+  근거: docs/exec-plans/completed/2026-09-22-user-persona-distill-plan.md §7
 """
 
 import json

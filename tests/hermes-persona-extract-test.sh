@@ -3,7 +3,7 @@
 #
 # 핵심: 모델이 준 인용(quote)이 **그 발화 안에 글자 그대로** 있어야 관찰로 받는다.
 # 지어낸 성향이 사실처럼 쌓이는 것을 막는 장치다. 실제 LLM 은 부르지 않는다 — 실행기를 바꿔 끼운다.
-# 근거: docs/exec-plans/active/2026-09-22-user-persona-distill-plan.md 목표 2·5
+# 근거: docs/exec-plans/completed/2026-09-22-user-persona-distill-plan.md 목표 2·5
 #
 # 실행: bash tests/hermes-persona-extract-test.sh
 # 종료 코드: 0 = 모든 단언 통과, 1 = 실패

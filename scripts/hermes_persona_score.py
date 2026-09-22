@@ -6,7 +6,7 @@
   ask  — 추론(t1·t2)으로 2세션 이상 + 후보 문턱 이상 → 승인 때 한 번에 묶어 질문
   hold — 그 밖(1세션뿐·식었음) → 묻지 않고 쌓기만
 가중치·문턱·감쇠는 OpenHuman `agent/learning/stability_detector.rs` 의 값을 출발점으로 둔다(코드는 옮기지 않음, GPL).
-근거: docs/exec-plans/active/2026-09-22-user-persona-distill-plan.md §6
+근거: docs/exec-plans/completed/2026-09-22-user-persona-distill-plan.md §6
 """
 
 import difflib

@@ -4,7 +4,7 @@
 표 둘: 대화 기록 파일별 워터마크, 관찰(한 발화에서 본 성향 하나 = 한 줄).
 같은 성향이 여러 세션에서 반복되면 같은 key 로 여러 줄이 쌓인다 — Step 3 점수의 재료다.
 성향 표는 `~/.hermes/global.db` 에 둔다. 기억 운반(sync)은 이 DB 를 읽지 않는다(목표 5).
-근거: docs/exec-plans/active/2026-09-22-user-persona-distill-plan.md §4
+근거: docs/exec-plans/completed/2026-09-22-user-persona-distill-plan.md §4
 """
 
 from datetime import datetime, timezone

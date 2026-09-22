@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # 사용자 성향 표 — 관찰 저장. 근거 인용이 없으면 거부한다.
-# 근거: docs/exec-plans/active/2026-09-22-user-persona-distill-plan.md 목표 2
+# 근거: docs/exec-plans/completed/2026-09-22-user-persona-distill-plan.md 목표 2
 #
 # 실행: bash tests/hermes-persona-store-test.sh
 # 종료 코드: 0 = 모든 단언 통과, 1 = 실패

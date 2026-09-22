@@ -92,7 +92,7 @@ pnpm-version-lock.md 발견
 
 | 저장소 | 경로 | 내용 |
 |---|---|---|
-| 전역 | `~/.hermes/global.db` | 전체 프로젝트 공통 패턴, 사용자 성향 |
+| 전역 | `~/.hermes/global.db` | 전체 프로젝트 공통 패턴, 사용자 성향(`persona_*` 표 — 대화 기록의 사람 발화에서 추출, 승인·자동 활성만 세션 시작에 주입, sync 제외) |
 | 프로젝트 | `[project]/.hermes/state.db` | 해당 프로젝트 전용 기억 |
 
 ### 핵심 테이블 (SQLite)
