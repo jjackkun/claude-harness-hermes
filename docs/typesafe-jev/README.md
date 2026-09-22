@@ -34,6 +34,7 @@
 | 4 | [source-notes.md](source-notes.md) | 원본 PDF 정리본 — 질문 순서대로, 잘려서 읽을 수 없는 곳 포함 |
 | 5 | [use-case-playwright.md](use-case-playwright.md) | 활용 사례 — Playwright 브라우저 에이전트 (PDF 16 · 21–23쪽) |
 | 6 | [use-cases-top5.md](use-cases-top5.md) | 활용 사례 Top 5 — Playwright 외 (PDF 23–26쪽, 앞 목록과 수치 차이 대조) |
+| 7 | [community-showcases.md](community-showcases.md) | 커뮤니티 프로젝트 모음 사이트 3곳 — 사람들이 Jev 로 실제로 무엇을 만드는가 |
 
 ## 원본
 
