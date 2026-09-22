@@ -18,8 +18,9 @@ mkdir -p "$T/bin" "$T/home"
 # 가짜 claude — 요약기가 5슬롯 JSON 을 받게 한다(hermes-pipeline-test 와 같은 방식)
 cat > "$T/bin/claude" <<'MOCK'
 #!/usr/bin/env bash
-if printf '%s' "$*" | grep -q '5슬롯 JSON'; then
-  printf '%s' "$*" >> "$HERMES_TEST_PROMPT_LOG"
+STDIN_PROMPT="$(cat 2>/dev/null || true)"   # 프롬프트는 stdin 으로 온다(계획 cli-prompt-via-stdin)
+if printf '%s' "$* $STDIN_PROMPT" | grep -q '5슬롯 JSON'; then
+  printf '%s' "$* $STDIN_PROMPT" >> "$HERMES_TEST_PROMPT_LOG"
   echo '{"decisions":["압축 직전 결정"],"open":["남은 일"],"prefs":[],"facts":["사실"],"next":[]}'
   exit 0
 fi

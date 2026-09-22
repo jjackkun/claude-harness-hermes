@@ -80,8 +80,8 @@ def stage2_is_general(text, *, timeout=120):
     prompt = _PROMPT_TMPL.format(body=(text or "")[:_MAX_PROMPT_BODY])
     try:
         result = subprocess.run(
-            ["claude", "-p", prompt, "--model", _GATE_MODEL],
-            capture_output=True, text=True, timeout=timeout,
+            ["claude", "-p", "--model", _GATE_MODEL],
+            input=prompt, capture_output=True, text=True, timeout=timeout,
             env={**os.environ, "HERMES_DISABLED": "1"},
         )
     except (subprocess.TimeoutExpired, OSError):

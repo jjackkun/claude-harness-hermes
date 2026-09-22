@@ -172,7 +172,8 @@ mkdir -p "$PH" "$TMP/bin"
 # mock claude — 클러스터링 프롬프트를 감지해 고정 클러스터 JSON 을 stdout 으로
 cat > "$TMP/bin/claude" <<'EOF'
 #!/usr/bin/env bash
-if printf '%s' "$*" | grep -q '주제'; then
+STDIN_PROMPT="$(cat 2>/dev/null || true)"   # 프롬프트는 stdin 으로 온다(계획 cli-prompt-via-stdin)
+if printf '%s' "$* $STDIN_PROMPT" | grep -q '주제'; then
   cat <<'JSON'
 [{"topic":"모의 주제 A","session_ids":["p-a","p-b"],"summary":"두 세션의 공통 결론 요약"}]
 JSON
@@ -390,7 +391,8 @@ DUMP="$TMP/prompt-dump.txt"
 mkdir -p "$TMP/bin-dump"
 cat > "$TMP/bin-dump/claude" <<EOF
 #!/usr/bin/env bash
-printf '%s' "\$*" >> "$DUMP"
+STDIN_PROMPT="\$(cat 2>/dev/null || true)"   # 프롬프트는 stdin 으로 온다(계획 cli-prompt-via-stdin)
+printf '%s' "\$* \$STDIN_PROMPT" >> "$DUMP"
 echo "[]"
 exit 0
 EOF
@@ -915,7 +917,8 @@ mkdir -p "$H6H" "$H6BIN"
 # mock claude — 클러스터링 프롬프트에 고정 클러스터 JSON 반환(실 LLM 호출 0회)
 cat > "$H6BIN/claude" <<'EOF'
 #!/usr/bin/env bash
-if printf '%s' "$*" | grep -q '주제'; then
+STDIN_PROMPT="$(cat 2>/dev/null || true)"   # 프롬프트는 stdin 으로 온다(계획 cli-prompt-via-stdin)
+if printf '%s' "$* $STDIN_PROMPT" | grep -q '주제'; then
   cat <<'JSON'
 [{"topic":"모의 훅 주제","session_ids":["h-a","h-b"],"summary":"두 세션의 공통 결론"}]
 JSON

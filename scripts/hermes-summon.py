@@ -104,9 +104,9 @@ def cmd_run(args) -> int:
               "끝나기 전에 이번 일에서 배운 것 한 줄을 남기십시오(C-21): "
               "python3 scripts/hermes-agent.py note \"<한 줄>\" --about <domain>/<slug> "
               "(domain: gate·test·git·debug·workflow·file·sync·agent). 실제 사람 이름·연락처·비밀값은 적지 않습니다.")
-    cmd = [os.environ.get("HERMES_CLAUDE_BIN", "claude"), "-p", prompt, "--output-format", "json"]
+    cmd = [os.environ.get("HERMES_CLAUDE_BIN", "claude"), "-p", "--output-format", "json"]
     try:
-        done = subprocess.run(cmd, capture_output=True, text=True, timeout=args.timeout, env=env, cwd=project)
+        done = subprocess.run(cmd, input=prompt, capture_output=True, text=True, timeout=args.timeout, env=env, cwd=project)
         exit_code, out = done.returncode, done.stdout
     except (OSError, subprocess.SubprocessError) as exc:
         exit_code, out = 127, ""

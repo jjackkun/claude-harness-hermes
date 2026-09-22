@@ -52,14 +52,15 @@ print(row[0])
 # ── mock claude (PATH 가짜 실행파일) ──
 cat > "$T/bin/claude" <<'EOF'
 #!/usr/bin/env bash
+STDIN_PROMPT="$(cat 2>/dev/null || true)"   # 프롬프트는 stdin 으로 온다(계획 cli-prompt-via-stdin)
 # mock claude -p — MOCK_MODE=skip|normal|fail|evolve
 # hermes-summarize 호출(프롬프트에 '5슬롯 JSON' 포함) → 고정 슬롯 JSON 출력
-if printf '%s' "$*" | grep -q '5슬롯 JSON'; then
+if printf '%s' "$* $STDIN_PROMPT" | grep -q '5슬롯 JSON'; then
   echo '{"decisions":["A 먼저"],"open":["승인 대기"],"prefs":["비용 일정"],"facts":["Stop 훅 매 턴"],"next":["계획 작성"]}'
   exit 0
 fi
 # hermes-dream 결정화 후보 게이트 감지 — 고정 key 1개 반환
-if printf '%s' "$*" | grep -q '결정화 후보 key'; then
+if printf '%s' "$* $STDIN_PROMPT" | grep -q '결정화 후보 key'; then
   echo "dream-test-key"
   exit 0
 fi

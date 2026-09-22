@@ -126,7 +126,7 @@ assert "폴백은 별도 모듈이 소유한다" "yes" \
 assert "폴백 호출이 --model haiku 를 넘긴다" "1" \
   "$(grep -cE -- '"--model", *"claude-haiku-4-5-20251001"' "$REPO_ROOT/scripts/hermes_search_fallback.py")"
 assert "cron 헤드리스 호출에 --exclude-dynamic-system-prompt-sections" "1" \
-  "$(grep -c -- 'claude -p "$prompt" --exclude-dynamic-system-prompt-sections' "$REPO_ROOT/scripts/hermes-cron-run.sh")"
+  "$(grep -c -- 'nohup claude -p --exclude-dynamic-system-prompt-sections' "$REPO_ROOT/scripts/hermes-cron-run.sh")"   # 프롬프트는 stdin(계획 cli-prompt-via-stdin)
 
 echo "== 5. 이름 가산은 흔한 말에서 순위를 뒤집지 못한다 =="
 out=$(python3 - "$REPO_ROOT" "$TMP" <<'EOF'

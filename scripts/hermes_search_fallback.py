@@ -75,8 +75,8 @@ def _ask_claude(prompt: str) -> str:
         result = subprocess.run(
             # 분류 한 번이라 haiku 로 충분 — crystallize·dream·summarize 와 같은 판단. --model 이 없으면
             # 세션 기본 모델(Opus)로 돌아 프로그래매틱 크레딧을 헛되이 쓴다(2026-09-15 실측, 계획 cost-levers).
-            ["claude", "-p", prompt, "--model", "claude-haiku-4-5-20251001"],
-            capture_output=True,
+            ["claude", "-p", "--model", "claude-haiku-4-5-20251001"],
+            input=prompt, capture_output=True,
             text=True,
             timeout=30,
             env={**os.environ, "HERMES_DISABLED": "1"},

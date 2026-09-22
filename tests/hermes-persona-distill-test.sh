@@ -32,8 +32,9 @@ line "남의 프로젝트 말" > "$TMP/projects/-other-project/b.jsonl"
 # 가짜 claude — 프롬프트에 든 발화를 보고 관찰 하나를 돌려준다. FAKE_FAIL=1 이면 실패.
 cat > "$TMP/claude" <<'EOF'
 #!/usr/bin/env bash
+STDIN_PROMPT="$(cat 2>/dev/null || true)"   # 프롬프트는 stdin 으로 온다(계획 cli-prompt-via-stdin)
 [[ "${FAKE_FAIL:-0}" == 1 ]] && exit 1
-echo "$2" >> "${FAKE_LOG:?}"
+echo "$STDIN_PROMPT" >> "${FAKE_LOG:?}"
 echo '[{"n":1,"facet":"workflow","key":"no-form-spam","statement":"폼 질문을 연달아 띄우지 않는다","quote":"연달아 띄우지 마","tier":"t1"}]'
 EOF
 chmod +x "$TMP/claude"
@@ -51,6 +52,7 @@ echo "== 2. 첫 실행 — 관찰이 쌓인다 =="
 D > "$TMP/o1.txt" 2>&1
 assert "관찰 1" "1" "$(count)"
 assert "요약 줄: 새 발화 1 · 관찰 1" "yes" "$(grep -q '새 발화 1' "$TMP/o1.txt" && grep -q '관찰 1' "$TMP/o1.txt" && echo yes)"
+assert "가짜 claude 가 받은 프롬프트가 기록된다 (아래 부재 단언이 우연히 0 이 아니게)" "yes" "$([[ $(grep -c '폼 질문' "$TMP/prompts.log") -ge 1 ]] && echo yes || echo no)"
 assert "남의 프로젝트 기록은 읽지 않는다 (기본은 현재 프로젝트만)" "0" "$(grep -c '남의 프로젝트' "$TMP/prompts.log")"
 
 echo "== 3. 두 번째 실행 — 새로 읽는 발화 0 =="

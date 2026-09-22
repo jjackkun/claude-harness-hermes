@@ -115,7 +115,7 @@ def _drive(args):
         fail_reason = None                     # 실패 모드 구분 (사후 디버깅)
         try:                                   # 3. 동기 실행 (격리 cold start)
             proc = subprocess.run(
-                [args.claude_cmd, "-p", prompt], capture_output=True,
+                [args.claude_cmd, "-p"], input=prompt, capture_output=True,
                 text=True, cwd=args.project_dir,
                 timeout=(args.iter_timeout or None))
             if proc.returncode != 0:

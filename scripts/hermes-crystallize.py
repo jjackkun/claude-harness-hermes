@@ -224,9 +224,9 @@ def generate_skill_content(
         # 주의: claude CLI 에는 --max-tokens 옵션이 없다 (C1).
         # 출력 길이는 프롬프트 내 "60줄 이내" 지시로 제한한다.
         result = subprocess.run(
-            ["claude", "-p", prompt,
+            ["claude", "-p",
              "--model", "claude-haiku-4-5-20251001"],
-            capture_output=True,
+            input=prompt, capture_output=True,
             text=True,
             timeout=120,
             env={**os.environ, "HERMES_DISABLED": "1"},

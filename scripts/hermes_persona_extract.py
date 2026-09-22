@@ -146,8 +146,8 @@ def extract_observations(batch: list, known_keys: list, run=subprocess.run):
     for _ in range(2):
         try:
             result = run(
-                [os.environ.get("HERMES_CLAUDE_BIN", "claude"), "-p", prompt, "--model", _MODEL],
-                capture_output=True, text=True, timeout=_CALL_TIMEOUT_SEC,
+                [os.environ.get("HERMES_CLAUDE_BIN", "claude"), "-p", "--model", _MODEL],
+                input=prompt, capture_output=True, text=True, timeout=_CALL_TIMEOUT_SEC,
                 env={**os.environ, "HERMES_DISABLED": "1"},
             )
         # 예외 문자열에는 명령 인자(= 사람 발화가 든 프롬프트)가 통째로 실린다 — 종류만 남긴다.

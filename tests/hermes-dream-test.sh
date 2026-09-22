@@ -169,7 +169,8 @@ if S_DIR="$S" wm_ok 2>/dev/null | grep -q OK; then check "워터마크+stall: NU
 # mock: evidence 에 POISON 있으면 실패, 아니면 키 2개 출력
 cat > "$T/bin/claude" <<'EOF'
 #!/usr/bin/env bash
-if printf '%s' "$*" | grep -q POISON; then echo "boom" >&2; exit 1; fi
+STDIN_PROMPT="$(cat 2>/dev/null || true)"   # 프롬프트는 stdin 으로 온다(계획 cli-prompt-via-stdin)
+if printf '%s' "$* $STDIN_PROMPT" | grep -q POISON; then echo "boom" >&2; exit 1; fi
 echo "k-$RANDOM"; echo "k-$RANDOM"
 EOF
 chmod +x "$T/bin/claude"; export PATH="$T/bin:$PATH"
@@ -236,7 +237,8 @@ if S_DIR="$S" ov_ok 2>/dev/null | grep -q OK; then check "map-reduce: 상한초�
 # 정상 mock (키 1개)
 cat > "$T/bin/claude" <<'EOF'
 #!/usr/bin/env bash
-if printf '%s' "$*" | grep -q '결정화 후보'; then echo "drained-key"; exit 0; fi
+STDIN_PROMPT="$(cat 2>/dev/null || true)"   # 프롬프트는 stdin 으로 온다(계획 cli-prompt-via-stdin)
+if printf '%s' "$* $STDIN_PROMPT" | grep -q '결정화 후보'; then echo "drained-key"; exit 0; fi
 cat <<'MD'
 # drained-key
 <!-- hermes:auto-generated version:1 created:2026-06-25 -->

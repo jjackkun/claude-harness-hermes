@@ -319,8 +319,8 @@ def _cluster_chunk(evidence: str, valid_ids: set):
     for attempt in (1, 2):  # 1회 재시도
         try:
             result = subprocess.run(
-                ["claude", "-p", prompt, "--model", "claude-haiku-4-5-20251001"],
-                capture_output=True, text=True, timeout=LLM_TIMEOUT,
+                ["claude", "-p", "--model", "claude-haiku-4-5-20251001"],
+                input=prompt, capture_output=True, text=True, timeout=LLM_TIMEOUT,
                 env={**os.environ, "HERMES_DISABLED": "1"},
             )
             if result.returncode == 0:

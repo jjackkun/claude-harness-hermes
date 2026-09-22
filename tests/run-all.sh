@@ -122,6 +122,7 @@ REGISTERED_TESTS=(
   hermes-persona-distill-test.sh
   hermes-persona-score-test.sh
   hermes-persona-inject-test.sh
+  cli-prompt-stdin-test.sh
   hermes-evolve-vocab-test.sh
   evolve-hint-source-test.sh
   workflow-failure-notice-test.sh

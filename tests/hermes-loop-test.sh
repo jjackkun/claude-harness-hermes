@@ -61,6 +61,7 @@ export -f loop_cli
 # ── mock claude (PATH 가짜 실행파일) — Task 4 의 run 테스트에서 사용 ──
 cat > "$T/bin/claude" <<'EOF'
 #!/usr/bin/env bash
+STDIN_PROMPT="$(cat 2>/dev/null || true)"   # 프롬프트는 stdin 으로 온다(계획 cli-prompt-via-stdin)
 # mock claude -p — MOCK_LOOP_PLAN="스펙1,스펙2,..." (마지막 스펙 반복)
 # 스펙: continue | goalmet-pass | goalmet-fail | blocked | noreport
 cnt_file="${MOCK_COUNT_FILE:?}"
