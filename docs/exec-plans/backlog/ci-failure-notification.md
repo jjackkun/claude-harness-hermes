@@ -17,3 +17,6 @@
 ## 먼저 잴 것
 
 - 12곳 중 schedule 워크플로가 실제로 걸린 곳이 몇 곳인지(대부분 GitLab 안내만 배치됨).
+  - **2026-09-22 실측: 공장 1곳뿐**(`claude-harness-hermes/.github/workflows/weekly-doc-gardening.yml`). 나머지 11곳은 `.github/workflows/` 에 `schedule:` 이 없다.
+    → 알림은 공장 워크플로 하나에만 붙이면 된다. 세션 시작 훅으로 12곳에 퍼뜨릴 이유가 없다.
+  - 최근 실행 결과는 이 머신의 `gh` 가 로그인돼 있지 않아 확인하지 못했다(`gh auth login` 필요). 세션 훅 후보는 이 조건에서 조용히 넘어가야 한다는 뜻이기도 하다.

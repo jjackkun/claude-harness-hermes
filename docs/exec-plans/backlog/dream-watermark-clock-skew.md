@@ -23,6 +23,11 @@
 주의: `session_summary` 를 rowid 순으로 비교하면 역행이 많이 보이지만(zeroday 70) 그것은 `ON CONFLICT DO UPDATE` 가
 rowid 를 유지해 최초 삽입 순서와 마지막 갱신 시각을 비교한 것 — 지표가 아니다.
 
+### 재측정 (2026-09-22) — 여전히 0
+
+누락 후보 **0** (7곳: zeroday-frontend · novel-ab · novel-bc · ai-create · upbit-ai-trading · terminal-shipping · 공장). 우선순위 낮음 유지.
+`jjackkun_bot` · `kis-trading` 은 `dream_log` 에 `watermark_at` 칸이 없는 옛 형식이라 측정되지 않았다 — 워터마크 자체가 없으므로 이 결함의 대상이 아니지만, 스키마가 뒤처진 이유(재설치 누락?)는 따로 볼 일이다.
+
 ## 재측정 명령
 
 ```bash
