@@ -14,11 +14,11 @@
 
 ## 2. 목표 (What — 검증 가능한 형태)
 
-- [ ] 목표 1 — 명령: `bash tests/hermes-persona-source-test.sh` + `python3 scripts/hermes-persona.py distill` 두 번.
+- [x] 목표 1 — 명령: `bash tests/hermes-persona-source-test.sh` + `python3 scripts/hermes-persona.py distill` 두 번.
    `hermes-persona.py distill` 이 `~/.claude/projects/*/*.jsonl` 의 **사용자 발화만** 증분으로 읽어,
   관찰을 7개 면(말투 · 코딩 스타일 · 기술 스택 · 작업 방식 · 환경 · 지시 · 싫어하는 것)으로 `global.db` 에 쌓는다.
   검증: 실제 대화 기록 1개 프로젝트로 돌려 관찰 ≥ 1, 두 번째 실행에서 새로 읽는 줄 0.
-- [ ] 목표 2 — 명령: `bash tests/hermes-persona-store-test.sh`.
+- [x] 목표 2 — 명령: `bash tests/hermes-persona-store-test.sh`.
    관찰마다 **근거 인용**과 **신뢰 등급**(t0 명시 지시 · t1 교정/중단 · t2 습관)이 붙는다. 인용 없는 관찰은 저장을 거부한다.
   검증: 인용 빈 관찰을 넣는 시험이 거부로 끝난다.
 - [ ] 목표 3 — 명령: `bash tests/hermes-persona-score-test.sh`.
@@ -57,7 +57,7 @@
   - `scripts/hermes_persona_extract.py` — 마스킹한 발화 묶음을 `claude -p`(haiku)에 보내 7면 관찰 JSON 으로 받는다.
   - `scripts/hermes_persona_score.py` — 관찰 반복 이력으로 안정성 점수와 등급(후보/활성/퇴출)을 계산한다.
   - `scripts/hermes_persona_store.py` — `global.db` 의 성향 표 읽기·쓰기와 스키마 자가수리.
-  - `scripts/hermes-persona.py` — CLI: `distill` · `review` · `approve` · `reject` · `render`.
+  - `scripts/hermes-persona.py` — CLI: `distill` · `review` · `approve` · `reject` · `render`. (`distill` 은 Step 2 에서 먼저 — 목표 1 검증에 필요)
   - `scripts/hooks/claude-sessionstart-persona.sh` — 승인된 관찰만 상한 안에서 주입한다.
   - `tests/hermes-persona-{source,store,score,extract,inject}-test.sh` — 위 모듈별 시험(저장소 관례: bash + `tests/run-all.sh` 등록).
 - 룰: R3(LLM 경로), R-iface(새 파일 공개 심볼 8 미만), R-declare(이 §4 가 선언).
@@ -70,7 +70,7 @@
 - 산출: `hermes_persona_source.py`, `hermes_persona_store.py`(워터마크 표만).
 - 검증: 실제 대화 기록 한 개 프로젝트로 추출 → 두 번째 실행 신규 0. `<task-notification>`·`Another Claude session` 같은 기계 메시지 제외 시험.
 
-### Step 2. 관찰 추출 [Plan/Impl/Review]
+### Step 2. 관찰 추출 [Plan/Impl/Review] — ✅ 2026-09-22 (공장 기록: 발화 985 → 관찰 68 · 키 29 · 반복 키 18)
 - 산출: `hermes_persona_extract.py` — 프롬프트는 "근거 인용 없이는 관찰을 만들지 말 것, 등급 t0/t1/t2 판정 기준" 을 담는다.
 - 검증: 마스킹 시험, JSON 형식 어긋남 시 그 묶음만 버리고 오류를 stderr 로 남기는 시험.
 
@@ -92,8 +92,17 @@
 - 2026-09-22: 코드는 옮기지 않는다 — 근거: GPL-3.0.
 - 2026-09-22: 사람 발화 판정은 `entrypoint == "cli"` + 기계 접두어 목록 — 근거: §7 실측(sdk-cli 전부 한 턴 기계 프롬프트). `/compact` 같은 사람이 친 명령은 남긴다(성향 추출 단계에서 무시된다).
 - 2026-09-22: 시험은 pytest 가 아니라 저장소 관례대로 `tests/*-test.sh` + `run-all.sh` 등록.
+- 2026-09-22: 모델이 준 인용이 그 발화 안에 **글자 그대로** 있어야 관찰로 받는다 — 근거: 지어낸 성향 차단. 변이 시험(대조 삭제 → 시험 2개 실패)으로 확인.
+- 2026-09-22: LLM 실패는 `None`, 성향 없음은 `[]` 로 구분하고 실패한 묶음부터 워터마크를 멈춘다 — 근거: 둘을 합치면 실패한 발화가 다시 안 읽혀 조용히 사라진다.
+- 2026-09-22: `distill` 기본 대상은 현재 프로젝트 기록만, `--all-projects` 로 넓힌다 — 근거: 사용자 결정 "우리가 테스트 해야하니 우리 프로젝트".
+- 2026-09-22: 상한은 요약기와 같게(haiku · 60초 · 묶음 6,000자), 발화 하나는 500자 — 근거: 사람 발화 p90 89자(실측), 긴 것은 붙여 넣은 글.
 
 ## 7. 발견·예외
+
+- **60초로는 모자랐다** (2026-09-22): 요약기에서 가져온 60초 제한에 파일 3개가 걸렸다. 발화 53개(프롬프트 4,961자) 묶음이 90.4초·79.1초 → 180초로(최댓값×2). 실패한 파일은 워터마크가 멈춰 있어 다시 돌리니 이어서 읽혔다(설계대로).
+- **rc=0 인데 해석 실패** 1/2 — 모델이 JSON 앞뒤에 설명을 붙였다. 첫 `[` ~ 마지막 `]` 재시도로 받는다.
+- **실패 로그에 프롬프트가 통째로 찍혔다** — `TimeoutExpired` 문자열에 명령 인자가 실린다. 종류만 남기게 고쳤다(시험 있음).
+- **키가 갈라진다**: `clarification-seeking` 과 `clarification-seeking-direct` 처럼 같은 성향이 다른 키로 쌓인다. Step 3 점수 전에 합치기(사람 검토에서 병합 또는 문장 유사도) 필요.
 
 - **대화 기록의 98% 는 사람이 아니다** (2026-09-22 실측): `~/.claude/projects/*/*.jsonl` 5,006개 중 `entrypoint=sdk-cli` 4,895개는 전부 한 턴짜리 기계 프롬프트다
   (요약기 3,771 · 결정화 881 · 드리밍 69 · 스킬 진화 65 · PRD 작성 등). 사람 대화는 `entrypoint=cli` 108개. → 추출은 `cli` 기록만 읽는다.
