@@ -173,6 +173,7 @@ REGISTERED_TESTS=(
   hermes-handoff-test.sh
   hermes-teaching-test.sh
   hermes-dashboard-test.sh
+  git-ignore-judge-test.sh
   hermes-skill-layers-test.sh
   hermes-skill-inject-test.sh
   hermes-skill-extends-test.sh

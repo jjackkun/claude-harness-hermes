@@ -54,7 +54,8 @@ import json;d=json.load(open('$T/d1.json'));print(int(d['tampered']==['skills/$S
 assert "--brief 한 줄" 1 "$(D "$P" --brief 2>/dev/null | wc -l)"
 # 자기 검사: sha 대조를 끄면 변조를 못 잡는다
 sed 's/_sha_target(path) != it\["sha256"\]/False/' "$DOC" > "$T/doctor-broken.py"
-python3 "$T/doctor-broken.py" "$P" > "$T/broken.out" 2>&1
+# 복사본은 scripts/ 밖에서 돌므로 이웃 모듈(git_ignore_judge) 경로를 준다 — doctor 는 그 판정기를 쓴다(계획 gitignore-judge).
+PYTHONPATH="$(dirname "$DOC")" python3 "$T/doctor-broken.py" "$P" > "$T/broken.out" 2>&1
 assert "자기 검사: 대조를 끄면 불일치 0 이 된다" 1 "$(grep -c '불일치 0 ' "$T/broken.out")"
 
 echo "== 2절 복구"

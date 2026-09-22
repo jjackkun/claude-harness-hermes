@@ -607,7 +607,9 @@ warn_manifest_untracked() {
   [[ -f "$project_path/$rel" ]] || return 0
   git -C "$project_path" rev-parse --is-inside-work-tree >/dev/null 2>&1 || return 0
   git -C "$project_path" ls-files --error-unmatch "$rel" >/dev/null 2>&1 && return 0
-  git -C "$project_path" check-ignore -q "$rel" 2>/dev/null || return 0
+  # 판정은 판정기 한 곳에서 — 옛 git 의 check-ignore 종료 코드는 예외 규칙을 못 가른다(계획 gitignore-judge).
+  # rc 0 만 "무시됨" 이다. 1(아님)·2(판정 불가)는 조용히 넘어간다 — 전과 같다.
+  python3 "$DEV_SETTING_DIR/scripts/git_ignore_judge.py" --repo "$project_path" "$rel" >/dev/null 2>&1 || return 0
   log_warn "  manifest → 설치 목록이 git 에 추적되지 않습니다 ($rel)"
   log_warn "            ↳ 프로젝트 .gitignore 의 `.claude/*` 규칙이 하네스 예외보다 뒤에 있습니다"
   log_warn "            ↳ 이대로면 다른 컴퓨터의 clone 에서 doctor 는 진단 불가, 공존 설치는 base 없음이 됩니다"

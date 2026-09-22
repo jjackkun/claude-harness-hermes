@@ -17,6 +17,9 @@ import re
 import subprocess
 import sys
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from git_ignore_judge import is_ignored  # noqa: E402
+
 _FACTORY = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _KIND_DIRS = {"skills": ("skills", ""), "agents": ("agents", ".md"), "rules": ("rules", "")}
 _COEXIST_KINDS = ("hook", "githook", "script", "lint")
@@ -134,10 +137,9 @@ def _manifest_untracked(project):
                                  capture_output=True, text=True, timeout=10)
         if tracked.returncode == 0:
             return ""
-        ignored = subprocess.run(["git", "-C", project, "check-ignore", "-q", rel],
-                                 capture_output=True, text=True, timeout=10)
-        return "ignored" if ignored.returncode == 0 else "uncommitted"
-    except (OSError, subprocess.SubprocessError):
+        # 종료 코드가 아니라 패턴으로 판정한다 — 옛 git 은 예외 규칙에도 0 을 준다(계획 gitignore-judge).
+        return "ignored" if is_ignored(project, rel) else "uncommitted"
+    except (OSError, subprocess.SubprocessError, RuntimeError):
         return ""
 
 

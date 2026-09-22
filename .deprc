@@ -22,6 +22,8 @@ tier: 0  scripts/hermes-prune.py scripts/hermes-reindex.py scripts/hermes_lifecy
 tier: 0  scripts/hermes_reuse.py scripts/hermes_secret_values.py scripts/hermes_skills.py
 tier: 0  scripts/hermes_skill_render.py
 tier: 0  scripts/hermes_keywords.py scripts/hermes_history_fragments.py
+# git 무시 판정기(계획 2026-09-22-gitignore-judge): 표준 모듈만.
+tier: 0  scripts/git_ignore_judge.py
 tier: 0  scripts/hermes_persona_source.py scripts/hermes_persona_store.py scripts/hermes_persona_score.py scripts/hermes_persona_decisions.py scripts/hermes_rule_candidates.py
 tier: 1  scripts/hermes_persona_extract.py scripts/hermes_persona_view.py
 tier: 2  scripts/hermes_persona_commands.py
