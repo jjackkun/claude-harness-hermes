@@ -125,6 +125,20 @@ assert "factory 일치 표시" 1 "$(grep -c '>일치<' "$UH")"
 E2="$TMP/empty2"; mkdir -p "$E2/.hermes"; python3 "$S/hermes-dashboard.py" --project-dir "$E2" >/dev/null
 assert "DB 없는 소우주도 HTML 생성 + 안내" 1 "$(grep -c 'state.db 가 없다' "$E2/.hermes/dashboards/dashboard.html")"
 
+echo "== 공장 일치 — 설치 대상이 안 바뀐 커밋은 일치 (2026-09-22) =="
+# 전파 직후 공장이 영수증을 커밋하면 HEAD 가 한 칸 가서 11곳이 전부 '뒤짐' 으로 보였다.
+FG="$TMP/fgit"; mkdir -p "$FG/assets" "$FG/docs"; git -C "$FG" init -q; git -C "$FG" config user.name t; git -C "$FG" config user.email t@t
+echo a > "$FG/assets/x"; git -C "$FG" add -A; git -C "$FG" commit -qm A; A=$(git -C "$FG" rev-parse HEAD)
+echo d > "$FG/docs/r.md"; mkdir -p "$FG/.claude"; echo m > "$FG/.claude/.factory-manifest.json"; git -C "$FG" add -A; git -C "$FG" commit -qm B
+FM() { PYTHONPATH="$S" python3 -c "import sys,json,os; from hermes_dashboard_data import _factory_match
+os.makedirs(sys.argv[1]+'/.hermes',exist_ok=True); json.dump({'installed_version':sys.argv[2]},open(sys.argv[1]+'/.hermes/factory.json','w'))
+print(_factory_match(sys.argv[1], sys.argv[3]))" "$TMP/fm-proj" "$1" "$FG"; }
+assert "문서·영수증만 바뀐 뒤 → 일치" True "$(FM "$A")"
+echo b > "$FG/assets/x"; git -C "$FG" commit -qam C
+assert "설치 대상(assets)이 바뀐 뒤 → 뒤처짐" False "$(FM "$A")"
+assert "공장이 모르는 커밋 → 뒤처짐" False "$(FM 0000000000000000000000000000000000000000)"
+assert "표기는 '뒤처짐'" 1 "$(grep -c '"뒤처짐"' "$S/hermes_dashboard_html.py")"
+
 echo "== 세션 시작 훅 — 하루 1회 (목표 7) =="
 HOOK="$REPO_ROOT/assets/hooks/claude-sessionstart-dashboard.sh"; MK="$P/.hermes/dashboard-last-run"; rm -f "$MK" "$P/.hermes/dashboards/dashboard.html"; : > "$P/.hermes/hooks.log"
 OUT="$(echo '{"source":"startup"}' | HERMES_DASHBOARD_SYNC=1 CLAUDE_PROJECT_DIR="$P" bash "$HOOK")"; RC=$?

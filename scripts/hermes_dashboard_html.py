@@ -175,7 +175,7 @@ def render_universe(rows: list, factory: str, generated_at: str) -> str:
         if not r["installed"]:
             body.append([_e(r["project"]), _tag("미설치", "dim"), "", "", "", "", "", ""])
             continue
-        match = {True: _tag("일치", "ok"), False: _tag("뒤짐", "warn"), None: _tag("미상", "dim")}[r.get("factory_match")]
+        match = {True: _tag("일치", "ok"), False: _tag("뒤처짐", "warn"), None: _tag("미상", "dim")}[r.get("factory_match")]
         body.append([_e(r["project"]), _tag("설치", "ok"), _e(r["agents"]), _e(r["skills"]), _e(_pct(r["helpful_rate"])),
                      _e(r["demote_candidates"]), f'<span class="mono">{_e((r["last_dream"] or "없음")[:16])}</span>', match])
     table = _table(["소우주", "상태", "에이전트", "스킬", "도움률", "강등 후보", "마지막 드림", "factory"], body, numeric=(2, 3, 4, 5))

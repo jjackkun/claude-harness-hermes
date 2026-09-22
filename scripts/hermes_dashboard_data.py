@@ -198,22 +198,31 @@ def _rules_pane(project: str) -> list:
         return []
 
 
-def _factory_head(factory: str) -> str:
-    try:
-        return subprocess.run(["git", "-C", factory, "rev-parse", "HEAD"], capture_output=True, text=True, timeout=5).stdout.strip()
-    except (OSError, subprocess.SubprocessError):
-        return ""
+# 설치기가 읽는 곳 — 넓게 잡는다(잘못 '일치' 보다 잘못 '뒤처짐' 이 안전하다).
+_INSTALL_SOURCES = ("assets", "lib", "presets", "templates", "scripts", "lint-configs", "plugins", "bin",
+                    "project-claude.sh", "project-codex.sh")
 
 
-def _factory_match(path: str, head: str):
+def _factory_match(path: str, factory: str):
+    """깔린 판 이후 공장에서 **설치 대상** 이 바뀌었나. 안 바뀌었으면 True(일치).
+
+    HEAD 와 곧바로 비교하면 전파 직후 공장이 영수증을 커밋하는 순간 모두 '뒤처짐' 이 됐다(2026-09-22)."""
     try:
         with open(os.path.join(path, ".hermes", "factory.json"), encoding="utf-8") as fh:
-            return json.load(fh).get("installed_version") == head
+            installed = json.load(fh).get("installed_version")
     except (OSError, ValueError):
         return None
+    if not installed:
+        return None
+    try:
+        diff = subprocess.run(["git", "-C", factory, "diff", "--name-only", installed, "HEAD", "--", *_INSTALL_SOURCES],
+                              capture_output=True, text=True, timeout=10)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return diff.returncode == 0 and not diff.stdout.strip()   # 공장이 모르는 커밋이면 git 이 실패 → 뒤처짐
 
 
-def _universe_row(path: str, head: str) -> dict:
+def _universe_row(path: str, factory: str) -> dict:
     row = {"project": os.path.basename(path), "path": path, "installed": os.path.isfile(os.path.join(path, ".hermes", "state.db"))}
     if not row["installed"]:
         return row
@@ -224,7 +233,7 @@ def _universe_row(path: str, head: str) -> dict:
                 "skills": sum(d["skills"]["by_layer"].values()),
                 "helpful_rate": (sum(i["helpful"] for i in inj) / total) if total else None,
                 "demote_candidates": len(d["skills"]["demote_candidates"]),
-                "last_dream": d["learning"]["last_dream"], "factory_match": _factory_match(path, head)})
+                "last_dream": d["learning"]["last_dream"], "factory_match": _factory_match(path, factory)})
     return row
 
 
@@ -236,5 +245,4 @@ def collect_universe(factory: str, registry: str = None) -> list:
             paths = [line.strip() for line in fh if line.strip() and not line.startswith("#")]
     except OSError:
         paths = []
-    head = _factory_head(factory)
-    return [_universe_row(p, head) for p in paths]
+    return [_universe_row(p, factory) for p in paths]
