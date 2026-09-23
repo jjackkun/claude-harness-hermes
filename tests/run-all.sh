@@ -25,6 +25,22 @@ export HARNESS_TOOL_INSTALL=0 HARNESS_SYNC_AUTOENABLE=0   # 개별 테스트도 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 TESTS_DIR="$REPO_ROOT/tests"
 
+# ── pyenv shim 우회 — 설치기와 같은 함수(lib/pyenv_bypass.sh). 끄기: HARNESS_NO_PYENV_BYPASS=1
+# 러너를 가짜 저장소로 복사해 도는 시험(run-all-parallel-test)에서는 이 파일이 없다 — 없으면 건너뛴다.
+[[ -f "$REPO_ROOT/lib/pyenv_bypass.sh" ]] && source "$REPO_ROOT/lib/pyenv_bypass.sh"
+if declare -F harness_pyenv_bypass >/dev/null 2>&1; then
+  harness_pyenv_bypass
+  [[ "${_HARNESS_PYBIN_PID:-}" == "$$" ]] && echo "[run-all] pyenv shim 우회 → $(readlink "$_HARNESS_PYBIN/python3")"
+fi
+# 우회 폴더는 **이 러너가 만든 것만** 지운다. 중첩 실행된 러너가 바깥 러너의 폴더를 물려받아
+# 지우면, 바깥의 남은 시험이 전부 느린 셔임으로 되돌아간다(2026-09-23 리뷰 지적).
+_cleanup_runall() {
+  declare -F harness_pyenv_cleanup >/dev/null 2>&1 && harness_pyenv_cleanup
+  [[ -n "${TMP_PARALLEL:-}" ]] && rm -rf "$TMP_PARALLEL"
+  return 0
+}
+trap _cleanup_runall EXIT
+
 GREEN='\033[0;32m'; RED='\033[0;31m'; YELLOW='\033[0;33m'; BOLD='\033[1m'; RESET='\033[0m'
 
 TOTAL=0; PASSED=0; FAILED=0; SKIPPED=0
@@ -72,6 +88,64 @@ run_step() { # run_step <이름> <명령...>
   fi
   [[ -n "$out" ]] && rm -f "$out"
   echo ""
+}
+
+# ── 병렬 실행 ─────────────────────────────────────────────────────────────────
+# HARNESS_TEST_JOBS=1(기본)이면 아래 풀을 쓰지 않는다 — 동작이 예전과 같다.
+# N>1 이면 각 시험을 자식으로 띄우고, 출력·판정을 **등록 순서대로** 모아 낸다.
+# 순서를 유지하는 이유: 사람이 읽는 로그가 실행마다 뒤바뀌면 diff 를 못 뜬다.
+JOBS="${HARNESS_TEST_JOBS:-1}"
+# 실제로 쓰는 값을 자식에게 넘긴다 — 기본값을 여기서 올려도 자식 시험(run-all-parallel-test 의
+# 속도 단언 가드)이 바깥이 병렬인지 알 수 있다(2026-09-23 리뷰 지적).
+export HARNESS_TEST_JOBS="$JOBS"
+
+run_registered_parallel() { # run_registered_parallel <이름...>
+  local names=("$@") pool="$TMP_PARALLEL" i=0
+  local -a outs=() rcs=()
+  for name in "${names[@]}"; do
+    outs+=("$pool/$i.out"); rcs+=("$pool/$i.rc"); i=$((i+1))
+  done
+  i=0
+  for name in "${names[@]}"; do
+    if _is_skipped "$name"; then
+      printf 'SKIP' > "${rcs[$i]}"; : > "${outs[$i]}"; i=$((i+1)); continue
+    fi
+    while [[ $(jobs -rp | wc -l) -ge $JOBS ]]; do wait -n 2>/dev/null || break; done
+    (
+      rc=0
+      { echo -e "${BOLD}── RUN: $name ──${RESET}"
+        bash "$TESTS_DIR/$name" 2>&1 || rc=$?
+        if [[ $rc -eq 0 ]]; then echo -e "${GREEN}── PASS: $name ──${RESET}"
+        else echo -e "${RED}── FAIL: $name ──${RESET}"; fi
+        echo ""
+      } > "${outs[$i]}" 2>&1
+      printf '%s' "$rc" > "${rcs[$i]}"
+      # 진행을 그 자리에서 한 줄 알린다. 본문은 뒤에서 등록 순서대로 몰아 내지만,
+      # 그동안 아무것도 안 찍히면 밖에서는 멎은 것과 구분이 안 된다(2026-09-23 실측: 사용자가 5분 뒤 중단).
+      # 색 변수는 '\033[..m' 글자 그대로다 — %s 가 아니라 %b 로 풀어야 색이 된다(2026-09-23 리뷰 지적)
+      if [[ $rc -eq 0 ]]; then printf '  %b✔%b %s\n' "$GREEN" "$RESET" "$name" >&2
+      else printf '  %b✘%b %s\n' "$RED" "$RESET" "$name" >&2; fi
+    ) &
+    i=$((i+1))
+  done
+  wait
+  # 집계·출력은 등록 순서로 — 실행 순서와 무관하게 로그가 같은 모양이 된다
+  i=0
+  for name in "${names[@]}"; do
+    local rc; rc="$(cat "${rcs[$i]}" 2>/dev/null || echo 1)"
+    if [[ "$rc" == "SKIP" ]]; then
+      echo -e "${YELLOW}── SKIP: $name ──${RESET}"; SKIPPED=$((SKIPPED+1))
+    else
+      TOTAL=$((TOTAL+1))
+      cat "${outs[$i]}"
+      if [[ "$rc" == "0" ]]; then PASSED=$((PASSED+1))
+      else
+        FAILED=$((FAILED+1)); FAILED_NAMES+=("$name")
+        [[ "${GITHUB_ACTIONS:-}" == "true" ]] && _annotate_failure "$name" "${outs[$i]}"
+      fi
+    fi
+    i=$((i+1))
+  done
 }
 
 # 실패한 테스트 이름과 출력 끝부분을 GitHub annotation 으로 남긴다.
@@ -189,6 +263,7 @@ REGISTERED_TESTS=(
   hermes-mesh-consume-test.sh
   hermes-mesh-gate-test.sh
   run-all-orphan-guard-test.sh
+  run-all-parallel-test.sh
 )
 
 # ── 1. 정적 검사 ──────────────────────────────────────────────────────────────
@@ -268,9 +343,14 @@ run_step "sync-plugins.sh --check" bash "$REPO_ROOT/scripts/sync-plugins.sh" --c
 
 # ── 3. 통합 테스트 ────────────────────────────────────────────────────────────
 
-for t in "${REGISTERED_TESTS[@]}"; do
-  run_step "$t" bash "$TESTS_DIR/$t"
-done
+if [[ "$JOBS" -gt 1 ]] 2>/dev/null; then
+  TMP_PARALLEL="$(mktemp -d)"   # 정리는 위의 _cleanup_runall 이 함께 맡는다
+  run_registered_parallel "${REGISTERED_TESTS[@]}"
+else
+  for t in "${REGISTERED_TESTS[@]}"; do
+    run_step "$t" bash "$TESTS_DIR/$t"
+  done
+fi
 
 # ── 결과 집계 ─────────────────────────────────────────────────────────────────
 

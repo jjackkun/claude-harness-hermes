@@ -72,6 +72,13 @@ if [[ ! -d "$PROJECT_PATH" ]]; then
 fi
 
 PROJECT_PATH=$(cd "$PROJECT_PATH" && pwd)
+
+# pyenv shim 우회 — 실행 폴더 기준(shim 과 같은 버전), 따지는 단계만 건너뛴다.
+# 끄기: HARNESS_NO_PYENV_BYPASS=1. 근거: 2026-09-23 실측 셔임 112ms vs 실제 19ms.
+declare -F harness_pyenv_bypass >/dev/null 2>&1 && harness_pyenv_bypass
+# 우회가 만든 임시 폴더를 끝에 지운다 — 안 지우면 설치마다 /tmp 에 하나씩 쌓인다(2026-09-23 리뷰 지적).
+# 이 프로세스가 만든 것만 지운다(harness_pyenv_cleanup 이 PID 로 가린다).
+trap 'declare -F harness_pyenv_cleanup >/dev/null 2>&1 && harness_pyenv_cleanup' EXIT
 PROJECT_NAME=$(basename "$PROJECT_PATH")
 CODEX_DIR="$PROJECT_PATH/.codex"
 

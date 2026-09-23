@@ -17,6 +17,9 @@
 #
 # Sourced, not executed directly.
 
+# pyenv shim 우회 — 함수는 lib/pyenv_bypass.sh (설치기·시험 러너가 같은 것을 쓴다)
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/pyenv_bypass.sh"
+
 _DS_LIB="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # ---- Windows/WSL path helpers (must load first — used by all other modules) ----
