@@ -630,6 +630,43 @@ pre-commit `R-merge`(`# GATE: R-merge block`) + `tests/raw-copy-guard-test.sh`(�
 억제 · 인용으로 해소 · rc 2 · 실 저장소 새 틈 0). 상태: Provisional — 계획
 `docs/exec-plans/completed/2026-09-17-r-design-cover.md`, 감사 `docs/audits/2026-09-17-r-design-cover-promotion.md`.
 
+## R-lock — 설치 구성은 저장소에 산다 {#r-lock}
+
+### 불변 조건
+
+`.claude/presets.lock` 은 설치기가 만드는 `.gitignore` 블록에 넣지 않는다 — 커밋될 수 있어야 한다.
+재설치가 **git 에 추적된** 설치물을 프리셋에서 빼며 지우면, 지우기 전에 그 사실을 사람에게 보인다.
+
+### 근거
+
+`project-claude.sh:181` 은 lock 을 **명령줄 인자 그대로** 덮어쓴다 — 저장소도 매니페스트도 보지 않는다.
+그러니 lock 은 "이 프로젝트의 구성" 이 아니라 **"이 컴퓨터에서 마지막으로 친 인자"** 다.
+그런데 그 설치의 *결과*(매니페스트 · 설치물 · CLAUDE.md 절)는 커밋된다.
+**원인은 기계에, 결과는 저장소에** 두면 둘이 갈라지고, 갈라지면 원인 쪽이 이긴다.
+
+2026-09-22 실측: 이 컴퓨터의 lock 은 3줄(`harness hermes adhd`)인데 커밋된 매니페스트(`bbfc463`)는
+95항목·스킬 14개로 `mcp`·`skill-dev` 분량을 포함하고 있었다. 그 lock 을 믿고 재설치하자
+추적된 심링크 `mcp-builder`·`skill-creator` 와 CLAUDE.md 두 절이 지워졌다.
+`update-all.sh` 는 lock 을 정본으로 읽으므로(없으면 스킵) 이 갈림은 전파 전체로 번진다.
+
+`.installed-projects` 는 여기 해당하지 않는다 — 그것은 **기계의 속성**(어느 프로젝트를 이 컴퓨터가
+관리하는가)이라 로컬이 맞다. 경계는 "프로젝트의 속성인가, 기계의 속성인가" 다.
+
+### 기계 강제
+
+- `lib/harness_installers.sh` — 무시 목록에서 `.claude/presets.lock` 제외(재설치가 옛 줄도 걷어낸다)
+- `lib/installers.sh` `_cleanup_stale_assets` — `rm` 직전에 `git ls-files --error-unmatch` 로 물어
+  추적된 항목이면 `[preset-drop WARN]` + 이름. **차단하지 않는다.**
+- 회귀 고정: `tests/preset-lock-tracked-test.sh` (무시 아님 · 옛 줄 걷어냄 · 경고 발화 · 미추적은 조용 · 제거는 실제로 됨)
+
+### 우회 조건
+
+프리셋을 **의도적으로** 빼는 것은 정당한 작업이다 — 경고를 읽고 그대로 커밋한다.
+차단하지 않는 이유: 차단하면 `--force` 류 인자를 만들게 되고 그것이 새 구멍이 된다.
+
+상태: Provisional — 계획 `docs/exec-plans/completed/2026-09-23-r-lock.md`,
+감사 `docs/audits/2026-09-23-r-lock-promotion.md`.
+
 <!--===HARNESS-RULES:BEGIN===-->
 
 ## 하네스 공통 룰

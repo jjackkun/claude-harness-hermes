@@ -632,7 +632,9 @@ install_harness_gitignore() {
       ".claude/.dev-setting-manifest.json"
       # 설치 영수증 — 이번 설치가 쓴 파일 목록. 기계마다 다르므로 커밋하지 않는다.
       ".claude/.last-install.txt"
-      ".claude/presets.lock"
+      # `.claude/presets.lock` 은 2026-09-23 무시 목록에서 뺐다(R-lock). 이 파일은 argv 를 그대로 적는
+      # **설치의 입력**인데, 그 결과(매니페스트·설치물)는 커밋된다. 입력만 기계에 묶어 두면 clone 한
+      # 컴퓨터가 다른 값으로 굳고 다음 재설치가 커밋된 것을 지운다 — 09-22 에 실제로 그랬다.
       # `.claude/harness-hooks.lock` 은 퇴역했다(계획 2026-09-17-install-coexistence 목표 7) — 공장에 작성자가
       # 없는 고아였고, 기계별이라 3-way 의 base 가 될 수 없었다. base 는 이제 `.factory-manifest.json` 의
       # factory_commit(커밋됨)에서 복원한다. 소우주에 남은 옛 파일은 건드리지 않는다.

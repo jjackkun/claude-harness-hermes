@@ -174,6 +174,7 @@ REGISTERED_TESTS=(
   hermes-teaching-test.sh
   hermes-dashboard-test.sh
   git-ignore-judge-test.sh
+  preset-lock-tracked-test.sh
   hermes-skill-layers-test.sh
   hermes-skill-inject-test.sh
   hermes-skill-extends-test.sh

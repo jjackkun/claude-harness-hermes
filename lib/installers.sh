@@ -31,12 +31,31 @@ _cleanup_stale_assets() {
   shift 3
   [[ -d "$dir" ]] || return 0
   _migrate_legacy_symlinks "$dir" "$kind" "$ext"
+  # 지우기 전에 git 에 묻는다 — **추적된** 설치물을 지우는 것은 커밋된 것을 없애는 일이다(R-lock).
+  # 2026-09-22: 로컬 presets.lock 이 커밋된 매니페스트보다 모자라 추적된 심링크 2개가 사라졌다.
+  # 차단하지 않는다 — 프리셋을 빼는 것은 정당한 작업이다. 사람이 보게만 한다.
+  local project_root; project_root="$(cd "$(dirname "$dir")/.." 2>/dev/null && pwd)"
+  local dropped=()
   local name
   while IFS= read -r name; do
     [[ -n "$name" ]] || continue
+    _is_tracked_asset "$project_root" "$dir" "$name$ext" && dropped+=("$kind/$name")
     rm -rf "$dir/$name$ext"
     log_info "  removed → $name"
   done < <(manifest_prune "$(dirname "$dir")" "$kind" "$@")
+  if [[ ${#dropped[@]} -gt 0 ]]; then
+    log_warn "  [preset-drop WARN] git 에 추적된 설치물 ${#dropped[@]}건을 프리셋에서 빼며 지웠습니다: ${dropped[*]}"
+    log_warn "            ↳ 의도한 것이면 그대로 커밋하십시오. 아니면 프리셋 인자를 확인하십시오 —"
+    log_warn "            ↳ .claude/presets.lock 은 마지막으로 친 인자를 그대로 적습니다 (R-lock)"
+  fi
+}
+
+# _is_tracked_asset <project_root> <dir> <basename> — 그 경로가 git 에 추적되는가 (rc 0 = 추적됨)
+_is_tracked_asset() {
+  local project_root="$1" dir="$2" base="$3"
+  [[ -n "$project_root" ]] || return 1
+  local rel="${dir#"$project_root"/}/$base"
+  git -C "$project_root" ls-files --error-unmatch "$rel" >/dev/null 2>&1
 }
 
 # _backup_user_asset <claude_dir> <kind> <name> <dst> <label>
