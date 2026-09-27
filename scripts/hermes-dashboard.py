@@ -14,6 +14,7 @@ from datetime import datetime, timezone
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from hermes_dashboard_data import collect, collect_universe  # noqa: E402
 from hermes_dashboard_html import render_project, render_universe  # noqa: E402
+from hermes_repo_sync import repo_sync  # noqa: E402
 
 
 # 대시보드는 .hermes/ 의 DB·로그·마커와 섞이지 않게 한 폴더에 둔다(계획 2026-09-22-rule-candidates-dashboard).
@@ -47,7 +48,7 @@ def main() -> int:
         factory = os.path.abspath(args.factory or os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
         rows = collect_universe(factory, args.registry)
         now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-        out = _write(factory, "universe-dashboard.html", render_universe(rows, os.path.basename(factory), now), args.out)
+        out = _write(factory, "universe-dashboard.html", render_universe(rows, os.path.basename(factory), now, factory_sync=repo_sync(factory)), args.out)
         print(f"우주 대시보드 → {out} (소우주 {len(rows)}곳)")
         return 0
     project = os.path.abspath(args.project_dir or os.getcwd())

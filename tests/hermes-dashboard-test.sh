@@ -140,10 +140,13 @@ FM() { PYTHONPATH="$S" python3 -c "import sys,json,os; from hermes_dashboard_dat
 os.makedirs(sys.argv[1]+'/.hermes',exist_ok=True); json.dump({'installed_version':sys.argv[2]},open(sys.argv[1]+'/.hermes/factory.json','w'))
 print(_factory_match(sys.argv[1], sys.argv[3]))" "$TMP/fm-proj" "$1" "$FG"; }
 assert "문서·영수증만 바뀐 뒤 → 일치" True "$(FM "$A")"
+# 공장 자기 설치가 scripts/hooks 에 사본을 쓰면 원본(assets/hooks)은 그대로인데 전부 '설치 뒤처짐' 이 됐다(2026-09-27).
+mkdir -p "$FG/scripts/hooks"; echo h > "$FG/scripts/hooks/g.sh"; git -C "$FG" add -A; git -C "$FG" commit -qm H
+assert "공장 자기 설치본(scripts/hooks)만 바뀐 뒤 → 일치" True "$(FM "$A")"
 echo b > "$FG/assets/x"; git -C "$FG" commit -qam C
 assert "설치 대상(assets)이 바뀐 뒤 → 뒤처짐" False "$(FM "$A")"
 assert "공장이 모르는 커밋 → 뒤처짐" False "$(FM 0000000000000000000000000000000000000000)"
-assert "표기는 '뒤처짐'" 1 "$(grep -c '"뒤처짐"' "$S/hermes_dashboard_html.py")"
+assert "표기는 '설치 뒤처짐'" 1 "$(grep -c '"설치 뒤처짐"' "$S/hermes_dashboard_html.py")"
 
 echo "== 세션 시작 훅 — 하루 1회 (목표 7) =="
 HOOK="$REPO_ROOT/assets/hooks/claude-sessionstart-dashboard.sh"; MK="$P/.hermes/dashboard-last-run"; rm -f "$MK" "$P/.hermes/dashboards/dashboard.html"; : > "$P/.hermes/hooks.log"

@@ -189,18 +189,52 @@ def render_project(d: dict) -> str:
             f'<footer>python3 scripts/hermes-dashboard.py --project-dir . · 보기 전용 · 외부 자원 0</footer></div></body></html>\n')
 
 
-def render_universe(rows: list, factory: str, generated_at: str) -> str:
+_SYNC_TAG = {"synced": ("최신", "ok"), "no_git": ("해당 없음", "dim"), "no_upstream": ("원격 없음", "dim"),
+             "diverged": ("갈라짐", "warn"), "unknown": ("미상", "dim")}
+_COPY_STALE = ("behind", "diverged")
+
+
+def _sync_cell(sync) -> str:
+    """사본이 원격보다 앞/뒤 — 이미 받아 둔 ref 기준이라 마지막 fetch 시각을 title 에 단다."""
+    sync = sync or {"state": "unknown", "behind": 0, "ahead": 0, "fetched_at": None}
+    state = sync["state"]
+    if state == "behind":
+        text, kind = f'{sync["behind"]} 뒤', "warn"
+    elif state == "ahead":
+        text, kind = f'{sync["ahead"]} 앞', "dim"
+    else:
+        text, kind = _SYNC_TAG.get(state, _SYNC_TAG["unknown"])
+    title = f'마지막 fetch {sync["fetched_at"]}' if sync.get("fetched_at") else "fetch 기록 없음"
+    return f'<span title="{_e(title)}">{_tag(text, kind)}</span>'
+
+
+def _factory_cell(r) -> str:
+    """사본이 옛것이면 설치 판정을 보류한다 — 풀부터 해야 설치가 옛것인지 알 수 있다(2026-09-22 ai-create)."""
+    if (r.get("sync") or {}).get("state") in _COPY_STALE:
+        return _tag("사본부터", "warn")
+    return {True: _tag("일치", "ok"), False: _tag("설치 뒤처짐", "warn"), None: _tag("미상", "dim")}[r.get("factory_match")]
+
+
+def _factory_warning(factory_sync) -> str:
+    if not factory_sync or factory_sync.get("state") not in _COPY_STALE:
+        return ""
+    return (f'<p class="lead"><strong>공장 사본이 원격보다 {_e(factory_sync["behind"])} 커밋 뒤</strong> — 공장부터 git pull. '
+            f'아래 factory 칸의 "일치" 도 옛 공장 기준이다.</p>')
+
+
+def render_universe(rows: list, factory: str, generated_at: str, factory_sync: dict = None) -> str:
     body = []
     for r in rows:
         if not r["installed"]:
-            body.append([_e(r["project"]), _tag("미설치", "dim"), "", "", "", "", "", ""])
+            body.append([_e(r["project"]), _tag("미설치", "dim"), "", "", "", "", "", "", ""])
             continue
-        match = {True: _tag("일치", "ok"), False: _tag("뒤처짐", "warn"), None: _tag("미상", "dim")}[r.get("factory_match")]
+        match = _factory_cell(r)
         body.append([_e(r["project"]), _tag("설치", "ok"), _e(r["agents"]), _e(r["skills"]), _e(_pct(r["helpful_rate"])),
-                     _e(r["demote_candidates"]), f'<span class="mono">{_e((r["last_dream"] or "없음")[:16])}</span>', match])
-    table = _table(["소우주", "상태", "에이전트", "스킬", "도움률", "강등 후보", "마지막 드림", "factory"], body, numeric=(2, 3, 4, 5))
+                     _e(r["demote_candidates"]), f'<span class="mono">{_e((r["last_dream"] or "없음")[:16])}</span>',
+                     _sync_cell(r.get("sync")), match])
+    table = _table(["소우주", "상태", "에이전트", "스킬", "도움률", "강등 후보", "마지막 드림", "사본", "factory"], body, numeric=(2, 3, 4, 5))
     return (f'<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
             f'<title>우주 대시보드</title><style>{_CSS}</style></head><body><div class="wrap">'
             f'<p class="eyebrow">Hermes · 우주</p><h1>소우주 {len(rows)}곳</h1><p class="meta">{_e(generated_at)} · 공장 {_e(factory)}</p>'
-            f'<h2>한눈에</h2><p class="lead">소우주별 에이전트·스킬·도움률·강등 후보·드림·공장 일치 여부.</p>{table}'
+            f'{_factory_warning(factory_sync)}<h2>한눈에</h2><p class="lead">소우주별 에이전트·스킬·도움률·강등 후보·드림·사본 동기화·공장 일치 여부. 사본은 마지막 fetch 기준이다(대시보드는 fetch 하지 않는다).</p>{table}'
             f'<footer>python3 scripts/hermes-dashboard.py --universe · 읽기 전용(mode=ro)</footer></div></body></html>\n')

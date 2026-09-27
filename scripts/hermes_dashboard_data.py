@@ -19,6 +19,7 @@ import hermes_rule_candidates as rule_candidates  # noqa: E402  (승격 후보, 
 import context_budget  # noqa: E402  (세션 고정 비용, 계획 2026-09-21-context-budget)  # noqa: E402
 from hermes_handoff_queue import queue  # noqa: E402
 from hermes_owner_memory import open_proposals  # noqa: E402
+from hermes_repo_sync import repo_sync  # noqa: E402  (사본 동기화, 계획 2026-09-27-dashboard-sync-before-verdict)
 from hermes_skill_layers import LAYERS  # noqa: E402
 from hermes_skill_yield import MIN_JUDGED, low_yield_skills  # noqa: E402
 
@@ -204,6 +205,8 @@ def _rules_pane(project: str) -> list:
 # 설치기가 읽는 곳 — 넓게 잡는다(잘못 '일치' 보다 잘못 '뒤처짐' 이 안전하다).
 _INSTALL_SOURCES = ("assets", "lib", "presets", "templates", "scripts", "lint-configs", "plugins", "bin",
                     "project-claude.sh", "project-codex.sh")
+# 공장 자기 설치가 쓰는 사본 — 원본은 assets/hooks 다. 넣으면 자기 설치 커밋마다 전부 '설치 뒤처짐'(2026-09-27).
+_INSTALL_OUTPUTS = (":(exclude)scripts/hooks",)
 
 
 def _factory_match(path: str, factory: str):
@@ -218,7 +221,7 @@ def _factory_match(path: str, factory: str):
     if not installed:
         return None
     try:
-        diff = subprocess.run(["git", "-C", factory, "diff", "--name-only", installed, "HEAD", "--", *_INSTALL_SOURCES],
+        diff = subprocess.run(["git", "-C", factory, "diff", "--name-only", installed, "HEAD", "--", *_INSTALL_SOURCES, *_INSTALL_OUTPUTS],
                               capture_output=True, text=True, timeout=10)
     except (OSError, subprocess.SubprocessError):
         return None
@@ -236,7 +239,8 @@ def _universe_row(path: str, factory: str) -> dict:
                 "skills": sum(d["skills"]["by_layer"].values()),
                 "helpful_rate": (sum(i["helpful"] for i in inj) / judged) if judged else None,
                 "demote_candidates": len(d["skills"]["demote_candidates"]),
-                "last_dream": d["learning"]["last_dream"], "factory_match": _factory_match(path, factory)})
+                "last_dream": d["learning"]["last_dream"], "factory_match": _factory_match(path, factory),
+                "sync": repo_sync(path)})
     return row
 
 
