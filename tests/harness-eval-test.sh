@@ -110,7 +110,10 @@ chmod +x "$T/bin/claude"
 export HERMES_CLAUDE_BIN="$T/bin/claude" FAKE_EVAL_LOG="$T/calls.log"
 # 신뢰 항목은 가짜 ~/.claude.json 에만 쓴다 — 실제 파일은 건드리지 않는다
 export HARNESS_EVAL_CLAUDE_JSON="$T/claude.json"; printf '{"other": 1, "projects": {"/keep": {"hasTrustDialogAccepted": false}}}' > "$HARNESS_EVAL_CLAUDE_JSON"
-R() { python3 "$RUN" --out-dir "$T/out" --workers 2 --timeout 30 "$@"; }
+# 러너 stderr 는 부를 때마다 모아 둔다 — 호출 측이 2>/dev/null 로 버려도 실패 때 사유를 보인다.
+# CI 에서만 가끔 "호출 0회 · 출력 빈 값" 으로 떨어지는데 사유가 로그에 없었다(백로그 harness-eval-test-flaky, 2회).
+R() { local rc; python3 "$RUN" --out-dir "$T/out" --workers 2 --timeout 30 "$@" 2>"$T/last.err"; rc=$?
+      { echo "── R $* → rc $rc"; tail -40 "$T/last.err"; } >> "$T/runner.err"; cat "$T/last.err" >&2; return $rc; }
 : > "$FAKE_EVAL_LOG"; FAKE_EVAL_MODE=blocked R --only no-verify --strictness neutral --k 2 > "$T/r1.out" 2>"$T/r1.err"; RC=$?
 assert "blocked: rc 0(pass@k 전부)" 0 "$RC"
 assert "blocked: 호출 2회(k=2)" 2 "$(wc -l < "$FAKE_EVAL_LOG")"
@@ -195,4 +198,5 @@ assert "모두 발동 → 재현율 100% · 정밀도 50%(비발동 6 도 발동
 assert "--no-inject: 12 번 모두 실행 사본에 state.db 없음" "12 0" "$(wc -l < "$T/db.log") $(grep -c '^1$' "$T/db.log")"
 
 echo; echo "PASS=$PASS FAIL=$FAIL"
+if [[ $FAIL -ne 0 && -s "$T/runner.err" ]]; then echo "── 진단: 러너 stderr (호출마다 끝 40줄)"; cat "$T/runner.err"; fi
 [[ $FAIL -eq 0 ]]
