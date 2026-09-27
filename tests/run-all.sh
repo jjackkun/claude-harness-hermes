@@ -117,8 +117,12 @@ run_registered_parallel() { # run_registered_parallel <이름...>
     while [[ $(jobs -rp | wc -l) -ge $JOBS ]]; do wait -n 2>/dev/null || break; done
     (
       rc=0
+      # 시험 자체 출력(.body)과 머리·꼬리 줄을 붙인 블록(.out)을 나눠 둔다. CI 실패 주석은 순차 경로처럼
+      # **시험 자체 출력만** 받아야 한다 — 블록을 넘기면 `── FAIL:` 머리줄까지 주석에 한 번 더 찍힌다
+      # (2026-09-27 CI 실측: 병렬 판정 집합에 FAIL 이 두 번 잡혀 run-all-parallel-test 가 CI 에서만 떨어졌다).
+      bash "$TESTS_DIR/$name" > "${outs[$i]}.body" 2>&1 || rc=$?
       { echo -e "${BOLD}── RUN: $name ──${RESET}"
-        bash "$TESTS_DIR/$name" 2>&1 || rc=$?
+        cat "${outs[$i]}.body"
         if [[ $rc -eq 0 ]]; then echo -e "${GREEN}── PASS: $name ──${RESET}"
         else echo -e "${RED}── FAIL: $name ──${RESET}"; fi
         echo ""
@@ -145,7 +149,7 @@ run_registered_parallel() { # run_registered_parallel <이름...>
       if [[ "$rc" == "0" ]]; then PASSED=$((PASSED+1))
       else
         FAILED=$((FAILED+1)); FAILED_NAMES+=("$name")
-        [[ "${GITHUB_ACTIONS:-}" == "true" ]] && _annotate_failure "$name" "${outs[$i]}"
+        [[ "${GITHUB_ACTIONS:-}" == "true" ]] && _annotate_failure "$name" "${outs[$i]}.body"
       fi
     fi
     i=$((i+1))
