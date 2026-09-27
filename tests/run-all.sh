@@ -125,20 +125,45 @@ _shard_select() {
 # 속도 단언 가드)이 바깥이 병렬인지 알 수 있다(2026-09-23 리뷰 지적).
 export HARNESS_TEST_JOBS="$JOBS"
 
+# ── 시험별 소요 시간 ──────────────────────────────────────────────────────────
+# 병렬 실행 때마다 시험별 초를 남기고, 다음 실행은 긴 것부터 시작한다. 기계마다 다르므로 .harness/ 에 둔다
+# (.gitignore 대상 — 커밋하지 않는다). 이번에 안 돈 시험(샤드 밖 등)의 옛 기록은 지우지 않고 남긴다.
+DURATIONS_FILE="$REPO_ROOT/.harness/test-durations.tsv"
+
+_start_order() { # _start_order <이름...> → 시작할 순서대로 인덱스를 한 줄씩
+  local -A dur=(); local s t i=0
+  [[ -f "$DURATIONS_FILE" ]] && while IFS=$'\t' read -r s t; do [[ -n "$t" ]] && dur[$t]=$s; done < "$DURATIONS_FILE"
+  for t in "$@"; do printf '%s\t%s\n' "${dur[$t]:-999999}" "$i"; i=$((i+1)); done \
+    | sort -t$'\t' -k1,1nr -k2,2n | cut -f2
+}
+
+_save_durations() { # _save_durations <이름...> — 이번 기록으로 덮고, 나머지 옛 기록은 유지
+  local -A dur=(); local s t i=0
+  [[ -f "$DURATIONS_FILE" ]] && while IFS=$'\t' read -r s t; do [[ -n "$t" ]] && dur[$t]=$s; done < "$DURATIONS_FILE"
+  for t in "$@"; do [[ -s "$TMP_PARALLEL/$i.out.sec" ]] && dur[$t]="$(cat "$TMP_PARALLEL/$i.out.sec")"; i=$((i+1)); done
+  mkdir -p "$(dirname "$DURATIONS_FILE")" 2>/dev/null || return 0
+  { for t in "${!dur[@]}"; do printf '%s\t%s\n' "${dur[$t]}" "$t"; done; } | sort -t$'\t' -k1,1nr -k2,2 > "$DURATIONS_FILE.tmp" \
+    && mv "$DURATIONS_FILE.tmp" "$DURATIONS_FILE"
+  echo "[run-all] 가장 오래 걸린 시험: $(head -3 "$DURATIONS_FILE" | awk -F'\t' '{printf "%s(%ss) ", $2, $1}')"
+}
+
 run_registered_parallel() { # run_registered_parallel <이름...>
   local names=("$@") pool="$TMP_PARALLEL" i=0
   local -a outs=() rcs=()
   for name in "${names[@]}"; do
     outs+=("$pool/$i.out"); rcs+=("$pool/$i.rc"); i=$((i+1))
   done
-  i=0
-  for name in "${names[@]}"; do
+  # **시작**은 지난번에 오래 걸린 시험부터 한다 — 긴 시험이 늦게 시작하면 혼자 꼬리를 잡는다
+  # (2026-09-23 실측: 단독 107초짜리 harness-eval-test 가 마지막까지 남았다). **출력**은 여전히 등록 순서다.
+  local -a order; mapfile -t order < <(_start_order "${names[@]}")
+  for i in "${order[@]}"; do
+    name="${names[$i]}"
     if _is_skipped "$name"; then
-      printf 'SKIP' > "${rcs[$i]}"; : > "${outs[$i]}"; i=$((i+1)); continue
+      printf 'SKIP' > "${rcs[$i]}"; : > "${outs[$i]}"; continue
     fi
     while [[ $(jobs -rp | wc -l) -ge $JOBS ]]; do wait -n 2>/dev/null || break; done
     (
-      rc=0
+      rc=0; t0=$(date +%s)
       # 시험 자체 출력(.body)과 머리·꼬리 줄을 붙인 블록(.out)을 나눠 둔다. CI 실패 주석은 순차 경로처럼
       # **시험 자체 출력만** 받아야 한다 — 블록을 넘기면 `── FAIL:` 머리줄까지 주석에 한 번 더 찍힌다
       # (2026-09-27 CI 실측: 병렬 판정 집합에 FAIL 이 두 번 잡혀 run-all-parallel-test 가 CI 에서만 떨어졌다).
@@ -150,15 +175,16 @@ run_registered_parallel() { # run_registered_parallel <이름...>
         echo ""
       } > "${outs[$i]}" 2>&1
       printf '%s' "$rc" > "${rcs[$i]}"
+      echo $(( $(date +%s) - t0 )) > "${outs[$i]}.sec"
       # 진행을 그 자리에서 한 줄 알린다. 본문은 뒤에서 등록 순서대로 몰아 내지만,
       # 그동안 아무것도 안 찍히면 밖에서는 멎은 것과 구분이 안 된다(2026-09-23 실측: 사용자가 5분 뒤 중단).
       # 색 변수는 '\033[..m' 글자 그대로다 — %s 가 아니라 %b 로 풀어야 색이 된다(2026-09-23 리뷰 지적)
       if [[ $rc -eq 0 ]]; then printf '  %b✔%b %s\n' "$GREEN" "$RESET" "$name" >&2
       else printf '  %b✘%b %s\n' "$RED" "$RESET" "$name" >&2; fi
     ) &
-    i=$((i+1))
   done
   wait
+  _save_durations "${names[@]}"
   # 집계·출력은 등록 순서로 — 실행 순서와 무관하게 로그가 같은 모양이 된다
   i=0
   for name in "${names[@]}"; do
