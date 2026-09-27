@@ -28,6 +28,12 @@ rowid 를 유지해 최초 삽입 순서와 마지막 갱신 시각을 비교한
 누락 후보 **0** (7곳: zeroday-frontend · novel-ab · novel-bc · ai-create · upbit-ai-trading · terminal-shipping · 공장). 우선순위 낮음 유지.
 `jjackkun_bot` · `kis-trading` 은 `dream_log` 에 `watermark_at` 칸이 없는 옛 형식이라 측정되지 않았다 — 워터마크 자체가 없으므로 이 결함의 대상이 아니지만, 스키마가 뒤처진 이유(재설치 누락?)는 따로 볼 일이다.
 
+### 재측정 (2026-09-27) — 세 번째도 0
+
+누락 후보 **0** (이 컴퓨터 3곳: wonil 요약 1·dream 1 · terminal-shipping 요약 23·dream 16 · 공장 요약 2·dream 2). 우선순위 낮음 유지.
+착수를 검토했으나 보류: 워터마크가 청크 분할·부분 실패 되짚기·stall 판정·같은 시각 형제 분할 금지에 얽혀 있고,
+단조 `seq` 안은 `session_summary` 스키마 변경 + 설치된 모든 DB 마이그레이션이 든다. 한 번도 안 난 결함에 비해 위험이 크다.
+
 ## 재측정 명령
 
 ```bash
