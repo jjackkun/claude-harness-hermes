@@ -86,7 +86,7 @@
 | "배운 것" 추출 — 규칙(작업 이력의 실패→성공 쌍, 리뷰 교정)으로 되나, 요약 모델이 필요한가 | R3·비용. 헤르메스 롤링 요약 경로를 재사용할 수 있나 |
 | 자동 적립 기억이 소음이 되지 않게 하는 문턱 | 매 세션 몇 줄씩 쌓이면 주입 예산을 태운다(R-out·context_budget) |
 | ~~(목표 6) 서브에이전트에 SOUL·기억을 넣는 길~~ **확인 2026-09-28: `SubagentStart` 훅으로 된다.** 공식 문서 hooks.md: "SubagentStart hooks can't block subagent creation, but they can inject context into the subagent" · `additionalContext` = "added to the subagent's context at the start of its conversation, before its first prompt" · 매처는 "the `name` field from the agent's frontmatter, not the filename". → `.claude/agents/<slug>.md` 는 이름·설명만, SOUL·MEMORY.md 는 훅이 그때그때 주입(세션 시작 훅 `claude-sessionstart-agent-soul.sh` 와 같은 일) | 파일에 굳히면 기억이 낡는다 — 설계 §1 의 두 층 분리를 지킨다 |
-| (목표 6) 한글 이름(`백로그 관리자`)을 `name:` 에 쓸 수 있나, 영문 slug 가 필요한가 · 입사·은퇴 때 파일을 누가 만들고 지우나 | `@` 자동완성 이름과 명부 이름의 대응 |
+| ~~(목표 6) 한글 이름을 `name:` 에 쓸 수 있나~~ **실측 2026-09-28 (claude 2.1.283, haiku, 임시 폴더 픽스처): `@` 멘션에는 영문 slug 가 필요하다.** 한글 `name`(공백 有·無) — 목록 ✅ · Agent 도구 호출 ✅ · SubagentStart 한글 매처·`additionalContext` 도달 ✅ / `@agent-백로그관리자` · `@"백로그 관리자 (agent)"` · `@agent-백로그 관리자` ❌(훅 0건, 서브에이전트 안 뜸). 대조군 영문 `@agent-probe-en` ✅ → 원인은 `-p` 모드가 아니라 한글 이름. 영문 slug `backlog-manager` + description 에 "명부 이름 백로그 관리자" → `@agent-backlog-manager` ✅ · 한글 자연어 "백로그 관리자한테 …" ✅(둘 다 MARKER 도달). → 파일 `name:` 은 영문 slug, 한글 이름은 description 에. 남은 것: 입사·은퇴 때 파일을 누가 만들고 지우나 · 대화형 입력창 `@` 자동완성은 `-p` 로 못 재서 사람이 한 번 본다 | `@` 자동완성 이름과 명부 이름의 대응 |
 | (목표 6) 서브에이전트 호출이 소환 기록(`task.assigned`·nonce)을 남기게 할 수 있나 | 수습 성적·작업 이력이 소환 경로에만 쌓이면 두 경로 성적이 갈린다 |
 
 ## 6. 관련
