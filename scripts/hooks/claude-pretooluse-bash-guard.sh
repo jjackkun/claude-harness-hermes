@@ -106,7 +106,8 @@ out = {
       "[R-review] 최근 코드 편집 기록이 있습니다. 변경이 크거나 공유 경계/보안/DB/동시성에 "
       "영향이 있으면 commit 전 code-reviewer 를 사용하세요.\n\n"
       f"{summary}\n\n"
-      "단순 변경이면 계속 진행해도 됩니다. 기록 정리: rm .claude/.review-dirty"
+      "단순 변경이면 계속 진행해도 됩니다. 기록 정리: rm .claude/.review-dirty\n"
+      "코드·훅·설정 동작을 바꿨다면 pre-commit-measure 스킬로 주장마다 가장 작은 실행을 돌려 메시지에 실측: 을 남기세요."
     )
   }
 }
@@ -121,7 +122,8 @@ out = {
     "hookEventName": "PreToolUse",
     "additionalContext": (
       "[HARNESS] git commit 감지. 큰 변경이나 공유 경계 변경이면 "
-      "code-reviewer 사용을 고려하세요."
+      "code-reviewer 사용을 고려하세요. 코드·훅·설정 동작을 바꿨다면 "
+      "pre-commit-measure 스킬로 주장마다 가장 작은 실행을 돌려 메시지에 실측: 을 남기세요."
     )
   }
 }
