@@ -30,7 +30,7 @@ TESTS_DIR="$REPO_ROOT/tests"
 [[ -f "$REPO_ROOT/lib/pyenv_bypass.sh" ]] && source "$REPO_ROOT/lib/pyenv_bypass.sh"
 if declare -F harness_pyenv_bypass >/dev/null 2>&1; then
   harness_pyenv_bypass
-  [[ "${_HARNESS_PYBIN_PID:-}" == "$$" ]] && echo "[run-all] pyenv shim 우회 → $(readlink "$_HARNESS_PYBIN/python3")"
+  [[ "${_HARNESS_PYBIN_PID:-}" == "$$" ]] && echo "[run-all] pyenv shim 우회 → $(pyenv which python3 2>/dev/null)"
 fi
 # 우회 폴더는 **이 러너가 만든 것만** 지운다. 중첩 실행된 러너가 바깥 러너의 폴더를 물려받아
 # 지우면, 바깥의 남은 시험이 전부 느린 셔임으로 되돌아간다(2026-09-23 리뷰 지적).
@@ -94,7 +94,11 @@ run_step() { # run_step <이름> <명령...>
 # HARNESS_TEST_JOBS=1(기본)이면 아래 풀을 쓰지 않는다 — 동작이 예전과 같다.
 # N>1 이면 각 시험을 자식으로 띄우고, 출력·판정을 **등록 순서대로** 모아 낸다.
 # 순서를 유지하는 이유: 사람이 읽는 로그가 실행마다 뒤바뀌면 diff 를 못 뜬다.
-JOBS="${HARNESS_TEST_JOBS:-1}"
+# 기본은 **병렬** — 돌릴 때마다 그 컴퓨터의 코어 수를 읽어 **절반**을 쓴다(상한 없음).
+# 설치 시험이 CPU 를 많이 써서 코어를 전부 쓰면 서로 다툰다. 22코어면 11, 4코어 CI 면 2.
+# 순차로 돌리려면 HARNESS_TEST_JOBS=1.
+_default_jobs() { local n; n=$(( $(nproc 2>/dev/null || echo 2) / 2 )); (( n < 1 )) && n=1; echo "$n"; }
+JOBS="${HARNESS_TEST_JOBS:-$(_default_jobs)}"
 # 실제로 쓰는 값을 자식에게 넘긴다 — 기본값을 여기서 올려도 자식 시험(run-all-parallel-test 의
 # 속도 단언 가드)이 바깥이 병렬인지 알 수 있다(2026-09-23 리뷰 지적).
 export HARNESS_TEST_JOBS="$JOBS"

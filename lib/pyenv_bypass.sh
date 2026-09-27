@@ -33,8 +33,14 @@ harness_pyenv_bypass() {
   real="$(pyenv which python3 2>/dev/null || true)"   # 지금 폴더 기준 — shim 과 같은 답
   [[ -x "$real" ]] || return 0
   _HARNESS_PYBIN="$(mktemp -d)"; _HARNESS_PYBIN_PID=$$
-  ln -sf "$real" "$_HARNESS_PYBIN/python3"
-  ln -sf "$real" "$_HARNESS_PYBIN/python"
+  # 심링크가 아니라 두 줄짜리 실행 스크립트로 넘긴다. lib/ 의 심볼릭 링크 생성은 "설치물이 저장소 밖을
+  # 가리키지 않는다(E-02)" 를 지키려고 copy-install-test 가 개수로 감시한다 — 여기 것은 설치물이 아닌
+  # /tmp 임시 대역이지만, 그 경보를 무디게 하지 않으려고 링크를 쓰지 않는다(2026-09-27).
+  local name
+  for name in python3 python; do
+    printf '#!/bin/sh\nexec %q "$@"\n' "$real" > "$_HARNESS_PYBIN/$name"
+    chmod +x "$_HARNESS_PYBIN/$name"
+  done
   PATH="$_HARNESS_PYBIN:$PATH"; export PATH _HARNESS_PYBIN _HARNESS_PYBIN_PID
 }
 
