@@ -99,6 +99,28 @@ run_step() { # run_step <이름> <명령...>
 # 순차로 돌리려면 HARNESS_TEST_JOBS=1.
 _default_jobs() { local n; n=$(( $(nproc 2>/dev/null || echo 2) / 2 )); (( n < 1 )) && n=1; echo "$n"; }
 JOBS="${HARNESS_TEST_JOBS:-$(_default_jobs)}"
+
+# ── 샤드 — CI 가 서버 여러 대에 나눠 돌릴 때 이 서버의 몫만 돈다. HARNESS_TEST_SHARD="몇번째/몇대"(예 2/4).
+# 비어 있으면 1/1(전부). 번갈아 나누면 무거운 설치 시험이 한 서버에 몰렸다(2026-09-27 실측 7·3·2·5개) —
+# 시험마다 **설치 횟수로 무게**를 재어 무거운 것부터 가장 한가한 서버에 배정한다(결정적: 같은 입력 → 같은 배정).
+SHARD_I=1; SHARD_N=1
+if [[ -n "${HARNESS_TEST_SHARD:-}" ]]; then
+  if [[ "$HARNESS_TEST_SHARD" =~ ^([0-9]+)/([0-9]+)$ ]] && (( BASH_REMATCH[2] >= 1 && BASH_REMATCH[1] >= 1 && BASH_REMATCH[1] <= BASH_REMATCH[2] )); then
+    SHARD_I="${BASH_REMATCH[1]}"; SHARD_N="${BASH_REMATCH[2]}"
+  else
+    echo "[run-all] HARNESS_TEST_SHARD 값이 잘못됐다: '$HARNESS_TEST_SHARD' (예: 2/4)" >&2; exit 2
+  fi
+fi
+_shard_select() {
+  (( SHARD_N == 1 )) && { printf '%s\n' "$@"; return 0; }
+  local t w
+  for t in "$@"; do
+    w=$(grep -cE '(project-claude|update-all)\.sh|^[[:space:]]*install( |\()' "$TESTS_DIR/$t" 2>/dev/null || true)
+    printf '%s %s\n' "$(( ${w:-0} + 1 ))" "$t"
+  done | sort -k1,1nr -k2,2 | awk -v n="$SHARD_N" -v me="$SHARD_I" '
+    { best = 1; for (i = 2; i <= n; i++) if (load[i] < load[best]) best = i
+      load[best] += $1; if (best == me) print $2 }'
+}
 # 실제로 쓰는 값을 자식에게 넘긴다 — 기본값을 여기서 올려도 자식 시험(run-all-parallel-test 의
 # 속도 단언 가드)이 바깥이 병렬인지 알 수 있다(2026-09-23 리뷰 지적).
 export HARNESS_TEST_JOBS="$JOBS"
@@ -340,6 +362,11 @@ if [[ "${1:-}" == "--check-orphans" ]]; then
   orphan_test_check; exit $?
 fi
 
+# 추정하지 않으려고 이 서버의 조건을 첫 줄에 남긴다 — CI 가 왜 느린지 로그만으로 알 수 있게.
+echo "[run-all] 코어 $(nproc 2>/dev/null || echo ?) · 병렬 $JOBS · 샤드 $SHARD_I/$SHARD_N"
+
+# 정적·무결성 검사는 저장소 전체를 한 번 보면 되므로 **1번 샤드만** 돈다.
+if (( SHARD_I == 1 )); then
 run_step "고아 테스트 검사" orphan_test_check
 run_step "bash -n (셸 문법 전수)" bash_syntax_check
 run_step "python3 -m py_compile (scripts + lib)" python_compile_check
@@ -348,14 +375,16 @@ run_step "python3 -m py_compile (scripts + lib)" python_compile_check
 
 run_step "preset-integrity-test.sh" bash "$TESTS_DIR/preset-integrity-test.sh"
 run_step "sync-plugins.sh --check" bash "$REPO_ROOT/scripts/sync-plugins.sh" --check
+fi
 
 # ── 3. 통합 테스트 ────────────────────────────────────────────────────────────
 
+mapfile -t MY_TESTS < <(_shard_select "${REGISTERED_TESTS[@]}")
 if [[ "$JOBS" -gt 1 ]] 2>/dev/null; then
   TMP_PARALLEL="$(mktemp -d)"   # 정리는 위의 _cleanup_runall 이 함께 맡는다
-  run_registered_parallel "${REGISTERED_TESTS[@]}"
+  run_registered_parallel "${MY_TESTS[@]}"
 else
-  for t in "${REGISTERED_TESTS[@]}"; do
+  for t in "${MY_TESTS[@]}"; do
     run_step "$t" bash "$TESTS_DIR/$t"
   done
 fi

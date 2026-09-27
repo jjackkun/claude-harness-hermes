@@ -8,6 +8,13 @@ jobs:
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    # 시험을 서버 4대에 나눠 동시에 돈다(tests/run-all.sh 의 HARNESS_TEST_SHARD). 한 대면 약 6분 반이었다 —
+    # 서버 한 대는 코어가 적어 병렬이 2개 남짓이라 줄 서서 기다렸다(2026-09-27 실측). 공개 저장소라 무료.
+    # fail-fast: false — 한 대가 떨어져도 나머지 결과를 끝까지 본다.
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -21,4 +28,5 @@ jobs:
       - name: Run all tests
         env:
           SKIP_INTERACTIVE: "1"
+          HARNESS_TEST_SHARD: "${{ matrix.shard }}/4"
         run: bash tests/run-all.sh

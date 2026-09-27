@@ -5,6 +5,7 @@
 # REGISTERED_TESTS 를 가짜 시험 몇 개로 갈아 끼우고, 그 사본을 돌린다.
 set -uo pipefail
 OUTER_JOBS="${HARNESS_TEST_JOBS:-1}"   # 바깥 묶음이 준 값 — 아래 run() 이 덮어쓰기 전에 잡는다
+unset HARNESS_TEST_SHARD   # 바깥 CI 가 서버 여럿으로 나눠 돌 때의 값 — 안쪽 가짜 러너까지 나뉘면 안 된다
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 TMP=$(mktemp -d); trap 'rm -rf "$TMP"' EXIT
 PASS=0; FAIL=0
