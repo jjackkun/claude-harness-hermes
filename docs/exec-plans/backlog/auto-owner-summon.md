@@ -65,6 +65,17 @@
       ⚠️ 이름만 같은 껍데기가 되면 안 된다 — 지금 SOUL·기억은 `hermes-summon.py` 가 넘기는 `HERMES_AGENT_ID`·nonce 를
       **세션 시작 훅**이 받아 주입한다(`scripts/hermes-summon.py:100`). 서브에이전트는 같은 프로세스 안이라 이 환경변수·훅이 없다.
       검증: `@agent-<slug>` 로 부른 서브에이전트의 첫 입력에 그 에이전트의 SOUL 과 MEMORY.md 가 들어 있다 · `task.assigned`/`task.finished` 가 남는다.
+- [ ] 목표 후보 7 — **에이전트 대화방.** 목표 6(slug·얇은 에이전트 파일·SubagentStart 주입) 위에 선다 — 6 먼저.
+      조사: `docs/audits/2026-09-28-agent-chat-room-research.md` (공식 `--agent` + `--resume`, 커뮤니티 10건 — 거의 전부 "세션 하나 = 방 하나").
+      사용자 결정 2026-09-28:
+      - **방은 1:1 이 아니다 — 최소 한 명.** 둘 이상 들어올 수 있고, **방에 누가 몇 명 있는지 보이는 기능·UI** 가 있어야 한다.
+      - **기억은 층을 둔다 — 공통이 바탕, 에이전트 기억이 위를 덮는다.** 없는 것은 공통을 쓰고, 자기에게 있는 것은 자기 것으로 덮는다.
+      모양(초안): 러너 `hermes-chat <방> [에이전트…]` — 방 주인 한 명은 `claude --agent <slug> --name <방>` / 이후 `--resume <방>`,
+      손님은 방 안에서 `@agent-<slug>`(목표 6). 러너가 nonce 를 발급한다(RV-06 — 러너 경유 세션만 명부 id). 방 구성원은 `.hermes/rooms/<방>.json`.
+      공통 층은 공식이 이미 깐다 — sub-agents.md 856줄 "`CLAUDE.md` files and project memory still load through the normal message flow"(`--agent` 메인 세션).
+      단 손님(서브에이전트)에는 메인의 자동 기억이 안 간다(1077줄 "the main conversation's auto memory isn't loaded").
+      공식 `memory:` 필드는 **공통이 아니라 에이전트별**(`.claude/agent-memory/<name>/`)이라 헤르메스 MEMORY.md 와 겹친다 → 쓰지 않는다.
+      검증: ① 두 명 방 픽스처 — 주인·손님 둘 다 자기 SOUL 을 받는다 ② 구성원 표시가 두 명을 보인다 ③ 같은 `about` 키가 공통·개인에 다르면 개인 쪽을 따른다 ④ `--resume` 으로 다시 열면 같은 주인으로 이어진다.
 
 ## 4. 비목표
 
@@ -87,6 +98,9 @@
 | 자동 적립 기억이 소음이 되지 않게 하는 문턱 | 매 세션 몇 줄씩 쌓이면 주입 예산을 태운다(R-out·context_budget) |
 | ~~(목표 6) 서브에이전트에 SOUL·기억을 넣는 길~~ **확인 2026-09-28: `SubagentStart` 훅으로 된다.** 공식 문서 hooks.md: "SubagentStart hooks can't block subagent creation, but they can inject context into the subagent" · `additionalContext` = "added to the subagent's context at the start of its conversation, before its first prompt" · 매처는 "the `name` field from the agent's frontmatter, not the filename". → `.claude/agents/<slug>.md` 는 이름·설명만, SOUL·MEMORY.md 는 훅이 그때그때 주입(세션 시작 훅 `claude-sessionstart-agent-soul.sh` 와 같은 일) | 파일에 굳히면 기억이 낡는다 — 설계 §1 의 두 층 분리를 지킨다 |
 | ~~(목표 6) 한글 이름을 `name:` 에 쓸 수 있나~~ **실측 2026-09-28 (claude 2.1.283, haiku, 임시 폴더 픽스처): `@` 멘션에는 영문 slug 가 필요하다.** 한글 `name`(공백 有·無) — 목록 ✅ · Agent 도구 호출 ✅ · SubagentStart 한글 매처·`additionalContext` 도달 ✅ / `@agent-백로그관리자` · `@"백로그 관리자 (agent)"` · `@agent-백로그 관리자` ❌(훅 0건, 서브에이전트 안 뜸). 대조군 영문 `@agent-probe-en` ✅ → 원인은 `-p` 모드가 아니라 한글 이름. 영문 slug `backlog-manager` + description 에 "명부 이름 백로그 관리자" → `@agent-backlog-manager` ✅ · 한글 자연어 "백로그 관리자한테 …" ✅(둘 다 MARKER 도달). → 파일 `name:` 은 영문 slug, 한글 이름은 description 에. 남은 것: 입사·은퇴 때 파일을 누가 만들고 지우나 · 대화형 입력창 `@` 자동완성은 `-p` 로 못 재서 사람이 한 번 본다 | `@` 자동완성 이름과 명부 이름의 대응 |
+| (목표 7) "덮어쓰기" 를 무엇으로 강제하나 — 지금은 공통·개인이 문맥에 나란히 들어가고 모델이 고른다. 주입 머리에 "개인 기억이 공통과 어긋나면 개인을 따른다" 한 줄로 되나, 같은 `about` 키를 훅이 걸러야 하나 | `memory-events.md` 의 "최신 자동 승리 없음" 은 한 에이전트 **안의** 충돌 규칙이다 — 층 **사이** 우선순위는 새 결정이라 설계 문서에 적는다 |
+| (목표 7) 구성원 표시를 어디에 — 상태줄(statusline) 스크립트가 `.hermes/rooms/<방>.json` 을 읽나 · 상태줄 입력에 `--agent` 이름이 오나(미확인) | 사용자 요구 "몇 명 있는지 가늠" |
+| (목표 7) 손님은 부를 때마다 새로 뜬다(서브에이전트) — "방에 있다" 를 '이 방에서 불린 적 있음' 으로 볼지, 상주(Agent Teams, 실험 기능·재개 시 복원 안 됨)가 필요한지 | 두 명 방의 뜻 |
 | (목표 6) 서브에이전트 호출이 소환 기록(`task.assigned`·nonce)을 남기게 할 수 있나 | 수습 성적·작업 이력이 소환 경로에만 쌓이면 두 경로 성적이 갈린다 |
 
 ## 6. 관련
