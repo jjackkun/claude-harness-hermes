@@ -33,5 +33,5 @@
 
 ## 관련
 
-- 계획 `docs/exec-plans/active/2026-09-23-test-suite-parallel.md` §7 — 이 사건들의 원기록
+- 계획 `docs/exec-plans/completed/2026-09-23-test-suite-parallel.md` §7 — 이 사건들의 원기록
 - 스킬 `run-to-the-end` — "오래 걸리는 명령" 을 다룬다. 이 백로그는 "무엇을 재는가" 를 다룬다
