@@ -73,5 +73,76 @@
   - 지움 → 파일로 나가지 않는다. 기억은 DB 에 `memory.retracted` 이벤트를 더한다(추가만 규칙 유지).
   - 둠 → 그때 파일로 내보내고, 결정을 적어 같은 문장을 다시 묻지 않는다.
 - **판정 실패**(haiku 호출 실패·시간 초과)면 그 판의 새 내용 전체를 검토 대기로 둔다 — 조용히 올라가는 쪽이 더 위험하다.
-- 운반(`refs/hermes/sync`)에도 같은 검사를 걸지 착수 때 정한다.
+- 운반(`refs/hermes/sync`)으로 가는 공통 요약(4번)에도 같은 검사를 건다.
 - 리뷰(architect-lite 2026-09-28) 반영: 새 구현임 명시, 추가만 파일의 철회 모순, 실패·시간 초과, 게이트 이름.
+
+## 3. 작업 이력
+
+### 무엇이 들어 있나 (이 저장소 실측, 2026-09-16~28)
+
+- 635줄 중 623줄이 `task.finished` — 누가 어떤 에이전트를 언제 불렀고 성공했는지뿐. 대부분 code-reviewer·architect-lite 같은 일회성 보조 호출이다.
+- 나머지는 인계 `task.assigned` 10 · `decision` 1 · `agent.created` 1.
+- 대화 내용은 없다(`evidence` 는 `{"template": "gate-qa"}` 정도). 사람 칸 `requested_by`(`human:<git 사용자>`)는 **이미 있다.**
+
+### 올려야 하는 이유
+
+- **인계 대기**가 컴퓨터를 따라가지 않는다 — A 에서 맡긴 일을 B 가 모른다(`hermes_handoff_queue.py` 가 이력을 읽는다).
+- 결정·입사 기록이 그 컴퓨터에만 남는다.
+- 명부 "최근 불린 때"·대시보드 숫자는 없어도 크게 곤란하지 않다 — 그래서 **통째로가 아니라 골라서** 올린다.
+
+### 어떻게 할 것인가
+
+- 올리는 줄: `task.assigned` · `decision` · `agent.created`, 교훈(`lesson`)이 붙은 줄, **명부 에이전트 호출의 `task.finished`**(실측 623줄 중 6줄), 그리고 **올린 인계의 끝남 기록 전부** — 같은 `task_id` 의 `_CLOSING` 4종 `task.finished` · `handoff.declined` · `handoff.expired` · `handoff.question`(`hermes_handoff_queue.py:15`). 인계 대기는 "맡겼는데 끝남 기록이 없는 일" 이라(`hermes_handoff_queue.py:28-31`), 하나라도 빼면 다른 컴퓨터에서 그 인계가 영원히 대기로 보인다.
+- 올리지 않는 줄: 명부 밖 보조 호출(code-reviewer·Explore 등)의 `task.finished`. 하루 약 50줄이라 git 이력만 어지럽힌다. 대신 다른 컴퓨터의 `/hermes-room`·대시보드는 보조 호출 건수를 모른다(`hermes_room.py:79-105`) — 명부 에이전트 건수·최근 불린 때는 맞게 보인다.
+- 파일: `.hermes/journal.jsonl` 하나(추가만). 주인이 `agent:main` 인 줄도 있어 에이전트 폴더로 나누지 않는다. 받은 쪽은 `event_id` 로 중복을 걸러 DB 에 넣는다.
+- 두 컴퓨터가 같은 파일 끝에 줄을 더하면 git 병합이 충돌한다 — `.gitattributes` 에 `merge=union` 을 건다. 1번 `memory.jsonl` 도 같다.
+- `.gitignore` 에 `!.hermes/journal.jsonl` 예외를 더한다(설치기 마커 블록).
+- "올리기 전에 묻기" 검사는 교훈·결정 문장에만 건다 — 나머지는 개인 내용이 없다.
+- 고르는 규칙은 코드 한 곳(함수 하나)에 두어 매번 같은 부분집합을 쓴다 — `merge=union` 과 `event_id` 중복 제거가 안전한 전제다.
+- 운반의 `journal/` 조각은 이미 **이력 전체**를 이벤트당 파일로 올리고 `event_id` 로 거른다(`hermes_sync_fragments.py:119-136`). git 파일과 같은 표를 두 길로 나르게 되므로, 운반을 켠 저장소에서 어느 쪽을 원본으로 할지 1·2번과 함께 착수 때 정한다.
+- 리뷰(architect-lite 2026-09-28) 반영: `_CLOSING` 4종 명시, 방 보기 건수 부작용, 운반과 이중화, 고르는 규칙 고정.
+
+## 4. 세션 요약(공통)·패턴 수 — git 이 아니라 운반으로, 운반은 무조건 켠다 (사용자 결정 2026-09-28)
+
+- 공통 요약 = 메인 대화(에이전트가 아닌 사람과의 대화)의 5칸 요약(`decisions · open · prefs · facts · next`). 이 저장소 23개. 다음 세션 회상·드리밍에 쓴다.
+- 패턴 수(627개) = 결정화 계수. 원문을 없애면(5번) 학습은 이 둘과 기억만으로 돈다.
+- **git 에는 올리지 않는다** — 재료라 매 턴 바뀌고, 결과물(결정화 스킬)은 이미 git 으로 간다.
+- **운반(`refs/hermes/sync`)으로 옮기고, 운반은 공개·비공개 구분 없이 무조건 켠다.** 지금은 공개 저장소면 꺼지는데(T-18), 그러면 학습이 컴퓨터마다 끊긴다. 켜짐/꺼짐 스위치를 없애고 설치 때 항상 켠다 — T-18 을 고치는 새 결정으로 원장에 남긴다.
+- 공통 요약은 2번 대화 요약과 같은 5칸 요약이므로 **같게 다룬다** — 공개 저장소에서도 올리고, 올리기 전에 "1·2 공통 — 올리기 전에 사람에게 묻는다" 검사를 거친다.
+- 참고(코드 확인): 운반은 패턴 수를 키별 **max** 로 합친다(`hermes_sync_learning.py:142`). 번갈아 쓰면 이어 세지만, 두 컴퓨터가 **동시에** 센 몫은 더해지지 않는다.
+
+## 5. 대화 원문 — 저장하지 않는다 (사용자 결정 2026-09-28)
+
+### 원문은 무엇에 쓰이나 (코드 확인)
+
+- **요약에는 안 쓴다.** 요약기(`hermes-summarize.py:9,60`)는 Claude Code 의 대화 기록 파일(transcript)을 직접 읽는다.
+- DB 원문(`session_history`, 이 저장소 3,003줄·24세션)을 쓰는 곳:
+  - `hermes-recall.py:180` — `/hermes-recall 키워드` 낱말 검색(요약에 없는 말도 찾는다)
+  - `hermes_crystallize_evidence.py:47` — 결정화할 때 실제 대화 문장을 증거로 붙인다
+  - `hermes_save_session_patterns.py:148` — 낱말이 몇 세션에 나왔는지 세어 결정화 후보를 가린다
+  - `hermes_save_session_signals.py:147` — 시험 실패·되돌리기 같은 실수 신호를 원문 칸에 덧붙인다
+- 파일 원문(`.hermes/history/*.jsonl`, 이 저장소 25개·4.5MB): `hermes-export-history.py` 가 매 턴 통째로 다시 쓴다. 목적은 다른 컴퓨터로 옮기기였는데 T-17 로 원문은 기본 안 올리게 되어, 잠금 모드가 아니면 **만들기만 하고 어디에도 가지 않는다.**
+
+### 정한 것 (사용자 결정 2026-09-28)
+
+- **원문은 어디에도 두지 않는다** — git 에도, `.hermes/history/` 파일에도, DB(`session_history`)에도.
+- 처음엔 "DB 원문은 유지" 로 정했다가 뒤집었다. 원문을 읽는 세 곳이 모두 전문 검색이었는데, 대신할 것이 이미 있다:
+
+| 원문이 하던 일 | 대신할 것 |
+|---|---|
+| 패턴 인정("2개 이상 세션", `hermes_save_session_patterns.py:140-151`) | `pattern_session`(패턴 키·세션 id) — 이미 따로 쌓인다(이 저장소 1,016행·563키, `hermes_save_session_storage.py:138`) |
+| 결정화 증거(`hermes_crystallize_evidence.py:102`) | 공통 층은 세션 요약(결정·배운 것 칸), 개인 층은 **이미** 기억을 증거로 쓴다(같은 파일 100행) |
+| `/hermes-recall 키워드`(`hermes-recall.py:180`) | 요약 검색. 요약에 없는 낱말은 못 찾는다 — 유일한 손실. 급하면 Claude Code 기록(그 컴퓨터, 30일) |
+| 실수 신호 기록(`hermes_save_session_signals.py:147`) | 원문 표에 덧붙이던 것을 작은 신호 표로 옮긴다 |
+| 요약 만들기 | 원래 원문을 안 쓴다(Claude Code 기록을 직접 읽음, `hermes-summarize.py:60`) |
+
+- 얻는 것: 학습이 **옮겨지는 재료**(요약·기억·패턴 수)만으로 돌아 컴퓨터를 따라간다(공통 요약·패턴 수는 4번대로 운반으로 간다 — 운반은 무조건 켠다) — "다른 컴퓨터엔 원문이 없어 무엇이 원문인지 모른다" 는 문제가 사라진다. 가장 민감한 자료를 쌓지 않는다.
+- 대가: 증거가 원문 문장이 아니라 요약 문장이라 결정화 스킬의 인용이 덜 구체적일 수 있다.
+
+### 함께 고칠 것
+
+- 원문 저장(`hermes-save-session.py` → `session_history` 쓰기)·파일 내보내기(`hermes-export-history.py`)를 멈춘다.
+- 원문을 읽는 곳을 위 표대로 바꾼다.
+- `hermes-lifecycle.py` 압축(원문 → 요약본)·`hermes-reindex.py`·시작 훅 `claude-sessionstart-history-reindex.sh`·`hermes-scrub-history.py`·`hermes-cleanup.py` (c) 중복 세션 압축은 할 일이 없어지므로 걷는다.
+- 잠금 모드 원문 운반(`"history": true`, `hermes_sync_fragments.py:26,63`)도 옮길 원문이 없으므로 옵션을 없앤다. T-17 을 닫는 새 결정으로 원장에 남긴다.
+- 이미 있는 원문(DB `session_history`, `.hermes/history/` 4.5MB)을 지울지는 사람이 정한다(삭제).
