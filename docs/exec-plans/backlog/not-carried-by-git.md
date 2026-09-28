@@ -146,3 +146,23 @@
 - `hermes-lifecycle.py` 압축(원문 → 요약본)·`hermes-reindex.py`·시작 훅 `claude-sessionstart-history-reindex.sh`·`hermes-scrub-history.py`·`hermes-cleanup.py` (c) 중복 세션 압축은 할 일이 없어지므로 걷는다.
 - 잠금 모드 원문 운반(`"history": true`, `hermes_sync_fragments.py:26,63`)도 옮길 원문이 없으므로 옵션을 없앤다. T-17 을 닫는 새 결정으로 원장에 남긴다.
 - 이미 있는 원문(DB `session_history`, `.hermes/history/` 4.5MB)을 지울지는 사람이 정한다(삭제).
+
+## 6. 방·세션 자체 (`--resume`) — 올리지 않는다 (사용자 결정 2026-09-28)
+
+- 방의 실체는 Claude Code 가 그 컴퓨터에 남기는 대화 기록 `~/.claude/projects/<프로젝트>/<세션>.jsonl` 이다. `--resume` 은 이 파일을 다시 열 뿐이라 다른 컴퓨터에서는 그 방을 못 연다. Claude Code 에는 세션을 기기 사이로 옮기는 기능이 없다(`docs/audits/2026-09-28-team-knowledge-memory-survey.md` §1).
+- 올리지 않는 이유: 이 파일은 **대화 원문 그 자체**다(5번과 충돌). 또 Claude Code 가 소유한 형식이라 복사해 넣는 방식은 버전이 바뀌면 깨진다.
+- 연속성은 1·2번이 맡는다 — 다른 컴퓨터에서 같은 에이전트로 **새 방**을 열면 그 에이전트의 기억과 "나와 나눈 최근 대화"(대화 요약)가 주입된다. 방은 새것이어도 에이전트는 이어서 안다.
+
+## 7. `@hag` 상태·캐시 — 올리지 않는다 (사용자 결정 2026-09-28)
+
+- `.hermes/hag/<세션 id>.json` = 그 세션에서 `@hag` 를 켰는지(`{"on": true}`)뿐(`hermes_hag_state.py:24`). `rooms.json` = `@hag-add` 로 연 방 목록 캐시(`hermes_hag_rooms.py:107`).
+- 둘 다 **그 컴퓨터에서 돌고 있는 세션·방**의 상태다. 다른 컴퓨터엔 그 세션도 방도 없어 옮겨도 쓸 데가 없고, 캐시는 필요할 때 다시 만든다. 에이전트 지식은 없다.
+- 따로 할 일: 끝난 세션의 상태 파일이 계속 쌓인다(이 저장소 8개). 오래된 파일 정리가 필요하다 — 올리기와는 별개.
+
+## 8. 공장 저장소의 결정화 스킬 `.hermes/skills/` — 커밋한다 (사용자 결정 2026-09-28)
+
+- 원칙: **저장소 안에서 생긴 스킬은 그 저장소에 다 올린다.** 소우주는 이미 그렇다 — zeroday-frontend 실측, 우주가 설치한 `.claude/skills/` 305/314 · 소우주 결정화 `.hermes/skills/` 1,090/1,101 이 git 에 있다(빠진 것은 커밋 전 새 파일).
+- 공장만 예외였다 — `.gitignore:66-73` 이 `.hermes/skills/` 를 다시 무시한다("공장은 소우주가 아니다", 설계 `raw-transcript.md` §3). 그래서 공장에서 생긴 스킬 43개가 다른 컴퓨터로 안 간다.
+- 막을 이유였던 "남에게 배포된다" 는 일어나지 않는다 — 설치기(`setup.sh` · `update-all.sh` · `lib/`)는 `.hermes/skills/` 를 복사하지 않는다(grep 0건). GitHub 에서 보일 뿐이다.
+- 방법: `.gitignore:73` 의 `.hermes/skills/` 한 줄을 지운다(원문 `.hermes/history/` 되무시 줄은 5번대로 남긴다). 올리기 전 "묻기" 검사를 스킬에도 건다.
+- 함께 고칠 것: `docs/hermes-sync-guide.md` 의 "공장 저장소 예외" 문단, `raw-transcript.md` §3 의 공장 문구.
