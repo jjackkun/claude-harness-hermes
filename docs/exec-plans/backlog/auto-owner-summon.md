@@ -58,8 +58,8 @@
       세션 종료 지점에서 그 세션의 작업 이력(`hermes_journal`)을 근거(`source_event`)로 `memory.added` 를 적고 MEMORY.md 를 다시 만든다.
       `memory-events.md` 규칙을 따른다 — 근거 하나짜리는 "단일 사례", 충돌은 사람에게 보이고 최신 자동 승리 없음.
       검증: 소환 픽스처 세션 종료 → 그 에이전트의 `memory.added` ≥ 1 · `source_event` 가 작업 이력 id · 다음 소환 주입에 포함.
-- [ ] 목표 후보 6 — **명부 에이전트를 채팅에서 `@agent-<이름>` 으로 부를 수 있다.** (사용자 결정 2026-09-28 "백로그에 넣어")
-      → **착수 2026-09-28: `docs/exec-plans/active/2026-09-28-agent-mention-bridge.md`**
+- [x] 목표 후보 6 — **명부 에이전트를 채팅에서 `@agent-<이름>` 으로 부를 수 있다.** (사용자 결정 2026-09-28 "백로그에 넣어")
+      → **완료 2026-09-28: `docs/exec-plans/completed/2026-09-28-agent-mention-bridge.md`** (설계 결정 C-27). 목표 7(대화방)은 이 위에 선다.
       Claude Code 는 `.claude/agents/*.md` 가 있는 에이전트만 `@` 멘션·자동완성으로 부른다(code.claude.com/docs/en/agents.md).
       지금 `@` 로 불리는 것은 위임용 12종뿐이고, 명부 에이전트(`백로그 관리자`·`게이트QA`)는 파일이 없어 `hermes-summon.py run` 으로만 불린다.
       명부 에이전트마다 `.claude/agents/<slug>.md` 를 만들어 수동 경로를 Claude Code 기본 문법에 맞춘다.
