@@ -67,6 +67,7 @@
       **세션 시작 훅**이 받아 주입한다(`scripts/hermes-summon.py:100`). 서브에이전트는 같은 프로세스 안이라 이 환경변수·훅이 없다.
       검증: `@agent-<slug>` 로 부른 서브에이전트의 첫 입력에 그 에이전트의 SOUL 과 MEMORY.md 가 들어 있다 · `task.assigned`/`task.finished` 가 남는다.
 - [ ] 목표 후보 7 — **에이전트 대화방.** 목표 6(slug·얇은 에이전트 파일·SubagentStart 주입) 위에 선다 — 6 먼저.
+      → **별도 문서로 옮김 2026-09-28: `docs/exec-plans/backlog/hermes-chat.md`** — 러너 없이 `claude --agent <slug>` + SessionStart `agent_type` 로 가는 방향. 아래는 옮기기 전 기록.
       조사: `docs/audits/2026-09-28-agent-chat-room-research.md` (공식 `--agent` + `--resume`, 커뮤니티 10건 — 거의 전부 "세션 하나 = 방 하나").
       사용자 결정 2026-09-28:
       - **방은 1:1 이 아니다 — 최소 한 명.** 둘 이상 들어올 수 있고, **방에 누가 몇 명 있는지 보이는 기능·UI** 가 있어야 한다.
