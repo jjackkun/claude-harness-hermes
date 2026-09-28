@@ -354,27 +354,11 @@
       "mode": "755"
     },
     {
-      "name": "scripts/hooks/claude-sessionstart-history-reindex.sh",
-      "kind": "hook",
-      "factory_commit": "4f7745faed8f064b8311d4781fc95be09443259d",
-      "sha256": "4e8ed7cbe9fe89acad01ef5d2d79349936f5ecc9d87d77725f463a66eccc50d4",
-      "src": "assets/hooks/claude-sessionstart-history-reindex.sh",
-      "mode": "755"
-    },
-    {
       "name": "scripts/hooks/claude-sessionstart-install-uncommitted-warn.sh",
       "kind": "hook",
       "factory_commit": "4f7745faed8f064b8311d4781fc95be09443259d",
       "sha256": "396d5c5a0b8a7dc1fb17dd154811d26b6646c08387136ad2794bd2ca947285b3",
       "src": "assets/hooks/claude-sessionstart-install-uncommitted-warn.sh",
-      "mode": "755"
-    },
-    {
-      "name": "scripts/hooks/claude-sessionstart-lifecycle-lint.sh",
-      "kind": "hook",
-      "factory_commit": "4f7745faed8f064b8311d4781fc95be09443259d",
-      "sha256": "02bcae4aab1383222e864a636028333d99dd18f78a3ebff523cac1eaa8503cf9",
-      "src": "assets/hooks/claude-sessionstart-lifecycle-lint.sh",
       "mode": "755"
     },
     {

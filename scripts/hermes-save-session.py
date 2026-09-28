@@ -2,13 +2,13 @@
 """헤르메스 세션 저장 스크립트.
 
 Stop Hook에서 호출. Claude Code transcript를 읽어
-session_history(FTS5)와 pattern_count 테이블에 저장한다.
+pattern_count 테이블에 저장한다(대화 원문은 저장하지 않는다 — 계획 carry-agent-knowledge 목표 10).
 
 같은 session_id 로 재저장하면 이전 행을 교체한다 (매 턴 누적 방지).
 패턴 집계는 세션당 1회만 반영된다 (pattern_session 테이블로 보장).
 
 로직은 다음 모듈로 분리되어 있다 (이 파일은 얇은 CLI 진입점):
-  - hermes_save_session_storage.py  — DB 연결/transcript 로드/저장
+  - hermes_save_session_storage.py  — DB 연결/transcript 로드/패턴 수 저장(대화 원문은 저장하지 않는다)
   - hermes_save_session_signals.py  — B신호(테스트 실패, git revert) 탐지
   - hermes_save_session_patterns.py — 반복 패턴/스킬 수정 힌트 추출
 
@@ -33,7 +33,6 @@ from hermes_save_session_signals import (  # noqa: E402
 from hermes_universe import universe_id  # noqa: E402  (소우주 키 — 폴더 이름 대체)
 from hermes_save_session_storage import (  # noqa: E402
     load_transcript,
-    save_session,
     update_patterns,
 )
 
@@ -63,9 +62,8 @@ def main():
         os.path.basename(args.transcript)
     )[0]
 
-    save_session(args.db, messages, project_id, session_id)
-
-    patterns = extract_patterns(messages, args.db)
+    # 대화 원문은 저장하지 않는다(계획 carry-agent-knowledge 목표 10) — 요약은 transcript 를 직접 읽는다.
+    patterns = extract_patterns(messages, args.db, session_id)
     b_signals = detect_objective_signals(messages)
     b_keys = [k for k, _ in b_signals]
     if b_signals:

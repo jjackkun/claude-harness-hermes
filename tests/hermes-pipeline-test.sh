@@ -133,10 +133,8 @@ n1=$(sql "SELECT COUNT(*) FROM session_history WHERE session_id='sessA'")
 mkmsg "$TR" 4 alpha   # 다음 턴 — transcript 가 자람
 python3 "$S/hermes-save-session.py" --db "$DB" --transcript "$TR" --project-id proj --session-id sessA >/dev/null
 n2=$(sql "SELECT COUNT(*) FROM session_history WHERE session_id='sessA'")
-sess_cnt=$(sql "SELECT COUNT(DISTINCT session_id) FROM session_history")
-echo "  (sessA 1차=${n1}행, 재저장 후=${n2}행 — 8 기대, 세션수=${sess_cnt} — 1 기대)"
-check "재저장 시 행 교체 (누적 없음)" test "$n2" = "8"
-check "세션 1개 유지" test "$sess_cnt" = "1"
+echo "  (sessA 1차=${n1}행, 재저장 후=${n2}행 — 0 기대: 대화 원문은 저장하지 않는다, 계획 carry-agent-knowledge 목표 10)"
+check "세션 저장이 대화 원문을 남기지 않는다" test "$n1$n2" = "00"
 pc=$(sql "SELECT COALESCE((SELECT count FROM pattern_count WHERE pattern_key='hermes-pipeline-test'),0)")
 check "같은 세션 재저장 시 패턴 중복 집계 없음 (<=1)" test "$pc" -le 1
 
@@ -250,8 +248,8 @@ else:
     print("WARN: hook done 마커 2개 대기 타임아웃", file=sys.stderr)
 EOF
 hn=$(sql "SELECT COUNT(*) FROM session_history WHERE session_id='hook-sess-1'")
-echo "  (hook-sess-1 행수=${hn} — 8 기대, 2회 실행에도 1벌)"
-check "훅 2회 실행 후에도 8행 (중복 누적 없음)" test "$hn" = "8"
+echo "  (hook-sess-1 원문 행수=${hn} — 0 기대: 원문 저장 안 함)"
+check "Stop 훅 2회 실행에도 원문 0행" test "$hn" = "0"
 hsum=$(sql "SELECT COUNT(*) FROM session_summary WHERE session_id='hook-sess-1'")
 check "Stop 훅이 롤링 요약 생성" test "$hsum" = "1"
 
@@ -267,24 +265,16 @@ for k in ("오류","내가"):
     p=os.path.join(skills,f"{k}.md")
     open(p,"w").write(f"# {k}\njunk\n")
     con.execute("INSERT OR IGNORE INTO skill_index (skill_path,keywords,scope) VALUES (?,?,'local')",(p,k))
-# 중복 세션: sessB 내용 그대로 다른 ID 로 복제
-rows=con.execute("SELECT content,role,timestamp,project_id FROM session_history WHERE session_id='sessB'").fetchall()
-for c,r,t,p in rows:
-    con.execute("INSERT INTO session_history (content,role,timestamp,project_id,session_id) VALUES (?,?,?,?,'sessB-dup')",(c,r,t,p))
 con.commit()
 EOF
 dry=$(python3 "$S/hermes-cleanup.py" --db "$DB")
 junk_before=$(sql "SELECT COUNT(*) FROM pattern_count WHERE pattern_key IN ('오류','내가','먼저','그리고','합니다')")
 check "dry-run 은 DB 변경 없음" test "$junk_before" = "5"
-check "dry-run 보고에 junk/중복 포함" bash -c "echo '$dry' | grep -q 'junk 패턴: 5' && echo '$dry' | grep -q '중복 세션: 1'"
+check "dry-run 보고에 junk 포함" bash -c "echo '$dry' | grep -q 'junk 패턴: 5'"
 python3 "$S/hermes-cleanup.py" --db "$DB" --apply >/dev/null
 junk_after=$(sql "SELECT COUNT(*) FROM pattern_count WHERE pattern_key IN ('오류','내가','먼저','그리고','합니다')")
 check "apply 후 junk 패턴 0개" test "$junk_after" = "0"
 check "junk 스킬 .md 삭제" bash -c "! test -f '$PROJ/.hermes/skills/오류.md'"
-dup=$(sql "SELECT COUNT(DISTINCT session_id) FROM session_history WHERE session_id LIKE 'sessB%'")
-check "중복 세션 1개로 압축" test "$dup" = "1"
-keep=$(sql "SELECT COUNT(*) FROM session_history WHERE session_id IN ('sessB','sessB-dup')")
-check "원본 세션 행 보존 (6행)" test "$keep" = "6"
 good=$(sql "SELECT COUNT(*) FROM pattern_count WHERE pattern_key='new-mistake-key'")
 check "정상 패턴은 보존" test "$good" = "1"
 
@@ -366,9 +356,9 @@ python3 "$S/hermes-save-session.py" --db "$DB" --transcript "$BTR" --project-id 
 gk2=$(sql "SELECT COUNT(*) FROM pattern_count WHERE pattern_key='revert:app.py'")
 check "git checkout 파일 → revert:app.py 키 생성" test "$gk2" = "1"
 
-# (e) 실패 맥락이 session_history(role='tool')에 기록됨
-ctx=$(sql "SELECT COUNT(*) FROM session_history WHERE role='tool' AND content LIKE '[B신호]%test-fail:auth_service.py%'")
-check "B신호 맥락이 session_history 에 기록됨" test "$ctx" -ge 1
+# (e) 실패 맥락이 신호 표(session_signals)에 기록됨 — 원문 표 대신(계획 carry-agent-knowledge 목표 10)
+ctx=$(sql "SELECT COUNT(*) FROM session_signals WHERE content LIKE '[B신호]%test-fail:auth_service.py%'")
+check "B신호 맥락이 session_signals 에 기록됨" test "$ctx" -ge 1
 
 echo ""
 echo "== 14. summarize — 롤링 요약 생성 + 델타 가드 =="
@@ -567,8 +557,8 @@ PY
 if kwidx_ok 2>/dev/null | grep -q OK; then check "register_skill: 한글 본문 키워드 색인" true; else check "register_skill 한글 색인" false; fi
 
 echo ""
-echo "== 25. save-session: 민감정보 마스킹 후 적재(배선 회귀) =="
-# redact() 호출이 제거되면 원문 비밀이 session_history에 그대로 남아 이 테스트가 깨진다
+echo "== 25. save-session: 대화 원문·비밀이 DB 어디에도 남지 않는다 =="
+# 원문을 저장하지 않는다(계획 carry-agent-knowledge 목표 10) — 저장 코드가 되살아나면 이 시험이 깨진다
 RTR="$T/redact.jsonl"
 printf '%s\n' \
   '{"type":"user","message":{"role":"user","content":"토큰 ghp_abcdefghijklmnopqrstuvwxyz0123456789, 비밀번호는 superSecret99"}}' \
@@ -578,17 +568,15 @@ redact_ok() {
 python3 - "$DB" <<'PY'
 import sqlite3, sys
 con=sqlite3.connect(sys.argv[1])
-joined="\n".join(r[0] for r in con.execute(
-    "SELECT content FROM session_history WHERE session_id='redactA'"))
+assert con.execute("SELECT COUNT(*) FROM session_history WHERE session_id='redactA'").fetchone()[0] == 0, "원문 저장됨"
+dump="\n".join(con.iterdump())
 con.close()
-for leak in ("ghp_abcdefghijklmnopqrstuvwxyz0123456789", "superSecret99"):
-    assert leak not in joined, f"원문 비밀 잔존: {leak}"
-assert "[REDACTED:TOKEN]" in joined and "[REDACTED:SECRET]" in joined, joined
-assert "auth middleware" in joined, "산문 과마스킹"   # 일반 산문 보존
+for leak in ("ghp_abcdefghijklmnopqrstuvwxyz0123456789", "superSecret99", "auth middleware 토큰 검증"):
+    assert leak not in dump, f"원문 잔존: {leak}"
 print("OK")
 PY
 }
-if redact_ok 2>/dev/null | grep -q OK; then check "save-session: 비밀 마스킹·산문 보존" true; else check "save-session 마스킹" false; fi
+if redact_ok 2>/dev/null | grep -q OK; then check "save-session: 원문·비밀이 DB 에 없음" true; else check "save-session: 원문·비밀이 DB 에 없음" false; fi
 
 echo ""
 echo "== 26. SessionStart 훅 — 드리밍 자동 트리거 (source 게이트·throttle·dry-run·stdout) =="

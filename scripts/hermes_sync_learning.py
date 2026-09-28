@@ -16,6 +16,7 @@ import sqlite3
 import hermes_crypto as crypto
 from hermes_keys import key_path
 from hermes_summary_owner import ensure_agent_column
+from hermes_privacy_pending import allowed  # 판정 통과만 운반(계획 carry-agent-knowledge 목표 9)
 
 _SUMMARY_SQL = """
 CREATE TABLE IF NOT EXISTS session_summary (
@@ -68,15 +69,27 @@ def _free_fn(lock, project):
     return free
 
 
+def _judged_slots(con, raw) -> str:
+    """판정을 통과한(clean·keep) 항목만 남긴 5칸 JSON — 운반에 싣는 공통 요약(계획 carry-agent-knowledge 목표 9)."""
+    try:
+        data = json.loads(raw) if raw else {}
+    except ValueError:
+        data = {}
+    kept = {k: [t for t in (v or []) if allowed(con, str(t))] for k, v in data.items() if isinstance(v, list)}
+    return json.dumps(kept, ensure_ascii=False)
+
+
 def _outgoing_summaries(con, free, done: set) -> dict:
+    """공통 요약만(agent_id 없음) — 에이전트 대화 요약은 git 파일(conversations/)이 옮긴다."""
     out = {}
     try:
         ensure_agent_column(con)
         rows = con.execute("SELECT session_id, project_id, slots_json, last_msg_count, turn_count, updated_at, agent_id, person "
-                           "FROM session_summary").fetchall()
+                           "FROM session_summary WHERE agent_id IS NULL OR agent_id = ''").fetchall()
     except sqlite3.OperationalError:
         return out
     for sid, pid, slots, lmc, tc, upd, aid, who in rows:
+        slots = _judged_slots(con, slots)
         remote = f"summary/{sid}/{_stamp(upd)}.json"
         if remote in done:
             continue
@@ -91,12 +104,15 @@ def _outgoing_summaries(con, free, done: set) -> dict:
 
 
 def _outgoing_patterns(con, free, done: set) -> dict:
+    """판정을 통과한 패턴 키만 — 키도 대화에서 나온 낱말이라 공개 운반 전에 같은 판정을 거친다(리뷰 HIGH)."""
     out = {}
     try:
         rows = con.execute("SELECT pattern_key, count, last_seen, crystallized FROM pattern_count").fetchall()
     except sqlite3.OperationalError:
         return out
     for key, cnt, seen, cry in rows:
+        if not allowed(con, key):
+            continue
         digest = hashlib.sha1(key.encode("utf-8")).hexdigest()[:16]
         remote = f"pattern/{digest}/{int(cnt or 0)}-{int(cry or 0)}.json"
         if remote in done:

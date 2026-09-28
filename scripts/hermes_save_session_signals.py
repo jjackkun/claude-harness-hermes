@@ -129,31 +129,23 @@ def detect_objective_signals(messages: list) -> list:
 
 
 def record_signal_context(db_path: str, signals: list, project_id: str, session_id: str) -> None:
-    """B신호 맥락을 session_history(role='tool')에 기록해 결정화 증거를 보강한다.
+    """B신호 맥락을 session_signals 에 기록해 결정화 증거를 보강한다(마스킹 뒤).
 
-    save_session 이 같은 session_id 행을 먼저 DELETE+INSERT 하므로, 그 뒤에 호출되면
-    재저장 때마다 자연히 교체되어 중복이 쌓이지 않는다 (idempotent).
+    대화 원문 표(session_history)에 덧붙이던 것을 옮겼다 — 원문을 저장하지 않는다(계획 carry-agent-knowledge 목표 10).
+    같은 세션·같은 키는 한 줄(PRIMARY KEY) — 재저장 때 중복이 쌓이지 않는다.
     """
     project_dir = project_dir_for_db(db_path)
     con = connect_db(db_path)
-    con.isolation_level = None
-    cur = con.cursor()
-    ts = datetime.now().isoformat()
     try:
-        cur.execute("BEGIN IMMEDIATE")
+        con.execute("CREATE TABLE IF NOT EXISTS session_signals (session_id TEXT NOT NULL, signal_key TEXT NOT NULL,"
+                    " content TEXT NOT NULL, project_id TEXT, ts TEXT, PRIMARY KEY (session_id, signal_key))")
+        ts = datetime.now().isoformat()
         for key, ctx in signals:
             content = redact(f"[B신호] {key} :: {ctx}".strip(), project_dir)
-            cur.execute(
-                "INSERT INTO session_history (content, role, timestamp, project_id, session_id) "
-                "VALUES (?, ?, ?, ?, ?)",
-                (content, "tool", ts, project_id, session_id),
-            )
-        cur.execute("COMMIT")
+            con.execute("INSERT OR REPLACE INTO session_signals (session_id, signal_key, content, project_id, ts) "
+                        "VALUES (?, ?, ?, ?, ?)", (session_id, key, content, project_id, ts))
+        con.commit()
     except Exception as e:
-        try:
-            cur.execute("ROLLBACK")
-        except sqlite3.OperationalError:
-            pass
         print(f"[hermes] B신호 맥락 기록 실패: {e}", file=sys.stderr)
     finally:
         con.close()

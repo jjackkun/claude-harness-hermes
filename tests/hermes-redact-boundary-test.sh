@@ -33,22 +33,22 @@ PY
 if helper 2>/dev/null | grep -q OK; then ok "T1 project_dir_for_db 헬퍼가 프로젝트 루트를 되짚는다"
 else nope "T1 project_dir_for_db 헬퍼가 프로젝트 루트를 되짚는다"; fi
 
-# T2 적재 경계 — CLAUDE_PROJECT_DIR 이 딴 곳이어도 정답지 값이 마스킹된다
+# T2 원문 저장 없음 — 세션을 저장해도 DB 어디에도 대화 원문·정답지 값이 없다(계획 carry-agent-knowledge 목표 10)
 store() {
 cd "$ELSEWHERE" || return 1
-CLAUDE_PROJECT_DIR="$ELSEWHERE" PYTHONPATH="$SCRIPTS${PYTHONPATH:+:$PYTHONPATH}" python3 - "$DB" <<'PY'
+printf '%s\n' '{"type":"user","message":{"role":"user","content":"운영 계정 정보 공유합니다 Qx7vRn2Lp9Ttz 로 로그인하세요"}}' > "$TMP/tr.jsonl"
+CLAUDE_PROJECT_DIR="$ELSEWHERE" python3 "$SCRIPTS/hermes-save-session.py" --db "$DB" --transcript "$TMP/tr.jsonl" --session-id sessA >/dev/null 2>&1
+python3 - "$DB" <<'PY'
 import sqlite3, sys
-from hermes_save_session_storage import save_session
-msgs = [{"role": "user", "content": "운영 계정 정보 공유합니다 Qx7vRn2Lp9Ttz 로 로그인하세요"}]
-save_session(sys.argv[1], msgs, "proj", "sessA")
 con = sqlite3.connect(sys.argv[1])
-row = con.execute("SELECT content FROM session_history WHERE session_id='sessA'").fetchone()
-print("LEAK" if row and "Qx7vRn2Lp9Ttz" in row[0] else "CLEAN")
+raw = con.execute("SELECT COUNT(*) FROM session_history WHERE session_id='sessA'").fetchone()[0]
+dump = "\n".join(con.iterdump())
+print("LEAK" if raw or "Qx7vRn2Lp9Ttz" in dump or "운영 계정 정보" in dump else "CLEAN")
 PY
 }
 if [[ "$(store 2>/dev/null | tail -1)" == "CLEAN" ]]; then
-  ok "T2 적재 경계가 환경변수와 무관하게 정답지로 마스킹한다"
-else nope "T2 적재 경계가 환경변수와 무관하게 정답지로 마스킹한다"; fi
+  ok "T2 세션 저장이 대화 원문을 DB 에 남기지 않는다"
+else nope "T2 세션 저장이 대화 원문을 DB 에 남기지 않는다"; fi
 
 # T3 요약 경계 — 요약도 DB 에 저장되고 서버로 나간다
 summ() {
@@ -67,7 +67,7 @@ if [[ "$(SUMM="$SCRIPTS/hermes-summarize.py" summ 2>/dev/null | tail -1)" == "CL
   ok "T3 요약 경계가 정답지로 마스킹한다"
 else nope "T3 요약 경계가 정답지로 마스킹한다"; fi
 
-# T4 B신호 경계 — 같은 session_history 테이블에 쓰므로 같은 관문을 통과해야 한다
+# T4 B신호 경계 — 신호 표(session_signals)도 같은 관문을 통과해야 한다
 sig() {
 cd "$ELSEWHERE" || return 1
 CLAUDE_PROJECT_DIR="$ELSEWHERE" PYTHONPATH="$SCRIPTS${PYTHONPATH:+:$PYTHONPATH}" python3 - "$DB" <<'PYX'
@@ -75,8 +75,8 @@ import sqlite3, sys
 from hermes_save_session_signals import record_signal_context
 record_signal_context(sys.argv[1], [("adminpw", "운영 비번 Qx7vRn2Lp9Ttz 확인")], "proj", "sessB")
 con = sqlite3.connect(sys.argv[1])
-row = con.execute("SELECT content FROM session_history WHERE session_id='sessB'").fetchone()
-print("LEAK" if row and "Qx7vRn2Lp9Ttz" in row[0] else "CLEAN")
+row = con.execute("SELECT content FROM session_signals WHERE session_id='sessB'").fetchone()
+print("MISSING" if not row else "LEAK" if "Qx7vRn2Lp9Ttz" in row[0] else "CLEAN")
 PYX
 }
 if [[ "$(sig 2>/dev/null | tail -1)" == "CLEAN" ]]; then

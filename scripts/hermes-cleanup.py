@@ -4,7 +4,6 @@
 기존 DB에 쌓인 junk 를 정리한다 (C3):
   (a) 불용어·2글자 이하 한글 등 junk 패턴 행 삭제 (pattern_count / pattern_session)
   (b) 대응하는 junk 스킬 .md 파일 + skill_index 행 삭제
-  (c) session_history 중복 세션 압축 — 같은 대화의 중복 저장 제거
   (d) VACUUM (--apply 시)
 
 기본은 --dry-run (변경 없이 보고만). 실제 적용은 --apply.
@@ -237,56 +236,6 @@ def clean_low_yield_skills(con: sqlite3.Connection, apply: bool) -> None:
     con.commit()
 
 
-def find_duplicate_sessions(con: sqlite3.Connection) -> list:
-    """(c) 같은 대화가 다른 session_id 로 중복 저장된 세션을 찾는다.
-
-    세션의 앞 5개 메시지 내용 해시가 같으면 같은 대화로 본다.
-    가장 행이 많은(=가장 최신 상태) 세션 1개만 남기고 나머지를 삭제 대상으로 반환.
-    """
-    rows = con.execute(
-        "SELECT session_id, project_id, content FROM session_history "
-        "WHERE role IN ('user','assistant') "
-        "ORDER BY session_id, rowid"
-    ).fetchall()
-
-    sessions: dict = {}  # session_id -> {"project": ..., "heads": [...], "count": n}
-    for session_id, project_id, content in rows:
-        info = sessions.setdefault(
-            session_id, {"project": project_id, "heads": [], "count": 0}
-        )
-        info["count"] += 1
-        if len(info["heads"]) < 5:
-            info["heads"].append((content or "")[:200])
-
-    groups: dict = {}  # (project, fingerprint) -> [session_id, ...]
-    for sid, info in sessions.items():
-        fp = hashlib.sha256("\x1e".join(info["heads"]).encode("utf-8")).hexdigest()
-        groups.setdefault((info["project"], fp), []).append(sid)
-
-    to_delete = []
-    for (_, _), sids in groups.items():
-        if len(sids) < 2:
-            continue
-        # 행 수 최대 → 동률이면 session_id 사전순 최대(최신) 유지
-        keep = max(sids, key=lambda s: (sessions[s]["count"], s))
-        to_delete.extend([(s, sessions[s]["count"]) for s in sids if s != keep])
-    return to_delete
-
-
-def clean_duplicate_sessions(con: sqlite3.Connection, apply: bool) -> None:
-    dups = find_duplicate_sessions(con)
-    total_rows = sum(c for _, c in dups)
-    print(f"== (c) 중복 세션: {len(dups)}개 (행 {total_rows}개)")
-    for sid, count in dups[:30]:
-        print(f"   - {sid} ({count}행)")
-    if len(dups) > 30:
-        print(f"   ... 외 {len(dups) - 30}개")
-    if not apply or not dups:
-        return
-    con.executemany(
-        "DELETE FROM session_history WHERE session_id=?", [(s,) for s, _ in dups]
-    )
-    con.commit()
 
 
 def main() -> None:
@@ -312,7 +261,6 @@ def main() -> None:
         clean_patterns(con, junk_keys, args.apply)
         clean_junk_skills(con, junk_keys, skills_dir, args.apply)
         clean_low_yield_skills(con, args.apply)
-        clean_duplicate_sessions(con, args.apply)
     finally:
         con.close()
 

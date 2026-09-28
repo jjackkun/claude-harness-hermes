@@ -66,6 +66,8 @@
   - `scripts/hermes-privacy-review.py` — 검토 대기를 하나씩 보이고 지움/둠을 받는 확인 명령.
   - `assets/hooks/check-privacy.py` — R-privacy: 스테이징된 파일에 검토 대기가 있으면 커밋을 막는다.
   - `scripts/hermes_signal_store.py` — 실수 신호를 원문 표 대신 신호 표에 적고 읽는다.
+  - `scripts/hermes_token_sessions.py` — 세션마다 나온 패턴 후보 낱말을 적고 몇 세션에 나왔는지 센다(원문 검색 대신).
+  - `lib/gitattributes_block.sh` — `.gitattributes` 에 하네스 마커 블록(추가만 하는 jsonl 에 merge=union)을 쓴다.
   - `scripts/hermes_person.py` — 이 컴퓨터의 사람 이름표(git `user.name`)를 한 곳에서 돌려준다(`hermes-sync.py:53 _person` 을 옮김).
   - 시험: `tests/hermes-carry-knowledge-test.sh` · `tests/hermes-privacy-review-test.sh` · `tests/hermes-no-raw-test.sh`.
 - 룰: R3(판정은 구독 CLI 요약 호출에 얹음) · 새 게이트 R-privacy(차단).
@@ -132,6 +134,11 @@
 - 2026-09-28: 이력의 intent(사람이 준 작업 지시 원문)도 판정한다 — 근거: 리뷰(code-reviewer) HIGH, `hermes-summon.py:97` 이 지시문을 그대로 적는다.
 - 2026-09-28: 받은 파일의 agent_id·사람이 폴더와 다르면 버리고, 경로에는 안전한 id 만 — 근거: 리뷰 MEDIUM, git 으로 온 값이 경로가 된다.
 - 2026-09-28: jsonl 붙이기는 잠근 뒤 다시 읽고 붙인다 — 근거: 리뷰 MEDIUM, 두 Stop 훅이 같은 줄을 두 번 쓴다. fcntl 없는 Windows 는 잠금 없이(들이기가 id 로 거른다).
+- 2026-09-28: 패턴 인정은 `token_session`(세션별 후보 낱말) — 근거: 원문 검색은 옛 세션 아무 곳의 낱말도 셌지만 이제 그 세션의 후보였던 낱말만 센다. 인정이 조금 늦어질 수 있다.
+- 2026-09-28: 실수 신호는 `session_signals` 표 — 근거: 원문 표에 덧붙이던 것이라 원문을 끊으면 갈 곳이 없다. 결정화 증거가 요약과 함께 읽는다.
+- 2026-09-28: `/hermes-recall` 은 옛 원문이 남아 있으면 그것도 읽는다(코드 그대로) — 근거: 이미 쌓인 원문은 지우지 않는다(비목표). 새 세션은 요약 검색으로 찾는다.
+- 2026-09-28: `hermes-cleanup` 의 중복 세션 압축(c)을 걷었다 — 근거: 원문 표 전용 기능.
+- 2026-09-28: 새 모듈 10개를 설치 복사 목록(hermes.conf)에 넣었다 — 근거: 빠지면 소우주에서 import 오류(universe 시험이 잡음).
 - 2026-09-28: 백로그 1~8번 방침을 그대로 목표로 옮김 — 근거: 사용자 결정(백로그 문서 각 절).
 - 2026-09-28: 기존 `sync.json` 은 설치기가 쓴 값만 켠다 — 근거: 지금 설치기는 파일이 있으면 손대지 않아 "무조건 켬" 이 기존 공개 소우주에 닿지 않는다(`sync_autoenable.sh:58`). 사람이 쓴 값은 사람의 결정이라 보존. 리뷰(planner-lite)의 "조용히 켜짐" 우려는 로그 한 줄로 알려 막는다.
 - 2026-09-28: R-privacy 게이트를 `.gitignore` 예외보다 먼저 세운다 — 근거: 리뷰(planner-lite) 순서 지적.

@@ -170,6 +170,8 @@ def extract_query_keywords(query: str) -> list:
 def search_history(con, keywords: list) -> list:
     """1단계 — 대화 원문(FTS5)에서 관련 세션을 bm25 관련도순으로 찾는다.
 
+    원문은 더 이상 저장하지 않는다(T-23) — 이 단계는 **이미 쌓인 옛 원문**만 찾는다. 새 세션은 2단계 요약 검색이 찾는다.
+
     반환: [(session_id, 관련도 최상위 행의 content)] — content 는 스니펫 폴백에 재사용한다.
     """
     if not keywords:

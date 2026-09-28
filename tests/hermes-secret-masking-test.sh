@@ -169,29 +169,7 @@ grep -q 'CLAUDE_PROJECT_DIR="\$project_dir"' "$ROOT/assets/hooks/claude-stop-ret
 assert "Stop 훅이 CLAUDE_PROJECT_DIR 을 백그라운드로 전달" "0" "$?"
 
 echo ""
-echo "== 3. export 경계 — DB 가 오염돼도 파일은 깨끗하다 =="
-DB="$PROJ/.hermes/state.db"
-python3 - "$DB" <<'PY'
-import sqlite3, sys
-con = sqlite3.connect(sys.argv[1])
-con.execute("CREATE TABLE session_history (content TEXT, role TEXT, timestamp TEXT, "
-            "project_id TEXT, session_id TEXT)")
-# ★DB 적재 경계를 우회해 심는다 — 1번 겹이 뚫린 상황의 재현이다.
-con.execute("INSERT INTO session_history VALUES (?,?,?,?,?)",
-            ("계정은 fakeuser | !Fakepw11aa 입니다", "user",
-             "2026-08-10T10:00:00", "proj", "sess1"))
-con.commit(); con.close()
-PY
-(cd "$PROJ" && python3 "$SCRIPTS/hermes-export-history.py" \
-  --db "$DB" --project "$PROJ" --session sess1 >/dev/null 2>&1)
-# 턴 조각 형식(.hermes/history/<세션>/<순번>.jsonl) — 2026-09-16 계획 3 Step 1
-JSONL=$(cat "$PROJ"/.hermes/history/sess1/*.jsonl 2>/dev/null)
-echo "$JSONL" | grep -q 'Fakepw11aa'
-assert "export 된 파일에 원문 없음 (다층 방어)" "1" "$?"
-echo "$JSONL" | grep -q 'REDACTED'
-assert "마스킹 토큰이 기록됨" "0" "$?"
-
-echo ""
+# (3절 export 경계 · 5절 원문 소급 정리는 걷었다 — 대화 원문을 저장하지 않는다, T-23)
 echo "== 4. check-secrets — 커밋 경계 차단 =="
 SCAN="$ROOT/assets/hooks/check-secrets.py"
 mkdir -p "$PROJ/scripts"
@@ -249,28 +227,6 @@ stage_only dotted.txt
 assert "점이 든 비밀번호는 코드 식으로 오인되지 않음" "2" "$?"
 rm -f "$PROJ/dotted.txt"
 (cd "$PROJ" && git reset -q)
-
-echo ""
-echo "== 5. 소급 정리 — 멱등하고, 값을 출력하지 않는다 =="
-# export 로 만들어진 깨끗한 파일 대신, 오염된 파일을 직접 심는다.
-cat > "$PROJ/.hermes/history/2026-08-10-sess2.jsonl" <<'JSONL'
-{"seq": 0, "session_id": "sess2", "role": "user", "content": "fakeuser | !Fakepw11aa", "compacted": true}
-JSONL
-OUT=$(python3 "$SCRIPTS/hermes-scrub-history.py" --db "$DB" --project "$PROJ" 2>&1)
-grep -q 'Fakepw11aa' "$PROJ/.hermes/history/2026-08-10-sess2.jsonl"
-assert "dry-run 이 기본 — 파일을 고치지 않음" "0" "$?"
-echo "$OUT" | grep -q 'Fakepw11aa'
-assert "리포트에 값을 찍지 않음" "1" "$?"
-
-python3 "$SCRIPTS/hermes-scrub-history.py" --db "$DB" --project "$PROJ" --apply >/dev/null 2>&1
-grep -q 'Fakepw11aa' "$PROJ/.hermes/history/2026-08-10-sess2.jsonl"
-assert "--apply 후 원문 제거됨" "1" "$?"
-grep -q '"compacted": true' "$PROJ/.hermes/history/2026-08-10-sess2.jsonl"
-assert "compacted 마커 보존 (export 가드 무력화 방지)" "0" "$?"
-
-OUT=$(python3 "$SCRIPTS/hermes-scrub-history.py" --db "$DB" --project "$PROJ" 2>&1)
-echo "$OUT" | grep -q '0줄 / 0파일'
-assert "멱등 — 재실행 시 변경 0건" "0" "$?"
 
 echo ""
 echo "secret-masking: PASS=$PASS FAIL=$FAIL"

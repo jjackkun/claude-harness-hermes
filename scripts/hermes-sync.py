@@ -2,14 +2,14 @@
 """기억 운반 CLI — 훅·사람이 부르는 진입점.
 
   status     이식 상태와 "기억 없음" 3분류(H-11)
-  push       아직 올리지 않은 조각·이력·자물쇠를 refs/hermes/sync 로
-  pull       원격의 새 조각·이력을 받아 복호·적재 (열쇠 없으면 H-10 안내)
-  backfill   이 컴퓨터 DB 의 기존 원문을 조각으로 만들어 올린다 (세션당 1회, 멱등)
+  push       아직 올리지 않은 패턴 수·공통 요약·자물쇠를 refs/hermes/sync 로
+  pull       원격의 새 패턴 수·공통 요약을 받아 (잠금 모드면 복호해) 적재 (열쇠 없으면 H-10 안내)
   tombstone  원격·로컬에서 경로 하나를 지운다 — **사람 실행 전용**(세션 안 차단)
 
 push 정책은 `.hermes/sync.json`(컴퓨터 로컬, 커밋 안 함). 없으면 로컬 전용. 설치기가 비공개 저장소면 자동으로 쓴다(T-21).
-  {"push": true, "mode": "plain"}                       기본 — 발전 재료(요약·패턴·기억·작업 이력)를 평문으로, 열쇠·age 불필요 (T-17·T-18)
-  {"push": true, "mode": "locked", "history": true}     옵션 — 자유 글 암호문 + 대화 원문까지. 열쇠는 세션 밖에서(T-11)
+  {"push": true, "mode": "plain"}    기본 — 패턴 수·판정 통과한 공통 요약을 평문으로, 열쇠·age 불필요 (T-17·T-18)
+  {"push": true, "mode": "locked"}   옵션 — 자유 글을 암호문으로. 열쇠는 세션 밖에서(T-11)
+대화 원문은 어디에도 저장하지 않는다(계획 carry-agent-knowledge 목표 10) — 옛 sync.json 의 "history" 칸은 무시한다.
 계획: docs/exec-plans/active/2026-09-20-transport-plain.md (원안 2026-09-15-sync-transport-encryption)
 """
 
@@ -17,7 +17,6 @@ import argparse
 import json
 import os
 import sqlite3
-import subprocess
 import sys
 from datetime import datetime, timezone
 
@@ -26,8 +25,7 @@ import hermes_crypto as crypto  # noqa: E402
 import hermes_sync_ref as ref  # noqa: E402
 from hermes_keys import key_path  # noqa: E402
 from hermes_sync_fragments import (  # noqa: E402
-    ensure_sync_tables, import_fragment, import_journal, import_memory, incoming_paths,
-    mark_pushed, outgoing)
+    carried_paths, ensure_sync_tables, incoming_paths, mark_pushed, outgoing)
 from hermes_sync_learning import import_learning  # noqa: E402
 from hermes_person import person  # noqa: E402  (사람 이름표 — git user.name)
 from hermes_universe import universe_id  # noqa: E402
@@ -76,14 +74,6 @@ def _try_join(project: str, uid: str, remote_paths: list, person: str) -> bool:
     return False
 
 
-def _my_remote_paths(project: str, policy: dict) -> list:
-    """이 컴퓨터가 받을 몫: 평문 모드는 원문(.enc)·열쇠 빼고 전부, 잠금 모드는 원문 조각."""
-    paths = ref.list_remote(project)
-    if _mode(policy) == "plain":
-        return [p for p in paths if not p.startswith(("history/", "keys/"))]
-    return [p for p in paths if p.startswith("history/") and p.endswith(".enc")]
-
-
 def _classify(project: str, uid: str, policy: dict) -> str:
     """"기억 없음" 3분류(H-11) + 참조 거부(T-15) 를 한 문장으로."""
     try:
@@ -92,7 +82,7 @@ def _classify(project: str, uid: str, policy: dict) -> str:
         return UNSUPPORTED if exc.unsupported else f"[hermes-sync] fetch 실패: {exc}"
     if not has_store:
         return NO_STORE
-    frags = _my_remote_paths(project, policy)
+    frags = carried_paths(ref.list_remote(project))
     if _mode(policy) == "locked" and not _has_master(uid):
         return MSG_KEYLESS.format(n=len(frags))
     con = _connect(project)
@@ -137,9 +127,6 @@ def cmd_push(args) -> int:
     policy = _precheck(args, "push")
     if policy is None:
         return 0
-    if _mode(policy) == "plain" and policy.get("history"):
-        print("[hermes-sync] 거부: 대화 원문(history)은 잠금 모드에서만 올립니다 — sync.json 의 \"history\" 를 빼거나 \"mode\": \"locked\" 로", file=sys.stderr)
-        return 2
     if _mode(policy) == "locked" and not _has_master(uid):
         print("[hermes-sync] 마스터 열쇠가 없어 push 를 보류합니다 (hermes-keys.sh init 또는 pull 로 합류)")
         return 0
@@ -163,7 +150,6 @@ def cmd_push(args) -> int:
 
 def _import_all(con, project: str, uid: str, paths, plain: bool = False) -> int:
     got = 0
-    touched = set()
     for path in paths:
         data = ref.read_blob(project, path)
         if plain and _is_locked_fragment(path, data):
@@ -172,17 +158,8 @@ def _import_all(con, project: str, uid: str, paths, plain: bool = False) -> int:
             con.execute("INSERT OR IGNORE INTO sync_cursor (path, imported_at) VALUES (?, 'skip:locked')", (path,))
             con.commit()
             continue
-        if path.startswith("history/"):
-            got += import_fragment(con, project, uid, path, data, _now())
-        elif path.startswith("journal/"):
-            got += import_journal(con, uid, path, data, _now())
-        elif path.startswith("memory/"):
-            if import_memory(con, uid, path, data, _now()):
-                got += 1
-                touched.add(path.split("/")[1])
-        elif path.startswith(("summary/", "pattern/")):
+        if path.startswith(("summary/", "pattern/")):
             got += import_learning(con, uid, path, data, _now())
-    _refresh_memory_views(con, project, touched)
     return got
 
 
@@ -197,25 +174,6 @@ def _is_locked_fragment(path: str, data: bytes) -> bool:
     return any(isinstance(v, str) and v.startswith("-----BEGIN AGE") for v in body.values())
 
 
-def _refresh_memory_views(con, project: str, agent_ids: set) -> None:
-    """받은 기억이 있는 에이전트의 MEMORY.md 를 이벤트에서 다시 만든다(계획 agent-memory-roundtrip 목표 1).
-    보기 갱신 실패는 받기 자체를 되돌리지 않는다 — 원본은 이미 memory_events 에 있다."""
-    if not agent_ids:
-        return
-    from hermes_memory_view import write_memory_md
-    try:
-        from hermes_roster import load_roster, find_agent
-        roster = load_roster(project)
-    except Exception:                      # noqa: BLE001 — 명부 없음/손상: 이름 없이 만든다
-        roster, find_agent = {"agents": []}, (lambda r, x: None)
-    for aid in sorted(agent_ids):
-        agent = find_agent(roster, aid) or {}
-        try:
-            write_memory_md(con, project, aid, agent.get("name"))
-        except Exception as exc:           # noqa: BLE001
-            print(f"[hermes-sync] 기억 보기 갱신 실패 agent={aid[:8]}: {exc}", file=sys.stderr)
-
-
 def cmd_pull(args) -> int:
     project, uid = args.project, universe_id(args.project)
     policy = _precheck(args, "pull")
@@ -228,15 +186,13 @@ def cmd_pull(args) -> int:
     except ref.SyncRefError as exc:
         print(UNSUPPORTED if exc.unsupported else f"[hermes-sync] fetch 실패: {exc}")
         return 0
-    remote_paths = ref.list_remote(project)
-    if _mode(policy) == "plain":
-        # 평문 모드: 열쇠 없이 평문 조각만. 원문(.enc)·열쇠(keys/)는 이 컴퓨터 몫이 아니다 — 대기 목록에도 넣지 않는다.
-        remote_paths = [p for p in remote_paths if not p.startswith(("history/", "keys/"))]
-    else:
-        _try_join(project, uid, remote_paths, person(project))
+    all_paths = ref.list_remote(project)
+    # 받을 몫은 summary/·pattern/ 뿐 — 옛 판의 history/·memory/·journal/ 와 열쇠(keys/)는 대기 목록에도 넣지 않는다.
+    remote_paths = carried_paths(all_paths)
+    if _mode(policy) == "locked":
+        _try_join(project, uid, all_paths, person(project))
         if not _has_master(uid):
-            n = sum(1 for p in remote_paths if p.endswith(".enc"))
-            print("[hermes] " + MSG_KEYLESS.format(n=n))
+            print("[hermes] " + MSG_KEYLESS.format(n=len(remote_paths)))
             return 0
     con = _connect(project)
     plain = _mode(policy) == "plain"
@@ -244,16 +200,6 @@ def cmd_pull(args) -> int:
     con.close()
     print(f"[hermes-sync] 새 항목 {got}건 받음")
     return 0
-
-
-def cmd_backfill(args) -> int:
-    """기존 원문 전부를 조각으로 낸 뒤 push. 두 번 돌려도 조각·outbox 는 늘지 않는다(멱등)."""
-    project = args.project
-    export = os.path.join(os.path.dirname(os.path.abspath(__file__)), "hermes-export-history.py")
-    db = os.path.join(project, ".hermes", "state.db")
-    subprocess.run([sys.executable, export, "--db", db, "--project", project, "--all"],
-                   capture_output=True, text=True, timeout=600)
-    return cmd_push(args)
 
 
 def cmd_tombstone(args) -> int:
@@ -268,16 +214,12 @@ def cmd_tombstone(args) -> int:
     except ref.SyncRefError as exc:
         print(f"[hermes-sync] 원격 삭제 실패: {exc}", file=sys.stderr)
         return 1
-    local = os.path.join(project, ".hermes", "history", *args.path.split("/")[1:])
-    local = local[:-len(".enc")] + ".jsonl" if local.endswith(".enc") else local
-    if os.path.isfile(local):
-        os.unlink(local)
     con = _connect(project)
     con.execute("DELETE FROM sync_cursor WHERE path = ?", (args.path,))
     con.execute("DELETE FROM sync_outbox WHERE path = ?", (args.path,))
     con.commit()
     con.close()
-    print(f"[hermes-sync] 지움: {args.path} (원격 참조 재작성 · 로컬 조각 삭제)")
+    print(f"[hermes-sync] 지움: {args.path} (원격 참조 재작성 · 받은/올린 기록 삭제)")
     return 0
 
 
@@ -286,14 +228,14 @@ def main() -> int:
     ap.add_argument("--project", default=os.getcwd())
     ap.add_argument("--force-policy", action="store_true", help="sync.json 없이도 실행(테스트용)")
     sub = ap.add_subparsers(dest="cmd", required=True)
-    for name in ("status", "push", "pull", "backfill"):
+    for name in ("status", "push", "pull"):
         sub.add_parser(name)
     t = sub.add_parser("tombstone")
     t.add_argument("path")
     t.add_argument("--confirm", action="store_true")
     args = ap.parse_args()
     return {"status": cmd_status, "push": cmd_push, "pull": cmd_pull,
-            "backfill": cmd_backfill, "tombstone": cmd_tombstone}[args.cmd](args)
+            "tombstone": cmd_tombstone}[args.cmd](args)
 
 
 if __name__ == "__main__":

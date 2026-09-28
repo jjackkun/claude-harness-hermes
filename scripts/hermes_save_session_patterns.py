@@ -10,6 +10,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from hermes_save_session_storage import connect_db  # noqa: E402
+from hermes_token_sessions import record as record_tokens, session_count  # noqa: E402  (원문 검색 대신)
 from hermes_human_turn import is_human_message  # noqa: E402
 
 # C3 — 불용어 대폭 확장: 일반 단어가 스킬로 결정화되는 것을 차단한다.
@@ -80,7 +81,7 @@ def _is_technical_token(token: str) -> bool:
     return "-" in token or "_" in token or bool(_CAMEL_RE.search(token))
 
 
-def extract_patterns(messages: list, db_path: str = None) -> list:
+def extract_patterns(messages: list, db_path: str = None, session_id: str = "") -> list:
     """현재 세션 대화에서 의미 있는 토큰을 동적으로 추출하고,
     DB cross-session 빈도로 반복 패턴을 판별한다.
 
@@ -137,31 +138,12 @@ def extract_patterns(messages: list, db_path: str = None) -> list:
     if not db_path:
         return [k for k, _, _ in candidates]
 
-    # DB cross-session 빈도 확인 — 2개 이상 세션에서 등장한 것만 패턴으로 인정
+    # 세션 간 빈도 확인 — 2개 이상 세션에서 후보였던 것만 패턴으로 인정.
+    # 대화 원문을 저장하지 않으므로(계획 carry-agent-knowledge 목표 10) 원문 검색 대신 세션별 후보 표를 센다.
     try:
         con = connect_db(db_path)
-        results = []
-        for token, _, _ in candidates:
-            try:
-                # FTS5 MATCH 는 하이픈 등을 구문으로 해석하므로 phrase 인용 필수
-                row = con.execute(
-                    "SELECT COUNT(DISTINCT session_id) FROM session_history "
-                    "WHERE session_history MATCH ? AND role IN ('user','assistant')",
-                    ('"' + token.replace('"', '""') + '"',),
-                ).fetchone()
-            except Exception:
-                # FTS5 MATCH 실패 시 (특수문자 등) LIKE 폴백
-                try:
-                    row = con.execute(
-                        "SELECT COUNT(DISTINCT session_id) FROM session_history "
-                        "WHERE content LIKE ?",
-                        (f"%{token}%",),
-                    ).fetchone()
-                except Exception as e:
-                    print(f"[hermes] cross-session 조회 실패({token}): {e}", file=sys.stderr)
-                    row = None
-            if row and row[0] >= 2:
-                results.append(token)
+        record_tokens(con, [k for k, _, _ in candidates], session_id)
+        results = [k for k, _, _ in candidates if session_count(con, k) >= 2]
         con.close()
         return results
     except Exception as e:

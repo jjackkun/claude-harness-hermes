@@ -18,10 +18,10 @@ tier: 0  assets/hooks/context_budget.py
 tier: 1  scripts/hermes-cleanup.py
 tier: 0  scripts/hermes-correlate.py scripts/hermes-evolve-skill.py
 tier: 0  scripts/hermes-increment.py scripts/hermes-manager.py scripts/hermes-message.py
-tier: 0  scripts/hermes-prune.py scripts/hermes-reindex.py scripts/hermes_lifecycle_apply.py
+tier: 0  scripts/hermes-prune.py
 tier: 0  scripts/hermes_reuse.py scripts/hermes_secret_values.py scripts/hermes_skills.py
 tier: 0  scripts/hermes_skill_render.py
-tier: 0  scripts/hermes_keywords.py scripts/hermes_history_fragments.py
+tier: 0  scripts/hermes_keywords.py
 # git 무시 판정기(계획 2026-09-22-gitignore-judge): 표준 모듈만.
 tier: 0  scripts/git_ignore_judge.py
 tier: 0  scripts/hermes_persona_source.py scripts/hermes_persona_store.py scripts/hermes_persona_score.py scripts/hermes_persona_decisions.py scripts/hermes_rule_candidates.py
@@ -90,8 +90,8 @@ tier: 1  scripts/hermes_redact.py scripts/hermes_search_fallback.py
 tier: 3  scripts/hermes-search.py
 tier: 2  scripts/hermes-skill.py
 tier: 1  scripts/hermes_dream_evolve.py scripts/hermes_journal.py
-tier: 2  scripts/hermes-export-history.py scripts/hermes-lifecycle.py scripts/hermes-recall.py
-tier: 2  scripts/hermes-scrub-history.py scripts/hermes-summarize.py scripts/hermes_loop.py
+tier: 2  scripts/hermes-recall.py
+tier: 2  scripts/hermes-summarize.py scripts/hermes_loop.py
 tier: 2  scripts/hermes_mesh_gate.py scripts/hermes_save_session_storage.py
 tier: 2  scripts/hermes-dream.py scripts/hermes-journal.py
 tier: 3  scripts/hermes-init.py scripts/hermes_loop_prompt.py scripts/hermes_loop_report.py

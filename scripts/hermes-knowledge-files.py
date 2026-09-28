@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """에이전트 지식 파일(기억 · 대화 요약 · 작업 이력)의 세션 끝 내보내기와 세션 시작 들이기를 순서대로 부른다.
 
-  export  — 아직 판정 안 한 문장(요약 항목 · 기억 · 이력 교훈·결정 · 스킬 본문)을 한 번에 판정한 뒤, 통과한 것만 파일로 쓴다
+  export  — 아직 판정 안 한 문장(요약 항목 · 기억 · 이력 교훈·결정 · 스킬 본문 · 패턴 키)을 한 번에 판정한 뒤, 통과한 것만 파일로 쓴다
+            (요약·패턴 키는 운반이 판정 결과를 읽는다)
   import  — git 으로 받은 파일에서 DB 에 없는 것을 들이고, 기억이 들어온 에이전트의 MEMORY.md 를 다시 만든다
 
 파일이 원본이다 — 컴퓨터를 옮기면 git pull 만으로 따라간다(운반이 꺼진 공개 저장소에서도).
@@ -38,6 +39,14 @@ def skill_items(project: str) -> list:
     return items
 
 
+def pattern_items(con) -> list:
+    """운반으로 나갈 패턴 키 [(kind, ref, text)] — 대화에서 나온 낱말이라 같은 판정을 거친다."""
+    try:
+        return [("pattern", "", k) for (k,) in con.execute("SELECT pattern_key FROM pattern_count")]
+    except sqlite3.OperationalError:
+        return []
+
+
 def _connect(project: str):
     db = os.path.join(project, ".hermes", "state.db")
     if not os.path.isfile(db):
@@ -52,7 +61,7 @@ def cmd_export(project: str) -> int:
     if con is None:
         return 0
     items = (conversations.judge_items(con) + memory.judge_items(con)
-             + journal.judge_items(con, project) + skill_items(project))
+             + journal.judge_items(con, project) + skill_items(project) + pattern_items(con))
     judged = judge_and_mark(con, items)
     m, c, j = memory.export(con, project), conversations.export(con, project), journal.export(con, project)
     held = len(pending_rows(con))

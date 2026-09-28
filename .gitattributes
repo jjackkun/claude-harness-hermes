@@ -1,0 +1,5 @@
+# >>> harness-agent-preset >>>
+# Auto-managed by claude-harness-hermes. Do not edit between markers.
+.hermes/agents/*/memory.jsonl merge=union
+.hermes/journal.jsonl merge=union
+# <<< harness-agent-preset <<<

@@ -229,25 +229,28 @@ def _items(slots: dict) -> set:
     return {str(x) for k in SLOT_KEYS for x in (slots.get(k) or [])}
 
 
-def _held(new: set, old: set, flagged) -> set:
-    """새 항목 중 대기로 둘 것. 판정 칸이 없거나 걸린 문장이 새 항목과 짝이 안 맞으면 새 항목 전부."""
+def _held(new: set, old: set, flagged):
+    """새 항목 중 대기로 둘 것. 판정 칸이 없거나 걸린 문장이 새 항목과 짝이 안 맞으면 None — 이번엔 적지 않는다."""
     if flagged is None:
-        return new
+        return None
     by_norm = {_norm(t): t for t in new}
     flags = {_norm(f) for f in flagged if str(f).strip()} - {_norm(t) for t in old}
     matched = {by_norm[f] for f in flags if f in by_norm}
-    return new if len(matched) < len(flags) else matched
+    return None if len(matched) < len(flags) else matched
 
 
 def mark_flagged(db_path, session_id, prev_slots, slots, flagged) -> int:
     """이번에 새로 생긴 요약 항목을 판정 표에 적는다 — 걸린 것은 대기, 나머지는 clean. 대기 수.
-    판정 칸이 없거나(flagged None) 걸린 문장 중 하나라도 항목과 짝이 안 맞으면 새 항목 전부를 대기로 둔다
-    (모델이 표시한 문장을 놓쳐 조용히 올라가는 것보다 사람이 한 번 더 보는 쪽이 낫다 — 리뷰 HIGH)."""
+    판정 칸이 없거나(flagged None) 걸린 문장 중 하나라도 항목과 짝이 안 맞으면 **아무것도 적지 않는다** —
+    판정 기록이 없는 항목은 내보내지 않고, 세션 끝 묶음 판정(hermes_privacy_judge, 번호 기반)이 다시 가린다
+    (모델이 표시한 문장을 놓쳐 조용히 올라가는 것은 막고, 실패를 사람 확인 대기로 쌓지도 않는다 — 리뷰 HIGH · 실측 2026-09-28)."""
     old = _items(prev_slots)
     new = _items(slots) - old
     if not new:
         return 0
     held = _held(new, old, flagged)
+    if held is None:
+        return 0
     con = connect_db(db_path)
     for text in sorted(new):
         mark(con, "summary", session_id, text, "pending" if text in held else "clean")

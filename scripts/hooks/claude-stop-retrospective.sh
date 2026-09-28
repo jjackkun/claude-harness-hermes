@@ -116,15 +116,6 @@ setsid bash -c '
     --db "$HERMES_DB_PATH" \
     >>"$HERMES_LOG" 2>&1 || true
 
-  # 6. 대화 원본 git 텍스트 export (다른 컴퓨터 이식용)
-  if [[ -n "$HERMES_SESSION_ID" ]]; then
-    timeout 30 python3 "$HERMES_SCRIPTS_DIR/hermes-export-history.py" \
-      --db "$HERMES_DB_PATH" \
-      --project "$HERMES_PROJECT_DIR" \
-      --session "$HERMES_SESSION_ID" \
-      >>"$HERMES_LOG" 2>&1 || true
-  fi
-
   # 6.5 에이전트 지식 파일 — 판정을 통과한 기억·대화 요약·작업 이력을 git 추적 파일로 (계획 carry-agent-knowledge 목표 4~6)
   if [[ -f "$HERMES_SCRIPTS_DIR/hermes-knowledge-files.py" ]]; then
     timeout 120 python3 "$HERMES_SCRIPTS_DIR/hermes-knowledge-files.py" export \

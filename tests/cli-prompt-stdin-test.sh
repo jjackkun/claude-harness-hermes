@@ -35,7 +35,7 @@ assert "cron 러너는 프롬프트를 stdin 으로 넘긴다" "1" "$(grep -cE "
 
 # 호출을 바꾼 곳은 input= 으로 stdin 을 **명시**한다 — 빠지면 부모 stdin 을 물려받는다.
 for f in hermes-crystallize.py hermes-summon.py hermes-loop.py hermes-summarize.py hermes-evolve-skill.py \
-         hermes-lifecycle.py hermes_mesh_gate.py hermes-dream.py hermes_search_fallback.py hermes_persona_extract.py; do
+         hermes_mesh_gate.py hermes-dream.py hermes_search_fallback.py hermes_persona_extract.py; do
   assert "$f 는 input= 으로 프롬프트를 준다" "yes" "$(grep -q 'input=' "$REPO_ROOT/scripts/$f" && echo yes || echo no)"
 done
 

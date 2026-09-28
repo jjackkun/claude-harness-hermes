@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# 설치기의 기억 운반 자동 켜기 (T-19·T-21, 계획 2026-09-20-transport-plain 목표 5). gh 는 스텁(네트워크 0).
+# 설치기의 기억 운반 자동 켜기 (T-19·T-21·**T-22**, 계획 carry-agent-knowledge 목표 9). gh 는 스텁(네트워크 0).
 #   1. PRIVATE → sync.json {push:true, mode:plain} + 첫 push 로 refs/hermes/sync 생성
-#   2. PUBLIC  → {push:false} · 3. gh 실패 → unknown, push:false · 4. 이미 있는 sync.json 보존 · 5. CLAUDECODE 있으면 아무것도 안 함
+#   2. PUBLIC·3. 미상도 켠다(T-22) · 4. 사람이 쓴 sync.json 보존 · 5. 세션 안에서도 켠다
+#   8. 설치기가 전에 쓴 push:false 는 켜고 로그 한 줄 · 사람이 쓴 push:false 는 그대로
 set -uo pipefail
 export HARNESS_SYNC_AUTOENABLE=1   # run-all.sh 가 전역으로 0 을 내보낸다 — 이 테스트는 바로 그 기능을 검증하므로 스스로 켠다(gh·프로브를 스텁으로 대체하므로 네트워크 0). 2026-09-20: 이것 없이 CI 에서 통째로 빨갰다
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"; S="$REPO_ROOT/scripts"
@@ -28,19 +29,20 @@ pol() { python3 -c "import json,sys;d=json.load(open(sys.argv[1]));print(d.get('
 
 echo "[1] PRIVATE → 평문 운반 켬 + 첫 push"
 A="$TMP/A"; mk "$A"
-python3 "$A/scripts/hermes-journal.py" --project "$A" emit --json '{"kind":"task.started","task_id":"t1","intent":"첫 push 재료","actor":"agent:main"}' >/dev/null 2>&1   # 올릴 것이 있어야 ref 가 생긴다
+python3 -c "import sqlite3,sys;c=sqlite3.connect(sys.argv[1]);c.execute('CREATE TABLE IF NOT EXISTS pattern_count (id INTEGER PRIMARY KEY AUTOINCREMENT, pattern_key TEXT NOT NULL UNIQUE, count INTEGER DEFAULT 1, last_seen DATETIME DEFAULT CURRENT_TIMESTAMP, crystallized INTEGER DEFAULT 0)');c.execute(\"INSERT INTO pattern_count (pattern_key,count) VALUES ('첫 push 재료',1)\");c.commit()" "$A/.hermes/state.db"   # 운반 재료(패턴 수)
+PYTHONPATH="$S" python3 -c "import sqlite3,sys;from hermes_privacy_pending import mark;c=sqlite3.connect(sys.argv[1]);mark(c,'pattern','','첫 push 재료','clean');c.commit()" "$A/.hermes/state.db"   # 판정 통과만 운반된다   # 올릴 것이 있어야 ref 가 생긴다
 run "$A" GH_STUB_VIS=PRIVATE
 assert "sync.json = push true · plain · PRIVATE" "True plain PRIVATE" "$(pol "$A")"
 assert "첫 push 로 refs/hermes/sync 생성" 1 "$(git ls-remote "$BARE" refs/hermes/sync | grep -c .)"
 assert "로그에 켬 안내" 1 "$(grep -c '평문 운반 켬' <<<"$OUT")"
 
-echo "[2] PUBLIC → 끔"
+echo "[2] PUBLIC → 그래도 켠다(T-22)"
 B="$TMP/B"; mk "$B"; run "$B" GH_STUB_VIS=PUBLIC
-assert "sync.json = push false · PUBLIC" "False None PUBLIC" "$(pol "$B")"
+assert "sync.json = push true · plain · PUBLIC" "True plain PUBLIC" "$(pol "$B")"
 
-echo "[3] gh 실패 → 미상, 끔"
+echo "[3] gh 실패 → 미상이어도 켠다"
 C="$TMP/C"; mk "$C"; run "$C" GH_STUB_FAIL=1
-assert "sync.json = push false · unknown" "False None unknown" "$(pol "$C")"
+assert "sync.json = push true · plain · unknown" "True plain unknown" "$(pol "$C")"
 
 echo "[4] 이미 있는 sync.json 은 보존"
 D="$TMP/D"; mk "$D"; echo '{"push": true, "mode": "locked", "history": true}' > "$D/.hermes/sync.json"; run "$D" GH_STUB_VIS=PRIVATE
@@ -54,15 +56,22 @@ assert "세션 안에서도 sync.json 평문으로 켜짐" "True plain PRIVATE" 
 
 echo "[6] origin 없으면 gh 를 부르지 않고 미상"
 F="$TMP/F"; mk "$F"; git -C "$F" remote remove origin; run "$F" GH_STUB_VIS=PRIVATE
-assert "origin 없음 → unknown" "False None unknown" "$(pol "$F")"
+assert "origin 없음 → unknown 이어도 켬" "True plain unknown" "$(pol "$F")"
 
 echo "[7] gh 가 못 답해도(GitLab 등) 익명 프로브로 판별 — 강제값으로 실측"
 G="$TMP/G"; mk "$G"; run "$G" GH_STUB_FAIL=1 HARNESS_SYNC_PROBE=private
 assert "프로브 private → 평문 켜짐" "True plain PRIVATE" "$(pol "$G")"
 H="$TMP/H"; mk "$H"; run "$H" GH_STUB_FAIL=1 HARNESS_SYNC_PROBE=public
-assert "프로브 public → 끔" "False None PUBLIC" "$(pol "$H")"
+assert "프로브 public → 켬(T-22)" "True plain PUBLIC" "$(pol "$H")"
 I="$TMP/I"; mk "$I"; git -C "$I" remote set-url origin "git@gitlab.example.com:me/repo.git"
 assert "ssh origin → https 변환" "https://gitlab.example.com/me/repo.git" "$(bash -c "source '$REPO_ROOT/lib/sync_autoenable.sh'; _sync_https_url 'git@gitlab.example.com:me/repo.git'")"
 assert "로컬 경로 origin 은 프로브 대상 아님(빈 값)" "" "$(bash -c "source '$REPO_ROOT/lib/sync_autoenable.sh'; _sync_https_url '/tmp/bare'")"
+
+echo "[8] 설치기가 전에 끈 값은 켠다 · 사람이 끈 값은 그대로"
+J="$TMP/J"; mk "$J"; echo '{"push": false, "visibility": "PUBLIC", "set_by": "installer"}' > "$J/.hermes/sync.json"; run "$J" GH_STUB_VIS=PUBLIC
+assert "설치기가 쓴 push:false → 켬" "True plain PUBLIC" "$(pol "$J")"
+assert "로그에 '전에 끈 운반을 켭니다' 한 줄" 1 "$(grep -c '전에 끈 운반을 켭니다' <<<"$OUT")"
+K="$TMP/K"; mk "$K"; echo '{"push": false}' > "$K/.hermes/sync.json"; run "$K" GH_STUB_VIS=PRIVATE
+assert "사람이 쓴 push:false 는 그대로" "False None None" "$(pol "$K")"
 
 echo; echo "sync-autoenable: PASS=$PASS FAIL=$FAIL"; [[ $FAIL -eq 0 ]]

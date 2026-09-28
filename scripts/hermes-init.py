@@ -221,7 +221,7 @@ def _apply_schema(con: sqlite3.Connection, scope: str):
     """)
 
     # compaction_log — 생애주기 압축 감사 기록 (무엇을·언제·왜 압축했는지, Part D)
-    # hermes_lifecycle_apply 가 동일 DDL 로 자가수리한다. 정본은 여기.
+    # 옛 생애주기 압축(걷음, T-23)이 쓰던 표 — 이미 쌓인 기록 때문에 만들기는 남긴다. 정본은 여기.
     cur.execute("""
         CREATE TABLE IF NOT EXISTS compaction_log (
             id            INTEGER PRIMARY KEY AUTOINCREMENT,

@@ -8,10 +8,8 @@ import json
 import os
 import sqlite3
 import sys
-from datetime import datetime
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from hermes_redact import project_dir_for_db, redact  # noqa: E402  (민감정보 마스킹 공유 헬퍼)
 from hermes_human_turn import HUMAN_MARK, is_human_entry  # noqa: E402  (사람 입력 판정)
 
 
@@ -61,59 +59,6 @@ def load_transcript(path: str) -> list:
     return messages
 
 
-def save_session(db_path: str, messages: list, project_id: str, session_id: str):
-    # 정답지 위치는 db_path 에서 되짚는다 — CLAUDE_PROJECT_DIR 폴백에 기대지 않는다.
-    project_dir = project_dir_for_db(db_path)
-    """세션 저장. 같은 session_id 재저장 시 이전 행을 교체한다 (C2)."""
-    con = connect_db(db_path)
-    con.isolation_level = None  # 명시적 트랜잭션 제어
-    cur = con.cursor()
-
-    # 매 턴 Stop 훅이 전체 transcript 를 다시 보내므로,
-    # 누적 INSERT 대신 같은 세션의 이전 행을 지우고 최신 1벌만 유지한다.
-    # Stop 훅이 연속 발화해 두 프로세스가 겹쳐도 DELETE+INSERT 가 인터리빙되지
-    # 않도록 BEGIN IMMEDIATE 로 쓰기 락을 선점한 단일 트랜잭션으로 묶는다.
-    inserted = 0
-    try:
-        cur.execute("BEGIN IMMEDIATE")
-        cur.execute("DELETE FROM session_history WHERE session_id = ?", (session_id,))
-
-        ts = datetime.now().isoformat()
-        for msg in messages:
-            if not isinstance(msg, dict):
-                continue
-            role = msg.get("role", "")
-            if role not in ("user", "assistant", "tool"):
-                continue
-            raw = msg.get("content", "")
-            if isinstance(raw, list):
-                content = " ".join(
-                    p.get("text", "") for p in raw if isinstance(p, dict) and "text" in p
-                )
-            else:
-                content = str(raw)
-            content = content.strip()
-            if not content:
-                continue
-            content = redact(content, project_dir)  # 원문 적재 전 민감정보 마스킹
-
-            cur.execute(
-                "INSERT INTO session_history (content, role, timestamp, project_id, session_id) "
-                "VALUES (?, ?, ?, ?, ?)",
-                (content, role, ts, project_id, session_id),
-            )
-            inserted += 1
-        cur.execute("COMMIT")
-    except Exception:
-        try:
-            cur.execute("ROLLBACK")
-        except sqlite3.OperationalError:
-            pass
-        raise
-    finally:
-        con.close()
-    print(f"[hermes] session saved: {inserted} messages → {db_path}")
-    return inserted
 
 
 def update_patterns(db_path: str, patterns: list, session_id: str) -> list:

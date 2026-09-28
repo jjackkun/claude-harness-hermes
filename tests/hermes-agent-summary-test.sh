@@ -6,7 +6,7 @@
 #   3 @ 호출: SubagentStart 기록(match=mention)이 있는 서브에이전트만 → sub:<id> 행, agent_id = 명부 id · 기록 없음(내부 보조)·명부 밖 → 행 0
 #   4 주입: 출근 본문에 "나와 나눈 최근 대화" — 자기 키 요약만 · 4,096 B 상한 · 은퇴자 → 본문 없음
 #   5 공통만: 회상(최신 1건·키워드)·드리밍 재료에 에이전트 키 요약이 안 들어간다
-#   6 운반: 내보내기에 agent_id · 들여오기가 보존 · 구버전(칸 없는) 몸통이 와도 로컬 agent_id 유지
+#   6 운반: 에이전트 요약은 운반에 안 실린다(A-11) · 들여오기가 보존 · 구버전(칸 없는) 몸통이 와도 로컬 agent_id 유지
 #   자기 검사: 주입 구획을 끄면 4 가 빨개진다
 #
 # 요약용 모델 호출은 가짜 claude(고정 5칸 JSON)로 대신한다 — 사용량 0.
@@ -140,8 +140,8 @@ echo "== 6. 운반"
 R="$(PYTHONPATH="$S" python3 -c "
 import sqlite3, json; from hermes_sync_learning import _outgoing_summaries
 c=sqlite3.connect('$DB'); out=_outgoing_summaries(c, lambda t: t, set())
-b=[json.loads(v) for k,v in out.items() if '/$ROOM/' in k][0]; print(b.get('agent_id',''))" 2>/dev/null)"
-assert "내보내기에 agent_id" "$GQ" "$R"
+print(sum(1 for k in out if '/$ROOM/' in k))" 2>/dev/null)"
+assert "운반에 에이전트 요약은 안 실린다(git 파일 conversations/ 가 옮긴다, A-11)" 0 "$R"
 PYTHONPATH="$S" python3 -c "
 import sqlite3; from hermes_sync_learning import _import_summary
 c=sqlite3.connect('$DB')
@@ -181,11 +181,6 @@ import importlib.util, sqlite3
 s=importlib.util.spec_from_file_location('r','$N/hermes-recall.py'); m=importlib.util.module_from_spec(s); s.loader.exec_module(m)
 c=sqlite3.connect('$OLDDB'); m._ensure_schema(c); r=m.latest_other_summary(c,'p','none'); print(r['session_id'] if r else 'none')" 2>&1 | tail -1)"
 assert "도우미 없는 옛 DB 에서도 회상이 돈다" o1 "$R"
-R="$(PYTHONPATH="$S" python3 -c "
-import importlib.util, sqlite3
-s=importlib.util.spec_from_file_location('l','$S/hermes-lifecycle.py'); m=importlib.util.module_from_spec(s); s.loader.exec_module(m)
-c=sqlite3.connect('$DB'); print(repr(m._session_evidence(c,'far-1','')), bool(m._session_evidence(c,'$MAIN','')))" 2>&1 | tail -1)"
-assert "lifecycle: 에이전트 몫 세션은 재료 없음 · 공통 세션은 재료 있음" "'' True" "$R"
 
 echo "== 자기 검사 — 주입 구획을 끄면 4 가 빨개진다"
 M="$T/mut"; mkdir -p "$M"; for f in "$S"/*.py; do ln -s "$f" "$M/"; done

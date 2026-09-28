@@ -56,6 +56,10 @@ docs/superpowers/plans/
 !.hermes/agents/*/skills/
 !.hermes/agents/*/skills/**
 !.hermes/organization.yaml
+!.hermes/agents/*/memory.jsonl
+!.hermes/agents/*/conversations/
+!.hermes/agents/*/conversations/**
+!.hermes/journal.jsonl
 .hermes/summons/
 !.hermes/units/
 !.hermes/units/*/
@@ -65,9 +69,7 @@ docs/superpowers/plans/
 # <<< harness-agent-preset <<<
 
 # ── 공장(이 저장소) 전용: 마커 블록 뒤에 와야 예외를 되무시할 수 있다 ─────────────
-# 마커 블록은 .hermes/* 를 무시하고 factory.json · skills/ · history/ 를 예외로 푼다.
-# 공장은 소우주가 아니다 — 대화 원문(history, 평문)과 결정화 스킬은 코드 저장소에 싣지 않는다
-# (설계 raw-transcript.md §3, 계획 3 목표 1). factory.json 만 추적한다.
+# 이미 쌓인 옛 대화 원문(history)은 커밋하지 않는다 — 원문은 더 이상 만들지 않는다(T-23).
+# 결정화 스킬은 2026-09-28 부터 커밋한다(C-32) — 저장소 안에서 생긴 스킬은 그 저장소에 올린다. 설치기는 복사하지 않는다.
 # 주의: `.hermes/` 를 통째로 무시하면 git 이 하위로 내려가지 않아 예외까지 무효가 된다(리뷰 2026-09-16 HIGH).
 .hermes/history/
-.hermes/skills/

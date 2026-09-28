@@ -3,6 +3,7 @@
 hermes-crystallize.py 에서 떼어냈다(R-size 500 초과, 2026-09-20). 표준 모듈만 쓴다.
 공개 함수 5개: derive_search_terms · fetch_evidence · fetch_memory_evidence · get_pattern_count · evidence_for
 """
+import json
 import os
 import re
 import sqlite3
@@ -34,6 +35,38 @@ def derive_search_terms(key: str) -> list[str]:
     return result[:5]
 
 
+def _evidence_rows(con, term: str, limit: int) -> list:
+    """한 검색어로 찾은 (출처, 문장). 공통 요약(에이전트 대화 요약 제외, C-29)과 실수 신호에서 찾는다.
+    대화 원문은 저장하지 않는다(계획 carry-agent-knowledge 목표 10)."""
+    like = "%" + term + "%"
+    rows = [("요약", r[0]) for r in con.execute(
+        "SELECT slots_json FROM session_summary WHERE slots_json LIKE ? AND (agent_id IS NULL OR agent_id = '') "
+        "ORDER BY updated_at DESC LIMIT ?", (like, limit)).fetchall()]
+    try:
+        rows += [("신호", r[0]) for r in con.execute(
+            "SELECT content FROM session_signals WHERE content LIKE ? ORDER BY ts DESC LIMIT ?", (like, limit)).fetchall()]
+    except sqlite3.OperationalError:
+        pass                                        # 신호 표가 아직 없음(신호가 한 번도 안 난 소우주)
+    return rows
+
+
+def _summary_lines(raw: str, term: str) -> list:
+    """요약 5칸 중 검색어가 든 항목만."""
+    try:
+        data = json.loads(raw) if raw else {}
+    except ValueError:
+        return [raw]
+    return [str(x) for v in data.values() if isinstance(v, list) for x in v if term.lower() in str(x).lower()]
+
+
+def _term_snippets(con, term: str, limit: int) -> list:
+    out = []
+    for kind, text in _evidence_rows(con, term, limit):
+        lines = _summary_lines(text, term) if kind == "요약" else [text]
+        out += [f"[{kind}] {x[:300].strip()}" for x in lines]
+    return out
+
+
 def fetch_evidence(db_path: str, search_terms: list[str], limit: int = 5) -> str:
     if not os.path.isfile(db_path):
         return "(DB 없음)"
@@ -42,18 +75,7 @@ def fetch_evidence(db_path: str, search_terms: list[str], limit: int = 5) -> str
         snippets: list[str] = []
         for term in search_terms[:3]:
             try:
-                # FTS5 MATCH 는 하이픈 등을 구문으로 해석하므로 phrase 인용 필수
-                rows = con.execute(
-                    "SELECT role, content FROM session_history "
-                    "WHERE session_history MATCH ? "
-                    "ORDER BY timestamp DESC LIMIT ?",
-                    ('"' + term.replace('"', '""') + '"', limit),
-                ).fetchall()
-                for role, content in rows:
-                    short = content[:300].replace("\n", " ").strip()
-                    entry = f"[{role}] {short}"
-                    if entry not in snippets:
-                        snippets.append(entry)
+                snippets += [e for e in _term_snippets(con, term, limit) if e not in snippets]
                 if len(snippets) >= limit:
                     break
             except Exception as e:

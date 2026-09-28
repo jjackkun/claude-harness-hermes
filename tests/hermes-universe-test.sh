@@ -109,22 +109,21 @@ DB="$PROJ/.hermes/state.db"
 TR="$TMP/tr.jsonl"
 python3 -c "
 import json,sys
-m=lambda t,x: json.dumps({'type':t,'message':{'role':t,'content':[{'type':'text','text':x}]}})
-open(sys.argv[1],'w').write('\n'.join(
-  m('user','universe 키 전환 확인 절차를 다시 점검 부탁합니다 %d'%i)+'\n'+
-  m('assistant','universe 키 전환 규칙대로 진행합니다 점검 %d'%i) for i in range(3)))
+tu=json.dumps({'type':'assistant','message':{'role':'assistant','content':[{'type':'tool_use','id':'tu1','name':'Bash','input':{'command':'pytest tests/test_auth.py'}}]}})
+tr=json.dumps({'type':'user','message':{'role':'user','content':[{'type':'tool_result','tool_use_id':'tu1','is_error':True,'content':[{'type':'text','text':'FAILED auth_service.py:42 AssertionError'}]}]}})
+open(sys.argv[1],'w').write(tu+'\n'+tr)
 " "$TR"
 python3 "$PROJ/scripts/hermes-save-session.py" --db "$DB" --transcript "$TR" --session-id uni-a >/dev/null 2>&1
 saved_a="$(python3 -c "
 import sqlite3;print(sqlite3.connect('$DB').execute(
-  \"select distinct project_id from session_history where session_id='uni-a'\").fetchone()[0])" 2>/dev/null)"
-assert "save-session 이 universe.id 를 project_id 로 저장(session_history)" "$FIRST" "$saved_a"
+  \"select distinct project_id from session_signals where session_id='uni-a'\").fetchone()[0])" 2>/dev/null)"
+assert "save-session 이 universe.id 를 project_id 로 저장(session_signals — 원문은 저장 안 함)" "$FIRST" "$saved_a"
 
 MOVED2="$TMP/renamed2"; mv "$PROJ" "$MOVED2"
 python3 "$MOVED2/scripts/hermes-save-session.py" --db "$MOVED2/.hermes/state.db" --transcript "$TR" --session-id uni-b >/dev/null 2>&1
 saved_b="$(python3 -c "
 import sqlite3;print(sqlite3.connect('$MOVED2/.hermes/state.db').execute(
-  \"select distinct project_id from session_history where session_id='uni-b'\").fetchone()[0])" 2>/dev/null)"
+  \"select distinct project_id from session_signals where session_id='uni-b'\").fetchone()[0])" 2>/dev/null)"
 assert "폴더 이름을 바꿔도 같은 project_id" "$FIRST" "$saved_b"
 mv "$MOVED2" "$PROJ"
 

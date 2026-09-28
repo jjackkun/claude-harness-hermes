@@ -323,9 +323,6 @@ REGISTERED_TESTS=(
   hermes-skill-yield-test.sh
   hermes-cleanup-step5-test.sh
   memory-symlink-roundtrip-test.sh
-  hermes-history-export-test.sh
-  hermes-lifecycle-test.sh
-  hermes-lifecycle-portability-test.sh
   hermes-mesh-consume-test.sh
   hermes-mesh-gate-test.sh
   run-all-orphan-guard-test.sh

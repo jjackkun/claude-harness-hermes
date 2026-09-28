@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
 # 기억 운반을 설치기가 켠다 (T-19 · T-21, 계획 2026-09-20-transport-plain 목표 5).
 # 왜 여기서: 켜는 절차가 사람 손에 있으면 아무 소우주도 켜지 않는다(2026-09-20 실측 0곳). 설치기는 이미 세션 밖에서 사람이 돌린다.
-# 판단: 저장소가 비공개(PRIVATE·INTERNAL)면 평문 운반 켬 + 첫 push. 공개(PUBLIC)·미상이면 끔(sync.json 은 남겨 이유를 적는다).
-# 건드리지 않는 것: 이미 있는 sync.json(사람이 정한 값) · HARNESS_SYNC_AUTOENABLE=0. 평문 모드라 세션 안에서도 켠다(열쇠 없음).
+# 판단(2026-09-28 고침, 계획 carry-agent-knowledge 목표 9): 공개·비공개 구분 없이 **평문 운반을 켠다.**
+#   운반에 남은 것은 패턴 수와 판정을 통과한 공통 요약뿐이다 — 에이전트 기억·대화 요약·작업 이력은 git 파일이 원본,
+#   대화 원문은 저장하지 않는다. 공개 저장소면 꺼지던 T-18 을 고친다(학습이 컴퓨터마다 끊기던 원인).
+# 건드리지 않는 것: 사람이 쓴 sync.json(set_by 가 installer 가 아님) · HARNESS_SYNC_AUTOENABLE=0.
+#   설치기가 전에 쓴 "push": false 는 켜고, 그 사실을 설치 로그에 한 줄 남긴다(조용히 켜지 않는다).
 # 공개 함수 2개: sync_visibility <project> · sync_autoenable <project>
 
 # sync_visibility <project> → PRIVATE | INTERNAL | PUBLIC | unknown
@@ -56,23 +59,29 @@ sync_autoenable() {
   [[ "${HARNESS_SYNC_AUTOENABLE:-1}" == "0" ]] && { log_info "  sync    → 자동 켜기 생략(HARNESS_SYNC_AUTOENABLE=0)"; return 0; }
   # AI 세션 안에서도 켠다 — 평문 모드는 열쇠를 만들지 않으므로 세션 밖 규칙(T-11)과 무관하다(2026-09-20 정정, T-21).
   if [[ -f "$policy" ]]; then
-    log_info "  sync    → sync.json 있음 — 그대로 둔다(사람이 정한 값)"; return 0
+    if ! _sync_installer_off "$policy"; then
+      log_info "  sync    → sync.json 있음 — 그대로 둔다(사람이 정한 값)"; return 0
+    fi
+    log_info "  sync    → 설치기가 전에 끈 운반을 켭니다(공개·비공개 무관, 계획 carry-agent-knowledge 목표 9): $project"
   fi
   [[ -d "$project/.hermes" ]] || return 0
   vis="$(sync_visibility "$project")"
-  case "$vis" in
-    PRIVATE|INTERNAL)
-      printf '{"push": true, "mode": "plain", "visibility": "%s", "set_by": "installer"}\n' "$vis" > "$policy"
-      log_info "  sync    → 비공개 저장소($vis): 평문 운반 켬 — 요약·패턴·기억·작업 이력이 refs/hermes/sync 로 간다(원문 제외, T-17)"
-      if [[ -f "$project/scripts/hermes-sync.py" ]]; then
-        (cd "$project" && timeout "${HERMES_SYNC_TIMEOUT:-60}" python3 scripts/hermes-sync.py --project "$project" push 2>&1 | sed 's/^/  sync    → /') || log_warn "  sync    → 첫 push 실패 — 다음 세션 종료 때 다시 시도한다"
-      fi ;;
-    PUBLIC)
-      printf '{"push": false, "visibility": "PUBLIC", "set_by": "installer"}\n' > "$policy"
-      log_info "  sync    → 공개 저장소: 운반 끔(T-19). 켜려면 잠금 모드 — docs/hermes-sync-guide.md" ;;
-    *)
-      printf '{"push": false, "visibility": "unknown", "set_by": "installer"}\n' > "$policy"
-      log_info "  sync    → 공개 여부 미상(origin 없음·로컬 origin·네트워크 오류): 운반 끔. 비공개면 sync.json 을 {\"push\": true, \"mode\": \"plain\"} 로" ;;
-  esac
+  printf '{"push": true, "mode": "plain", "visibility": "%s", "set_by": "installer"}\n' "$vis" > "$policy"
+  log_info "  sync    → 평문 운반 켬($vis) — 패턴 수·판정 통과한 공통 요약이 refs/hermes/sync 로 간다(에이전트 지식은 git 파일, 원문 없음)"
+  if [[ -f "$project/scripts/hermes-sync.py" ]]; then
+    (cd "$project" && timeout "${HERMES_SYNC_TIMEOUT:-60}" python3 scripts/hermes-sync.py --project "$project" push 2>&1 | sed 's/^/  sync    → /') || log_warn "  sync    → 첫 push 실패 — 다음 세션 종료 때 다시 시도한다"
+  fi
   return 0
+}
+
+# _sync_installer_off <sync.json> — 설치기가 쓴 "꺼짐" 인가(켜도 되는 값). 사람이 쓴 값·켜진 값은 아니다.
+_sync_installer_off() {
+  python3 - "$1" <<'PYEOF' 2>/dev/null
+import json, sys
+try:
+    d = json.load(open(sys.argv[1], encoding="utf-8"))
+except Exception:
+    sys.exit(1)
+sys.exit(0 if isinstance(d, dict) and d.get("set_by") == "installer" and d.get("push") is False else 1)
+PYEOF
 }
