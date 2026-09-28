@@ -5,6 +5,7 @@
 #   1. slug (목표 1) — 형식·유일(은퇴자 포함)·예약 이름 거부, hire --slug · set-slug 저장, slug 없는 옛 명부 호환
 #   2. 에이전트 파일 (목표 2) — slug 있는 재직자만 .claude/agents/<slug>.md, 템플릿 도구·모델 상속, SOUL 없음, 멱등, 은퇴 삭제·복직 복원, 고아 삭제·사용자 파일 보존
 #   3. SubagentStart 주입 훅 (목표 3) — 명부 slug 면 세션 시작과 같은 출근 본문을 additionalContext 로, 그 밖·은퇴자·손상 입력은 무출력 rc 0
+#   4. @ 호출 이력 (목표 5) — 같은 task_id 로 task.assigned(decision=match=mention…)·task.finished(actor=명부 id), 명부 밖은 예전 그대로
 #
 # 실행: bash tests/hermes-agent-mention-test.sh
 
@@ -159,6 +160,34 @@ mv "$P/.hermes/agents.json" "$TMP/agents.json.hold"
 assert "명부 없음 → 무출력" "" "$(sub '{"agent_type":"backlog-manager"}')"
 sub '{"agent_type":"backlog-manager"}' >/dev/null; assert "  rc 0" 0 "$?"
 mv "$TMP/agents.json.hold" "$P/.hermes/agents.json"
+
+echo ""
+echo "== 4. @ 호출 이력 (목표 5) =="
+JSTART="$REPO_ROOT/assets/hooks/claude-subagentstart-journal.sh"
+JSTOP="$REPO_ROOT/assets/hooks/claude-subagentstop-journal.sh"
+hk() { printf '%s' "$2" | env -u HERMES_AGENT_ID CLAUDE_PROJECT_DIR="$P" bash "$1" >/dev/null 2>&1; echo $?; }
+q() { python3 -c "
+import sqlite3,sys; con=sqlite3.connect(sys.argv[1])
+print('|'.join(str(r[0]) for r in con.execute(sys.argv[2], sys.argv[3:])))" "$P/.hermes/state.db" "$@"; }
+assert "전제: 이력 DB 가 있다" 1 "$([[ -f "$P/.hermes/state.db" ]] && echo 1 || echo 0)"
+assert "Start 훅 rc 0" 0 "$(hk "$JSTART" '{"agent_id":"sub-bm-1","agent_type":"backlog-manager","session_id":"s1"}')"
+assert "Stop 훅 rc 0" 0 "$(hk "$JSTOP" '{"agent_id":"sub-bm-1","agent_type":"backlog-manager","session_id":"s1"}')"
+assert "같은 task_id 로 assigned·finished 2건" "task.assigned|task.finished" \
+  "$(q "SELECT kind FROM journal_events WHERE task_id=? ORDER BY kind" sub-bm-1)"
+assert "finished 의 actor 는 명부 id" "agent:$AID" "$(q "SELECT actor FROM journal_events WHERE task_id=? AND kind='task.finished'" sub-bm-1)"
+assert "assigned 의 decision 에 mention·slug·명부 id" 1 \
+  "$(q "SELECT decision FROM journal_events WHERE task_id=? AND kind='task.assigned'" sub-bm-1 | grep -c "match=mention slug=backlog-manager agent=$AID")"
+assert "assigned 의 actor 는 부른 쪽(명부 에이전트 아님)" 0 \
+  "$(q "SELECT actor FROM journal_events WHERE task_id=? AND kind='task.assigned'" sub-bm-1 | grep -c "$AID")"
+assert "Start 훅은 명부 밖 에이전트를 적지 않는다(code-reviewer)" "" \
+  "$(hk "$JSTART" '{"agent_id":"sub-cr-1","agent_type":"code-reviewer"}' >/dev/null; q "SELECT kind FROM journal_events WHERE task_id=?" sub-cr-1)"
+hk "$JSTOP" '{"agent_id":"sub-cr-1","agent_type":"code-reviewer"}' >/dev/null
+assert "명부 밖 Stop 은 예전 그대로(actor=agent:<서브에이전트 id>)" "agent:sub-cr-1" \
+  "$(q "SELECT actor FROM journal_events WHERE task_id=? AND kind='task.finished'" sub-cr-1)"
+assert "JSON 아닌 입력 → rc 0" 0 "$(hk "$JSTART" 'not-json')"
+mv "$P/.hermes/state.db" "$TMP/state.db.hold"
+assert "DB 없음 → rc 0" 0 "$(hk "$JSTART" '{"agent_id":"sub-bm-2","agent_type":"backlog-manager"}')"
+mv "$TMP/state.db.hold" "$P/.hermes/state.db"
 
 echo ""
 echo "PASS=$PASS FAIL=$FAIL"

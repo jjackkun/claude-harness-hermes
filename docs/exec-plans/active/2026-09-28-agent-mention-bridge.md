@@ -38,10 +38,12 @@
       `scripts/hermes_soul_render.py` 로 옮기고 두 훅이 부른다. 세션 시작 훅의 출력은 바뀌지 않는다.
       검증: `tests/hermes-soul-inject-test.sh` 무변경 통과.
       ✅ 2026-09-28: 35/35 무변경 통과 · 실제 두 에이전트의 훅 stdout·stderr 가 바꾸기 전과 바이트 동일 · 전체 110/110 · 훅 111→49줄.
-- [ ] 목표 5 — **`@` 로 부른 일도 그 에이전트 이름으로 이력에 남는다.** 새 훅 `claude-subagentstart-journal.sh` 가 `task.assigned`
+- [x] 목표 5 — **`@` 로 부른 일도 그 에이전트 이름으로 이력에 남는다.** 새 훅 `claude-subagentstart-journal.sh` 가 `task.assigned`
       (`actor`·`evidence.via=mention`) 를, 기존 `claude-subagentstop-journal.sh` 가 명부 slug 일 때 `actor=agent:<명부 id>` 로 `task.finished` 를 남긴다.
       nonce 는 발급하지 않는다 — 서브에이전트는 세션이 아니라 이미 검증된 부모 세션 안의 호출이다(RV-06 은 **세션** 규칙).
       검증: 픽스처에서 Start·Stop 훅을 차례로 부르면 이력 2건, 둘 다 `agent:<명부 id>` · 명부 밖 에이전트는 기존과 같은 기록.
+      ✅ 2026-09-28: 시험 §4 11건(누계 72/72) · 전체 110/110 · 옛 설치본(agent_by_slug 없음)에서 Stop 훅 rc 0·예전 actor, 재설치 뒤 명부 id(실측).
+      바뀐 점: assigned 의 actor 는 명부 id 가 아니라 **부른 쪽** — 소환 경로와 같은 모양(담당자는 같은 task_id 의 finished actor). "via=mention" 은 decision 에.
 - [ ] 목표 6 — **설치로 번진다.** 설정 생성기가 `SubagentStart` 배열을 받고(`settings_gen.sh`·`generate_settings_json.py`),
       `hermes.conf` 가 두 새 훅과 새 스크립트를 등록한다. 공장 자기 설치 뒤 `.claude/settings.json` 에 `SubagentStart` 가 생긴다.
       검증: 생성기 단위 시험 · 자기 설치 뒤 `jq '.hooks.SubagentStart'` 가 두 명령을 보인다 · 매니페스트 정리(`_cleanup_stale_assets`)가 명부 에이전트 파일을 지우지 않는다(공장 이름이 아니므로).
@@ -149,6 +151,7 @@
 - 2026-09-28: 템플릿 도구·모델은 Claude Code 이름일 때만 물려받는다(아니면 칸 없음 = 부모 상속) — 근거: cumora 템플릿은 `tools: bash` 처럼 표기가 달라 그대로 옮기면 도구 0개가 된다.
 - 2026-09-28: 같은 이름의 사람 파일(표지 없음)은 덮어쓰지 않고 "건너뜀" 으로 알린다 — 근거: slug 를 붙인 뒤 사람이 같은 이름 파일을 둘 수 있다. 사람 파일을 지우거나 덮는 쪽이 더 비싸다.
 - 2026-09-28: 명령 본체를 `hermes_mention_cmds.py` 로 뺐다 — 근거: hermes-agent.py 가 407줄(경고선 400)에 닿았다 → 383줄.
+- 2026-09-28: `@` 호출 표시는 evidence.via 가 아니라 decision `match=mention slug=… agent=…` — 근거: evidence 는 허용 키 8개만(hermes_journal_schema.EVIDENCE_KEYS). 소환 경로도 매칭 근거를 decision 에 둔다.
 - 2026-09-28: 목표 7(대화방)의 손님 "방에 있다" = "이 방에서 불린 적 있음" — 사용자 결정. 이 계획의 이력(목표 5)이 그 근거 자료가 된다.
 
 ## 7. 발견·예외
