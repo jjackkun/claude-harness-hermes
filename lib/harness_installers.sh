@@ -24,6 +24,7 @@ _cleanup_stale_hooks() {
     [[ -f "$dir/$name" ]] || continue
     rm -f "$dir/$name"
     log_info "  removed → scripts/hooks/$name"
+    declare -f manifest_drop >/dev/null 2>&1 && manifest_drop "$(dirname "$(dirname "$dir")")/.claude" "scripts/hooks/$name"
   done < <(harness_hook_inventory)
 }
 

@@ -12,8 +12,11 @@
 # 소유 판별은 assets/hooks/ 디렉터리 스캔에 의존하므로, 파일을 지우는 순간
 # "하네스 소유"로 인식되지 않아 기존 프로젝트에서 제거할 수 없게 된다.
 # 배포 중단한 hook 은 파일을 지우기 전에 반드시 여기 등재한다.
-# 지금은 비어 있다. 배포를 중단하는 hook 이 생기면 파일을 지우기 전에 여기 넣는다.
-RETIRED_HOOK_SOURCES=()
+# 2026-09-28: 원문 재색인·생애주기 린트 훅을 걷었다 — 대화 원문을 저장하지 않는다(T-23, 계획 carry-agent-knowledge 목표 10).
+RETIRED_HOOK_SOURCES=(
+  claude-sessionstart-history-reindex.sh
+  claude-sessionstart-lifecycle-lint.sh
+)
 
 # harness_hook_inventory
 # 하네스 소유 hook 파일명 전체(현행 assets/hooks + 은퇴분)를 개행 구분으로 출력.

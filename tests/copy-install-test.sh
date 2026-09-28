@@ -186,5 +186,17 @@ assert "installers.sh 에 is_windows_path 없음" "0" "$(grep -c is_windows_path
 assert "lib/*.sh 의 ln -s 는 2곳(메모리 폴더 · 공장 자기 설치 상대경로)" "2" "$(grep -c 'ln -s' "$REPO_ROOT"/lib/*.sh | awk -F: '{s+=$2} END{print s}')"
 
 echo ""
+echo "== 9. 걷은 스크립트·훅은 재설치 때 소우주에서도 걷힌다 (T-23, 2026-09-29 전파 실측) =="
+# 목록에서만 빼면 옛 사본이 남아 돈다 — 설치 목록(manifest) 항목도 같이 빠져야 진단이 깨끗하다.
+install harness hermes
+printf '#!/usr/bin/env python3\n' > "$PROJ/scripts/hermes-reindex.py"
+printf '#!/usr/bin/env bash\n' > "$PROJ/scripts/hooks/claude-sessionstart-lifecycle-lint.sh"
+install harness hermes
+assert "걷은 스크립트 사본이 지워진다" "0" "$([[ -f "$PROJ/scripts/hermes-reindex.py" ]] && echo 1 || echo 0)"
+assert "걷은 훅 사본이 지워진다" "0" "$([[ -f "$PROJ/scripts/hooks/claude-sessionstart-lifecycle-lint.sh" ]] && echo 1 || echo 0)"
+assert "settings.json 에 걷은 훅 등록 없음" "0" "$(grep -c 'history-reindex\|lifecycle-lint' "$PROJ/.claude/settings.json")"
+assert "설치 목록에 걷은 파일 항목 없음" "0" "$(grep -c 'hermes-reindex\|lifecycle-lint' "$PROJ/.claude/.factory-manifest.json")"
+
+echo ""
 echo "PASS=$PASS FAIL=$FAIL"
 [[ $FAIL -eq 0 ]]

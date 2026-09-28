@@ -7,7 +7,7 @@
 # 목록은 git 에 커밋된다 — 다른 컴퓨터의 clone 도 어느 파일이 공장 것인지 알아야
 # 변조 감지·정리가 동작한다. (.dev-setting-manifest.json 과 다른 점)
 #
-# 공개 함수 6개: manifest_add · manifest_read · manifest_prune · manifest_field · manifest_mark · manifest_verify
+# 공개 함수 7개: manifest_add · manifest_read · manifest_prune · manifest_drop · manifest_field · manifest_mark · manifest_verify
 
 _MANIFEST_NAME=".factory-manifest.json"
 
@@ -109,6 +109,31 @@ with open(tmp, "w", encoding="utf-8") as f:
 os.replace(tmp, p)
 for n in removed:
     print(n)
+PYEOF
+}
+
+# manifest_drop <claude_dir> <name...>
+# 걷은 파일(이름 = 설치 목록의 name, 예 scripts/hermes-reindex.py)의 항목을 뺀다. 없으면 아무것도 안 한다.
+# 파일만 지우고 항목을 남기면 설치 진단이 "파일 없음" 으로 잡는다(2026-09-29 전파 실측).
+manifest_drop() {
+  local claude_dir="$1"; shift
+  local p; p="$(_manifest_path "$claude_dir")"
+  [[ -f "$p" && $# -gt 0 ]] || return 0
+  M_DROP="$(printf '%s\n' "$@")" python3 - "$p" <<'PYEOF'
+import json, os, sys
+p = sys.argv[1]
+try:
+    data = json.load(open(p, encoding="utf-8"))
+except json.JSONDecodeError:
+    sys.exit(0)
+drop = set(l for l in os.environ["M_DROP"].split("\n") if l)
+items = data.get("items", [])
+data["items"] = [i for i in items if i.get("name") not in drop]
+if len(data["items"]) != len(items):
+    tmp = p + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+    os.replace(tmp, p)
 PYEOF
 }
 
