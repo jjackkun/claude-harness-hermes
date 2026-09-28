@@ -57,7 +57,9 @@ tier: 1  scripts/hermes_org.py
 # slug 규칙(계획 2026-09-28-agent-mention-bridge)은 표준 모듈만 — roster(2) 가 import 한다
 tier: 0  scripts/hermes_agent_slug.py
 tier: 2  scripts/hermes_roster.py
-tier: 3  scripts/hermes_review.py scripts/hermes-agent.py
+# 에이전트 파일(계획 2026-09-28-agent-mention-bridge): mention_file 은 role_templates(0), mention_cmds 는 roster(2)·slug(0)·mention_file(1)
+tier: 1  scripts/hermes_mention_file.py
+tier: 3  scripts/hermes_review.py scripts/hermes-agent.py scripts/hermes_mention_cmds.py
 tier: 0  scripts/hermes_summons.py
 tier: 3  scripts/hermes-summon.py
 # 기억 이벤트(계획 2026-09-15-agent-identity 목표 8·9): events 는 표준 모듈만,

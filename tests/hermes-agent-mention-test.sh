@@ -3,6 +3,7 @@
 # (계획 docs/exec-plans/active/2026-09-28-agent-mention-bridge.md).
 #
 #   1. slug (목표 1) — 형식·유일(은퇴자 포함)·예약 이름 거부, hire --slug · set-slug 저장, slug 없는 옛 명부 호환
+#   2. 에이전트 파일 (목표 2) — slug 있는 재직자만 .claude/agents/<slug>.md, 템플릿 도구·모델 상속, SOUL 없음, 멱등, 은퇴 삭제·복직 복원, 고아 삭제·사용자 파일 보존
 #
 # 실행: bash tests/hermes-agent-mention-test.sh
 
@@ -81,6 +82,57 @@ json.dump(d, open(sys.argv[1], "w"), ensure_ascii=False)
 PY
 assert "명부에 겹치는 slug → 읽기 거부" 2 "$(list_rc)"
 cp "$TMP/roster.bak" "$P/.hermes/agents.json"
+
+echo ""
+echo "== 2. 에이전트 파일 (목표 2) =="
+AG="$P/.claude/agents"
+fm() { python3 -c "
+import re,sys; t=open(sys.argv[1],encoding='utf-8').read(); m=re.match(r'^---\n(.*?)\n---\n',t,re.S)
+kv=dict(l.split(':',1) for l in m.group(1).splitlines() if ':' in l) if m else {}
+print(kv.get(sys.argv[2],'(없음)').strip())" "$1" "$2"; }
+has() { [[ -f "$1" ]] && echo 1 || echo 0; }
+
+# 1 절이 남긴 상태: 백로그담당=backlog-manager(수습), 설계담당=design-lead(은퇴). 파일은 명령을 한 번 돌려야 맞춰진다.
+A sync-mention-files >"$TMP/sync1" 2>&1; assert "sync-mention-files → 0" 0 "$?"
+assert "slug 있는 재직자 파일 생성" 1 "$(has "$AG/backlog-manager.md")"
+assert "name 은 slug" backlog-manager "$(fm "$AG/backlog-manager.md" name)"
+assert "description 에 한글 명부 이름" 1 "$(fm "$AG/backlog-manager.md" description | grep -c '백로그담당')"
+assert "은퇴자 파일은 없다" 0 "$(has "$AG/design-lead.md")"
+assert "slug 없는 에이전트는 파일 없음(품질담당)" 0 "$(ls "$AG" | grep -c 품질)"
+AID="$(python3 -c "import json;print([a['agent_id'] for a in json.load(open('$P/.hermes/agents.json'))['agents'] if a['name']=='백로그담당'][0])")"
+SOUL_LINE="$(grep -m1 '^#' "$P/.hermes/agents/$AID/SOUL.md")"   # frontmatter 뒤 본문 첫 제목
+assert "전제: SOUL.md 첫 줄이 비지 않음" 1 "$([[ -n "$SOUL_LINE" ]] && echo 1 || echo 0)"
+assert "파일에 SOUL 본문이 없다(훅 몫)" 0 "$(grep -cF "$SOUL_LINE" "$AG/backlog-manager.md")"
+assert "생성물 표지가 있다" 1 "$(grep -c 'hermes-mention-file' "$AG/backlog-manager.md")"
+
+cp "$AG/backlog-manager.md" "$TMP/bm.before"
+A sync-mention-files >"$TMP/sync2" 2>&1
+assert "두 번째 sync 는 바꾼 것 0 (멱등)" 1 "$(grep -c '바꿈 0 · 지움 0' "$TMP/sync2")"
+assert "두 번째 sync 뒤 내용 동일" 0 "$(diff -q "$TMP/bm.before" "$AG/backlog-manager.md" >/dev/null; echo $?)"
+
+A hire 리뷰담당 --org 기획,담당,공통 --template code-reviewer --slug review-lead >/dev/null 2>&1
+assert "hire --slug 가 바로 파일을 만든다" 1 "$(has "$AG/review-lead.md")"
+assert "템플릿 도구를 물려받는다(code-reviewer)" "Read, Grep, Glob, Bash" "$(fm "$AG/review-lead.md" tools)"
+assert "템플릿 모델을 물려받는다(sonnet)" sonnet "$(fm "$AG/review-lead.md" model)"
+A hire 기획담당 --org 기획,담당,공통 --template product-manager --slug pm-lead >/dev/null 2>&1
+assert "Claude Code 도구 이름이 아니면 tools 칸 없음(product-manager 의 bash)" "(없음)" "$(fm "$AG/pm-lead.md" tools)"
+assert "빈 모델이면 model 칸 없음" "(없음)" "$(fm "$AG/pm-lead.md" model)"
+
+A set-slug 품질담당 quality-lead >/dev/null 2>&1
+assert "set-slug 가 바로 파일을 만든다" 1 "$(has "$AG/quality-lead.md")"
+A retire 리뷰담당 >/dev/null 2>&1; assert "retire 가 파일을 지운다" 0 "$(has "$AG/review-lead.md")"
+A rehire 리뷰담당 >/dev/null 2>&1; assert "rehire 가 파일을 되살린다" 1 "$(has "$AG/review-lead.md")"
+
+printf -- '---\nname: my-own\ndescription: 사용자가 직접 둔 에이전트\n---\n본문\n' > "$AG/my-own.md"
+sed 's/^name: .*/name: ghost-lead/' "$AG/quality-lead.md" > "$AG/ghost-lead.md"   # 명부에 없는 생성물(고아)
+A sync-mention-files >/dev/null 2>&1
+assert "표지 없는 사용자 에이전트는 지우지 않는다" 1 "$(has "$AG/my-own.md")"
+assert "명부에 없는 생성물(고아)은 지운다" 0 "$(has "$AG/ghost-lead.md")"
+assert "공장 에이전트는 그대로(code-reviewer)" 1 "$(has "$AG/code-reviewer.md")"
+rm -f "$AG/quality-lead.md"; printf -- '---\nname: quality-lead\n---\n사람이 쓴 본문\n' > "$AG/quality-lead.md"   # slug 뒤에 사람이 같은 이름 파일을 둠
+A sync-mention-files >"$TMP/sync3" 2>&1
+assert "같은 이름의 사람 파일은 덮어쓰지 않는다" 1 "$(grep -c '사람이 쓴 본문' "$AG/quality-lead.md")"
+assert "덮어쓰지 않은 것을 알린다" 1 "$(grep -c 'quality-lead' "$TMP/sync3")"
 
 echo ""
 echo "PASS=$PASS FAIL=$FAIL"

@@ -8,6 +8,7 @@
   retire <이름>      은퇴(소프트) — 이름은 남고 재사용 금지
   rehire <이름>      복직 (retired → active)
   set-slug <이름> <slug>   @agent-<slug> 로 부를 영문 이름을 붙인다 (hire --slug 로도)
+  sync-mention-files       .claude/agents/<slug>.md 를 명부와 맞춘다 (입사·slug·전이 때 자동)
   list               명부
   whoami             현재 세션의 행위자 (HERMES_AGENT_ID 없으면 main)
   match --discipline … --unit …   담당 매칭(C-11) — 없으면 ask
@@ -29,6 +30,7 @@ from hermes_role_templates import TemplateError, list_templates, load_template  
 from hermes_soul_draft import DRAFT_MARK, draft_soul, is_untouched_draft  # noqa: E402
 from hermes_owner_memory import no_owner_since, record_no_owner  # noqa: E402
 from hermes_agent_slug import SlugError, assign_slug  # noqa: E402
+from hermes_mention_cmds import set_slug, sync_and_report, sync_only  # noqa: E402
 from hermes_roster import (  # noqa: E402
     RosterError, add_agent, find_agent, load_roster, save_roster, transition)
 
@@ -116,6 +118,7 @@ def cmd_hire(args) -> int:
     if args.slug:
         assign_slug(roster, agent, args.slug, project)   # 틀리면 저장 전에 거부 — 입사 자체가 없던 일
     save_roster(project, roster)
+    sync_and_report(project, roster)
     folder = _write_identity(project, agent)
     _record_created(project, agent)
     print(f"입사: {agent['name']} ({agent['agent_id']}) status={agent['status']} org={agent['org']}")
@@ -128,20 +131,8 @@ def cmd_transition(args) -> int:
     roster = load_roster(args.project)
     agent = transition(roster, args.name, args.cmd, _human(args.project))
     save_roster(args.project, roster)
+    sync_and_report(args.project, roster)                 # 은퇴하면 @ 로 못 부른다 · 복직하면 다시
     print(f"{args.cmd}: {agent['name']} → {agent['status']}")
-    return 0
-
-
-def cmd_set_slug(args) -> int:
-    if not _human(args.project).startswith("human:"):
-        raise RosterError("slug 는 사람(human:)만 붙인다")
-    roster = load_roster(args.project)
-    agent = find_agent(roster, args.name)
-    if agent is None:
-        raise RosterError(f"명부에 없다: {args.name}")
-    assign_slug(roster, agent, args.slug, args.project)
-    save_roster(args.project, roster)
-    print(f"set-slug: {agent['name']} → @agent-{agent['slug']}")
     return 0
 
 
@@ -246,6 +237,7 @@ def cmd_soul_draft(args) -> int:
             if a["agent_id"] == agent["agent_id"]:
                 a["template"] = agent["template"]
         save_roster(project, roster)
+        sync_and_report(project, roster)                  # 템플릿이 바뀌면 물려받는 도구·모델도 바뀐다
     template = _SOUL_TEMPLATE if os.path.isfile(_SOUL_TEMPLATE) else _SOUL_FACTORY
     with open(template, encoding="utf-8") as fh:
         soul = draft_soul(project, agent, fh.read())
@@ -348,6 +340,7 @@ def main() -> int:
     h.add_argument("--template"); h.add_argument("--slug", help="@agent-<slug> 로 부를 영문 이름(선택)")
     ss = sub.add_parser("set-slug", help="@agent-<slug> 로 부를 영문 이름을 붙인다 — 영문 소문자·숫자·-")
     ss.add_argument("name"); ss.add_argument("slug")
+    sub.add_parser("sync-mention-files", help=".claude/agents/<slug>.md 를 명부와 맞춘다(멱등)")
     for name in ("promote", "retire", "rehire"):
         sub.add_parser(name).add_argument("name")
     sub.add_parser("list"); sub.add_parser("whoami")
@@ -378,7 +371,9 @@ def main() -> int:
         return {"list": cmd_list, "whoami": cmd_whoami, "match": cmd_match, "no-owner": cmd_no_owner,
                 "refresh-memory": cmd_refresh_memory, "teach": cmd_teach, "note": cmd_note,
                 "pin": cmd_pin, "soul-draft": cmd_soul_draft, "templates": cmd_templates,
-                "approve-soul": cmd_approve_soul, "set-slug": cmd_set_slug}[args.cmd](args)
+                "approve-soul": cmd_approve_soul,
+                "set-slug": lambda a: set_slug(a.project, _human(a.project), a.name, a.slug),
+                "sync-mention-files": lambda a: sync_only(a.project)}[args.cmd](args)
     except (RosterError, OrgError, TeachingError, TemplateError, SlugError) as exc:
         print(f"[hermes-agent] 거부: {exc}", file=sys.stderr)
         return 2

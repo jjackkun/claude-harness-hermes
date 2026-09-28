@@ -21,11 +21,13 @@
       `hire --slug <s>` 와 `set-slug <이름> <s>` 로 준다. 기존 두 명에게 `gate-qa`·`backlog-manager` 를 준다.
       검증: 규칙 위반 3종(한글·중복·`code-reviewer`)이 각각 거부 + 이유 한 줄 · 정상 slug 는 저장 · slug 없는 기존 명부도 그대로 읽힌다.
       ✅ 2026-09-28: `tests/hermes-agent-mention-test.sh` §1 24/24 · 전체 묶음 106/109 → 등록·문서 수치 맞춘 뒤 실패 3건 재실행 통과 · 실제 명부에 `gate-qa`·`backlog-manager`.
-- [ ] 목표 2 — **slug 가 있으면 `.claude/agents/<slug>.md` 가 있다.** frontmatter `name: <slug>` · `description` 에 한글 명부 이름·조직·
+- [x] 목표 2 — **slug 가 있으면 `.claude/agents/<slug>.md` 가 있다.** frontmatter `name: <slug>` · `description` 에 한글 명부 이름·조직·
       "사용자가 '<한글 이름>' 을 말하면 이 에이전트를 쓴다" · `tools`/`model` 은 입사 템플릿(`assets/agents/<template>.md`)에서 물려받는다.
       본문에는 SOUL·기억을 **넣지 않는다**(훅 몫) — 머리말 주석으로 "생성물, 손으로 고치지 말 것 · 원본 agents.json".
       hire(slug 있을 때)·set-slug·reinstate 가 만들고, retire 가 지운다. `sync-mention-files` 로 명부 전체를 다시 맞춘다(멱등).
       검증: 파일 생성·삭제가 명령마다 일어난다 · 두 번 돌려도 diff 0 · 파일 본문에 SOUL 문구가 없다.
+      ✅ 2026-09-28: 시험 §2 24건(누계 48/48) · 재설치 뒤 생성 파일 유지(실측) · 실제 `.claude/agents/gate-qa.md`·`backlog-manager.md` 생성.
+      ⚠️ Step 4(SubagentStart 훅) 전까지 `@agent-<slug>` 로 부르면 SOUL 없이 뜨고 "정체성 주입 없음" 을 알린다(파일 본문의 지시).
 - [ ] 목표 3 — **`@agent-<slug>` 로 부르면 그 에이전트의 SOUL·기억이 들어간다.** 새 훅 `claude-subagentstart-agent-soul.sh` 가
       입력 `agent_type` → slug → 명부 id 로 풀고, 세션 시작 훅과 **같은 본문**(SOUL + 선별 기억, 각 4,096 B 상한, 은퇴자 제외)을
       `hookSpecificOutput.additionalContext` 로 돌려준다. 명부 slug 가 아니면(공장 에이전트·내장 에이전트) 아무것도 하지 않는다.
@@ -81,6 +83,7 @@
   - `scripts/hermes_soul_render.py` — 명부 id 하나의 출근 본문(SOUL + 선별 기억, 상한 자르기)을 문자열로 만든다.
   - `scripts/hermes_agent_slug.py` — slug 규칙을 검증하고 slug 로 명부 에이전트를 찾는다.
   - `scripts/hermes_mention_file.py` — 명부 에이전트 하나의 `.claude/agents/<slug>.md` 를 만들고·지우고·명부 전체와 맞춘다.
+  - `scripts/hermes_mention_cmds.py` — hermes-agent.py 의 set-slug·sync-mention-files 명령 본체와 명부 변경 뒤 파일 맞추기 보고(CLI 가 400줄 경고선에 닿아 분리, Step 2 에서 추가).
   - `assets/hooks/claude-subagentstart-agent-soul.sh` — `agent_type` 이 명부 slug 면 출근 본문을 `additionalContext` JSON 으로 돌려준다.
   - `assets/hooks/claude-subagentstart-journal.sh` — 명부 slug 서브에이전트가 뜨면 `task.assigned` 를 남긴다.
   - `tests/hermes-agent-mention-test.sh` — 목표 1~5 픽스처 시험.
@@ -140,6 +143,9 @@
 - 2026-09-28: slug 는 사람이 준다(자동 로마자 변환 안 함) — 근거: 이름은 오래 남는다. 틀린 변환을 고치는 비용이 한 번 묻는 비용보다 크다.
 - 2026-09-28: `@` 호출은 nonce 를 발급하지 않는다 — 근거: RV-06 은 명부 id 를 가진 **세션** 규칙이고, 서브에이전트는 부모 세션 안의 호출이다. 대신 이력에 `via=mention` 을 남긴다.
 - 2026-09-28: 예약 이름 = 내장 에이전트·main·`.claude/agents`·`assets/agents` 파일 이름 중 **명부 slug 가 아닌 것** — 근거: 목표 2 가 만들 생성 파일은 주인 slug 라 스스로 막히지 않고, 사용자가 손으로 둔 에이전트 파일과는 겹치지 않는다. 표지(마커) 없이 판정된다.
+- 2026-09-28: 템플릿 도구·모델은 Claude Code 이름일 때만 물려받는다(아니면 칸 없음 = 부모 상속) — 근거: cumora 템플릿은 `tools: bash` 처럼 표기가 달라 그대로 옮기면 도구 0개가 된다.
+- 2026-09-28: 같은 이름의 사람 파일(표지 없음)은 덮어쓰지 않고 "건너뜀" 으로 알린다 — 근거: slug 를 붙인 뒤 사람이 같은 이름 파일을 둘 수 있다. 사람 파일을 지우거나 덮는 쪽이 더 비싸다.
+- 2026-09-28: 명령 본체를 `hermes_mention_cmds.py` 로 뺐다 — 근거: hermes-agent.py 가 407줄(경고선 400)에 닿았다 → 383줄.
 - 2026-09-28: 목표 7(대화방)의 손님 "방에 있다" = "이 방에서 불린 적 있음" — 사용자 결정. 이 계획의 이력(목표 5)이 그 근거 자료가 된다.
 
 ## 7. 발견·예외
