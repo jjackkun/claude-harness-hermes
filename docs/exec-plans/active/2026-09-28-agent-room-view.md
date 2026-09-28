@@ -24,8 +24,9 @@
       (모델이 추측하지 않는다). `/hermes-room` 은 `${CLAUDE_SESSION_ID}` 로 현재 방을 넘긴다. `disable-model-invocation: true` — 사람이 칠 때만(“명부 보여줘” 자연어는 기존 hermes-agent 스킬 몫, 발동 겹침 방지).
       검증: 스킬 파일의 `!` 줄을 셸로 돌린 결과가 목표 1·2 출력과 같다 · 설치본에 스킬 2개 · 실제 세션에서 `/hermes-room` 이 이 방 구성원을 보임(사람 확인 1회).
       ✅ 2026-09-28: 시험 §3 7건(누계 26/26) — 설치본 스킬의 `!` 줄을 `${CLAUDE_PROJECT_DIR}`·`${CLAUDE_SESSION_ID}` 치환 후 실행 = 명령 출력(md5) · 공장 자기 설치로 이 저장소에 링크 · 전체 111/111. 사람 확인은 Step 5.
-- [ ] 목표 4 — **대시보드.** `/hermes-dashboard` 의 명부 표에 `@`호출명·최근 불린 때 칸.
+- [x] 목표 4 — **대시보드.** `/hermes-dashboard` 의 명부 표에 `@`호출명·최근 불린 때 칸.
       검증: 대시보드 시험 · 생성 HTML 에 `@agent-backlog-manager`.
+      ✅ 2026-09-28: 대시보드 시험 66/66(새 단언 3, 먼저 실패 확인) · 실제 HTML 명부에 `@agent-gate-qa`·`@agent-backlog-manager`·최근 불린 때 10:37 · 전체 111/111. 시각 표기는 `local_when` 하나로 /hermes-roster 와 같다.
 - [ ] 목표 5 — **상태줄(사람 승인 뒤).** 사용자 전역 `~/.claude/statusline.sh` 끝에 `room --line` 한 줄을 **덧붙인다**(덮지 않음).
       상태줄 입력 JSON 의 `session_id`(statusline.md 197줄)를 넘긴다. 헤르메스가 없는 프로젝트에서는 아무것도 안 찍는다.
       검증: 기존 출력 줄 그대로 + 방 줄 · 헤르메스 없는 폴더에서 추가 출력 0 · 실행 시간 측정(상태줄은 300ms 로 묶이고 느리면 취소된다 — statusline.md 152줄).

@@ -18,6 +18,7 @@ import gate_report
 import hermes_rule_candidates as rule_candidates  # noqa: E402  (승격 후보, 계획 2026-09-22-rule-candidates-dashboard)
 import context_budget  # noqa: E402  (세션 고정 비용, 계획 2026-09-21-context-budget)  # noqa: E402
 from hermes_handoff_queue import queue  # noqa: E402
+from hermes_room import last_seen  # noqa: E402
 from hermes_owner_memory import open_proposals  # noqa: E402
 from hermes_repo_sync import repo_sync  # noqa: E402  (사본 동기화, 계획 2026-09-27-dashboard-sync-before-verdict)
 from hermes_skill_layers import LAYERS  # noqa: E402
@@ -90,7 +91,9 @@ def _corrections(con, names: dict) -> list:
 def _agents_pane(project: str, db: str, con) -> dict:
     roster = _roster(project)
     names = {a.get("agent_id"): a.get("name") for a in roster}
+    seen = last_seen(project)                        # 모든 방에서 마지막으로 불린 때(계획 2026-09-28-agent-room-view 목표 4)
     rows = [{"name": a.get("name"), "status": a.get("status"), "agent_id": a.get("agent_id"),
+             "slug": a.get("slug"), "last_seen": seen.get(a.get("agent_id")),
              **{k: (a.get("org") or {}).get(k) for k in ("discipline", "rank", "unit")}} for a in roster]
     return {"roster": rows, "open_handoffs": _open_handoffs(db, con, roster), "summons_recent": _summons_recent(con, names),
             "owner_proposals": len(open_proposals(project)), "corrections": _corrections(con, names)}

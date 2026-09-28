@@ -3,7 +3,7 @@
 
 계획: docs/exec-plans/active/2026-09-28-agent-room-view.md 목표 1·2
 
-공개: render_roster · render_room · render_room_line
+공개: render_roster · render_room · render_room_line · local_when
 """
 
 import unicodedata
@@ -21,7 +21,7 @@ def _pad(text: str, width: int) -> str:
     return text + " " * max(0, width - _width(text))
 
 
-def _when(ts: str) -> str:
+def local_when(ts: str) -> str:
     """ISO(UTC, 이력 저장 형식) → 이 컴퓨터 현지 시각 'YYYY-MM-DD HH:MM'. 없으면 '-', 못 읽으면 원문 앞 16자."""
     if not ts:
         return "-"
@@ -46,7 +46,7 @@ def render_roster(roster: dict, seen: dict) -> str:
         rows.append([a["name"], f"@agent-{a['slug']}" if a.get("slug") else "-",
                      _STATUS_KO.get(a.get("status"), a.get("status") or "?"),
                      "/".join(org.get(k) or "-" for k in ("discipline", "rank", "unit")),
-                     _when(seen.get(a["agent_id"], ""))])
+                     local_when(seen.get(a["agent_id"], ""))])
     if not rows:
         return "명부에 에이전트가 없습니다 (입사: hermes-agent.py hire)"
     body = _table(rows, ["이름", "호출", "상태", "분야/직급/조직", "최근 불린 때"])
@@ -56,7 +56,7 @@ def render_roster(roster: dict, seen: dict) -> str:
 def render_room(room: dict, session_id: str) -> str:
     out = [f"이 방(세션 {session_id[:8]}…)에서 불린 에이전트"]
     if room["members"]:
-        rows = [[m["name"], f"@agent-{m['slug']}" if m.get("slug") else "-", f"{m['count']}회", _when(m["last"])]
+        rows = [[m["name"], f"@agent-{m['slug']}" if m.get("slug") else "-", f"{m['count']}회", local_when(m["last"])]
                 for m in room["members"]]
         out += _table(rows, ["명부 에이전트", "호출", "횟수", "마지막"])
     else:

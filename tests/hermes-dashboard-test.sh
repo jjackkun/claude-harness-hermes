@@ -24,8 +24,13 @@ org=load_org('$P'); r=load_roster('$P')
 for n,o in (('리드A',('백엔드','리드','users')),('담당B',('백엔드','담당','users')),('옛담당',('QA','담당','users'))):
     add_agent(r, n, dict(zip(('discipline','rank','unit'),o)), org, 'human:tester')
 transition(r, '옛담당', 'retire', 'human:tester'); save_roster('$P', r)"
+py "from hermes_roster import load_roster, save_roster, find_agent
+from hermes_agent_slug import assign_slug
+r=load_roster('$P'); assign_slug(r, find_agent(r,'리드A'), 'lead-a', '$P'); save_roster('$P', r)"   # @호출명 칸(계획 2026-09-28-agent-room-view 목표 4)
 ID() { python3 -c "import json;print([a['agent_id'] for a in json.load(open('$P/.hermes/agents.json'))['agents'] if a['name']=='$1'][0])"; }
 LA="$(ID 리드A)"; DB_="$(ID 담당B)"
+py "from hermes_journal import emit
+emit('$DB','$P',{'kind':'task.finished','task_id':'t-lead-a','actor':'agent:$LA','session_id':'s-1','claimed':'success','evidence':{'template':'lead-a'},'ts':'2026-09-28T01:00:00Z'})"
 touch "$P/ok.txt"
 py "from hermes_handoff import open_handoff, resolve
 h1=open_handoff('$DB','$P','agent:$DB_',{'goal':'열린 일','done_when':'file:ok.txt'},by='human:tester')
@@ -64,6 +69,7 @@ g() { python3 -c "import json,sys; d=json.loads(sys.argv[1]); print(eval(sys.arg
 echo "== 에이전트 판 (목표 2) =="
 assert "명부 3명(은퇴 포함)" 3 "$(g "len(d['agents']['roster'])")"
 assert "은퇴자 status=retired" 1 "$(g "sum(1 for a in d['agents']['roster'] if a['status']=='retired')")"
+assert "명부 행에 slug·최근 불린 때" "lead-a 2026-09-28T01:00:00Z" "$(g "' '.join(str(a.get(k)) for a in d['agents']['roster'] if a['name']=='리드A' for k in ('slug','last_seen'))")"
 assert "열린 인계 2건(question 도 열린 채)" 2 "$(g "len(d['agents']['open_handoffs'])")"
 assert "그중 blocked 1" 1 "$(g "sum(1 for h in d['agents']['open_handoffs'] if h['blocked'])")"
 assert "최근 소환 10건(12 중)" 10 "$(g "len(d['agents']['summons_recent'])")"
@@ -108,6 +114,8 @@ assert "dashboard.html 생성" 1 "$([[ -f "$H" ]] && echo 1 || echo 0)"
 assert "외부 스크립트·스타일 0" 0 "$(grep -cE '<script src|<link href' "$H")"
 assert "모델 호출 흔적 0" 0 "$(grep -ci 'claude' "$H")"
 assert "명부 이름·은퇴 표시" "1 1" "$(grep -c '담당B' "$H") $(grep -c '>retired<' "$H")"
+assert "명부에 @호출명 칸" 1 "$(grep -c '@agent-lead-a' "$H")"
+assert "명부에 최근 불린 때 칸" 1 "$(grep -c '최근 불린 때' "$H")"
 assert "막힌 인계 표시" 1 "$(grep -c '>막힘<' "$H")"
 assert "지적 누적 about" 1 "$(grep -c 'gate/r-size' "$H")"
 assert "강등 후보 a (판정 55 · 도움 0)" 1 "$(grep -c '>a<' "$H")"

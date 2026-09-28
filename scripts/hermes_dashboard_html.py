@@ -5,6 +5,8 @@
 """
 import html
 
+from hermes_roster_view import local_when   # 명부 '최근 불린 때' 현지 시각 — /hermes-roster 와 같은 표기
+
 _CSS = """
 :root{--bg:#f6f8f8;--sf:#fff;--sf2:#eef2f2;--ink:#14201f;--soft:#475856;--faint:#7c8c8a;--line:#dce4e3;--acc:#0d7d87;--acck:#075f68;--good:#2f8f5b;--warn:#b7791f;--bad:#c0483c;--mono:ui-monospace,Menlo,Consolas,monospace;--sans:system-ui,-apple-system,"Noto Sans KR",sans-serif}
 @media(prefers-color-scheme:dark){:root{--bg:#0d1413;--sf:#141d1c;--sf2:#1b2726;--ink:#e6efee;--soft:#a3b3b1;--faint:#6f807e;--line:#24312f;--acc:#35bcc7;--acck:#6fd6df;--good:#4fbe82;--warn:#d9a441;--bad:#e0776b}}
@@ -61,8 +63,9 @@ def _pct(rate) -> str:
 
 def _roster_rows(roster: list) -> list:
     kind = {"retired": "dim", "active": "ok"}
-    return [[_e(r["name"]), _tag(r["status"], kind.get(r["status"], "warn")),
-             _e("/".join(x or "-" for x in (r["discipline"], r["rank"], r["unit"])))] for r in roster]
+    return [[_e(r["name"]), _e(f"@agent-{r['slug']}" if r.get("slug") else "-"), _tag(r["status"], kind.get(r["status"], "warn")),
+             _e("/".join(x or "-" for x in (r["discipline"], r["rank"], r["unit"]))),
+             _e(local_when(r.get("last_seen") or ""))] for r in roster]
 
 
 def _handoff_rows(items: list) -> list:
@@ -89,7 +92,7 @@ def _agents(a: dict) -> str:
              (blocked, "막힘"), (a["owner_proposals"], "담당 없음 제안"))
     row = "".join(f'<span><b>{n}</b> <span class="k">{k}</span></span>' for n, k in stats)
     return (f'<h2 id="agents">에이전트</h2><p class="lead">누가 있고, 무엇이 열려 있고, 누가 무엇을 지적받았나.</p><div class="row">{row}</div>'
-            f"<h3>명부</h3>{_table(['이름', '상태', '분야/직급/조직'], _roster_rows(a['roster']))}"
+            f"<h3>명부</h3>{_table(['이름', '호출', '상태', '분야/직급/조직', '최근 불린 때'], _roster_rows(a['roster']))}"
             f"<h3>열린 인계</h3>{_table(['받는 쪽', '종류', '목표', '상태', '시각'], _handoff_rows(a['open_handoffs']))}"
             f"<h3>최근 소환 10</h3>{_table(['에이전트', '요청', '발급', '상태'], _summons_rows(a['summons_recent']))}"
             f"<h3>리뷰 지적 누적 (about 별)</h3>{_table(['에이전트', 'about', '횟수', ''], _correction_rows(a['corrections']), numeric=(2,))}")
