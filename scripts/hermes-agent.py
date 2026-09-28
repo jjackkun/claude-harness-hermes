@@ -7,6 +7,7 @@
   promote <이름>     정식 전환 (probation → active)
   retire <이름>      은퇴(소프트) — 이름은 남고 재사용 금지
   rehire <이름>      복직 (retired → active)
+  set-slug <이름> <slug>   @agent-<slug> 로 부를 영문 이름을 붙인다 (hire --slug 로도)
   list               명부
   whoami             현재 세션의 행위자 (HERMES_AGENT_ID 없으면 main)
   match --discipline … --unit …   담당 매칭(C-11) — 없으면 ask
@@ -27,6 +28,7 @@ from hermes_review_chain import TeachingError, record_teaching  # noqa: E402
 from hermes_role_templates import TemplateError, list_templates, load_template  # noqa: E402
 from hermes_soul_draft import DRAFT_MARK, draft_soul, is_untouched_draft  # noqa: E402
 from hermes_owner_memory import no_owner_since, record_no_owner  # noqa: E402
+from hermes_agent_slug import SlugError, assign_slug  # noqa: E402
 from hermes_roster import (  # noqa: E402
     RosterError, add_agent, find_agent, load_roster, save_roster, transition)
 
@@ -111,6 +113,8 @@ def cmd_hire(args) -> int:
     roster = load_roster(project)
     agent = add_agent(roster, args.name, _parse_org(args.org), org, _human(project),
                       template=(f"{args.template}@factory" if args.template else None))
+    if args.slug:
+        assign_slug(roster, agent, args.slug, project)   # 틀리면 저장 전에 거부 — 입사 자체가 없던 일
     save_roster(project, roster)
     folder = _write_identity(project, agent)
     _record_created(project, agent)
@@ -125,6 +129,19 @@ def cmd_transition(args) -> int:
     agent = transition(roster, args.name, args.cmd, _human(args.project))
     save_roster(args.project, roster)
     print(f"{args.cmd}: {agent['name']} → {agent['status']}")
+    return 0
+
+
+def cmd_set_slug(args) -> int:
+    if not _human(args.project).startswith("human:"):
+        raise RosterError("slug 는 사람(human:)만 붙인다")
+    roster = load_roster(args.project)
+    agent = find_agent(roster, args.name)
+    if agent is None:
+        raise RosterError(f"명부에 없다: {args.name}")
+    assign_slug(roster, agent, args.slug, args.project)
+    save_roster(args.project, roster)
+    print(f"set-slug: {agent['name']} → @agent-{agent['slug']}")
     return 0
 
 
@@ -328,7 +345,9 @@ def main() -> int:
     ap.add_argument("--project", default=os.getcwd())
     sub = ap.add_subparsers(dest="cmd", required=True)
     h = sub.add_parser("hire"); h.add_argument("name"); h.add_argument("--org", default="")
-    h.add_argument("--template")
+    h.add_argument("--template"); h.add_argument("--slug", help="@agent-<slug> 로 부를 영문 이름(선택)")
+    ss = sub.add_parser("set-slug", help="@agent-<slug> 로 부를 영문 이름을 붙인다 — 영문 소문자·숫자·-")
+    ss.add_argument("name"); ss.add_argument("slug")
     for name in ("promote", "retire", "rehire"):
         sub.add_parser(name).add_argument("name")
     sub.add_parser("list"); sub.add_parser("whoami")
@@ -359,8 +378,8 @@ def main() -> int:
         return {"list": cmd_list, "whoami": cmd_whoami, "match": cmd_match, "no-owner": cmd_no_owner,
                 "refresh-memory": cmd_refresh_memory, "teach": cmd_teach, "note": cmd_note,
                 "pin": cmd_pin, "soul-draft": cmd_soul_draft, "templates": cmd_templates,
-                "approve-soul": cmd_approve_soul}[args.cmd](args)
-    except (RosterError, OrgError, TeachingError, TemplateError) as exc:
+                "approve-soul": cmd_approve_soul, "set-slug": cmd_set_slug}[args.cmd](args)
+    except (RosterError, OrgError, TeachingError, TemplateError, SlugError) as exc:
         print(f"[hermes-agent] 거부: {exc}", file=sys.stderr)
         return 2
 

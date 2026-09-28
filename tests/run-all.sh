@@ -294,6 +294,7 @@ REGISTERED_TESTS=(
   hermes-redact-pii-test.sh
   sync-autoenable-test.sh
   hermes-roster-test.sh
+  hermes-agent-mention-test.sh
   hermes-summon-guard-test.sh
   hermes-soul-inject-test.sh
   hermes-role-templates-test.sh

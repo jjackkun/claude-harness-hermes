@@ -7,6 +7,7 @@
   status     probation → active → retired → (rehire) active
   org        {discipline, rank, unit} — 값은 organization.yaml 에 있는 것만
   template   <직무>@factory (선택)
+  slug       @agent-<slug> 로 부르는 영문 이름 (선택, 규칙은 hermes_agent_slug.py — 계획 2026-09-28-agent-mention-bridge 목표 1)
 계획: docs/exec-plans/active/2026-09-15-agent-identity.md 목표 1·2·15
 
 공개 함수 6개: RosterError · load_roster · save_roster · find_agent · add_agent · transition
@@ -17,6 +18,7 @@ import os
 import uuid
 from datetime import datetime, timezone
 
+from hermes_agent_slug import slug_problem
 from hermes_org import HUMAN_RANK
 from hermes_uuid7 import uuid7_str
 
@@ -27,7 +29,7 @@ _TRANSITIONS = {              # 명령 → (허용 출발 상태, 도착 상태)
     "rehire": (("retired",), "active"),
 }
 _ROSTER = ".hermes/agents.json"
-_FIELDS = ("agent_id", "name", "status", "org", "template", "created_at", "created_by", "approved_by")
+_FIELDS = ("agent_id", "name", "status", "org", "template", "created_at", "created_by", "approved_by", "slug")
 
 
 class RosterError(ValueError):
@@ -48,12 +50,16 @@ def load_roster(project: str) -> dict:
     agents = data.get("agents") if isinstance(data, dict) else None
     if not isinstance(agents, list):
         raise RosterError(f"{_ROSTER}: agents 목록이 없다")
-    seen = set()
+    seen, slugs = set(), set()
     for agent in agents:
         _validate_agent(agent)
         if agent["name"] in seen:
             raise RosterError(f"이름이 겹친다: {agent['name']}")
         seen.add(agent["name"])
+        if agent.get("slug") in slugs:
+            raise RosterError(f"slug 가 겹친다: {agent['slug']}")
+        if "slug" in agent:
+            slugs.add(agent["slug"])
     return {"agents": agents}
 
 
@@ -70,6 +76,8 @@ def _validate_agent(agent: dict) -> None:
         raise RosterError("name 이 비었다")
     if agent.get("status") not in STATUSES:
         raise RosterError(f"모르는 status: {agent.get('status')} (허용: {', '.join(STATUSES)})")
+    if "slug" in agent and slug_problem(agent["slug"]):
+        raise RosterError(slug_problem(agent["slug"]))
 
 
 def save_roster(project: str, roster: dict) -> str:
