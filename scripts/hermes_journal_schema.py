@@ -61,6 +61,7 @@ CREATE TABLE IF NOT EXISTS journal_events (
 );
 CREATE INDEX IF NOT EXISTS journal_task_idx ON journal_events(task_id, ts);
 CREATE INDEX IF NOT EXISTS journal_universe_idx ON journal_events(universe_id, ts);
+CREATE INDEX IF NOT EXISTS journal_session_kind_idx ON journal_events(session_id, kind, ts);
 CREATE TRIGGER IF NOT EXISTS journal_no_update BEFORE UPDATE ON journal_events
   BEGIN SELECT RAISE(ABORT,'journal_events is append-only'); END;
 CREATE TRIGGER IF NOT EXISTS journal_no_delete BEFORE DELETE ON journal_events

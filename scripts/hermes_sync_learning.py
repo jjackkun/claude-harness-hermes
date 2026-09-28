@@ -15,6 +15,7 @@ import sqlite3
 
 import hermes_crypto as crypto
 from hermes_keys import key_path
+from hermes_summary_owner import ensure_agent_column
 
 _SUMMARY_SQL = """
 CREATE TABLE IF NOT EXISTS session_summary (
@@ -70,16 +71,19 @@ def _free_fn(lock, project):
 def _outgoing_summaries(con, free, done: set) -> dict:
     out = {}
     try:
-        rows = con.execute("SELECT session_id, project_id, slots_json, last_msg_count, turn_count, updated_at "
+        ensure_agent_column(con)
+        rows = con.execute("SELECT session_id, project_id, slots_json, last_msg_count, turn_count, updated_at, agent_id "
                            "FROM session_summary").fetchall()
     except sqlite3.OperationalError:
         return out
-    for sid, pid, slots, lmc, tc, upd in rows:
+    for sid, pid, slots, lmc, tc, upd, aid in rows:
         remote = f"summary/{sid}/{_stamp(upd)}.json"
         if remote in done:
             continue
         body = {"session_id": sid, "project_id": pid, "slots_json": free(slots),
                 "last_msg_count": lmc, "turn_count": tc, "updated_at": upd}
+        if aid:
+            body["agent_id"] = aid       # C-29 — 받는 쪽이 같은 에이전트 몫으로 넣는다
         out[remote] = json.dumps(body, ensure_ascii=False, sort_keys=True).encode()
     return out
 
@@ -113,13 +117,16 @@ def _import_summary(con, universe_id: str, body: dict) -> bool:
     sid, upd = body.get("session_id"), body.get("updated_at") or ""
     if not sid:
         return False
-    cur = con.execute("SELECT updated_at FROM session_summary WHERE session_id = ?", (sid,)).fetchone()
-    if cur and (cur[0] or "") >= upd:
-        return True                      # 이미 더 새 요약이 있다 — 받은 것으로 친다
-    con.execute("INSERT OR REPLACE INTO session_summary "
-                "(session_id, project_id, slots_json, last_msg_count, turn_count, updated_at) VALUES (?,?,?,?,?,?)",
+    # 한 문장 UPSERT — 읽고 쓰는 사이에 요약기가 주인을 달면 덮어쓰던 경쟁을 없앤다(DB 리뷰 MEDIUM).
+    # 더 새 몸통만 반영하고(이미 더 새 요약이 있으면 받은 것으로 친다), 몸통에 agent_id 가 없으면(구버전 송신자) 로컬 주인을 그대로 둔다.
+    con.execute("INSERT INTO session_summary "
+                "(session_id, project_id, slots_json, last_msg_count, turn_count, updated_at, agent_id) VALUES (?,?,?,?,?,?,?) "
+                "ON CONFLICT(session_id) DO UPDATE SET project_id=excluded.project_id, slots_json=excluded.slots_json, "
+                "last_msg_count=excluded.last_msg_count, turn_count=excluded.turn_count, updated_at=excluded.updated_at, "
+                "agent_id=COALESCE(excluded.agent_id, session_summary.agent_id) "
+                "WHERE IFNULL(session_summary.updated_at, '') < excluded.updated_at",
                 (sid, body.get("project_id"), slots, body.get("last_msg_count") or 0,
-                 body.get("turn_count") or 0, upd))
+                 body.get("turn_count") or 0, upd, body.get("agent_id") or None))
     return True
 
 
@@ -146,6 +153,7 @@ def import_learning(con, universe_id: str, remote: str, data: bytes, when: str) 
     except (ValueError, UnicodeDecodeError):
         return False
     con.executescript(_SUMMARY_SQL)
+    ensure_agent_column(con)
     if remote.startswith("summary/"):
         ok = _import_summary(con, universe_id, body)
     elif remote.startswith("pattern/"):

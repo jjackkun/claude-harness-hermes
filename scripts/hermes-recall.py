@@ -26,12 +26,24 @@ except ImportError:  # 헬퍼 미복사 시에도 회상 자체는 동작해야 
     mark_reused = None
 
 try:
+    from hermes_summary_owner import ensure_agent_column
+except ImportError:  # 헬퍼 미복사 — 칸 없이도 회상은 돈다(아래 조회는 칸이 있을 때만 거른다)
+    ensure_agent_column = None
+
+try:
     from hermes_redact import project_dir_for_db, redact
 except ImportError:  # 마스킹 헬퍼 부재 시 원문 스니펫을 내보내지 않는다(보수적)
     redact = None
     project_dir_for_db = None
 
 SLOT_KEYS = ["decisions", "open", "prefs", "facts", "next"]
+
+
+def _common_only(con) -> str:
+    """공통 요약만(C-29) — 에이전트의 대화는 그 에이전트 출근 본문으로만 간다.
+    칸이 없으면(도우미 미복사로 칸을 못 더한 옛 DB) 모두 공통이므로 거를 것이 없다 — 칸을 가정하면 회상이 죽는다(코드 리뷰 HIGH)."""
+    cols = [r[1] for r in con.execute("PRAGMA table_info(session_summary)")]
+    return "agent_id IS NULL" if "agent_id" in cols else "1=1"
 
 MAX_SESSIONS = 5           # 회상 결과로 보여줄 세션 수
 MAX_QUERY_KEYWORDS = 8     # 질의 키워드 상한 — 실측상 5개를 넘으면 recall 이 평탄해진다
@@ -63,6 +75,8 @@ def _ensure_schema(con: sqlite3.Connection) -> None:
             updated_at     DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     """)
+    if ensure_agent_column is not None:
+        ensure_agent_column(con)   # C-29 — 에이전트 대화 요약은 공통 회상에서 뺀다
     con.execute("""
         CREATE TABLE IF NOT EXISTS recall_marker (
             session_id  TEXT PRIMARY KEY,
@@ -95,7 +109,7 @@ def mark_injected(con, session_id: str) -> None:
 def latest_other_summary(con, project_id: str, exclude_session_id: str):
     row = con.execute(
         "SELECT session_id, slots_json FROM session_summary "
-        "WHERE project_id=? AND session_id != ? "
+        "WHERE project_id=? AND session_id != ? AND " + _common_only(con) + " "
         "ORDER BY updated_at DESC LIMIT 1",
         (project_id, exclude_session_id),
     ).fetchone()
@@ -193,7 +207,7 @@ def search_summaries(con, keywords: list) -> list:
     for kw in keywords:
         for (sid,) in con.execute(
             "SELECT session_id FROM session_summary "
-            "WHERE slots_json LIKE ? ORDER BY updated_at DESC LIMIT ?",
+            "WHERE slots_json LIKE ? AND " + _common_only(con) + " ORDER BY updated_at DESC LIMIT ?",
             ("%" + kw + "%", MAX_SESSIONS),
         ):
             if sid not in found:

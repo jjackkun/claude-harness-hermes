@@ -23,6 +23,7 @@ import sys
 from datetime import datetime
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from hermes_summary_owner import ensure_agent_column  # noqa: E402  (C-29 — 개인 대화는 드리밍 재료가 아니다)
 from hermes_dream_evolve import (  # noqa: E402  (진화 대상 선정·실행)
     collect_evolution_hints,
     run_evolve,
@@ -61,6 +62,7 @@ def _ensure_schema(con: sqlite3.Connection) -> None:
             updated_at     DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     """)
+    ensure_agent_column(con)   # C-29 — 에이전트 대화 요약은 결정화·진화 재료에서 뺀다
     # 신규 컬럼 멱등 보강 (구버전 dream_log)
     cols = [r[1] for r in con.execute("PRAGMA table_info(dream_log)")]
     for col, ddl in (
@@ -108,7 +110,7 @@ def stall_count(con, since) -> int:
 def collect_summaries(con, since) -> list:
     rows = con.execute(
         "SELECT session_id, slots_json, updated_at FROM session_summary "
-        "WHERE (? IS NULL OR updated_at > ?) ORDER BY updated_at",
+        "WHERE (? IS NULL OR updated_at > ?) AND agent_id IS NULL ORDER BY updated_at",
         (since, since),
     ).fetchall()
     out = []

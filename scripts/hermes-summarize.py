@@ -23,6 +23,7 @@ from datetime import datetime
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from hermes_redact import redact  # noqa: E402  (민감정보 마스킹 공유 헬퍼)
 from hermes_universe import universe_id  # noqa: E402  (소우주 키 — 폴더 이름 대체)
+from hermes_summary_owner import ensure_agent_column, room_owner_id  # noqa: E402  (요약의 주인, C-29)
 
 SLOT_KEYS = ["decisions", "open", "prefs", "facts", "next"]
 SLOT_HEADINGS = [
@@ -53,6 +54,7 @@ def _ensure_schema(con: sqlite3.Connection) -> None:
             updated_at     DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     """)
+    ensure_agent_column(con)
 
 
 def load_transcript(path: str) -> list:
@@ -191,19 +193,20 @@ def generate_slots(prev_slots: dict, delta_text: str):
     return None
 
 
-def save_summary(db_path, session_id, project_id, slots, msg_count, turn_count):
+def save_summary(db_path, session_id, project_id, slots, msg_count, turn_count, agent_id=None):
+    """agent_id 가 있으면 그 에이전트의 대화 기억(C-29). 없으면 이미 붙은 주인을 지우지 않는다."""
     con = connect_db(db_path)
     _ensure_schema(con)
     con.execute(
         "INSERT INTO session_summary "
-        "(session_id, project_id, slots_json, last_msg_count, turn_count, updated_at) "
-        "VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP) "
+        "(session_id, project_id, slots_json, last_msg_count, turn_count, updated_at, agent_id) "
+        "VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?) "
         "ON CONFLICT(session_id) DO UPDATE SET "
         "project_id=excluded.project_id, slots_json=excluded.slots_json, "
         "last_msg_count=excluded.last_msg_count, turn_count=excluded.turn_count, "
-        "updated_at=CURRENT_TIMESTAMP",
+        "updated_at=CURRENT_TIMESTAMP, agent_id=COALESCE(excluded.agent_id, session_summary.agent_id)",
         (session_id, project_id, json.dumps(slots, ensure_ascii=False),
-         msg_count, turn_count),
+         msg_count, turn_count, agent_id or None),
     )
     con.commit()
     con.close()
@@ -236,6 +239,7 @@ def main():
     parser.add_argument("--project-id", default="")
     parser.add_argument("--session-id", default="")
     parser.add_argument("--project-dir", default="")
+    parser.add_argument("--agent-id", default="", help="이 요약의 주인(명부 id). 비면 방 주인 기록에서 찾고, 없으면 공통")
     args = parser.parse_args()
 
     if not os.path.isfile(args.db):
@@ -264,7 +268,8 @@ def main():
         print("[hermes-summary] 생성 실패 — 이전 요약 유지(다음 턴 재시도)")
         return
 
-    save_summary(args.db, session_id, project_id, slots, len(messages), turn + 1)
+    owner = args.agent_id or room_owner_id(project_dir, session_id)
+    save_summary(args.db, session_id, project_id, slots, len(messages), turn + 1, owner)
     note = export_vault_note(project_dir, project_id, session_id, slots)
     print(f"[hermes-summary] updated: {session_id} ({len(messages)} msgs) note={note}")
 

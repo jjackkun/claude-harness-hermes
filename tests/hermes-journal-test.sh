@@ -262,7 +262,7 @@ assert "DELETE 여전히 거부" "1" "$(python3 -c "
 import sqlite3
 try: sqlite3.connect('$OLD').execute(\"DELETE FROM journal_events WHERE event_id='e0'\"); print(0)
 except sqlite3.DatabaseError: print(1)")"
-assert "인덱스 2개" "2" "$(q2 "select count(*) from sqlite_master where type='index' and name like 'journal_%'")"
+assert "인덱스 3개(task·universe·session — C-29 DB 리뷰)" "3" "$(q2 "select count(*) from sqlite_master where type='index' and name like 'journal_%'")"
 assert "disabled 사본 없음" "0" "$(q2 "select count(*) from sqlite_master where name like 'journal_events_disabled_%'")"
 assert "두 번째 ensure_schema 는 무변경" "3" "$(PYTHONPATH="$S" python3 -c "
 import sqlite3; from hermes_journal_schema import ensure_schema

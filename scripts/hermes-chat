@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# hermes-chat — 어느 폴더에서든 가장 가까운 헤르메스 프로젝트를 찾아 그 scripts/hermes-chat.py 를 부른다.
+# 설치기가 ~/.local/bin/hermes-chat 으로 복사한다(계획 2026-09-28-hermes-chat 목표 7).
+# 프로젝트마다 명부가 다르므로 본체는 프로젝트 쪽 것을 쓴다 — 이 파일은 찾기만 한다.
+set -uo pipefail
+dir="$PWD"
+while [[ "$dir" != "/" && ! -f "$dir/.hermes/agents.json" ]]; do dir="$(dirname "$dir")"; done
+if [[ ! -f "$dir/.hermes/agents.json" || ! -f "$dir/scripts/hermes-chat.py" ]]; then
+  echo "헤르메스 프로젝트가 아닙니다 — .hermes/agents.json 이 있는 폴더(또는 그 아래)에서 실행하십시오." >&2
+  exit 1
+fi
+exec python3 "$dir/scripts/hermes-chat.py" --project "$dir" "$@"

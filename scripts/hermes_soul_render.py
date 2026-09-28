@@ -17,6 +17,13 @@ import os
 import sqlite3
 import sys
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+try:
+    from hermes_agent_summaries import render_agent_summaries  # C-29 — 나와 나눈 대화 요약
+except ImportError:  # 헬퍼 미복사 — 대화 구획 없이 출근한다
+    def render_agent_summaries(project, agent_id):
+        return ""
+
 
 def _warn(msg: str) -> None:
     print(f"[agent-soul WARN] {msg}", file=sys.stderr)
@@ -90,6 +97,9 @@ def render_soul(project: str, agent_id: str, soul_cap: int = 4096, memory_cap: i
         mem_text = _cut(mem_text.encode("utf-8"), memory_cap, f".hermes/agents/{agent_id}/MEMORY.md")
     if mem_text is not None:
         out.append(f"\n--- MEMORY.md ---\n{mem_text.rstrip()}\n")
+    conversation = render_agent_summaries(project, agent_id)
+    if conversation:
+        out.append(conversation)              # 방·@ 호출에서 나눈 대화(C-29) — 어디서 불리든 같은 기억
     return "\n".join(out) + "\n"
 
 

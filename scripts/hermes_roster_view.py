@@ -58,7 +58,8 @@ def _now_text(room: dict) -> str:
 
 
 def render_room(room: dict, session_id: str) -> str:
-    out = [f"지금 일하는 중: {_now_text(room)}", "", f"이 방(세션 {session_id[:8]}…)에서 불린 에이전트 — 횟수는 끝난 호출 + 일하는 중"]
+    out = [f"방 주인: {room['owner']}"] if room.get("owner") else []
+    out += [f"지금 일하는 중: {_now_text(room)}", "", f"이 방(세션 {session_id[:8]}…)에서 불린 에이전트 — 횟수는 끝난 호출 + 일하는 중"]
     if room["members"]:
         rows = [[m["name"], f"@agent-{m['slug']}" if m.get("slug") else "-", f"{m['count']}회", local_when(m["last"])]
                 for m in room["members"]]
@@ -75,4 +76,5 @@ def render_room_line(room: dict) -> str:
     """상태줄 한 줄 — '지금: 없음 · 이 방에서 불림: 백로그 관리자 2회'. 명부 밖·내부 보조는 /hermes-room 상세 보기에만.
     상태줄에 떠 있으면 '지금 누가 있나' 로 읽히므로 지금(일하는 중)과 누적(불림)을 글자로 가른다(사용자 지적 2026-09-28)."""
     called = ", ".join(f"{m['name']} {m['count']}회" for m in room["members"])
-    return f"지금: {_now_text(room)} · " + (f"이 방에서 불림: {called}" if called else "이 방에서 불린 명부 에이전트 없음")
+    owner = f"주인: {room['owner']} · " if room.get("owner") else ""      # --agent 방(hermes-chat) — 주인이 곧 대화 상대
+    return owner + f"지금: {_now_text(room)} · " + (f"이 방에서 불림: {called}" if called else "이 방에서 불린 명부 에이전트 없음")

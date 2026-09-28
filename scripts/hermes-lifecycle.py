@@ -26,6 +26,7 @@ import sys
 from datetime import datetime
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from hermes_summary_owner import is_agent_session  # noqa: E402  (C-29 — 에이전트 몫 세션은 공통 재료가 아니다)
 from hermes_history_fragments import (  # noqa: E402
     count_active_lines, session_dates)
 
@@ -240,6 +241,8 @@ def _warn_no_redact():
 def _session_evidence(con, sid: str, path: str) -> str:
     """세션 1건의 LLM 입력 텍스트. session_summary.slots_json 우선, 없으면 원문 폴백.
     부피·비용 때문에 원문 JSONL 전체는 절대 넣지 않는다. 마스킹은 안전 경계로 재적용."""
+    if is_agent_session(con, sid):
+        return ""          # 에이전트 몫 대화(C-29) — 요약만 거르면 원문 폴백으로 더 많이 샌다. 세션째 뺀다(코드 리뷰 HIGH)
     slots = None
     try:
         row = con.execute(

@@ -35,6 +35,7 @@ from hermes_agent_slug import SlugError, assign_slug  # noqa: E402
 from hermes_mention_cmds import set_slug, sync_and_report, sync_only  # noqa: E402
 from hermes_room import collect_room, last_seen  # noqa: E402
 from hermes_roster_view import render_roster, render_room, render_room_line  # noqa: E402
+from hermes_hag_line import hag_line  # noqa: E402  (상태줄 방 줄, 계획 hag-rooms-ui)
 from hermes_roster import (  # noqa: E402
     RosterError, add_agent, find_agent, load_roster, save_roster, transition)
 
@@ -145,7 +146,7 @@ def cmd_room(args) -> int:
         print("세션 id 가 필요합니다 — 슬래시 명령 /hermes-room 이 현재 방을 넘깁니다 (직접: room --session <id>)")
         return 0
     room = collect_room(args.project, load_roster(args.project), args.session)
-    print(render_room_line(room) if args.line else render_room(room, args.session))
+    print(render_room_line(room) + hag_line(args.project, args.session) if args.line else render_room(room, args.session))
     return 0
 
 

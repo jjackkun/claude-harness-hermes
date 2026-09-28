@@ -3,6 +3,11 @@
 # (계획 2026-09-17-summon-soul-injection 목표 1~4; 설계 creation-and-organization.md:20
 #  "소환될 때마다 그 폴더를 읽고 출근하는 존재")
 #
+# 두 번째 길 — 사람이 연 방(`claude --agent <slug>`, hermes-chat, 계획 2026-09-28-hermes-chat 목표 1):
+# HERMES_AGENT_ID 가 없으면 입력 JSON 의 agent_type(hooks.md "present when you start Claude Code with
+# `claude --agent <name>`") 을 slug 로 보고 명부 id 를 찾는다. 소환 경로(환경변수)가 있으면 그쪽이 우선.
+# source 를 가리지 않는다 — startup·resume·compact 모두 넣어야 `--resume` 뒤에도 정체성이 남는다.
+#
 # SessionStart 훅의 stdout 은 세션 문맥으로 주입된다 — 이 훅은 그 성질을 **쓰는** 훅이다.
 # 다른 SessionStart 훅(summons-verify 등)이 stdout 무출력인 이유와 같은 이유로, 여기서는
 # 정체성 말고는 아무것도 stdout 에 내지 않는다.
@@ -11,15 +16,31 @@
 # R-out 임계(claude-posttooluse-output-budget.sh)와 같은 값 — "한 번에 문맥에 넣기엔 많다" 를
 # 실측으로 정한 유일한 수치라 새 숫자를 만들지 않는다. 넘치면 자르고 원문 경로를 알린다.
 #
-# 넣지 않는 경우(전부 stdout 무출력·exit 0): 환경변수 없음 · id 꼴이 아님 · 폴더 없음(main 포함) ·
+# 넣지 않는 경우(전부 stdout 무출력·exit 0): 환경변수도 명부 slug 인 agent_type 도 없음 · id 꼴이 아님 · 폴더 없음(main 포함) ·
 # 명부에서 retired(설계 skill-layers.md "은퇴자는 주입에서 빠진다") · 명부를 못 읽음(은퇴 여부를
 # 확인 못 하면 넣지 않는다). 훅 오류 하나로 세션이 서면 안 된다 — 어떤 경우에도 exit 0.
 set -uo pipefail
-[[ -n "${HERMES_AGENT_ID:-}" ]] || exit 0
-cat >/dev/null 2>&1 || true   # stdin(JSON)을 비운다 — 쓰지 않지만 SIGPIPE 를 막는다
+INPUT="$(cat 2>/dev/null || true)"
 project_dir="${CLAUDE_PROJECT_DIR:-${HERMES_PROJECT_DIR:-$(cd "$(dirname "$0")/../.." 2>/dev/null && pwd)}}"
 log="$project_dir/.hermes/hooks.log"
 _log() { mkdir -p "$(dirname "$log")"; printf '[agent-soul] %s %s\n' "$(date -Is)" "$*" >>"$log" 2>/dev/null || true; }
+
+HERMES_AGENT_ID="${HERMES_AGENT_ID:-}"
+if [[ -z "$HERMES_AGENT_ID" ]]; then
+  # --agent 방: agent_type(slug) → 명부 id. 명부 밖(공장·내장)·은퇴자는 빈 값 — 보통 세션과 같이 조용히 끝낸다.
+  command -v python3 >/dev/null 2>&1 || exit 0
+  slug="$(printf '%s' "$INPUT" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("agent_type") or "")' 2>/dev/null)"
+  [[ "$slug" =~ ^[a-z][a-z0-9-]{1,39}$ ]] || exit 0
+  lookup_dir="$project_dir/scripts"
+  [[ -f "$lookup_dir/hermes_agent_slug.py" ]] || lookup_dir="$(cd "$(dirname "$0")/../../scripts" 2>/dev/null && pwd)"
+  HERMES_AGENT_ID="$(PYTHONPATH="$lookup_dir" python3 -c '
+import json, sys
+from hermes_agent_slug import agent_by_slug
+a = agent_by_slug(json.load(open(sys.argv[1], encoding="utf-8")), sys.argv[2])
+print(a["agent_id"] if a and a.get("status") != "retired" else "")' "$project_dir/.hermes/agents.json" "$slug" 2>/dev/null)"
+  [[ -n "$HERMES_AGENT_ID" ]] || exit 0
+  _log "room slug=$slug agent=$HERMES_AGENT_ID"
+fi
 
 [[ "$HERMES_AGENT_ID" =~ ^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$ ]] \
   || { _log "skip:not-an-id ${HERMES_AGENT_ID:0:20}"; exit 0; }

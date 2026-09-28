@@ -232,8 +232,8 @@ con.executescript("""
 CREATE TABLE IF NOT EXISTS session_summary (session_id TEXT PRIMARY KEY, project_id TEXT, slots_json TEXT, last_msg_count INTEGER DEFAULT 0, turn_count INTEGER DEFAULT 0, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP);
 CREATE TABLE IF NOT EXISTS pattern_count (id INTEGER PRIMARY KEY AUTOINCREMENT, pattern_key TEXT NOT NULL UNIQUE, count INTEGER DEFAULT 1, last_seen DATETIME DEFAULT CURRENT_TIMESTAMP, crystallized INTEGER DEFAULT 0);
 """)
-con.execute("INSERT INTO session_summary VALUES ('s1','p','{\"decisions\":[\"요약 하나\"]}',3,2,'2026-09-20 01:00:00')")
-con.execute("INSERT INTO session_summary VALUES ('s2','p','{\"decisions\":[\"요약 둘\"]}',5,4,'2026-09-20 02:00:00')")
+con.execute("INSERT INTO session_summary (session_id, project_id, slots_json, last_msg_count, turn_count, updated_at) VALUES ('s1','p','{\"decisions\":[\"요약 하나\"]}',3,2,'2026-09-20 01:00:00')")
+con.execute("INSERT INTO session_summary (session_id, project_id, slots_json, last_msg_count, turn_count, updated_at) VALUES ('s2','p','{\"decisions\":[\"요약 둘\"]}',5,4,'2026-09-20 02:00:00')")
 con.execute("INSERT INTO pattern_count (pattern_key,count,last_seen,crystallized) VALUES ('테스트 먼저 돌린다',2,'2026-09-20 01:00:00',0)")
 con.execute("INSERT INTO pattern_count (pattern_key,count,last_seen,crystallized) VALUES ('로그를 파일로 받는다',1,'2026-09-20 01:00:00',0)")
 con.commit()

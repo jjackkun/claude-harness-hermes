@@ -33,6 +33,9 @@ import os
 import sys
 from pathlib import Path
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))   # 옆 모듈 — 다른 경로에서 불러와도 찾게
+from settings_file_suggestion import apply_file_suggestion  # noqa: E402
+
 
 def _read_lines(tmpdir: Path, name: str) -> list[str]:
     path = tmpdir / name
@@ -197,6 +200,12 @@ def _merge_hook_groups(existing_groups: list, preset_groups: list) -> list:
     return merged
 
 
+def _file_suggestion(tmpdir: Path, existing: dict) -> dict:
+    """프리셋의 fileSuggestion 명령(첫 줄)을 넣거나, 빠졌으면 우리 것만 걷는다 — 사용자 값은 보존."""
+    values = _read_lines(tmpdir, "file_suggestion")
+    return apply_file_suggestion(existing, values[0] if values else None)
+
+
 def main(output_path: str) -> int:
     tmpdir_str = os.environ.get("DS_TMPDIR")
     if not tmpdir_str:
@@ -320,6 +329,9 @@ def main(output_path: str) -> int:
     # Set only when a preset provides a value; never delete a user-set key.
     if worktree_bg_isolation:
         existing["worktree"] = {"bgIsolation": worktree_bg_isolation[0]}
+
+    # ---- fileSuggestion ---- `@` 목록 교체(`@hag` 약속어, 계획 2026-09-28-hermes-chat 목표 6)
+    existing = _file_suggestion(tmpdir, existing)
 
     # ---- permissions ----
     # allow: ownership-synced. Entries in the harness inventory are reclaimed and

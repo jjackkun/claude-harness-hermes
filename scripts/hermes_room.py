@@ -8,6 +8,8 @@
   명부 밖         그 밖(code-reviewer · claude-code-guide 등) — 종류별 건수
   일하는 중       이 방의 @ 호출 task.assigned(decision "match=mention … agent=<id>") 중 같은 task_id 의 finished 가 아직 없는 것.
                   시간 상한은 두지 않는다 — 끝 기록이 빠지는 것은 SubagentStop 훅 실패뿐이고, 세션이 죽으면 방도 새로 열린다.
+  방 주인         `claude --agent <slug>` 로 연 방의 주인 — task.assigned decision "match=owner … agent=<id>"(room-owner 훅).
+                  불린 것이 아니라 방 자체라 손님 횟수에 넣지 않는다(계획 2026-09-28-hermes-chat 목표 3).
 DB·표가 없으면 빈 결과(오류 아님) — 상태줄·슬래시 명령이 세션을 흔들면 안 된다.
 계획: docs/exec-plans/active/2026-09-28-agent-room-view.md 목표 1·2
 
@@ -49,6 +51,14 @@ def _working(project: str, agents: dict, session_id: str) -> list:
     return [i for n, i in enumerate(ids) if i in agents and i not in ids[:n]]
 
 
+def _owner(project: str, agents: dict, session_id: str) -> str:
+    """이 방 주인의 명부 이름. 주인 줄이 없거나 명부에서 사라졌으면 빈 문자열."""
+    rows = _rows(project, "SELECT decision FROM journal_events WHERE kind='task.assigned' AND session_id=? "
+                          "AND decision LIKE 'match=owner %' ORDER BY ts LIMIT 1", (session_id,))
+    ids = [w[len("agent="):] for (d,) in rows for w in (d or "").split() if w.startswith("agent=")]
+    return agents[ids[0]]["name"] if ids and ids[0] in agents else ""
+
+
 def _template(evidence) -> str:
     try:
         return (json.loads(evidence or "{}") or {}).get("template") or "unknown"
@@ -62,7 +72,7 @@ def _member(agents: dict, agent_id: str) -> dict:
 
 
 def collect_room(project: str, roster: dict, session_id: str) -> dict:
-    """{"members": [{name, slug, agent_id, count, last}], "working": [이름…], "tools": {종류: 건수}, "internal": 건수}.
+    """{"owner": 이름|"", "members": [{name, slug, agent_id, count, last}], "working": [이름…], "tools": {종류: 건수}, "internal": 건수}.
     members 는 최근순, count 는 끝난 호출 + 지금 일하는 중인 호출."""
     agents = _roster_ids(roster)
     members, tools, internal = {}, {}, 0
@@ -84,7 +94,8 @@ def collect_room(project: str, roster: dict, session_id: str) -> dict:
     for agent_id in working:
         members.setdefault(agent_id, _member(agents, agent_id))["count"] += 1
     ordered = sorted(members.values(), key=lambda m: m["last"], reverse=True)
-    return {"members": ordered, "working": [agents[i]["name"] for i in working], "tools": tools, "internal": internal}
+    return {"owner": _owner(project, agents, session_id), "members": ordered,
+            "working": [agents[i]["name"] for i in working], "tools": tools, "internal": internal}
 
 
 def last_seen(project: str) -> dict:

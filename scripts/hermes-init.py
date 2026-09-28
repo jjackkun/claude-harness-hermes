@@ -16,6 +16,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from hermes_journal_schema import ensure_schema, schema_disabled  # noqa: E402  (작업 이력 스키마)
 from hermes_skill_layers import ensure_layer_columns  # noqa: E402  (스킬 4층 칸)
 from hermes_universe import read_universe_id  # noqa: E402  (소우주 키)
+from hermes_summary_owner import ensure_agent_column  # noqa: E402  (요약의 에이전트 칸, C-29)
 
 
 GLOBAL_DB_DIR = os.path.expanduser("~/.hermes")
@@ -198,6 +199,7 @@ def _apply_schema(con: sqlite3.Connection, scope: str):
             updated_at     DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     """)
+    ensure_agent_column(con)   # agent_id — 있으면 그 에이전트의 대화 기억, 비면 소우주 공통(C-29)
 
     # recall_marker — 세션당 회상 자동주입 1회만 보장
     cur.execute("""
