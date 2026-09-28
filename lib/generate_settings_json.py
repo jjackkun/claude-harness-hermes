@@ -211,6 +211,7 @@ def main(output_path: str) -> int:
     # 중복되면 디스패처가 두 번 돌아 리마인더가 두 벌 출력된다.
     user_prompt_submit = list(dict.fromkeys(_read_lines(tmpdir, "user_prompt_submit")))
     session_start = _read_lines(tmpdir, "session_start")
+    subagent_start = _read_lines(tmpdir, "subagent_start")
     subagent_stop = _read_lines(tmpdir, "subagent_stop")
     pre_compact = _read_lines(tmpdir, "pre_compact")
     pre_tool_use = _read_lines(tmpdir, "pre_tool_use")
@@ -264,6 +265,9 @@ def main(output_path: str) -> int:
     # timeout 은 초 단위(ms 아님).
     for key, cmds, timeout in (
         ("Stop", stop, 30),
+        # SubagentStart: agent_type 으로 명부 에이전트를 풀어 정체성을 넣고 task.assigned 를 남긴다
+        # (계획 2026-09-28-agent-mention-bridge). 기억 재생성이 들어 있어 타임아웃은 Stop 과 같다.
+        ("SubagentStart", subagent_start, 30),
         ("SubagentStop", subagent_stop, 30),
         # PreCompact: 압축 직전. 요약을 백그라운드로 던지고 즉시 끝나므로 타임아웃은 Stop 과 같다.
         ("PreCompact", pre_compact, 30),

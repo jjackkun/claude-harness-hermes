@@ -32,7 +32,7 @@ actor_id = agent_id
 try:                                   # 명부 slug 면 명부 id — 명부·모듈이 없으면 예전 그대로
     from hermes_agent_slug import agent_by_slug
     owner = agent_by_slug(json.load(open(sys.argv[1], encoding="utf-8")), data.get("agent_type") or "")
-    actor_id = owner["agent_id"] if owner else agent_id
+    actor_id = owner["agent_id"] if owner and owner.get("status") != "retired" else agent_id
 except (ImportError, OSError, ValueError):
     pass
 event = {

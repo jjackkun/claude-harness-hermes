@@ -16,6 +16,8 @@
 
 ## 2. 목표 (What — 검증 가능한 형태)
 
+설계 결정: **C-27** (`docs/hermes-universe/decision-log.md` — slug · 생성 에이전트 파일 · SubagentStart 주입 · 이력 모양).
+
 - [x] 목표 1 — **명부 에이전트가 영문 slug 를 가진다.** `agents.json` 항목에 선택 칸 `slug`.
       규칙: `^[a-z][a-z0-9-]{1,39}$` · 명부 안에서 유일 · 공장 에이전트 이름(`assets/agents/*.md`)·`main` 과 겹치지 않음.
       `hire --slug <s>` 와 `set-slug <이름> <s>` 로 준다. 기존 두 명에게 `gate-qa`·`backlog-manager` 를 준다.
@@ -44,9 +46,11 @@
       검증: 픽스처에서 Start·Stop 훅을 차례로 부르면 이력 2건, 둘 다 `agent:<명부 id>` · 명부 밖 에이전트는 기존과 같은 기록.
       ✅ 2026-09-28: 시험 §4 11건(누계 72/72) · 전체 110/110 · 옛 설치본(agent_by_slug 없음)에서 Stop 훅 rc 0·예전 actor, 재설치 뒤 명부 id(실측).
       바뀐 점: assigned 의 actor 는 명부 id 가 아니라 **부른 쪽** — 소환 경로와 같은 모양(담당자는 같은 task_id 의 finished actor). "via=mention" 은 decision 에.
-- [ ] 목표 6 — **설치로 번진다.** 설정 생성기가 `SubagentStart` 배열을 받고(`settings_gen.sh`·`generate_settings_json.py`),
+- [x] 목표 6 — **설치로 번진다.** 설정 생성기가 `SubagentStart` 배열을 받고(`settings_gen.sh`·`generate_settings_json.py`),
       `hermes.conf` 가 두 새 훅과 새 스크립트를 등록한다. 공장 자기 설치 뒤 `.claude/settings.json` 에 `SubagentStart` 가 생긴다.
       검증: 생성기 단위 시험 · 자기 설치 뒤 `jq '.hooks.SubagentStart'` 가 두 명령을 보인다 · 매니페스트 정리(`_cleanup_stale_assets`)가 명부 에이전트 파일을 지우지 않는다(공장 이름이 아니므로).
+      ✅ 2026-09-28: 시험 §5(설치기로 만든 프로젝트 settings.json·재설치 한 벌·파일 보존) · 공장 자기 설치 뒤 SubagentStart 두 명령 · 전체 110/110 · 실제 Claude Code 에서 한글 자연어 호출 → SOUL 주입 + 이력 assigned(agent:main, match=mention)·finished(명부 id).
+      code-reviewer: HIGH 1(명부 이름 줄바꿈으로 frontmatter 에 tools 주입 — 재현됨) · MEDIUM 1(이력 훅이 은퇴자를 안 거름) → 둘 다 고침, 고치기 전 코드에서 새 시험 3건 실패 확인.
 - [ ] 목표 7 — **실제 세션에서 된다(사람 확인 1회).** 이 저장소 대화창에서 `@agent-backlog-manager` 자동완성이 뜨고, 불린 서브에이전트가
       자기 SOUL 첫 줄을 말한다 · "백로그 관리자한테 …" 한글 자연어로도 불린다. `-p` 로는 자동완성 화면을 못 잰다 → 사용자 확인.
 
@@ -152,6 +156,8 @@
 - 2026-09-28: 같은 이름의 사람 파일(표지 없음)은 덮어쓰지 않고 "건너뜀" 으로 알린다 — 근거: slug 를 붙인 뒤 사람이 같은 이름 파일을 둘 수 있다. 사람 파일을 지우거나 덮는 쪽이 더 비싸다.
 - 2026-09-28: 명령 본체를 `hermes_mention_cmds.py` 로 뺐다 — 근거: hermes-agent.py 가 407줄(경고선 400)에 닿았다 → 383줄.
 - 2026-09-28: `@` 호출 표시는 evidence.via 가 아니라 decision `match=mention slug=… agent=…` — 근거: evidence 는 허용 키 8개만(hermes_journal_schema.EVIDENCE_KEYS). 소환 경로도 매칭 근거를 decision 에 둔다.
+- 2026-09-28: 에이전트 파일 description 은 JSON 문자열(= YAML 큰따옴표 스칼라)로 쓴다 — 근거: 리뷰 HIGH. 명부 이름은 자유 글자라 줄바꿈으로 frontmatter 키를 끼워 넣을 수 있었다. 입력단(hire) 이름 제한은 기존 명부·다른 경로 영향이 커서 출력단에서 막았다.
+- 2026-09-28: 이력 훅 두 개도 은퇴자를 명부 밖으로 다룬다 — 근거: 리뷰 MEDIUM, 주입 훅과 판정 일치.
 - 2026-09-28: 목표 7(대화방)의 손님 "방에 있다" = "이 방에서 불린 적 있음" — 사용자 결정. 이 계획의 이력(목표 5)이 그 근거 자료가 된다.
 
 ## 7. 발견·예외

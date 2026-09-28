@@ -81,6 +81,7 @@ reset_preset_vars() {
   HARNESS_PRE_COMMIT=0           # 1 이면 assets/hooks/pre-commit.sh 를 .git/hooks/ 에 설치
   HARNESS_LINT_MAX_LINES=0       # 1 이면 assets/lint-configs/eslint/max-lines.config.js 를 프로젝트로 복사
   SESSION_START_HOOKS=()         # 세션 시작 시 1회 실행 hook 스크립트 경로
+  SUBAGENT_START_HOOKS=()        # 서브에이전트가 뜰 때 실행 hook — stdout JSON 의 additionalContext 가 서브에이전트 문맥에 들어간다
   VSCODE_EXTENSIONS=()           # code --install-extension 으로 설치할 익스텐션 ID 목록
   REQUIRED_BINS=()               # 설치기가 확인·설치할 외부 바이너리 이름 (lib/tool_installers.sh 의 핀 표에 있어야 한다)
   PLUGIN_MARKETPLACES=()         # claude plugin marketplace add 로 등록할 마켓 (e.g. "Egonex-AI/Understand-Anything")

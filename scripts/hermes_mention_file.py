@@ -11,6 +11,7 @@
 공개: MARKER · render_mention_file · sync_mention_files
 """
 
+import json
 import os
 
 from hermes_role_templates import TemplateError, load_template
@@ -44,14 +45,16 @@ def render_mention_file(project: str, agent: dict) -> str:
     """에이전트 하나의 파일 본문. 같은 명부·템플릿이면 늘 같은 글자(멱등)."""
     org = agent.get("org") or {}
     org_text = "/".join(org.get(k) or "-" for k in ("discipline", "rank", "unit"))
-    lines = ["---", f"name: {agent['slug']}",
-             f"description: 명부 에이전트 \"{agent['name']}\" ({org_text}). "
-             f"사용자가 이 이름(\"{agent['name']}\")으로 부르거나 그에게 일을 맡기면 이 에이전트를 쓴다."]
+    desc = (f"명부 에이전트 \"{agent['name']}\" ({org_text}). "
+            f"사용자가 이 이름(\"{agent['name']}\")으로 부르거나 그에게 일을 맡기면 이 에이전트를 쓴다.")
+    # 명부 이름은 자유 글자다 — 그대로 넣으면 줄바꿈으로 frontmatter 에 tools: 같은 키를 끼워 넣을 수 있다.
+    # JSON 문자열은 YAML 큰따옴표 스칼라로도 유효하다: 줄바꿈·따옴표가 이스케이프되어 한 값에 갇힌다.
+    lines = ["---", f"name: {agent['slug']}", f"description: {json.dumps(desc, ensure_ascii=False)}"]
     lines += [f"{k}: {v}" for k, v in _template_fields(project, agent).items()]
     lines += ["---",
               f"<!-- {MARKER}: 생성물 — 손으로 고치지 말 것. 원본 .hermes/agents.json "
               "(python3 scripts/hermes-agent.py sync-mention-files) -->",
-              f"너는 헤르메스 명부 에이전트 \"{agent['name']}\" (agent:{agent['agent_id']}) 다.",
+              f"너는 헤르메스 명부 에이전트 {json.dumps(agent['name'], ensure_ascii=False)} (agent:{agent['agent_id']}) 다.",
               "정체성(SOUL)과 기억(MEMORY)은 불릴 때마다 훅이 이 대화 앞에 넣는다 — \"[헤르메스 출근]\" 으로 시작한다.",
               "그 주입이 보이지 않으면 답의 첫 줄에 \"정체성 주입 없음\" 이라고 알리고 일반 규칙으로 일한다.", ""]
     return "\n".join(lines)

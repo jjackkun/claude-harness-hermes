@@ -198,6 +198,15 @@ python3 scripts/hermes-summon.py run "<이름|id>" --task "<한 줄 지시>" [--
 **예** — "이 로그인 깨진 거 프론트 담당한테 지금 넘겨"
 → `python3 scripts/hermes-summon.py run --discipline frontend --task "로그인 리다이렉트 깨짐 수정"`
 
+**채팅 안에서 바로 부르기 (`@agent-<slug>`, C-27)** — slug 가 있는 명부 에이전트는 입력창에서 `@agent-<slug>` 로,
+또는 한글 이름으로("백로그 관리자한테 …") 서브에이전트로 부른다. SOUL·기억은 훅이 넣고, 이력도 그 에이전트 이름으로 남는다.
+부모 세션 안에서 돌므로 짧은 일에 맞고, 격리·긴 일은 위의 소환(run)이 맞다.
+
+```bash
+python3 scripts/hermes-agent.py set-slug "<이름>" <slug>     # 영문 소문자·숫자·- — 붙이면 .claude/agents/<slug>.md 가 생긴다
+python3 scripts/hermes-agent.py sync-mention-files          # 명부와 에이전트 파일 다시 맞추기(멱등)
+```
+
 ## 4. 구조화 인계 (봉투)
 
 성공 기준·기한을 명시해 넘길 때. 봉투는 `goal` 과 `done_when` 이 **없으면 기계가 막는다** — 원문 붙여넣기도 막힌다.

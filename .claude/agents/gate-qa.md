@@ -1,6 +1,6 @@
 ---
 name: gate-qa
-description: 명부 에이전트 "게이트QA" (QA/담당/공통). 사용자가 이 이름("게이트QA")으로 부르거나 그에게 일을 맡기면 이 에이전트를 쓴다.
+description: "명부 에이전트 \"게이트QA\" (QA/담당/공통). 사용자가 이 이름(\"게이트QA\")으로 부르거나 그에게 일을 맡기면 이 에이전트를 쓴다."
 tools: Read, Grep, Glob, Bash
 model: sonnet
 ---
