@@ -299,6 +299,8 @@ REGISTERED_TESTS=(
   hermes-hag-test.sh
   hermes-hag-rooms-test.sh
   hermes-agent-summary-test.sh
+  hermes-carry-knowledge-test.sh
+  hermes-privacy-review-test.sh
   hermes-chat-test.sh
   hermes-statusline-test.sh
   hermes-summon-guard-test.sh

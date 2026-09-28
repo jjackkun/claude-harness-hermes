@@ -178,6 +178,7 @@ install_harness_lint_configs  "$PROJECT_PATH"
 install_harness_gc_workflows  "$PROJECT_PATH"
 install_memory_symlink        "$PROJECT_PATH" || log_warn "메모리 심링크 이관 일부 실패 — 네이티브 보존됨, 재설치로 재시도"
 install_harness_gitignore     "$PROJECT_PATH" "claude"
+install_harness_gitattributes "$PROJECT_PATH"
 
 generate_settings_json  "$CLAUDE_DIR/settings.json"
 generate_settings_local "$CLAUDE_DIR/settings.local.json"

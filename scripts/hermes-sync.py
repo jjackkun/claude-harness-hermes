@@ -29,6 +29,7 @@ from hermes_sync_fragments import (  # noqa: E402
     ensure_sync_tables, import_fragment, import_journal, import_memory, incoming_paths,
     mark_pushed, outgoing)
 from hermes_sync_learning import import_learning  # noqa: E402
+from hermes_person import person  # noqa: E402  (사람 이름표 — git user.name)
 from hermes_universe import universe_id  # noqa: E402
 
 NO_STORE = "원격에 기억 저장소(refs/hermes/sync)가 없습니다"
@@ -48,15 +49,6 @@ def _policy(project: str) -> dict:
         return data if isinstance(data, dict) else {}
     except (OSError, json.JSONDecodeError):
         return {}
-
-
-def _person(project: str) -> str:
-    try:
-        name = subprocess.run(["git", "-C", project, "config", "user.name"],
-                              capture_output=True, text=True, timeout=5).stdout.strip()
-    except (OSError, subprocess.SubprocessError):
-        name = ""
-    return name or "unknown"
 
 
 def _connect(project: str) -> sqlite3.Connection:
@@ -152,7 +144,7 @@ def cmd_push(args) -> int:
         print("[hermes-sync] 마스터 열쇠가 없어 push 를 보류합니다 (hermes-keys.sh init 또는 pull 로 합류)")
         return 0
     con = _connect(project)
-    files = outgoing(con, project, uid, _person(project), policy)
+    files = outgoing(con, project, uid, person(project), policy)
     if not files:
         print("[hermes-sync] 올릴 것 없음")
         con.close()
@@ -241,7 +233,7 @@ def cmd_pull(args) -> int:
         # 평문 모드: 열쇠 없이 평문 조각만. 원문(.enc)·열쇠(keys/)는 이 컴퓨터 몫이 아니다 — 대기 목록에도 넣지 않는다.
         remote_paths = [p for p in remote_paths if not p.startswith(("history/", "keys/"))]
     else:
-        _try_join(project, uid, remote_paths, _person(project))
+        _try_join(project, uid, remote_paths, person(project))
         if not _has_master(uid):
             n = sum(1 for p in remote_paths if p.endswith(".enc"))
             print("[hermes] " + MSG_KEYLESS.format(n=n))

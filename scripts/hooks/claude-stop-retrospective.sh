@@ -125,6 +125,12 @@ setsid bash -c '
       >>"$HERMES_LOG" 2>&1 || true
   fi
 
+  # 6.5 에이전트 지식 파일 — 판정을 통과한 기억·대화 요약·작업 이력을 git 추적 파일로 (계획 carry-agent-knowledge 목표 4~6)
+  if [[ -f "$HERMES_SCRIPTS_DIR/hermes-knowledge-files.py" ]]; then
+    timeout 120 python3 "$HERMES_SCRIPTS_DIR/hermes-knowledge-files.py" export \
+      --project "$HERMES_PROJECT_DIR" >>"$HERMES_LOG" 2>&1 || true
+  fi
+
   # 7. 기억 운반 — 정책이 켜진 소우주만 refs/hermes/sync 로 push (계획 3 목표 6·14).
   #    sync.json 이 없으면 로컬 전용이라 hermes-sync.py 가 한 줄만 남기고 끝난다.
   #    age 가 없는 컴퓨터도 같은 자리에서 한 줄 알림 뒤 건너뛴다.

@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""대화 요약의 주인 찾기와 `session_summary.agent_id` 칸 보장만 담당한다(C-29).
+"""대화 요약의 주인 찾기와 `session_summary` 주인 칸(agent_id · person) 보장만 담당한다(C-29).
 
 - 칸: agent_id 가 있으면 그 에이전트의 대화 기억, 비면 소우주 공통(예전 뜻 그대로). 다섯 생성 지점이 모두 이것을 부른다.
+- 칸: person = 그 대화를 나눈 사람의 이름표(git user.name). 비면 칸이 생기기 전 요약(계획 carry-agent-knowledge 목표 1).
 - 방: 방 세션(`claude --agent`)의 주인 = 방 주인 기록(journal task.assigned `match=owner … agent=<id>`, room-owner 훅).
 - @ 호출: SubagentStart 기록(task.assigned task_id=<서브에이전트 id> `match=mention … agent=<id>`)이 있는 호출만.
   Claude Code 내부 보조(입력 추천·/btw)도 방 안에서 같은 agent_type 으로 SubagentStop 이 오지만 Start 기록이 없다.
@@ -14,20 +15,21 @@ import os
 import sqlite3
 
 
-def _add_agent_column(con) -> None:
+def _add_column(con, name: str) -> None:
     """칸 더하기 — 다른 프로세스가 먼저 더했으면(PRAGMA 와 ALTER 사이 경쟁, DB 리뷰 HIGH) 그 오류만 삼킨다."""
     try:
-        con.execute("ALTER TABLE session_summary ADD COLUMN agent_id TEXT")
+        con.execute(f"ALTER TABLE session_summary ADD COLUMN {name} TEXT")
     except sqlite3.OperationalError as exc:
         if "duplicate column" not in str(exc).lower():
             raise                                   # 락 시간 초과 등 다른 원인은 그대로 올린다
 
 
 def ensure_agent_column(con) -> None:
-    """있는 session_summary 에 agent_id 칸을 더한다. 표가 없으면 아무것도 안 한다(만드는 쪽이 먼저 CREATE). 두 번 불러도 같다."""
+    """있는 session_summary 에 agent_id · person 칸을 더한다. 표가 없으면 아무것도 안 한다(만드는 쪽이 먼저 CREATE). 두 번 불러도 같다."""
     cols = [r[1] for r in con.execute("PRAGMA table_info(session_summary)")]
-    if cols and "agent_id" not in cols:
-        _add_agent_column(con)
+    for name in ("agent_id", "person"):
+        if cols and name not in cols:
+            _add_column(con, name)
     if cols:
         con.execute("CREATE INDEX IF NOT EXISTS session_summary_agent_idx ON session_summary(agent_id, updated_at)")
 

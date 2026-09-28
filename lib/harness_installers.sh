@@ -92,6 +92,13 @@ install_harness_pre_commit() {
     log_info "  hook    → .git/hooks/check-secrets.py"
   fi
 
+  # check-privacy.py (R-privacy) — pre-commit 이 $(dirname $0) 에서 참조.
+  local privacy_src="$ASSETS_DIR/hooks/check-privacy.py"
+  if [[ -f "$privacy_src" ]]; then
+    _install_git_hook "$project_path" "$privacy_src" check-privacy.py 755
+    log_info "  hook    → .git/hooks/check-privacy.py"
+  fi
+
   # plan_state.py (R-plan / R-plan-stale / R-retro) — pre-commit 이 $(dirname $0) 에서 참조.
   # scripts/hooks/ 쪽 사본은 HARNESS_HOOK_SOURCES 가 배치한다(UserPromptSubmit·CI 용).
   local plan_state_src="$ASSETS_DIR/hooks/plan_state.py"

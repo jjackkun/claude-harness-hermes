@@ -55,6 +55,8 @@ source "$_DS_LIB/hook_inventory.sh"
 # permission_inventory 는 preset.sh 의 reset_preset_vars 를 쓰므로 그 뒤여야 한다.
 # shellcheck source=lib/permission_inventory.sh
 source "$_DS_LIB/permission_inventory.sh"
+# shellcheck source=lib/gitattributes_block.sh
+source "$_DS_LIB/gitattributes_block.sh"    # .gitattributes 마커 블록 — 추가만 하는 jsonl 에 merge=union (계획 carry-agent-knowledge)
 # shellcheck source=lib/harness_installers.sh
 source "$_DS_LIB/harness_installers.sh"
 # shellcheck source=lib/settings_gen.sh

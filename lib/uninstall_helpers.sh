@@ -199,6 +199,7 @@ uninstall_pre_commit() {
   fi
   _rm_path file "$project_path/.git/hooks/check-component-structure.mjs" ".git/hooks/check-component-structure.mjs"
   _rm_path file "$project_path/.git/hooks/check-secrets.py" ".git/hooks/check-secrets.py"
+  _rm_path file "$project_path/.git/hooks/check-privacy.py" ".git/hooks/check-privacy.py"
   _rm_path file "$project_path/.git/hooks/hermes_secret_values.py" ".git/hooks/hermes_secret_values.py"
   _rm_path file "$project_path/.git/hooks/plan_state.py" ".git/hooks/plan_state.py"
   _rm_path file "$project_path/.git/hooks/complexity.py" ".git/hooks/complexity.py"

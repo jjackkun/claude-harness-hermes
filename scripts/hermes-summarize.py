@@ -24,6 +24,9 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from hermes_redact import redact  # noqa: E402  (민감정보 마스킹 공유 헬퍼)
 from hermes_universe import universe_id  # noqa: E402  (소우주 키 — 폴더 이름 대체)
 from hermes_summary_owner import ensure_agent_column, room_owner_id  # noqa: E402  (요약의 주인, C-29)
+from hermes_person import person  # noqa: E402  (누구와의 대화인지 — git user.name)
+from hermes_privacy_judge import RULE as PRIVACY_RULE  # noqa: E402  (올리기 전 판정 기준 — 같은 문장)
+from hermes_privacy_pending import mark  # noqa: E402  (판정 결과 표)
 
 SLOT_KEYS = ["decisions", "open", "prefs", "facts", "next"]
 SLOT_HEADINGS = [
@@ -138,6 +141,7 @@ SUMMARY_PROMPT = """\
 
 각 슬롯은 문자열 배열이다. 기존 항목을 보존하되 새 대화로 추가·갱신하라.
 실제 사람 이름·집주소·연락처·계좌·차량번호 같은 개인정보는 적지 않는다 — 역할·장소 종류로 바꿔 쓴다(예: 거래처 담당자, 고객 사무실). 비밀번호·토큰은 어떤 형태로도 옮겨 적지 않는다.
+flagged: 위 5슬롯 항목 중 저장소에 올리기 전 사람이 봐야 할 항목을 **글자 그대로** 옮겨 적는다. {rule} 없으면 빈 배열.
 
 직전 요약:
 {prev}
@@ -146,11 +150,12 @@ SUMMARY_PROMPT = """\
 {delta}
 
 출력(JSON만):
-{{"decisions":[],"open":[],"prefs":[],"facts":[],"next":[]}}
+{{"decisions":[],"open":[],"prefs":[],"facts":[],"next":[],"flagged":[]}}
 """
 
 
-def _parse_slots(output: str, prev: dict) -> dict:
+def _parse_slots(output: str, prev: dict):
+    """(slots, flagged). flagged 칸이 없거나 배열이 아니면 None — 판정 실패로 본다."""
     output = re.sub(r"^```[a-z]*\n", "", output.strip())
     output = re.sub(r"\n```$", "", output)
     data = json.loads(output)
@@ -158,15 +163,17 @@ def _parse_slots(output: str, prev: dict) -> dict:
     for k in SLOT_KEYS:
         v = data.get(k, prev.get(k, []))
         slots[k] = v if isinstance(v, list) else [str(v)]
-    return slots
+    flagged = data.get("flagged")
+    return slots, ([str(x) for x in flagged] if isinstance(flagged, list) else None)
 
 
 def generate_slots(prev_slots: dict, delta_text: str):
-    """Haiku로 슬롯을 갱신한다. 실패 시 None(이전 요약 유지)."""
+    """Haiku로 슬롯을 갱신한다. (slots, flagged) · 실패 시 None(이전 요약 유지)."""
     if not shutil.which("claude"):
         _log("claude CLI 없음 — 스킵")
         return None
     prompt = SUMMARY_PROMPT.format(
+        rule=PRIVACY_RULE,
         prev=json.dumps(prev_slots, ensure_ascii=False),
         delta=delta_text[:6000],
     )
@@ -193,23 +200,60 @@ def generate_slots(prev_slots: dict, delta_text: str):
     return None
 
 
-def save_summary(db_path, session_id, project_id, slots, msg_count, turn_count, agent_id=None):
-    """agent_id 가 있으면 그 에이전트의 대화 기억(C-29). 없으면 이미 붙은 주인을 지우지 않는다."""
+def save_summary(db_path, session_id, project_id, slots, msg_count, turn_count, agent_id=None, who=None):
+    """agent_id 가 있으면 그 에이전트의 대화 기억(C-29). 없으면 이미 붙은 주인을 지우지 않는다. who = 대화한 사람 이름표."""
     con = connect_db(db_path)
     _ensure_schema(con)
     con.execute(
         "INSERT INTO session_summary "
-        "(session_id, project_id, slots_json, last_msg_count, turn_count, updated_at, agent_id) "
-        "VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?) "
+        "(session_id, project_id, slots_json, last_msg_count, turn_count, updated_at, agent_id, person) "
+        "VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, ?) "
         "ON CONFLICT(session_id) DO UPDATE SET "
         "project_id=excluded.project_id, slots_json=excluded.slots_json, "
         "last_msg_count=excluded.last_msg_count, turn_count=excluded.turn_count, "
-        "updated_at=CURRENT_TIMESTAMP, agent_id=COALESCE(excluded.agent_id, session_summary.agent_id)",
+        "updated_at=CURRENT_TIMESTAMP, agent_id=COALESCE(excluded.agent_id, session_summary.agent_id), "
+        "person=COALESCE(session_summary.person, excluded.person)",
         (session_id, project_id, json.dumps(slots, ensure_ascii=False),
-         msg_count, turn_count, agent_id or None),
+         msg_count, turn_count, agent_id or None, who or None),
     )
     con.commit()
     con.close()
+
+
+def _norm(text) -> str:
+    """비교용 — 공백 뭉침·앞뒤 따옴표 차이를 없앤다(모델이 옮겨 적을 때 생기는 흔들림)."""
+    return re.sub(r"\s+", " ", str(text)).strip().strip("\"'“”‘’ ")
+
+
+def _items(slots: dict) -> set:
+    return {str(x) for k in SLOT_KEYS for x in (slots.get(k) or [])}
+
+
+def _held(new: set, old: set, flagged) -> set:
+    """새 항목 중 대기로 둘 것. 판정 칸이 없거나 걸린 문장이 새 항목과 짝이 안 맞으면 새 항목 전부."""
+    if flagged is None:
+        return new
+    by_norm = {_norm(t): t for t in new}
+    flags = {_norm(f) for f in flagged if str(f).strip()} - {_norm(t) for t in old}
+    matched = {by_norm[f] for f in flags if f in by_norm}
+    return new if len(matched) < len(flags) else matched
+
+
+def mark_flagged(db_path, session_id, prev_slots, slots, flagged) -> int:
+    """이번에 새로 생긴 요약 항목을 판정 표에 적는다 — 걸린 것은 대기, 나머지는 clean. 대기 수.
+    판정 칸이 없거나(flagged None) 걸린 문장 중 하나라도 항목과 짝이 안 맞으면 새 항목 전부를 대기로 둔다
+    (모델이 표시한 문장을 놓쳐 조용히 올라가는 것보다 사람이 한 번 더 보는 쪽이 낫다 — 리뷰 HIGH)."""
+    old = _items(prev_slots)
+    new = _items(slots) - old
+    if not new:
+        return 0
+    held = _held(new, old, flagged)
+    con = connect_db(db_path)
+    for text in sorted(new):
+        mark(con, "summary", session_id, text, "pending" if text in held else "clean")
+    con.commit()
+    con.close()
+    return len(held)
 
 
 def export_vault_note(project_dir, project_id, session_id, slots) -> str:
@@ -263,13 +307,17 @@ def main():
         print("[hermes-summary] 델타 없음 — 스킵")
         return
 
-    slots = generate_slots(prev_slots, messages_to_text(delta, project_dir))
-    if slots is None:
+    result = generate_slots(prev_slots, messages_to_text(delta, project_dir))
+    if result is None:
         print("[hermes-summary] 생성 실패 — 이전 요약 유지(다음 턴 재시도)")
         return
+    slots, flagged = result
 
     owner = args.agent_id or room_owner_id(project_dir, session_id)
-    save_summary(args.db, session_id, project_id, slots, len(messages), turn + 1, owner)
+    save_summary(args.db, session_id, project_id, slots, len(messages), turn + 1, owner, person(project_dir))
+    held = mark_flagged(args.db, session_id, prev_slots, slots, flagged)
+    if held:
+        print(f"[hermes-summary] 올리기 전 확인할 문장 {held}개 — python3 scripts/hermes-privacy-review.py")
     note = export_vault_note(project_dir, project_id, session_id, slots)
     print(f"[hermes-summary] updated: {session_id} ({len(messages)} msgs) note={note}")
 

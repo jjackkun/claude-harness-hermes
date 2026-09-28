@@ -19,8 +19,13 @@ scripts_dir="$project_dir/scripts"
 log="$project_dir/.hermes/hooks.log"
 _log() { mkdir -p "$(dirname "$log")"; printf '[hermes-sync-pull] %s %s\n' "$(date -Is)" "$*" >>"$log" 2>/dev/null || true; }
 
-[[ -f "$scripts_dir/hermes-sync.py" ]] || exit 0
 [[ -f "$project_dir/.hermes/state.db" ]] || { _log "action=skip:no-db"; exit 0; }
+# 에이전트 지식 파일(git 으로 받은 기억·대화 요약·작업 이력) 들이기 — 운반과 무관하게 먼저(계획 carry-agent-knowledge 목표 4~6)
+if [[ -f "$scripts_dir/hermes-knowledge-files.py" ]]; then
+  timeout 60 python3 "$scripts_dir/hermes-knowledge-files.py" import --project "$project_dir" \
+    >>"$log" 2>&1 || _log "action=knowledge-import-failed rc=$?"
+fi
+[[ -f "$scripts_dir/hermes-sync.py" ]] || exit 0
 [[ -f "$project_dir/.hermes/sync.json" ]] || { _log "action=skip:sync-off"; exit 0; }
 if ! grep -Eq '"mode"[[:space:]]*:[[:space:]]*"plain"' "$project_dir/.hermes/sync.json" 2>/dev/null && ! command -v age >/dev/null 2>&1; then
   _log "action=skip:no-age — age 가 없어 pull 을 건너뜁니다(설치기가 깐다: 공장에서 bash update-all.sh)"

@@ -4,7 +4,7 @@
 # "4단 검사" 문구는 uninstall 이 하네스 설치본을 식별하는 마커다 — 바꾸지 말 것
 #
 # 현재 실제 게이트는 18종이다 (위 헤더의 "4단 검사" 는 마커라서 그대로 둔다):
-#   차단 11 — R-size R-fmt R-lint R-test R-doc R-cx R-dep R-struct R-secret R-merge R-plan
+#   차단 12 — R-size R-fmt R-lint R-test R-doc R-cx R-dep R-struct R-secret R-privacy R-merge R-plan
 #   경고 10 — R-cov R-acc R-design-cover R-plan-missing R-plan-stale R-pipe R-retro R-precheck R-config R-eval
 # (lib/uninstall_helpers.sh `uninstall_pre_commit`, uninstall.sh 미리보기).
 #
@@ -546,6 +546,29 @@ EOF
 else
   # 마지막 방어선이 꺼진 채 커밋이 흐르는 상태다. pass 와 절대 합치지 않는다.
   gate_add R-secret skipped precommit "" "check-secrets.py 또는 python3 없음"
+fi
+
+# 6a. R-privacy — 올리기 전 확인을 마치지 않은 에이전트 지식·스킬 문장 차단
+# GATE: R-privacy block
+#
+# 기억·대화 요약·작업 이력 파일과 스킬은 사람의 대화에서 나온다. 마스킹(R-secret)은 비밀값 "형태" 만 보고
+# "개인적 · 업무 무관" 내용은 못 거른다. 판정은 세션 끝 내보내기가 하고(모델), 여기서는 그 결과표만 읽는다.
+# 근거: docs/exec-plans/active/2026-09-28-carry-agent-knowledge.md 목표 8
+CHECK_PRIVACY="$(dirname "$0")/check-privacy.py"
+if [[ -f "$CHECK_PRIVACY" ]] && command -v python3 >/dev/null 2>&1; then
+  PRIVACY_OUT=$(python3 "$CHECK_PRIVACY" 2>&1); PRIVACY_RC=$?
+  if (( PRIVACY_RC == 1 )); then
+    VIOLATIONS+=("
+$PRIVACY_OUT")
+    FAIL=1
+    gate_add R-privacy block precommit "" "확인 안 된 문장"
+  elif (( PRIVACY_RC == 2 )); then
+    gate_add R-privacy skipped precommit "" "판정 표 없음"
+  else
+    gate_add R-privacy pass precommit "" "확인 끝"
+  fi
+else
+  gate_add R-privacy skipped precommit "" "check-privacy.py 또는 python3 없음"
 fi
 
 # 6b. R-merge — 풀지 않은 공장 병합이 남아 있으면 차단

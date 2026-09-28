@@ -11,12 +11,12 @@
 
 ## 2. 목표 (What — 검증 가능한 형태)
 
-- [ ] 목표 1 — **사람 칸.** 대화 요약(`session_summary`)에 `person`(요약 때 git `user.name`, 없으면 `unknown`)이 붙고, 에이전트를 부를 때 "나와 나눈 최근 대화" 에는 **부른 사람과 같은 `person`** 의 요약만 들어간다. 검증: person 이 다른 요약 두 개를 넣고 주입 본문에 한쪽만 나오는 시험.
-- [ ] 목표 2 — **올리기 전 묻기(판정).** 요약 haiku 호출이 요약과 함께 "개인적 · 업무 무관" 문장을 돌려준다(호출 수 그대로). 걸린 문장·판정 실패는 **검토 대기**로 DB 에 남고 파일로 나가지 않는다. 검증: 가짜 CLI 응답으로 걸린 문장이 파일에 없고 대기 표에 있는 시험, 판정 실패면 새 내용 전체가 대기인 시험.
-- [ ] 목표 3 — **묻기(사람).** 확인 명령이 대기 문장을 하나씩 보이고 "지움/둠" 을 받는다. 지움 → 파일로 안 나감(기억은 `memory.retracted` 추가), 둠 → 내보내고 다시 안 묻는다. 검증: 두 선택 각각의 결과 시험.
-- [ ] 목표 4 — **기억 파일(1번).** `memory_events` 가 `.hermes/agents/<id>/memory.jsonl`(추가만)로 나가고, 받은 컴퓨터는 세션 시작 때 없는 줄을 DB 에 넣고(`memory_id` 중복 제거) `MEMORY.md` 를 다시 만든다. 검증: 두 임시 저장소 사이 push/pull 로 기억이 따라가는 시험.
-- [ ] 목표 5 — **대화 요약 파일(2번).** 에이전트 요약(`agent_id` 있음)이 `.hermes/agents/<id>/conversations/<person>/<session_id>.json`(5칸 요약만)으로 나가고 받은 쪽이 들인다. 검증: 목표 4 와 같은 방식.
-- [ ] 목표 6 — **작업 이력 파일(3번).** 고르는 규칙 함수 하나가 `task.assigned` · `decision` · `agent.created` · 교훈 줄 · 명부 에이전트 호출 `task.finished` · 올린 인계의 `_CLOSING` 4종만 `.hermes/journal.jsonl` 로 낸다. 검증: 인계를 한쪽에서 맡기고 끝낸 뒤 다른 쪽 인계 대기가 비어 있는 시험, 보조 호출 줄이 파일에 없는 시험.
+- [ ] 목표 1 — **사람 칸.** 대화 요약(`session_summary`)에 `person`(요약 때 git `user.name`, 없으면 `unknown`)이 붙고, 에이전트를 부를 때 "나와 나눈 최근 대화" 에는 **부른 사람과 같은 `person`** 의 요약만 들어간다. 검증: `bash tests/hermes-carry-knowledge-test.sh` §1 — person 이 다른 요약 두 개를 넣고 주입 본문에 한쪽만 나온다.
+- [ ] 목표 2 — **올리기 전 묻기(판정).** 요약 haiku 호출이 요약과 함께 "개인적 · 업무 무관" 문장을 돌려준다(호출 수 그대로). 걸린 문장·판정 실패는 **검토 대기**로 DB 에 남고 파일로 나가지 않는다. 검증: `bash tests/hermes-privacy-review-test.sh` §1·2 — 걸린 문장은 대기 표에, 판정 실패면 새 내용 전체가 대기. 파일에 없음은 `bash tests/hermes-carry-knowledge-test.sh`.
+- [ ] 목표 3 — **묻기(사람).** 확인 명령이 대기 문장을 하나씩 보이고 "지움/둠" 을 받는다. 지움 → 파일로 안 나감(기억은 `memory.retracted` 추가), 둠 → 내보내고 다시 안 묻는다. 검증: `bash tests/hermes-privacy-review-test.sh` §3 — 두 선택 각각의 결과.
+- [ ] 목표 4 — **기억 파일(1번).** `memory_events` 가 `.hermes/agents/<id>/memory.jsonl`(추가만)로 나가고, 받은 컴퓨터는 세션 시작 때 없는 줄을 DB 에 넣고(`memory_id` 중복 제거) `MEMORY.md` 를 다시 만든다. 검증: `bash tests/hermes-carry-knowledge-test.sh` §2 — A 가 내보낸 기억을 B 가 들이고 MEMORY.md 가 생긴다.
+- [ ] 목표 5 — **대화 요약 파일(2번).** 에이전트 요약(`agent_id` 있음)이 `.hermes/agents/<id>/conversations/<person>/<session_id>.json`(5칸 요약만)으로 나가고 받은 쪽이 들인다. 검증: `bash tests/hermes-carry-knowledge-test.sh` §2 — B 가 게이트QA 를 부르면 A 에서 나눈 대화를 안다.
+- [ ] 목표 6 — **작업 이력 파일(3번).** 고르는 규칙 함수 하나가 `task.assigned` · `decision` · `agent.created` · 교훈 줄 · 명부 에이전트 호출 `task.finished` · 올린 인계의 `_CLOSING` 4종만 `.hermes/journal.jsonl` 로 낸다. 검증: `bash tests/hermes-carry-knowledge-test.sh` §2 — B 의 인계 대기가 비어 있고 보조 호출 줄이 파일에 없다.
 - [ ] 목표 7 — **git 설정.** 설치기가 `.gitignore` 에 `!.hermes/agents/*/memory.jsonl` · `!.hermes/agents/*/conversations/` · `…/**` · `!.hermes/journal.jsonl` 을 풀고, `.gitattributes` 에 두 jsonl 의 `merge=union` 을 둔다. 검증: `git check-ignore -v` 로 세 경로가 무시되지 않음, 두 브랜치가 같은 jsonl 끝에 줄을 더해 병합이 충돌 없이 양쪽 줄을 갖는 시험.
 - [ ] 목표 8 — **R-privacy 게이트.** 스테이징된 에이전트 파일·journal·스킬에 검토 대기가 남아 있으면 pre-commit 이 막고 확인 명령을 알린다. 검증: 대기 1건으로 커밋 차단, 0건이면 통과. 게이트 발화가 `gate-events.jsonl` 에 남는다.
 - [ ] 목표 9 — **운반 무조건 켬(4번).** 설치기가 공개·비공개 구분 없이 `sync.json` 을 `push: true` 로 만든다. 지금은 파일이 있으면 손대지 않아(`lib/sync_autoenable.sh:58`) 기존 공개 소우주에 닿지 않으므로, **설치기가 정한 값(`"set_by": "installer"`, `push: false`)만** 켜고 그 소우주 이름을 설치 로그에 한 줄씩 알린다. `set_by` 가 없거나 다른 값(사람이 쓴 값)은 보존한다. 공통 요약·패턴 수가 운반으로 가고 공통 요약도 묻기 검사를 거친다. 에이전트 기억·요약·이력은 git 파일이 원본이고 운반의 `memory/`·에이전트 `summary/`·`journal/` 조각은 걷는다. 검증: ① 공개 가짜 저장소 새 설치 → `push: true` ② 설치기가 쓴 `push: false` 가 있는 저장소 재설치 → `push: true` + 로그 한 줄 ③ 사람이 쓴 `push: false` 재설치 → 그대로 ④ push 한 조각 목록에 `memory/`·`journal/` 가 없음.
@@ -59,7 +59,10 @@
   - `scripts/hermes_memory_file.py` — 기억 이벤트를 에이전트 폴더 `memory.jsonl` 로 내보내고 들인다.
   - `scripts/hermes_conversation_file.py` — 에이전트 대화 요약을 `conversations/<person>/<session>.json` 으로 내보내고 들인다.
   - `scripts/hermes_journal_file.py` — 작업 이력에서 올릴 줄을 고르고 `.hermes/journal.jsonl` 로 내보내고 들인다.
+  - `scripts/hermes-knowledge-files.py` — 세션 끝 내보내기(판정 → 세 파일)와 세션 시작 들이기(세 파일 → DB, MEMORY.md)를 순서대로 부른다.
+  - `scripts/hermes_jsonl_lock.py` — 추가만 하는 jsonl 에 새 줄을 잠근 채(잠근 뒤 다시 읽어) 붙인다.
   - `scripts/hermes_privacy_pending.py` — 검토 대기 문장과 사람의 결정(지움/둠)을 DB 에 적고 읽는다.
+  - `scripts/hermes_privacy_judge.py` — 요약 호출을 거치지 않는 문장(기억·이력 교훈·스킬)을 haiku 한 번으로 묶어 판정해 적는다.
   - `scripts/hermes-privacy-review.py` — 검토 대기를 하나씩 보이고 지움/둠을 받는 확인 명령.
   - `assets/hooks/check-privacy.py` — R-privacy: 스테이징된 파일에 검토 대기가 있으면 커밋을 막는다.
   - `scripts/hermes_signal_store.py` — 실수 신호를 원문 표 대신 신호 표에 적고 읽는다.
@@ -118,6 +121,17 @@
 
 ## 6. 의사결정 로그
 
+- 2026-09-28: 기억(`memory_events`)에는 사람 칸을 두지 않는다 — 근거: 기억은 그 에이전트가 배운 것이라 누가 불러도 쓴다. 사람별로 가를 것은 "누구와 나눈 대화"(요약)뿐.
+- 2026-09-28: 주입은 `person = 부른 사람 OR person IS NULL` — 근거: 칸이 생기기 전 요약은 모두 그 컴퓨터(한 사람)에서 쌓였다. 칸이 없는 옛 DB 는 읽기 전용이라 칸을 못 더하므로 옛 조회로 물러선다.
+- 2026-09-28: 이미 붙은 person 은 바꾸지 않는다(`COALESCE(기존, 새)`) — 근거: 대화를 나눈 사람은 처음 요약한 사람이다. 운반으로 받을 때는 받은 값을 우선(보낸 쪽이 원본).
+- 2026-09-28: 내보내기는 판정을 통과한 문장(clean·keep)만 — 근거: "대기가 아니면 허용" 이면 기능 이전에 쌓인 요약·스킬이 판정 없이 나간다. 요약의 새 항목은 걸리지 않으면 clean 으로 적어 다시 판정하지 않는다.
+- 2026-09-28: 요약 flagged 는 정규화 비교, 짝이 하나라도 안 맞으면 새 항목 전부 대기 — 근거: 리뷰(code-reviewer) HIGH, 모델이 표시한 문장이 글자 차이로 빠져나간다.
+- 2026-09-28: 확인 명령은 해시로만 고른다 — 근거: 리뷰 MEDIUM, 번호는 다른 프로세스가 대기를 더하면 바뀐다.
+- 2026-09-28: 판정 묶음은 6,000자 — 근거: 요약 호출의 델타 상한과 같은 값. 기능 이전 요약·스킬을 처음 판정할 때 수백 문장이 한 번에 몰린다.
+- 2026-09-28: 들이기는 세션 시작 운반 훅(sync-pull)의 맨 앞에서 — 근거: 새 훅을 더하면 설정 생성·훅 개수가 함께 바뀐다. 운반과 무관하게 먼저 돈다.
+- 2026-09-28: 이력의 intent(사람이 준 작업 지시 원문)도 판정한다 — 근거: 리뷰(code-reviewer) HIGH, `hermes-summon.py:97` 이 지시문을 그대로 적는다.
+- 2026-09-28: 받은 파일의 agent_id·사람이 폴더와 다르면 버리고, 경로에는 안전한 id 만 — 근거: 리뷰 MEDIUM, git 으로 온 값이 경로가 된다.
+- 2026-09-28: jsonl 붙이기는 잠근 뒤 다시 읽고 붙인다 — 근거: 리뷰 MEDIUM, 두 Stop 훅이 같은 줄을 두 번 쓴다. fcntl 없는 Windows 는 잠금 없이(들이기가 id 로 거른다).
 - 2026-09-28: 백로그 1~8번 방침을 그대로 목표로 옮김 — 근거: 사용자 결정(백로그 문서 각 절).
 - 2026-09-28: 기존 `sync.json` 은 설치기가 쓴 값만 켠다 — 근거: 지금 설치기는 파일이 있으면 손대지 않아 "무조건 켬" 이 기존 공개 소우주에 닿지 않는다(`sync_autoenable.sh:58`). 사람이 쓴 값은 사람의 결정이라 보존. 리뷰(planner-lite)의 "조용히 켜짐" 우려는 로그 한 줄로 알려 막는다.
 - 2026-09-28: R-privacy 게이트를 `.gitignore` 예외보다 먼저 세운다 — 근거: 리뷰(planner-lite) 순서 지적.

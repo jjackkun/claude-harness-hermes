@@ -153,8 +153,8 @@ assert "새 몸통의 agent_id 가 들어온다" "$BL" "$(q "SELECT agent_id FRO
 
 echo "== 7. 리뷰 반영 — 동시 칸 추가 · 이력 인덱스 · 들여오기 한 문장"
 R="$(PYTHONPATH="$S" python3 -c "
-import sqlite3; from hermes_summary_owner import _add_agent_column
-c=sqlite3.connect('$DB'); _add_agent_column(c); _add_agent_column(c); print('ok')" 2>&1 | tail -1)"
+import sqlite3; from hermes_summary_owner import _add_column
+c=sqlite3.connect('$DB'); _add_column(c, 'agent_id'); _add_column(c, 'agent_id'); print('ok')" 2>&1 | tail -1)"
 assert "이미 있는 칸을 또 더해도 죽지 않는다(동시 실행)" ok "$R"
 assert "이력에 session_id 인덱스" 1 "$(q "SELECT COUNT(*) FROM sqlite_master WHERE type='index' AND name='journal_session_kind_idx'")"
 PYTHONPATH="$S" python3 -c "
