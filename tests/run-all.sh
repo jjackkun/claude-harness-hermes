@@ -296,6 +296,7 @@ REGISTERED_TESTS=(
   hermes-roster-test.sh
   hermes-agent-mention-test.sh
   hermes-agent-room-test.sh
+  hermes-statusline-test.sh
   hermes-summon-guard-test.sh
   hermes-soul-inject-test.sh
   hermes-role-templates-test.sh

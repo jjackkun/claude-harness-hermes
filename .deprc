@@ -61,6 +61,7 @@ tier: 2  scripts/hermes_roster.py
 tier: 1  scripts/hermes_mention_file.py
 # 명부·방 보기(계획 2026-09-28-agent-room-view): room 은 표준 모듈만, view 도 표준 모듈만
 tier: 0  scripts/hermes_room.py scripts/hermes_roster_view.py
+tier: 0  scripts/hermes_statusline_setup.py   # 전역 상태줄 감싸개 보장 — 표준 모듈만 (목표 6)
 tier: 3  scripts/hermes_review.py scripts/hermes-agent.py scripts/hermes_mention_cmds.py
 tier: 0  scripts/hermes_summons.py
 tier: 3  scripts/hermes-summon.py
