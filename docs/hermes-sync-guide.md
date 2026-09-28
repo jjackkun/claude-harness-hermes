@@ -1,6 +1,6 @@
 # 기억 운반 가이드 — 원본 에이전트의 기억이 컴퓨터를 따라간다
 
-> 설계: T-17 ~ T-23 (`docs/hermes-universe/decision-log.md` §7) · A-11 · C-30 ~ C-32 (§8) · 근거 `docs/audits/2026-09-20-transport-keys-rethink.md`, 계획 `docs/exec-plans/active/2026-09-28-carry-agent-knowledge.md`.
+> 설계: T-17 ~ T-23 (`docs/hermes-universe/decision-log.md` §7) · A-11 · C-30 ~ C-32 (§8) · 근거 `docs/audits/2026-09-20-transport-keys-rethink.md`, 계획 `docs/exec-plans/completed/2026-09-28-carry-agent-knowledge.md`.
 > 원칙: **원본 에이전트는 어느 컴퓨터에서든 같은 기억을 갖는다.** 복제(H-09)만 기억 없이 새로 시작한다. **읽을 권리 = 저장소 접근권.**
 
 ## 두 길: git 파일과 운반
@@ -14,7 +14,7 @@
 | 안 옮김 | 대화 원문(**저장하지 않는다**, T-23) · `MEMORY.md`(파생) · `state.db` · 방·세션(`--resume`) · `@hag` 상태 | — |
 
 - **올리기 전 묻기(C-31):** 요약·기억·이력 자유 글·스킬은 내보내기 전에 "개인적 · 업무 무관" 인지 판정한다. 걸리거나 판정에 실패한 문장은 **파일에 쓰지 않고** 검토 대기로 둔다. 커밋할 때 R-privacy 게이트가 확인 안 된 문장을 막는다.
-- **누구와의 대화인지(C-30):** 대화 요약에는 사람 이름표(git `user.name`)가 붙는다. 에이전트를 부르면 **부른 사람과 나눈 대화만** 들어간다. 이름표일 뿐 신원 증명은 아니다.
+- **누구와의 대화인지(C-30):** 대화 요약에는 사람 이름표(git `user.name`)가 붙는다. 에이전트를 부르면 **부른 사람과 나눈 대화만** 들어간다(이름표가 생기기 전 옛 요약은 함께 들어간다). 이름표일 뿐 신원 증명은 아니다.
 - 마스킹(비밀값·개인정보 형태)은 저장 전과 업로드 직전에 그대로 거친다(T-20).
 
 ## 에이전트의 지식은 어디까지 따라가나
@@ -42,7 +42,7 @@
 직접 재 보기:
 
 ```bash
-git check-ignore -v .hermes/agents/<id>/memory.jsonl .hermes/journal.jsonl .hermes/state.db   # 출력이 '!' 로 시작하거나 없으면 git 이 옮긴다
+git check-ignore -v .hermes/agents/<id>/memory.jsonl .hermes/journal.jsonl .hermes/state.db   # 출력이 없거나 패턴 칸이 '!' 로 시작하면 git 이 옮긴다
 python3 scripts/hermes-privacy-review.py list                                                 # 올리기 전 확인할 문장
 cat .hermes/sync.json                                                                        # 운반 설정
 ```
@@ -73,7 +73,7 @@ python3 scripts/hermes-sync.py push
 # 다음 컴퓨터
 bash scripts/hermes-keys.sh lock          # 이 컴퓨터 자물쇠만 → 출력된 age1… 을 첫 컴퓨터에서
 bash scripts/hermes-keys.sh add-computer age1…   # (첫 컴퓨터) → push
-python3 scripts/hermes-sync.py pull       # (다음 컴퓨터) 감싼 마스터를 받아 푼다
+python3 scripts/hermes-sync.py pull       # (다음 컴퓨터) 이 컴퓨터 자물쇠가 있고 마스터가 없을 때 감싼 마스터를 받아 푼다
 ```
 
 - `age` 는 설치기가 깐다(`lib/tool_installers.sh`). 손으로 설치하지 않는다.

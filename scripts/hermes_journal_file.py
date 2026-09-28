@@ -7,7 +7,7 @@
   안 올림: 명부 밖 보조 호출(code-reviewer·Explore 등)의 task.finished — 하루 수십 줄이라 git 이력만 어지럽힌다
 사람이 쓴 문장(intent 작업 지시 · 교훈 · decision 줄의 결정)은 판정을 통과한 것(clean·keep)만 나간다.
 두 세션이 동시에 붙여도 줄이 겹치지 않게 파일을 잠그고 그 안에서 다시 읽는다(hermes_jsonl_lock).
-계획: docs/exec-plans/active/2026-09-28-carry-agent-knowledge.md 목표 6
+계획: docs/exec-plans/completed/2026-09-28-carry-agent-knowledge.md 목표 6
 
 공개: FILE · select · judge_items · export · import_
 """

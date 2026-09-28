@@ -9,7 +9,7 @@
 - 들이기: memory_id 로 중복을 거른다(INSERT OR IGNORE). 파일 속 agent_id 가 폴더 이름과 다른 줄은 버린다(git 으로 온 값).
   MEMORY.md 는 들인 에이전트만 다시 만든다.
 - 경로에는 안전한 id(영숫자·-·_)만 쓴다. 동시에 붙여도 겹치지 않게 잠근다(hermes_jsonl_lock).
-계획: docs/exec-plans/active/2026-09-28-carry-agent-knowledge.md 목표 4
+계획: docs/exec-plans/completed/2026-09-28-carry-agent-knowledge.md 목표 4
 
 공개: FILE · judge_items · export · import_
 """

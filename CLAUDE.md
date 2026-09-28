@@ -145,10 +145,11 @@ PDF 11쪽: "이 리포지터리의 특정 구조와 툴링에 따라 크게 달�
 - 재개: `scripts/hermes-loop-run.sh <프로젝트> --resume <loop-id>`
 - 가이드: `docs/hermes-loop-guide.md`
 
-**기억 운반 (컴퓨터 간 — 설치기가 켠다, T-17~T-21):**
+**에이전트 지식이 컴퓨터를 따라간다 (A-11 · C-30~C-32 · T-22 · T-23):**
 
-- 비공개 저장소면 설치기가 자동으로 켠다: 세션 요약·패턴 수·기억 이벤트·작업 이력이 `refs/hermes/sync` 로 **평문**으로 간다(업로드 직전 마스킹 세 겹). 대화 원문은 안 올린다.
-- 공개 저장소·판별 불가면 꺼진 채 `.hermes/sync.json` 에 이유가 적힌다. 원문까지 올리려면 잠금 모드(열쇠, 세션 밖) — 가이드 참고.
+- git 파일: 에이전트 기억(`agents/<id>/memory.jsonl`) · 나와 나눈 대화 요약(`agents/<id>/conversations/<사람>/`) · 작업 이력(`.hermes/journal.jsonl`). 세션 끝에 쓰이고 평소처럼 커밋한다.
+- 운반(`refs/hermes/sync`, 공개·비공개 무관하게 켜짐): 패턴 수 · 공통 대화 요약. 대화 원문은 **저장하지 않는다.**
+- 올리기 전 묻기: 개인적·업무 무관 문장은 파일에 안 쓰고 대기 — `python3 scripts/hermes-privacy-review.py`. 커밋 게이트 R-privacy 가 막는다.
 - 상태: `cat .hermes/sync.json` · `python3 scripts/hermes-sync.py status` · 가이드: `docs/hermes-sync-guide.md`
 
 **원칙:**

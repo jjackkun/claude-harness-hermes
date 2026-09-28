@@ -6,7 +6,7 @@
   import  — git 으로 받은 파일에서 DB 에 없는 것을 들이고, 기억이 들어온 에이전트의 MEMORY.md 를 다시 만든다
 
 파일이 원본이다 — 컴퓨터를 옮기면 git pull 만으로 따라간다(운반이 꺼진 공개 저장소에서도).
-계획: docs/exec-plans/active/2026-09-28-carry-agent-knowledge.md 목표 2 · 4 · 5 · 6
+계획: docs/exec-plans/completed/2026-09-28-carry-agent-knowledge.md 목표 2 · 4 · 5 · 6
 """
 
 import argparse

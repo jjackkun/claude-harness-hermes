@@ -4,7 +4,7 @@
 # 왜: 에이전트 기억(.hermes/agents/*/memory.jsonl)과 작업 이력(.hermes/journal.jsonl)은 추가만 하는 파일이다.
 # 두 컴퓨터가 같은 파일 끝에 줄을 더하면 git 병합이 충돌한다 — merge=union 이면 양쪽 줄을 모두 살린다.
 # 들이는 쪽이 id 로 중복을 거르므로 겹친 줄은 해가 없다.
-# 계획: docs/exec-plans/active/2026-09-28-carry-agent-knowledge.md 목표 7
+# 계획: docs/exec-plans/completed/2026-09-28-carry-agent-knowledge.md 목표 7
 #
 # 공개 함수 1개: install_harness_gitattributes <project_path>
 #   프리셋이 GITATTRIBUTES_ENTRIES 배열을 채웠을 때만 쓴다. 비었는데 옛 블록이 있으면 블록을 걷는다.

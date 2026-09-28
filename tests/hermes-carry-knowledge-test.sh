@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 에이전트 지식이 컴퓨터를 따라간다 (계획 docs/exec-plans/active/2026-09-28-carry-agent-knowledge.md).
+# 에이전트 지식이 컴퓨터를 따라간다 (계획 docs/exec-plans/completed/2026-09-28-carry-agent-knowledge.md).
 #
 #   1 사람 칸: 요약에 person(git user.name) · 주입은 부른 사람과 나눈 대화만(칸 이전 행은 넣는다)
 #   2 파일(목표 4·5·6): A 가 내보낸 기억·대화 요약·작업 이력을 B 가 들인다 — 판정 대기 문장은 파일에 없다 ·

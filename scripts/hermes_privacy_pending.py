@@ -7,7 +7,7 @@
   keep    — 사람이 "둠" 을 골랐다. 올린다.
   drop    — 사람이 "지움" 을 골랐다. 올리지 않는다.
 사람의 결정(keep·drop)은 기계 판정이 덮어쓰지 않는다.
-계획: docs/exec-plans/active/2026-09-28-carry-agent-knowledge.md 목표 2 · 3
+계획: docs/exec-plans/completed/2026-09-28-carry-agent-knowledge.md 목표 2 · 3
 
 공개: ensure_table · text_hash · mark · status_of · allowed · pending_rows · decide
 """

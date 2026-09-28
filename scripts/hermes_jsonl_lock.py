@@ -4,7 +4,7 @@
 두 세션(Stop 훅 두 개)이 같은 파일에 동시에 붙이면, 각자 읽어 둔 id 집합으로 판단해 같은 줄을 두 번 쓴다(리뷰 MEDIUM).
 그래서 잠근 **뒤에** 파일을 다시 읽어 이미 있는 id 를 거른다. 잠금이 없는 곳(fcntl 없는 Windows 파이썬)은 잠그지 않고
 같은 순서로 쓴다 — 들이는 쪽이 id 로 중복을 거르므로 DB 는 안전하고, 파일에 겹친 줄이 생길 수 있을 뿐이다.
-계획: docs/exec-plans/active/2026-09-28-carry-agent-knowledge.md 목표 4 · 6
+계획: docs/exec-plans/completed/2026-09-28-carry-agent-knowledge.md 목표 4 · 6
 
 공개: SAFE_ID · locked_append
 """

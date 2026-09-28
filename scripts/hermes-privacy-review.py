@@ -7,7 +7,7 @@
 
 지움(drop): 파일·운반으로 나가지 않는다. 기억 문장이면 memory.retracted 이벤트를 더한다(추가만 규칙).
 둠(keep): 다음 내보내기 때 나간다. 같은 문장은 다시 묻지 않는다.
-계획: docs/exec-plans/active/2026-09-28-carry-agent-knowledge.md 목표 3
+계획: docs/exec-plans/completed/2026-09-28-carry-agent-knowledge.md 목표 3
 """
 
 import argparse

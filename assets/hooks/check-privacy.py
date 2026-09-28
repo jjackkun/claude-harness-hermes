@@ -8,7 +8,7 @@
 jsonl 은 이번에 **더해진 줄**만 본다(이미 올라간 줄은 이미 통과했다). 스킬·대화 요약은 스테이징된 본문 전체.
 모델을 부르지 않는다(게이트는 모델을 안 부른다, R3) — 판정은 세션 끝 내보내기가 한다.
 판정 표(state.db)나 헤르메스 스크립트가 없으면 건너뛴다(CI·헤르메스 없는 저장소). 종료 코드 0 통과 · 1 차단 · 2 건너뜀.
-계획: docs/exec-plans/active/2026-09-28-carry-agent-knowledge.md 목표 8
+계획: docs/exec-plans/completed/2026-09-28-carry-agent-knowledge.md 목표 8
 """
 
 import fnmatch

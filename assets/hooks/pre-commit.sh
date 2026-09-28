@@ -553,7 +553,7 @@ fi
 #
 # 기억·대화 요약·작업 이력 파일과 스킬은 사람의 대화에서 나온다. 마스킹(R-secret)은 비밀값 "형태" 만 보고
 # "개인적 · 업무 무관" 내용은 못 거른다. 판정은 세션 끝 내보내기가 하고(모델), 여기서는 그 결과표만 읽는다.
-# 근거: docs/exec-plans/active/2026-09-28-carry-agent-knowledge.md 목표 8
+# 근거: docs/exec-plans/completed/2026-09-28-carry-agent-knowledge.md 목표 8
 CHECK_PRIVACY="$(dirname "$0")/check-privacy.py"
 if [[ -f "$CHECK_PRIVACY" ]] && command -v python3 >/dev/null 2>&1; then
   PRIVACY_OUT=$(python3 "$CHECK_PRIVACY" 2>&1); PRIVACY_RC=$?

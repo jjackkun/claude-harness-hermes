@@ -11,18 +11,18 @@
 
 ## 2. 목표 (What — 검증 가능한 형태)
 
-- [ ] 목표 1 — **사람 칸.** 대화 요약(`session_summary`)에 `person`(요약 때 git `user.name`, 없으면 `unknown`)이 붙고, 에이전트를 부를 때 "나와 나눈 최근 대화" 에는 **부른 사람과 같은 `person`** 의 요약만 들어간다. 검증: `bash tests/hermes-carry-knowledge-test.sh` §1 — person 이 다른 요약 두 개를 넣고 주입 본문에 한쪽만 나온다.
-- [ ] 목표 2 — **올리기 전 묻기(판정).** 요약 haiku 호출이 요약과 함께 "개인적 · 업무 무관" 문장을 돌려준다(호출 수 그대로). 걸린 문장·판정 실패는 **검토 대기**로 DB 에 남고 파일로 나가지 않는다. 검증: `bash tests/hermes-privacy-review-test.sh` §1·2 — 걸린 문장은 대기 표에, 판정 실패면 새 내용 전체가 대기. 파일에 없음은 `bash tests/hermes-carry-knowledge-test.sh`.
-- [ ] 목표 3 — **묻기(사람).** 확인 명령이 대기 문장을 하나씩 보이고 "지움/둠" 을 받는다. 지움 → 파일로 안 나감(기억은 `memory.retracted` 추가), 둠 → 내보내고 다시 안 묻는다. 검증: `bash tests/hermes-privacy-review-test.sh` §3 — 두 선택 각각의 결과.
-- [ ] 목표 4 — **기억 파일(1번).** `memory_events` 가 `.hermes/agents/<id>/memory.jsonl`(추가만)로 나가고, 받은 컴퓨터는 세션 시작 때 없는 줄을 DB 에 넣고(`memory_id` 중복 제거) `MEMORY.md` 를 다시 만든다. 검증: `bash tests/hermes-carry-knowledge-test.sh` §2 — A 가 내보낸 기억을 B 가 들이고 MEMORY.md 가 생긴다.
-- [ ] 목표 5 — **대화 요약 파일(2번).** 에이전트 요약(`agent_id` 있음)이 `.hermes/agents/<id>/conversations/<person>/<session_id>.json`(5칸 요약만)으로 나가고 받은 쪽이 들인다. 검증: `bash tests/hermes-carry-knowledge-test.sh` §2 — B 가 게이트QA 를 부르면 A 에서 나눈 대화를 안다.
-- [ ] 목표 6 — **작업 이력 파일(3번).** 고르는 규칙 함수 하나가 `task.assigned` · `decision` · `agent.created` · 교훈 줄 · 명부 에이전트 호출 `task.finished` · 올린 인계의 `_CLOSING` 4종만 `.hermes/journal.jsonl` 로 낸다. 검증: `bash tests/hermes-carry-knowledge-test.sh` §2 — B 의 인계 대기가 비어 있고 보조 호출 줄이 파일에 없다.
-- [ ] 목표 7 — **git 설정.** 설치기가 `.gitignore` 에 `!.hermes/agents/*/memory.jsonl` · `!.hermes/agents/*/conversations/` · `…/**` · `!.hermes/journal.jsonl` 을 풀고, `.gitattributes` 에 두 jsonl 의 `merge=union` 을 둔다. 검증: `git check-ignore -v` 로 세 경로가 무시되지 않음, 두 브랜치가 같은 jsonl 끝에 줄을 더해 병합이 충돌 없이 양쪽 줄을 갖는 시험.
-- [ ] 목표 8 — **R-privacy 게이트.** 스테이징된 에이전트 파일·journal·스킬에 검토 대기가 남아 있으면 pre-commit 이 막고 확인 명령을 알린다. 검증: 대기 1건으로 커밋 차단, 0건이면 통과. 게이트 발화가 `gate-events.jsonl` 에 남는다.
-- [ ] 목표 9 — **운반 무조건 켬(4번).** 설치기가 공개·비공개 구분 없이 `sync.json` 을 `push: true` 로 만든다. 지금은 파일이 있으면 손대지 않아(`lib/sync_autoenable.sh:58`) 기존 공개 소우주에 닿지 않으므로, **설치기가 정한 값(`"set_by": "installer"`, `push: false`)만** 켜고 그 소우주 이름을 설치 로그에 한 줄씩 알린다. `set_by` 가 없거나 다른 값(사람이 쓴 값)은 보존한다. 공통 요약·패턴 수가 운반으로 가고 공통 요약도 묻기 검사를 거친다. 에이전트 기억·요약·이력은 git 파일이 원본이고 운반의 `memory/`·에이전트 `summary/`·`journal/` 조각은 걷는다. 검증: ① 공개 가짜 저장소 새 설치 → `push: true` ② 설치기가 쓴 `push: false` 가 있는 저장소 재설치 → `push: true` + 로그 한 줄 ③ 사람이 쓴 `push: false` 재설치 → 그대로 ④ push 한 조각 목록에 `memory/`·`journal/` 가 없음.
-- [ ] 목표 10 — **원문 저장 안 함(5번).** `session_history` 쓰기·`.hermes/history/` 내보내기를 멈추고, 패턴 인정은 `pattern_session`, 결정화 증거는 요약(공통)·기억(개인), `/hermes-recall 키워드` 는 요약 검색, 실수 신호는 새 신호 표로 옮긴다. 생애주기 원문 압축·재색인·원문 문지르기·중복 세션 압축·잠금 모드 `"history"` 옵션을 걷는다. 검증: 한 세션을 돌린 뒤 `session_history` 행이 늘지 않고 `.hermes/history/` 가 생기지 않음, 패턴이 2세션에서 인정되고 결정화 증거가 비지 않는 시험.
-- [ ] 목표 11 — **공장 스킬 커밋(8번).** 공장 `.gitignore` 에서 `.hermes/skills/` 되무시 줄을 지운다(`history/` 줄은 목표 10 뒤 필요 없으면 함께). 검증: `git check-ignore -v .hermes/skills/<파일>` 출력 없음, 설치기가 `.hermes/skills/` 를 복사하지 않음(grep 0건 유지).
-- [ ] 목표 12 — **문서·결정.** 원장에 새 결정(A-10 고침 · C-29 보완(person) · T-17 닫음(원문) · T-18 고침(운반 무조건) · 공장 스킬)을 남기고, `docs/hermes-sync-guide.md` 표와 `raw-transcript.md` §3 을 고친다. 검증: 안내서 표가 목표 4~11 결과와 일치(읽기 대조 리뷰).
+- [x] 목표 1 — **사람 칸.** (결정 C-30) 대화 요약(`session_summary`)에 `person`(요약 때 git `user.name`, 없으면 `unknown`)이 붙고, 에이전트를 부를 때 "나와 나눈 최근 대화" 에는 **부른 사람과 같은 `person`** 의 요약만 들어간다. 검증: `bash tests/hermes-carry-knowledge-test.sh` §1 — person 이 다른 요약 두 개를 넣고 주입 본문에 한쪽만 나온다.
+- [x] 목표 2 — **올리기 전 묻기(판정).** (결정 C-31) 요약 haiku 호출이 요약과 함께 "개인적 · 업무 무관" 문장을 돌려준다(호출 수 그대로). 걸린 문장·판정 실패는 **검토 대기**로 DB 에 남고 파일로 나가지 않는다. 검증: `bash tests/hermes-privacy-review-test.sh` §1·2 — 걸린 문장은 대기 표에, 판정 실패면 새 내용 전체가 대기. 파일에 없음은 `bash tests/hermes-carry-knowledge-test.sh`.
+- [x] 목표 3 — **묻기(사람).** (결정 C-31) 확인 명령이 대기 문장을 하나씩 보이고 "지움/둠" 을 받는다. 지움 → 파일로 안 나감(기억은 `memory.retracted` 추가), 둠 → 내보내고 다시 안 묻는다. 검증: `bash tests/hermes-privacy-review-test.sh` §3 — 두 선택 각각의 결과.
+- [x] 목표 4 — **기억 파일(1번).** (결정 A-11) `memory_events` 가 `.hermes/agents/<id>/memory.jsonl`(추가만)로 나가고, 받은 컴퓨터는 세션 시작 때 없는 줄을 DB 에 넣고(`memory_id` 중복 제거) `MEMORY.md` 를 다시 만든다. 검증: `bash tests/hermes-carry-knowledge-test.sh` §2 — A 가 내보낸 기억을 B 가 들이고 MEMORY.md 가 생긴다.
+- [x] 목표 5 — **대화 요약 파일(2번).** (결정 A-11) 에이전트 요약(`agent_id` 있음)이 `.hermes/agents/<id>/conversations/<person>/<session_id>.json`(5칸 요약만)으로 나가고 받은 쪽이 들인다. 검증: `bash tests/hermes-carry-knowledge-test.sh` §2 — B 가 게이트QA 를 부르면 A 에서 나눈 대화를 안다.
+- [x] 목표 6 — **작업 이력 파일(3번).** (결정 A-11) 고르는 규칙 함수 하나가 `task.assigned` · `decision` · `agent.created` · 교훈 줄 · 명부 에이전트 호출 `task.finished` · 올린 인계의 `_CLOSING` 4종만 `.hermes/journal.jsonl` 로 낸다. 검증: `bash tests/hermes-carry-knowledge-test.sh` §2 — B 의 인계 대기가 비어 있고 보조 호출 줄이 파일에 없다.
+- [x] 목표 7 — **git 설정.** (결정 A-11) 설치기가 `.gitignore` 에 `!.hermes/agents/*/memory.jsonl` · `!.hermes/agents/*/conversations/` · `…/**` · `!.hermes/journal.jsonl` 을 풀고, `.gitattributes` 에 두 jsonl 의 `merge=union` 을 둔다. 검증: `git check-ignore -v` 로 세 경로가 무시되지 않음, 두 브랜치가 같은 jsonl 끝에 줄을 더해 병합이 충돌 없이 양쪽 줄을 갖는 시험.
+- [x] 목표 8 — **R-privacy 게이트.** (결정 C-31) 스테이징된 에이전트 파일·journal·스킬에 검토 대기가 남아 있으면 pre-commit 이 막고 확인 명령을 알린다. 검증: 대기 1건으로 커밋 차단, 0건이면 통과. 게이트 발화가 `gate-events.jsonl` 에 남는다.
+- [x] 목표 9 — **운반 무조건 켬(4번).** (결정 T-22) 설치기가 공개·비공개 구분 없이 `sync.json` 을 `push: true` 로 만든다. 지금은 파일이 있으면 손대지 않아(`lib/sync_autoenable.sh:58`) 기존 공개 소우주에 닿지 않으므로, **설치기가 정한 값(`"set_by": "installer"`, `push: false`)만** 켜고 그 소우주 이름을 설치 로그에 한 줄씩 알린다. `set_by` 가 없거나 다른 값(사람이 쓴 값)은 보존한다. 공통 요약·패턴 수가 운반으로 가고 공통 요약도 묻기 검사를 거친다. 에이전트 기억·요약·이력은 git 파일이 원본이고 운반의 `memory/`·에이전트 `summary/`·`journal/` 조각은 걷는다. 검증: ① 공개 가짜 저장소 새 설치 → `push: true` ② 설치기가 쓴 `push: false` 가 있는 저장소 재설치 → `push: true` + 로그 한 줄 ③ 사람이 쓴 `push: false` 재설치 → 그대로 ④ push 한 조각 목록에 `memory/`·`journal/` 가 없음.
+- [x] 목표 10 — **원문 저장 안 함(5번).** (결정 T-23) `session_history` 쓰기·`.hermes/history/` 내보내기를 멈추고, 패턴 인정은 `pattern_session`, 결정화 증거는 요약(공통)·기억(개인), `/hermes-recall 키워드` 는 요약 검색, 실수 신호는 새 신호 표로 옮긴다. 생애주기 원문 압축·재색인·원문 문지르기·중복 세션 압축·잠금 모드 `"history"` 옵션을 걷는다. 검증: 한 세션을 돌린 뒤 `session_history` 행이 늘지 않고 `.hermes/history/` 가 생기지 않음, 패턴이 2세션에서 인정되고 결정화 증거가 비지 않는 시험.
+- [x] 목표 11 — **공장 스킬 커밋(8번).** (결정 C-32) 공장 `.gitignore` 에서 `.hermes/skills/` 되무시 줄을 지운다(`history/` 줄은 목표 10 뒤 필요 없으면 함께). 검증: `git check-ignore -v .hermes/skills/<파일>` 출력 없음, 설치기가 `.hermes/skills/` 를 복사하지 않음(grep 0건 유지).
+- [x] 목표 12 — **문서·결정.** 원장에 새 결정(A-10 고침 · C-29 보완(person) · T-17 닫음(원문) · T-18 고침(운반 무조건) · 공장 스킬)을 남기고, `docs/hermes-sync-guide.md` 표와 `raw-transcript.md` §3 을 고친다. 검증: 안내서 표가 목표 4~11 결과와 일치(읽기 대조 리뷰).
 
 ## 2-bis. 착수 전 확인한 사실 (2026-09-28)
 
@@ -149,8 +149,21 @@
 - 운반의 패턴 수는 키별 max 로 합쳐 동시 증가분이 사라진다(`hermes_sync_learning.py:142`) — 이 계획 밖.
 - `.hermes/hag/<세션>.json` 이 끝난 세션 것까지 쌓인다 — 이 계획 밖.
 
-## 8. 회고 (완료 시 작성)
+## 8. 회고 (완료 2026-09-29)
 
+- 결과: 커밋 30733c1(목표 1~8) · 4eb3bb0(목표 9·10·문서) · c3ddb66(공장 스킬 43·이력 파일) + 이 커밋(계획 마감).
+  전체 시험 115개 중 114 통과 → 남은 1(design-cover: 새 결정 C-32·T-23 이 목표에 번호로 인용 안 됨)을 목표에 결정 번호를 붙여 고침.
 - 잘된 것:
+  - **실제 저장소에서 돌려 본 것이 버그를 잡았다.** 시험은 모두 초록이었는데, 이 공장에서 내보내기를 실제로 돌리자
+    판정 묶음 하나(115문장)가 호출 실패로 통째 사람 확인 대기가 됐다. "실패 = 대기" 는 안전했지만 쓸 수 없었다 →
+    반씩 다시 묻기 + 기록 없이 두고 다음에 재판정으로 고쳐 재실행하니 743문장 모두 clean, 대기 0.
+  - 리뷰 4회(code-reviewer ×3, planner-lite)가 HIGH 3건(flagged 글자 일치 · intent 미판정 · 패턴 키 미판정)을 잡았다.
+  - 원문을 없애는 결정은 "원문이 무엇에 쓰이나" 를 코드로 잰 뒤에야 내릴 수 있었다(읽는 셋 모두 전문 검색 → 대체물 있음).
 - 잘못된 것:
-- 다음 룰 후보:
+  - 처음엔 "DB 원문은 유지" 를 권했다가 뒤집었다 — 대신할 것(`pattern_session`·요약)이 이미 있는지 확인하지 않고 권했다.
+  - 공통 요약을 공개 저장소에서 빼자고 한 권고는 2번(에이전트 요약은 올린다)과 앞뒤가 안 맞았다(사용자 지적).
+  - 8b 작업 에이전트가 권한 검사에 막혀 중간에 멈췄다 — 남은 목록을 받아 이어서 끝냈다. 대량 삭제·설정 편집은 에이전트에 넘기지 않는 편이 낫다.
+  - 새 모듈 10개를 설치 복사 목록에 넣는 것을 잊었다 — universe 시험이 잡았다.
+- 남은 것(이 계획 밖): 전파(`update-all`) 전에는 소우주에 안 간다 · 이미 쌓인 원문 삭제는 사람이 정한다 ·
+  `@hag` 상태 파일 정리 · 패턴 수 동시 증가분(max) · `hermes_reuse`/`session_reuse` 는 읽는 곳이 없어졌다(지울지 따로).
+- 다음 룰 후보: "시험이 초록이어도 실제 데이터로 한 번 돌린다" — 판정·운반처럼 모델·원격이 끼는 기능은 가짜로는 실패 모양을 못 본다.

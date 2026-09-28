@@ -6,7 +6,7 @@
 > **2026-09-28 갱신(T-23):** 대화 원문은 이제 **어디에도 저장하지 않는다** — git·`.hermes/history/`·DB `session_history` 모두.
 > 원문을 읽던 기능은 요약·`token_session`·`session_signals` 로 옮겼고, 원문 파일·재색인·잠금 모드 원문 운반은 걷었다.
 > 아래 내용은 **이미 쌓인 옛 원문**과 그 결정의 근거로만 남긴다. 공장의 결정화 스킬은 C-32 로 커밋한다(아래 "공장은 소우주가 아니다" 문구는 원문에만 해당).
-> 계획: `docs/exec-plans/active/2026-09-28-carry-agent-knowledge.md`
+> 계획: `docs/exec-plans/completed/2026-09-28-carry-agent-knowledge.md`
 
 ## 개요
 

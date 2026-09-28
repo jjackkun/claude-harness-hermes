@@ -5,7 +5,7 @@
 - 세션 하나 = 파일 하나. 요약이 갱신되면 그 파일만 바뀐다. 사람별 폴더라 거를 때 파일 안 칸에만 기대지 않는다.
 - 사람 칸이 빈 요약(칸 이전)은 이 컴퓨터의 사람 것으로 쓴다 — 그 요약은 이 컴퓨터에서 쌓였다.
 - 들이기: updated_at 이 더 새 것만 반영한다. 파일 속 주인·사람이 폴더(에이전트 id · 사람 폴더)와 다르면 버린다.
-계획: docs/exec-plans/active/2026-09-28-carry-agent-knowledge.md 목표 5
+계획: docs/exec-plans/completed/2026-09-28-carry-agent-knowledge.md 목표 5
 
 공개: SLOT_KEYS · judge_items · export · import_
 """

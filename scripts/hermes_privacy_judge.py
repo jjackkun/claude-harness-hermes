@@ -6,7 +6,7 @@
 판정에 실패한 묶음은 반으로 나눠 다시 묻는다. 끝내 판정하지 못한 문장은 **판정 기록 없이** 둔다 — 기록이 없으면
 내보내기·게이트가 막으므로 안전은 같고, 다음 내보내기 때 다시 판정된다. (처음엔 실패 = 대기였는데, 실측에서 묶음 하나
 115문장이 통째로 사람 확인 대기로 쌓였다 — 2026-09-28, 이 공장 저장소.)
-계획: docs/exec-plans/active/2026-09-28-carry-agent-knowledge.md 목표 2
+계획: docs/exec-plans/completed/2026-09-28-carry-agent-knowledge.md 목표 2
 
 공개: RULE · judge_and_mark
 """

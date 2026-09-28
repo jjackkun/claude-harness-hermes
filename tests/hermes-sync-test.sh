@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # 운반 계층 검증 — 운반에 남은 것은 패턴 수와 판정을 통과한 공통 요약뿐이다
-# (계획 docs/exec-plans/active/2026-09-28-carry-agent-knowledge.md 목표 9·10, 결정 T-22·T-23·A-11).
+# (계획 docs/exec-plans/completed/2026-09-28-carry-agent-knowledge.md 목표 9·10, 결정 T-22·T-23·A-11).
 #
 #   두 클론이 bare 원격 하나를 공유한다.
 #   1 저장소 없음 문구

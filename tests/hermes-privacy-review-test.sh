@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 올리기 전 묻기 (계획 docs/exec-plans/active/2026-09-28-carry-agent-knowledge.md 목표 2 · 3).
+# 올리기 전 묻기 (계획 docs/exec-plans/completed/2026-09-28-carry-agent-knowledge.md 목표 2 · 3).
 #
 #   1 요약 판정: 요약 호출이 돌려준 flagged 항목 → 검토 대기 · flagged 칸이 없거나 짝이 안 맞으면 기록 없이(묶음 판정이 다시)
 #   2 묶음 판정: 기억·이력·스킬 문장 — 표시된 것만 대기, 나머지 clean · 실패한 묶음은 반씩 다시 · 끝내 실패하면 기록 없이(다음에 다시)
