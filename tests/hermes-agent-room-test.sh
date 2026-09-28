@@ -3,6 +3,7 @@
 #
 #   1. roster (목표 1) — 이름·@호출명·상태·조직·최근 불린 때, 은퇴자는 맨 아래
 #   2. room  (목표 2) — 한 세션만: 명부 에이전트(이름·횟수·마지막) · 명부 밖(종류·횟수) · 내부 보조(claude) 건수, --line 한 줄
+#   3. 스킬  (목표 3) — /hermes-roster · /hermes-room 설치, 사람만 부름, !`…` 주입 결과 = 명령 출력
 #
 # 실행: bash tests/hermes-agent-room-test.sh
 
@@ -74,6 +75,20 @@ A room >/dev/null 2>&1; assert "세션 없이 부르면 rc 0(안내만)" 0 "$?"
 mv "$P/.hermes/state.db" "$TMP/state.db.hold"
 assert "DB 없음 --line → 빈 방 한 줄" "방: 명부 에이전트 없음 · 도구 0 · 보조 0" "$(A room --session "$S1" --line)"
 mv "$TMP/state.db.hold" "$P/.hermes/state.db"
+
+echo ""
+echo "== 3. 슬래시 명령 스킬 (목표 3) — 설치본 스킬의 !\`…\` 줄을 Claude Code 처럼 치환해 돌린다 =="
+bang() {  # bang <skill> — 첫 !`…` 줄의 명령을 치환 후 실행
+  local line; line="$(grep -m1 '^!`' "$P/.claude/skills/$1/SKILL.md")"; line="${line#!\`}"; line="${line%\`}"
+  line="${line//\$\{CLAUDE_PROJECT_DIR\}/$P}"; line="${line//\$\{CLAUDE_SESSION_ID\}/$S1}"
+  env -u HERMES_AGENT_ID bash -c "$line"; }
+for sk in hermes-roster hermes-room; do
+  assert "설치본에 $sk 스킬" 1 "$([[ -f "$P/.claude/skills/$sk/SKILL.md" ]] && echo 1 || echo 0)"
+  assert "$sk 는 사람만 부른다(disable-model-invocation: true)" 1 "$(grep -c '^disable-model-invocation: true$' "$P/.claude/skills/$sk/SKILL.md")"
+done
+assert "/hermes-roster 주입 결과 = roster 명령 출력" "$(A roster | md5sum)" "$(bang hermes-roster | md5sum)"
+assert "/hermes-room 주입 결과 = room --session 출력" "$(A room --session "$S1" | md5sum)" "$(bang hermes-room | md5sum)"
+assert "/hermes-room 주입 결과에 이 방의 명부 에이전트" 1 "$(bang hermes-room | grep -c 백로그담당)"
 
 echo ""
 echo "PASS=$PASS FAIL=$FAIL"
