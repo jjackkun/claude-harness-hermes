@@ -6,3 +6,4 @@
 - [rim-office 제외](project-rim-office-excluded.md) — 2026-09-22 전파 대상에서 뺌(11곳), 커밋·재등록 제안 금지
 - [ai-create 제외](project-ai-create-excluded.md) — 2026-09-22 전파 대상에서 뺌(이 컴퓨터 2곳), 풀·커밋 제안 금지
 - [전체 시험은 마지막 한 번](feedback-full-suite-once.md) — 단계마다 5분 30초 묶음 반복 금지; 바뀐 부분 시험만, R-cx 먼저
+- [문서 만들면 바로 리뷰](feedback-review-docs-after-writing.md) — 묻지 말고 planner-lite·architect-lite·대조를 돌리고 지적은 코드로 가려 반영

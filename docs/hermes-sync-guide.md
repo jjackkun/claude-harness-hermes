@@ -14,8 +14,40 @@
 | 옮기는 길 | 내용 | 비고 |
 |---|---|---|
 | 코드 브랜치(`main`) | SOUL.md · 개인 스킬 · `agents.json` · `organization.yaml` · 결정화 스킬 | 보통의 push/pull |
-| `refs/hermes/sync` (평문) | 세션 요약 · 패턴 수 · 기억 이벤트 · 작업 이력 | 업로드 직전 마스킹 세 겹(비밀값·개인정보·기계가 아는 이름) |
+| `refs/hermes/sync` (평문) | 세션 요약(에이전트별 대화 요약 포함, C-29) · 패턴 수 · 기억 이벤트 · 작업 이력 | 업로드 직전 마스킹 세 겹(비밀값·개인정보·기계가 아는 이름) |
 | 안 옮김 | 대화 원문 · `MEMORY.md`(파생) · `state.db` 나머지 | 원문은 그 컴퓨터의 기록. 옵션(아래) |
+
+## 에이전트의 지식은 어디까지 따라가나
+
+> 작성일: 2026-09-28 · 근거: 이 저장소에서 `git check-ignore -v` 로 파일마다 잰 값, `scripts/hermes_sync_learning.py`·`scripts/hermes-sync.py` 가 올리는 항목.
+
+명부 에이전트(예: 게이트QA)를 다른 컴퓨터에서 불렀을 때 **무엇을 알고 시작하나.**
+
+| 에이전트의 지식 | 어디에 있나 | git pull 만 | 운반(`refs/hermes/sync`)까지 |
+|---|---|---|---|
+| 정체성 | `.hermes/agents/<id>/SOUL.md` | **따라감** | 따라감 |
+| 명부·조직 | `.hermes/agents.json` · `organization.yaml` | **따라감** | 따라감 |
+| 그 에이전트의 개인 스킬 | `.hermes/agents/<id>/skills/` | **따라감** | 따라감 |
+| 소우주 공통 결정화 스킬 | `.hermes/skills/` | **따라감**(공장 저장소만 예외 — 아래) | 따라감 |
+| 배운 것·가르친 것(기억) | `state.db` `memory_events` → `MEMORY.md`(파생) | 안 따라감 | **따라감**(`memory/`) |
+| 나와 나눈 대화 요약(C-29 — 방·`@hag`·`@` 호출) | `state.db` `session_summary`(`agent_id` 붙은 행) | 안 따라감 | **따라감**(`summary/`, `agent_id` 포함) |
+| 작업 이력(불린 기록·방 주인) | `state.db` `journal_events` | 안 따라감 | **따라감**(`journal/`) |
+| 대화 원문 | `.hermes/history/` · 세션 기록 | 안 따라감 | 잠금 모드(`"history": true`)일 때만 |
+
+- 한 줄로: **git 은 "누구인지·무엇을 할 줄 아는지"(SOUL·스킬)를, 운반은 "무엇을 겪었는지"(기억·대화·이력)를 옮긴다.**
+  운반이 꺼져 있으면 다른 컴퓨터의 에이전트는 **자기가 누구인지는 알지만 나와 나눈 대화와 배운 것은 모른다.**
+- **운반은 저장소마다 켜짐/꺼짐이 다르다.** 비공개 저장소는 설치 때 자동으로 켜지고(평문 모드), 공개 저장소는 꺼져 있다 — 공개 저장소에서 옮기려면 아래 잠금 모드.
+- **공장 저장소(claude-harness-hermes) 예외:** `.gitignore` 끝에서 `.hermes/skills/` 를 다시 무시한다(공장은 소우주가 아니라 결정화 스킬을 코드에 싣지 않는다, 2026-09-16).
+  (대화 원문 `.hermes/history/` 는 공장만의 예외가 아니다 — 설치기 블록이 풀어 주지 않아 **모든 저장소에서** git 으로 안 옮긴다.)
+  그래서 공장에서는 공통 결정화 스킬도 git 으로 안 따라간다. 공장은 공개 저장소라 운반도 꺼져 있다(`sync.json`: `"push": false`).
+- `MEMORY.md` 는 파생물이라 옮기지 않는다 — 받은 쪽에서 `memory_events` 로 다시 만든다(pull 뒤 자동).
+
+직접 재 보기:
+
+```bash
+git check-ignore -v .hermes/agents/<id>/SOUL.md .hermes/skills/<파일> .hermes/state.db   # 출력이 있으면 git 이 안 옮긴다
+cat .hermes/sync.json                                                                  # "push": true 면 운반이 켜짐
+```
 
 ## 확인
 
