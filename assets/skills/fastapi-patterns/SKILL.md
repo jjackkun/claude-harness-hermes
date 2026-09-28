@@ -1,6 +1,6 @@
 ---
 name: fastapi-patterns
-description: FastAPI application patterns — routing, Pydantic v2, dependency injection, error handling, async DB sessions, middleware.
+description: FastAPI 앱 패턴(라우팅·Pydantic v2·의존성 주입·비동기 DB). FastAPI application patterns — routing, Pydantic v2, dependency injection, error handling, async DB sessions, middleware.
 ---
 
 # FastAPI Patterns

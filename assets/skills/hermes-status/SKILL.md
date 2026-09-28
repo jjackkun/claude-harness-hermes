@@ -1,6 +1,6 @@
 ---
 name: hermes-status
-description: Show the overall Hermes engineering status. Use when the user types /hermes-status. Reads the project's .hermes/state.db and prints skill/rule/session counts, pending crystallization patterns, and the latest/most-used crystallized skills, then offers to run crystallization if patterns are pending.
+description: 헤르메스 전체 현황(스킬·규칙·세션 수·결정화 대기)을 보인다(/hermes-status). Show the overall Hermes engineering status. Use when the user types /hermes-status. Reads the project's .hermes/state.db and prints skill/rule/session counts, pending crystallization patterns, and the latest/most-used crystallized skills, then offers to run crystallization if patterns are pending.
 ---
 
 # hermes-status

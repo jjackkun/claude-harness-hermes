@@ -1,6 +1,6 @@
 ---
 name: svelte-patterns
-description: Svelte 5 runes, SvelteKit routing/load/form patterns, store patterns, and SSR/CSR decisions.
+description: Svelte 5 룬·SvelteKit 라우팅·폼·스토어 패턴. Svelte 5 runes, SvelteKit routing/load/form patterns, store patterns, and SSR/CSR decisions.
 ---
 
 # Svelte / SvelteKit Patterns

@@ -1,6 +1,6 @@
 ---
 name: search-first
-description: Research-before-coding workflow. Search for existing tools, libraries, and patterns before writing custom code. Dispatches a general-purpose agent for parallel research.
+description: 코드를 짜기 전에 기존 도구·라이브러리·패턴부터 찾는 작업 흐름. Research-before-coding workflow. Search for existing tools, libraries, and patterns before writing custom code. Dispatches a general-purpose agent for parallel research.
 metadata:
   origin: ECC
 ---

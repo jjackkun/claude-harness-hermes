@@ -1,6 +1,6 @@
 ---
 name: hermes-loop
-description: Goal-based autonomous loop for the CURRENT project. Trigger when the user types /hermes-loop (with or without a goal), or asks in natural language to run/start a Hermes loop (e.g. "헤르메스 루프 하자", "헤르메스 루프 돌려줘", "목표 루프 작업하자", "run a hermes loop"). On trigger, FIRST present the options form and ask the user to fill the required goal, letting them skip any optional field, THEN run. The target is always the current project where this skill is installed — never ask which project. Destructive actions go through the standard permission prompts.
+description: 현재 프로젝트에서 목표 기반 자율 루프를 돈다(/hermes-loop). Goal-based autonomous loop for the CURRENT project. Trigger when the user types /hermes-loop (with or without a goal), or asks in natural language to run/start a Hermes loop (e.g. "헤르메스 루프 하자", "헤르메스 루프 돌려줘", "목표 루프 작업하자", "run a hermes loop"). On trigger, FIRST present the options form and ask the user to fill the required goal, letting them skip any optional field, THEN run. The target is always the current project where this skill is installed — never ask which project. Destructive actions go through the standard permission prompts.
 ---
 
 # hermes-loop

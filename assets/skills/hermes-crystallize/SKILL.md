@@ -1,6 +1,6 @@
 ---
 name: hermes-crystallize
-description: Crystallize repeated conversation patterns into reusable skill files. Triggered automatically by the Hermes learning loop (Stop hook) when the same pattern is detected 3+ times (pattern_count count >= 3, crystallized = 0). Saves the new skill under [project]/.hermes/skills/, registers it in skill_index, and marks the pattern as crystallized.
+description: 3번 이상 반복된 대화 패턴을 재사용 스킬로 결정화한다(헤르메스 학습 루프). Crystallize repeated conversation patterns into reusable skill files. Triggered automatically by the Hermes learning loop (Stop hook) when the same pattern is detected 3+ times (pattern_count count >= 3, crystallized = 0). Saves the new skill under [project]/.hermes/skills/, registers it in skill_index, and marks the pattern as crystallized.
 ---
 
 # hermes-crystallize

@@ -1,6 +1,6 @@
 ---
 name: typescript-patterns
-description: TypeScript type system patterns — strict mode, generics, discriminated unions, branded types, inference, utility types.
+description: TypeScript 타입 시스템 패턴(strict·제네릭·판별 유니언). TypeScript type system patterns — strict mode, generics, discriminated unions, branded types, inference, utility types.
 ---
 
 # TypeScript Patterns

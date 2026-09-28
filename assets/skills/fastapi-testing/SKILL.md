@@ -1,6 +1,6 @@
 ---
 name: fastapi-testing
-description: Testing FastAPI apps with pytest-asyncio and httpx.AsyncClient — fixtures, dependency overrides, DB isolation, auth.
+description: FastAPI 시험 작성(pytest-asyncio·httpx·픽스처·DB 격리). Testing FastAPI apps with pytest-asyncio and httpx.AsyncClient — fixtures, dependency overrides, DB isolation, auth.
 ---
 
 # FastAPI Testing

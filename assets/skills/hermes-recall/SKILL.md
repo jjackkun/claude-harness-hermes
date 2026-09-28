@@ -1,6 +1,6 @@
 ---
 name: hermes-recall
-description: Recall past conversation context from Hermes rolling summaries. Use when the user types /hermes-recall [keyword]. Reads the project's .hermes/state.db session_summary table and prints matching 5-slot summaries (decisions/open tasks). Without a keyword, shows the most recent session summary.
+description: 헤르메스 요약에서 지난 대화 맥락을 떠올린다(/hermes-recall [키워드]). Recall past conversation context from Hermes rolling summaries. Use when the user types /hermes-recall [keyword]. Reads the project's .hermes/state.db session_summary table and prints matching 5-slot summaries (decisions/open tasks). Without a keyword, shows the most recent session summary.
 ---
 
 # hermes-recall

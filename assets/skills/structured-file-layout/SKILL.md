@@ -1,6 +1,6 @@
 ---
 name: structured-file-layout
-description: Use when creating new files, planning features, or writing exec-plans — before any code is written, to ensure each file has a single responsibility and folders are organized by domain
+description: 코드 전에 파일·폴더 구조를 잡는다 — 한 파일 한 책임, 도메인별 폴더. Use when creating new files, planning features, or writing exec-plans — before any code is written, to ensure each file has a single responsibility and folders are organized by domain
 ---
 
 # structured-file-layout

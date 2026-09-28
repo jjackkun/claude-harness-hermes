@@ -1,6 +1,6 @@
 ---
 name: hermes-dream
-description: Run Hermes dreaming — consolidate accumulated rolling summaries into crystallized/evolved skills and propose junk-skill deletions. Use when the user types /hermes-dream [apply]. Without 'apply' it crystallizes/evolves automatically and only PROPOSES deletions (dry-run); with 'apply' it also EXECUTES the proposed deletions.
+description: 헤르메스 드리밍 — 쌓인 요약을 스킬로 결정화·진화하고 쓸모없는 스킬 삭제를 제안한다(/hermes-dream [apply]). Run Hermes dreaming — consolidate accumulated rolling summaries into crystallized/evolved skills and propose junk-skill deletions. Use when the user types /hermes-dream [apply]. Without 'apply' it crystallizes/evolves automatically and only PROPOSES deletions (dry-run); with 'apply' it also EXECUTES the proposed deletions.
 ---
 
 # hermes-dream

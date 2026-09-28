@@ -1,6 +1,6 @@
 ---
 name: postgres-patterns
-description: PostgreSQL database patterns for query optimization, schema design, indexing, and security. Based on Supabase best practices.
+description: PostgreSQL 쿼리 최적화·스키마·인덱스·보안 패턴. PostgreSQL database patterns for query optimization, schema design, indexing, and security. Based on Supabase best practices.
 metadata:
   origin: ECC
 ---

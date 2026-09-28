@@ -1,6 +1,6 @@
 ---
 name: verification-loop
-description: "A comprehensive verification system for Claude Code sessions."
+description: "작업 세션의 빌드·린트·시험을 한 번에 도는 종합 검증. A comprehensive verification system for Claude Code sessions."
 metadata:
   origin: ECC
 ---

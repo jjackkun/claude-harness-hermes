@@ -1,6 +1,6 @@
 ---
 name: node-patterns
-description: Node.js runtime patterns — ESM, package manager discipline, async/await, streams, error handling, environment config.
+description: Node.js 런타임 패턴(ESM·비동기·스트림·오류 처리·환경 설정). Node.js runtime patterns — ESM, package manager discipline, async/await, streams, error handling, environment config.
 ---
 
 # Node.js Patterns

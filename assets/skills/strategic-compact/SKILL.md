@@ -1,6 +1,6 @@
 ---
 name: strategic-compact
-description: Suggests manual context compaction at logical intervals to preserve context through task phases rather than arbitrary auto-compaction.
+description: 작업 단계 사이에 수동으로 문맥을 압축하도록 제안한다. Suggests manual context compaction at logical intervals to preserve context through task phases rather than arbitrary auto-compaction.
 metadata:
   origin: ECC
 ---
