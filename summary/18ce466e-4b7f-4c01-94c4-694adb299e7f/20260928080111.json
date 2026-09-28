@@ -1,0 +1,1 @@
+{"last_msg_count": 13, "project_id": "claude-harness-hermes", "session_id": "18ce466e-4b7f-4c01-94c4-694adb299e7f", "slots_json": "{\"decisions\": [\"다음 릴리스 전에 결제 화면 회귀 시험을 반드시 실행한다\"], \"open\": [], \"prefs\": [], \"facts\": [\"결제 화면 회귀 시험은 다음 릴리스 전 필수 실행 항목\", \"게이트QA가 이 약속을 인지했음\"], \"next\": []}", "turn_count": 2, "updated_at": "2026-09-28 08:01:11"}
