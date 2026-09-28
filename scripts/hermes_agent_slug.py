@@ -8,7 +8,7 @@ Claude Code 는 `.claude/agents/*.md` 의 frontmatter `name` 으로 서브에이
   예약   내장 에이전트 · main · 이미 깔린 에이전트 파일(.claude/agents · assets/agents) 이름
 계획: docs/exec-plans/active/2026-09-28-agent-mention-bridge.md 목표 1
 
-공개: SlugError · slug_problem · assign_slug
+공개: SlugError · slug_problem · assign_slug · agent_by_slug
 """
 
 import os
@@ -59,3 +59,11 @@ def assign_slug(roster: dict, agent: dict, slug: str, project: str) -> None:
     if folder and slug not in owned:
         raise SlugError(f"slug '{slug}' 는 {folder}/{slug}.md 에이전트와 겹친다 — 다른 이름을 고르십시오")
     agent["slug"] = slug
+
+
+def agent_by_slug(roster: dict, slug: str):
+    """slug 의 주인(은퇴자 포함). 없으면 None — 명부 밖 에이전트(공장·내장)는 여기서 걸러진다."""
+    for agent in roster.get("agents") or []:
+        if isinstance(agent, dict) and agent.get("slug") == slug:
+            return agent
+    return None

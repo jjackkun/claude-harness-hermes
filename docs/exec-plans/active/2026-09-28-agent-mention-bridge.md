@@ -28,10 +28,12 @@
       검증: 파일 생성·삭제가 명령마다 일어난다 · 두 번 돌려도 diff 0 · 파일 본문에 SOUL 문구가 없다.
       ✅ 2026-09-28: 시험 §2 24건(누계 48/48) · 재설치 뒤 생성 파일 유지(실측) · 실제 `.claude/agents/gate-qa.md`·`backlog-manager.md` 생성.
       ⚠️ Step 4(SubagentStart 훅) 전까지 `@agent-<slug>` 로 부르면 SOUL 없이 뜨고 "정체성 주입 없음" 을 알린다(파일 본문의 지시).
-- [ ] 목표 3 — **`@agent-<slug>` 로 부르면 그 에이전트의 SOUL·기억이 들어간다.** 새 훅 `claude-subagentstart-agent-soul.sh` 가
+- [x] 목표 3 — **`@agent-<slug>` 로 부르면 그 에이전트의 SOUL·기억이 들어간다.** 새 훅 `claude-subagentstart-agent-soul.sh` 가
       입력 `agent_type` → slug → 명부 id 로 풀고, 세션 시작 훅과 **같은 본문**(SOUL + 선별 기억, 각 4,096 B 상한, 은퇴자 제외)을
       `hookSpecificOutput.additionalContext` 로 돌려준다. 명부 slug 가 아니면(공장 에이전트·내장 에이전트) 아무것도 하지 않는다.
       검증: 픽스처 명부 + 입력 JSON → 출력 JSON 의 `additionalContext` 에 SOUL 첫 줄 · MEMORY 핀 기억 · `agent_type=code-reviewer` 는 빈 출력 · 은퇴자는 빈 출력.
+      ✅ 2026-09-28: 시험 §3 13건(누계 61/61) · 세션 시작 렌더러와 본문 md5 동일 · 실제 Claude Code(haiku, 임시 설치 프로젝트)에서 서브에이전트가 "[헤르메스 출근] …" 줄을 답함 · 지연: 명부 밖 20ms · 공장 41ms · 명부 138ms.
+      설치 목록(`HARNESS_HOOK_SOURCES`)은 공장 점검(harness-doctor "어느 conf 에도 없음") 때문에 Step 4 에서 먼저 올렸다. 설정 등록은 Step 6.
 - [x] 목표 4 — **세션 시작 훅과 서브에이전트 훅이 한 렌더러를 쓴다.** 지금 `claude-sessionstart-agent-soul.sh` 의 파이썬 heredoc(약 60줄)을
       `scripts/hermes_soul_render.py` 로 옮기고 두 훅이 부른다. 세션 시작 훅의 출력은 바뀌지 않는다.
       검증: `tests/hermes-soul-inject-test.sh` 무변경 통과.
@@ -156,6 +158,7 @@
   공장 도구로 실측 경로를 둘지(harness-eval 처럼) 는 별도 판단.
 
 - 2026-09-28 Step 3: 이 공장 저장소에서는 기억 선별이 `no such table: memory_events` 로 실패해 MEMORY.md 파일 주입으로 폴백하고 있다(바꾸기 전부터, 동작 불변 확인 중 발견). 이 계획 범위 밖 — 계획 완료 때 백로그 후보로 넘긴다.
+  - Step 4 보강: 갓 설치한 프로젝트에서도 같은 경고 — 기억이 한 건도 없어 표가 아직 없는 **정상 상태**를 경고로 찍는 것이다(결함이 아니라 소음). 로그에만 남고 세션 stdout 은 오염되지 않는다.
 
 ## 8. 회고 (완료 시 작성)
 

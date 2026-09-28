@@ -4,6 +4,7 @@
 #
 #   1. slug (목표 1) — 형식·유일(은퇴자 포함)·예약 이름 거부, hire --slug · set-slug 저장, slug 없는 옛 명부 호환
 #   2. 에이전트 파일 (목표 2) — slug 있는 재직자만 .claude/agents/<slug>.md, 템플릿 도구·모델 상속, SOUL 없음, 멱등, 은퇴 삭제·복직 복원, 고아 삭제·사용자 파일 보존
+#   3. SubagentStart 주입 훅 (목표 3) — 명부 slug 면 세션 시작과 같은 출근 본문을 additionalContext 로, 그 밖·은퇴자·손상 입력은 무출력 rc 0
 #
 # 실행: bash tests/hermes-agent-mention-test.sh
 
@@ -133,6 +134,31 @@ rm -f "$AG/quality-lead.md"; printf -- '---\nname: quality-lead\n---\n사람이 
 A sync-mention-files >"$TMP/sync3" 2>&1
 assert "같은 이름의 사람 파일은 덮어쓰지 않는다" 1 "$(grep -c '사람이 쓴 본문' "$AG/quality-lead.md")"
 assert "덮어쓰지 않은 것을 알린다" 1 "$(grep -c 'quality-lead' "$TMP/sync3")"
+
+echo ""
+echo "== 3. SubagentStart 주입 훅 (목표 3) =="
+# 설치·설정 등록은 Step 6 — 여기서는 저장소 훅을 설치된 프로젝트에 대고 부른다.
+SHOOK="$REPO_ROOT/assets/hooks/claude-subagentstart-agent-soul.sh"
+sub() { printf '%s' "$1" | CLAUDE_PROJECT_DIR="$P" bash "$SHOOK" 2>"$TMP/sub.err"; }
+ctx() { python3 -c "import json,sys; print(json.load(sys.stdin)['hookSpecificOutput']['additionalContext'])" 2>/dev/null; }
+A teach 백로그담당 "백로그는 목표 수가 5개를 넘으면 쪼갠다" --about workflow/backlog-split >/dev/null 2>&1
+OUT="$(sub '{"hook_event_name":"SubagentStart","agent_id":"x1","agent_type":"backlog-manager"}')"; RC=$?
+assert "명부 slug → rc 0" 0 "$RC"
+assert "출력은 hookEventName=SubagentStart JSON" SubagentStart "$(printf '%s' "$OUT" | python3 -c "import json,sys; print(json.load(sys.stdin)['hookSpecificOutput']['hookEventName'])" 2>/dev/null)"
+assert "additionalContext 머리에 출근 줄과 명부 이름" 1 "$(printf '%s' "$OUT" | ctx | head -1 | grep -c '^\[헤르메스 출근\] 백로그담당 ')"
+assert "additionalContext 에 SOUL 본문(제목 줄 그대로 1번)" 1 "$(printf '%s' "$OUT" | ctx | grep -cxF "$SOUL_LINE")"
+assert "additionalContext 에 방금 가르친 기억" 1 "$(printf '%s' "$OUT" | ctx | grep -c '목표 수가 5개를 넘으면')"
+assert "세션 시작 렌더러와 같은 본문" "$(CLAUDE_PROJECT_DIR="$P" python3 "$P/scripts/hermes_soul_render.py" "$P" "$AID" 2>/dev/null | md5sum)" \
+  "$(printf '%s' "$OUT" | ctx | md5sum)"
+assert "공장 에이전트(code-reviewer) → 무출력" "" "$(sub '{"agent_type":"code-reviewer"}')"
+assert "내장 에이전트(Explore) → 무출력" "" "$(sub '{"agent_type":"Explore"}')"
+assert "은퇴자(design-lead) → 무출력" "" "$(sub '{"agent_type":"design-lead"}')"
+assert "JSON 아닌 입력 → 무출력" "" "$(sub 'not-json')"
+sub 'not-json' >/dev/null; assert "  rc 0" 0 "$?"
+mv "$P/.hermes/agents.json" "$TMP/agents.json.hold"
+assert "명부 없음 → 무출력" "" "$(sub '{"agent_type":"backlog-manager"}')"
+sub '{"agent_type":"backlog-manager"}' >/dev/null; assert "  rc 0" 0 "$?"
+mv "$TMP/agents.json.hold" "$P/.hermes/agents.json"
 
 echo ""
 echo "PASS=$PASS FAIL=$FAIL"
