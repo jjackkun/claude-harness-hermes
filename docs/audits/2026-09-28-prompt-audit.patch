@@ -1,0 +1,201 @@
+diff -ru a/.claude/skills/claude-harness-hermes-install/SKILL.md b/.claude/skills/claude-harness-hermes-install/SKILL.md
+--- a/.claude/skills/claude-harness-hermes-install/SKILL.md	2026-09-28 10:25:54.539129971 +0900
++++ b/.claude/skills/claude-harness-hermes-install/SKILL.md	2026-09-28 10:25:54.549380417 +0900
+@@ -62,7 +62,6 @@
+ 
+ ## 언제 update-all이 필요한가
+ 
+-- Windows 환경의 모든 파일 수정 후
+ - 신규 preset/rule/skill 추가 후 기존 프로젝트에도 적용하려 할 때
+ - 소우주가 공장 수정을 받으려 할 때(복사 설치는 즉시 반영이 아니다)
+ - 공장 자기 설치의 상대 링크가 깨진 경우(`[factory-link WARN]`)
+diff -ru a/CLAUDE.md b/CLAUDE.md
+--- a/CLAUDE.md	2026-09-28 10:25:54.539129971 +0900
++++ b/CLAUDE.md	2026-09-28 10:25:54.549380417 +0900
+@@ -1,11 +1,11 @@
+ # CLAUDE.md — claude-harness-hermes
+ 
+-에이전트(Claude)용 **부트 섹터/맵**. 100 줄 이내 유지. 상세는 링크로 위임.
++에이전트(Claude)용 **부트 섹터/맵**. 목차로 짧게 유지하고 상세는 링크로 위임.
+ PDF 4~5쪽: "AGENTS.md 를 백과사전이 아닌 *목차* 로 취급한다."
+ 
+ ## 프로젝트 한 줄
+ 
+-(여기에 프로젝트의 한 줄 설명. 도메인·생애주기·돈이 걸려 있는지 여부.)
++Claude Code 프로젝트에 하네스(훅·커밋 게이트·규칙)와 헤르메스(학습 루프·에이전트 명부)를 설치·전파하는 공장 저장소. 여기서 바꾼 자산은 등록된 소우주 전체로 퍼진다. 돈이 걸린 서비스는 없다.
+ 
+ ## 먼저 읽어야 할 것
+ 
+@@ -17,7 +17,7 @@
+ 
+ - 프로젝트 고유 불변 원칙(R1~Rn) 위반 발견 시 즉시 중단·보고. 우회 금지.
+ - 비자명한 작업은 계획 → 구현 → 검증 흐름. 깊은 리뷰는 위험 신호가 있을 때 승격.
+-- 강제 장치: `.git/hooks/pre-commit` (게이트 16종 — 차단 10 / 경고 6) + `.claude/settings.json` 훅.
++- 강제 장치: `.git/hooks/pre-commit` 게이트 + `.claude/settings.json` 훅 (수는 아래 「하네스 엔지니어링」 절).
+ 
+ ## 작업 흐름
+ 
+@@ -28,7 +28,7 @@
+ 
+ ## 환경
+ 
+-(여기에 dev/prod 포트, 기동 명령, 핵심 환경변수.)
++서버·포트 없음. 설치 `./setup.sh`, 등록된 프로젝트 일괄 갱신 `./update-all.sh`, 제거 `./uninstall.sh`. 환경은 Linux/WSL2 + bash + python3.
+ 
+ <!--===DS:BEGIN===-->
+ <!-- Managed by dev-setting/project-claude.sh. Edits inside this block are overwritten on re-run. -->
+diff -ru a/assets/agents/doc-updater.md b/assets/agents/doc-updater.md
+--- a/assets/agents/doc-updater.md	2026-09-28 10:25:54.539129971 +0900
++++ b/assets/agents/doc-updater.md	2026-09-28 10:25:54.549380417 +0900
+@@ -1,6 +1,6 @@
+ ---
+ name: doc-updater
+-description: Documentation and codemap specialist. Use PROACTIVELY for updating codemaps and documentation. Runs /update-codemaps and /update-docs, generates docs/CODEMAPS/*, updates READMEs and guides.
++description: Documentation and codemap specialist. Use for bringing READMEs, guides, and codemaps back in line with the current code.
+ tools: ["Read", "Write", "Edit", "Bash", "Grep", "Glob"]
+ model: haiku
+ effort: medium
+@@ -15,18 +15,10 @@
+ 
+ 1. **Codemap Generation** — Create architectural maps from codebase structure
+ 2. **Documentation Updates** — Refresh READMEs and guides from code
+-3. **AST Analysis** — Use TypeScript compiler API to understand structure
++3. **Structure Analysis** — Read the project's own entry points and import graph to understand structure
+ 4. **Dependency Mapping** — Track imports/exports across modules
+ 5. **Documentation Quality** — Ensure docs match reality
+ 
+-## Analysis Commands
+-
+-```bash
+-npx tsx scripts/codemaps/generate.ts    # Generate codemaps
+-npx madge --image graph.svg src/        # Dependency graph
+-npx jsdoc2md src/**/*.ts                # Extract JSDoc
+-```
+-
+ ## Codemap Workflow
+ 
+ ### 1. Analyze Repository
+diff -ru a/assets/agents/docs-lookup.md b/assets/agents/docs-lookup.md
+--- a/assets/agents/docs-lookup.md	2026-09-28 10:25:54.549380417 +0900
++++ b/assets/agents/docs-lookup.md	2026-09-28 10:25:54.549380417 +0900
+@@ -1,7 +1,7 @@
+ ---
+ name: docs-lookup
+ description: When the user asks how to use a library, framework, or API or needs up-to-date code examples, use Context7 MCP to fetch current documentation and return answers with examples. Invoke for docs/API/setup questions.
+-tools: ["Read", "Grep", "mcp__context7__resolve-library-id", "mcp__context7__query-docs"]
++tools: ["Read", "Grep", "mcp__context7__resolve-library-id", "mcp__context7__query-docs", "mcp__plugin_context7_context7__resolve-library-id", "mcp__plugin_context7_context7__query-docs"]
+ model: sonnet
+ effort: medium
+ ---
+diff -ru a/assets/agents/tdd-guide.md b/assets/agents/tdd-guide.md
+--- a/assets/agents/tdd-guide.md	2026-09-28 10:25:54.549380417 +0900
++++ b/assets/agents/tdd-guide.md	2026-09-28 10:25:54.549380417 +0900
+@@ -23,9 +23,7 @@
+ Write a failing test that describes the expected behavior.
+ 
+ ### 2. Run Test -- Verify it FAILS
+-```bash
+-npm test
+-```
++Use the project's own test command (from CLAUDE.md, pyproject.toml, or package.json).
+ 
+ ### 3. Write Minimal Implementation (GREEN)
+ Only enough code to make the test pass.
+@@ -36,10 +34,7 @@
+ Remove duplication, improve names, optimize -- tests must stay green.
+ 
+ ### 6. Verify Coverage
+-```bash
+-npm run test:coverage
+-# Required: 80%+ branches, functions, lines, statements
+-```
++Run the project's coverage command. Required: 80%+ branches, functions, lines, statements.
+ 
+ ## Test Types Required
+ 
+@@ -79,15 +74,4 @@
+ - [ ] Assertions are specific and meaningful
+ - [ ] Coverage is 80%+
+ 
+-For detailed mocking patterns and framework-specific examples, see `skill: tdd-workflow`.
+-
+-## v1.8 Eval-Driven TDD Addendum
+-
+-Integrate eval-driven development into TDD flow:
+-
+-1. Define capability + regression evals before implementation.
+-2. Run baseline and capture failure signatures.
+-3. Implement minimum passing change.
+-4. Re-run tests and evals; report pass@1 and pass@3.
+-
+-Release-critical paths should target pass^3 stability before merge.
++For detailed mocking patterns and framework-specific examples, see `skill: tdd-workflow` when it is installed.
+diff -ru a/assets/docs-templates/CLAUDE.md.tmpl b/assets/docs-templates/CLAUDE.md.tmpl
+--- a/assets/docs-templates/CLAUDE.md.tmpl	2026-09-28 10:25:54.549380417 +0900
++++ b/assets/docs-templates/CLAUDE.md.tmpl	2026-09-28 10:25:54.549380417 +0900
+@@ -1,6 +1,6 @@
+ # CLAUDE.md — {{PROJECT_NAME}}
+ 
+-에이전트(Claude)용 **부트 섹터/맵**. 100 줄 이내 유지. 상세는 링크로 위임.
++에이전트(Claude)용 **부트 섹터/맵**. 목차로 짧게 유지하고 상세는 링크로 위임.
+ PDF 4~5쪽: "AGENTS.md 를 백과사전이 아닌 _목차_ 로 취급한다."
+ 
+ ## 프로젝트 한 줄
+diff -ru a/assets/skills/harness-promote-rule/SKILL.md b/assets/skills/harness-promote-rule/SKILL.md
+--- a/assets/skills/harness-promote-rule/SKILL.md	2026-09-28 10:25:54.549380417 +0900
++++ b/assets/skills/harness-promote-rule/SKILL.md	2026-09-28 10:25:54.549380417 +0900
+@@ -123,4 +123,3 @@
+ 
+ - `harness-boundary-check` — 기존 R 룰(R1·R3) 의 *강제* 담당. 본 스킬은 *새 R 룰 생성* 담당
+ - `code-reviewer` — 강제 장치가 넓은 범위에 영향을 줄 때만 추가 검토
+-- `.00_docs/harness-integration-plan.md` § 진화 루프 — 본 스킬의 설계 근거
+diff -ru a/assets/skills/harness-reasoning-sandwich/SKILL.md b/assets/skills/harness-reasoning-sandwich/SKILL.md
+--- a/assets/skills/harness-reasoning-sandwich/SKILL.md	2026-09-28 10:25:54.549380417 +0900
++++ b/assets/skills/harness-reasoning-sandwich/SKILL.md	2026-09-28 10:25:54.549380417 +0900
+@@ -5,7 +5,7 @@
+ 
+ # Harness Reasoning Sandwich
+ 
+-Ryan Lopopolo의 하네스 엔지니어링 원칙. TerminalBench 실험에서 52.8% → 66.5% 성능 향상 확인.
++Ryan Lopopolo의 하네스 엔지니어링 원칙.
+ 
+ ## 언제 적용하는가
+ 
+@@ -25,7 +25,6 @@
+ ```
+ Agent(
+   subagent_type: "planner",
+-  model: "sonnet",
+   prompt: "다음 작업의 구현 계획을 수립해줘: [작업 설명]
+   
+   포함할 것:
+@@ -36,7 +35,7 @@
+ )
+ ```
+ 
+-메인 세션은 계획만 받고 직접 구현하지 않는다.
++planner 는 계획만 돌려준다. 구현은 메인 세션이 한다.
+ 
+ ### Step 2: Impl
+ 
+@@ -62,7 +61,7 @@
+ 
+ ## 금지 모델
+ 
+-- **Haiku 금지** — 단일 Haiku 실패 사례 확인됨. 비용 절감보다 품질 손실이 크다.
++- planner 서브에이전트에는 haiku 를 쓰지 않는다 — 계획 품질이 구현 전체를 좌우한다.
+ 
+ ## 커밋 규칙
+ 
+diff -ru a/assets/skills/hermes-status/SKILL.md b/assets/skills/hermes-status/SKILL.md
+--- a/assets/skills/hermes-status/SKILL.md	2026-09-28 10:25:54.549380417 +0900
++++ b/assets/skills/hermes-status/SKILL.md	2026-09-28 10:25:54.549380417 +0900
+@@ -27,7 +27,7 @@
+     skill_count   = con.execute("SELECT COUNT(*) FROM skill_index").fetchone()[0]
+     rule_count    = con.execute("SELECT COUNT(*) FROM harness_rules").fetchone()[0]
+     session_count = con.execute("SELECT COUNT(*) FROM session_history").fetchone()[0]
+-    pending       = con.execute("SELECT COUNT(*) FROM pattern_count WHERE crystallized=0 AND count>=2").fetchone()[0]
++    pending       = con.execute("SELECT COUNT(*) FROM pattern_count WHERE crystallized=0 AND count>=3").fetchone()[0]
+ 
+     latest = con.execute(
+         "SELECT skill_path, created_at FROM skill_index ORDER BY created_at DESC LIMIT 1"
