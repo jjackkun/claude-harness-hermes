@@ -32,9 +32,10 @@
       입력 `agent_type` → slug → 명부 id 로 풀고, 세션 시작 훅과 **같은 본문**(SOUL + 선별 기억, 각 4,096 B 상한, 은퇴자 제외)을
       `hookSpecificOutput.additionalContext` 로 돌려준다. 명부 slug 가 아니면(공장 에이전트·내장 에이전트) 아무것도 하지 않는다.
       검증: 픽스처 명부 + 입력 JSON → 출력 JSON 의 `additionalContext` 에 SOUL 첫 줄 · MEMORY 핀 기억 · `agent_type=code-reviewer` 는 빈 출력 · 은퇴자는 빈 출력.
-- [ ] 목표 4 — **세션 시작 훅과 서브에이전트 훅이 한 렌더러를 쓴다.** 지금 `claude-sessionstart-agent-soul.sh` 의 파이썬 heredoc(약 60줄)을
+- [x] 목표 4 — **세션 시작 훅과 서브에이전트 훅이 한 렌더러를 쓴다.** 지금 `claude-sessionstart-agent-soul.sh` 의 파이썬 heredoc(약 60줄)을
       `scripts/hermes_soul_render.py` 로 옮기고 두 훅이 부른다. 세션 시작 훅의 출력은 바뀌지 않는다.
       검증: `tests/hermes-soul-inject-test.sh` 무변경 통과.
+      ✅ 2026-09-28: 35/35 무변경 통과 · 실제 두 에이전트의 훅 stdout·stderr 가 바꾸기 전과 바이트 동일 · 전체 110/110 · 훅 111→49줄.
 - [ ] 목표 5 — **`@` 로 부른 일도 그 에이전트 이름으로 이력에 남는다.** 새 훅 `claude-subagentstart-journal.sh` 가 `task.assigned`
       (`actor`·`evidence.via=mention`) 를, 기존 `claude-subagentstop-journal.sh` 가 명부 slug 일 때 `actor=agent:<명부 id>` 로 `task.finished` 를 남긴다.
       nonce 는 발급하지 않는다 — 서브에이전트는 세션이 아니라 이미 검증된 부모 세션 안의 호출이다(RV-06 은 **세션** 규칙).
@@ -153,6 +154,8 @@
 - 한글 `@` 멘션 불가는 Claude Code 동작이다. 버전이 바뀌면 다시 잴 가치가 있다 → 이 계획 완료 시 `docs/audits/` 실측 기록에 버전과 함께 남긴다.
 - 세션 안 `claude -p` 가드(RV-06)가 실측 스크립트를 두 번 막았다. 픽스처 실측은 사용자 지시로 스크립트 파일로 돌렸다 —
   공장 도구로 실측 경로를 둘지(harness-eval 처럼) 는 별도 판단.
+
+- 2026-09-28 Step 3: 이 공장 저장소에서는 기억 선별이 `no such table: memory_events` 로 실패해 MEMORY.md 파일 주입으로 폴백하고 있다(바꾸기 전부터, 동작 불변 확인 중 발견). 이 계획 범위 밖 — 계획 완료 때 백로그 후보로 넘긴다.
 
 ## 8. 회고 (완료 시 작성)
 

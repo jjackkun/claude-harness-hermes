@@ -38,73 +38,11 @@ if [[ -f "$scripts_dir/hermes-agent.py" ]]; then
   [[ "$rerr" != /dev/null ]] && rm -f "$rerr"
 fi
 
-# 명부 확인 + 파일 읽기 + 자르기를 한 프로세스에서. 잘라도 UTF-8 글자 중간에서 끊지 않는다.
+# 명부 확인 + 파일 읽기 + 자르기는 렌더러 한 프로세스에서(서브에이전트 훅과 같은 본문 — 계획 2026-09-28-agent-mention-bridge 목표 4).
 errf="$(mktemp 2>/dev/null || echo /dev/null)"
 SOUL_CAP="${HERMES_SOUL_CAP:-4096}" MEMORY_CAP="${HERMES_MEMORY_CAP:-4096}" HERMES_SCRIPTS_DIR="${scripts_dir:-$project_dir/scripts}" \
-python3 - "$project_dir" "$HERMES_AGENT_ID" "$agent_dir" <<'PY' 2>"$errf" || { _log "WARN hook-error agent=$HERMES_AGENT_ID → 정체성 없이 시작"; }
-import json, os, sys
-project, agent_id, agent_dir = sys.argv[1:4]
-caps = {"SOUL.md": int(os.environ["SOUL_CAP"]), "MEMORY.md": int(os.environ["MEMORY_CAP"])}
-
-roster_path = os.path.join(project, ".hermes", "agents.json")
-try:
-    roster = json.load(open(roster_path, encoding="utf-8"))
-except (OSError, ValueError) as exc:
-    print(f"[agent-soul WARN] 명부를 읽지 못해 정체성을 넣지 않습니다: {exc}", file=sys.stderr)
-    sys.exit(0)
-agents = roster.get("agents", roster) if isinstance(roster, dict) else roster
-agent = None
-for a in (agents.values() if isinstance(agents, dict) else agents):
-    if isinstance(a, dict) and a.get("agent_id") == agent_id:
-        agent = a; break
-if agent is None:
-    print(f"[agent-soul WARN] 명부에 없는 id, 정체성을 넣지 않습니다: {agent_id}", file=sys.stderr); sys.exit(0)
-if agent.get("status") == "retired":
-    sys.exit(0)   # 은퇴자는 주입에서 빠진다 — 조용히
-
-def clipped(path, cap):
-    try:
-        data = open(path, "rb").read()
-    except OSError:
-        return None
-    if len(data) <= cap:
-        return data.decode("utf-8", "replace")
-    cut = data[:cap].decode("utf-8", "ignore")
-    return cut + f"\n[…잘림 {len(data) - len(cut.encode('utf-8'))} B — 원문 {os.path.relpath(path, project)}]\n"
-
-out = [f"[헤르메스 출근] {agent.get('name', '?')} (agent:{agent_id}) — 아래는 이 에이전트의 정체성(SOUL.md)과 기억(MEMORY.md)이다. 정체성은 사람 승인으로만 고친다."]
-body = clipped(os.path.join(agent_dir, "SOUL.md"), caps["SOUL.md"])
-if body is not None:
-    out.append(f"\n--- SOUL.md ---\n{body.rstrip()}\n")
-
-# 기억은 선별 주입(계획 agent-teaching 목표 10): 핀 → 이번 과제(HERMES_TASK_HINT) 관련 → 최근. DB 가 없으면 파일을 그대로.
-mem_text = None
-db_path = os.path.join(project, ".hermes", "state.db")
-if os.path.isfile(db_path):
-    try:
-        import sqlite3
-        sys.path.insert(0, os.environ.get("HERMES_SCRIPTS_DIR") or os.path.join(project, "scripts"))
-        from hermes_memory_select import select_memories, render_selection
-        con = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
-        try:
-            sel = select_memories(con, agent_id, os.environ.get("HERMES_TASK_HINT", ""))
-        finally:
-            con.close()
-        if sel["total"]:
-            mem_text = render_selection(sel, agent.get("name", agent_id))
-    except Exception as exc:  # noqa: BLE001 — 선별 실패는 파일 주입으로 폴백
-        print(f"[agent-soul WARN] 기억 선별 실패, MEMORY.md 파일로 대신: {exc}", file=sys.stderr)
-if mem_text is None:
-    mem_text = clipped(os.path.join(agent_dir, "MEMORY.md"), caps["MEMORY.md"])
-else:
-    data = mem_text.encode("utf-8")
-    if len(data) > caps["MEMORY.md"]:
-        cut = data[:caps["MEMORY.md"]].decode("utf-8", "ignore")
-        mem_text = cut + f"\n[…잘림 {len(data) - len(cut.encode('utf-8'))} B — 원문 .hermes/agents/{agent_id}/MEMORY.md]\n"
-if mem_text is not None:
-    out.append(f"\n--- MEMORY.md ---\n{mem_text.rstrip()}\n")
-sys.stdout.write("\n".join(out) + "\n")
-PY
+python3 "${scripts_dir:-$project_dir/scripts}/hermes_soul_render.py" "$project_dir" "$HERMES_AGENT_ID" 2>"$errf" \
+  || { _log "WARN hook-error agent=$HERMES_AGENT_ID → 정체성 없이 시작"; }
 # 경고는 세션(stderr)과 로그 양쪽에 — 세션은 이유를 보고, 로그는 나중에 센다.
 if [[ -s "$errf" ]]; then cat "$errf" >&2; _log "WARN $(tr '\n' ' ' <"$errf")"; else _log "ok agent=$HERMES_AGENT_ID"; fi
 [[ "$errf" != /dev/null ]] && rm -f "$errf"
