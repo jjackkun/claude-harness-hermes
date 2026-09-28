@@ -15,3 +15,5 @@ ai-create 는 사용자가 더 쓰지 않는다(2026-09-22 "ai-create 소우주�
 
 **How to apply:** 전파·대시보드·재측정에서 ai-create 를 세지 않는다. 풀·커밋·재설치를 제안하지 않는다.
 다시 쓰겠다고 하면 `setup.sh` 로 재등록한다. [[project-rim-office-excluded]] [[feedback-propagate-means-commit-push]]
+
+2026-09-29 전파 때 레지스트리에 이 줄이 다시 들어와 있었다(원인 미확인) — 또 지웠다. 전파 전에 `.installed-projects` 를 먼저 본다.
