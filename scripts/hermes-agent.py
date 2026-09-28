@@ -9,6 +9,8 @@
   rehire <이름>      복직 (retired → active)
   set-slug <이름> <slug>   @agent-<slug> 로 부를 영문 이름을 붙인다 (hire --slug 로도)
   sync-mention-files       .claude/agents/<slug>.md 를 명부와 맞춘다 (입사·slug·전이 때 자동)
+  roster                   명부 전원 — 이름·@호출명·상태·조직·최근 불린 때 (/hermes-roster)
+  room --session <id> [--line]   이 방(세션)에서 불린 에이전트 (/hermes-room · 상태줄)
   list               명부
   whoami             현재 세션의 행위자 (HERMES_AGENT_ID 없으면 main)
   match --discipline … --unit …   담당 매칭(C-11) — 없으면 ask
@@ -31,6 +33,8 @@ from hermes_soul_draft import DRAFT_MARK, draft_soul, is_untouched_draft  # noqa
 from hermes_owner_memory import no_owner_since, record_no_owner  # noqa: E402
 from hermes_agent_slug import SlugError, assign_slug  # noqa: E402
 from hermes_mention_cmds import set_slug, sync_and_report, sync_only  # noqa: E402
+from hermes_room import collect_room, last_seen  # noqa: E402
+from hermes_roster_view import render_roster, render_room, render_room_line  # noqa: E402
 from hermes_roster import (  # noqa: E402
     RosterError, add_agent, find_agent, load_roster, save_roster, transition)
 
@@ -133,6 +137,15 @@ def cmd_transition(args) -> int:
     save_roster(args.project, roster)
     sync_and_report(args.project, roster)                 # 은퇴하면 @ 로 못 부른다 · 복직하면 다시
     print(f"{args.cmd}: {agent['name']} → {agent['status']}")
+    return 0
+
+
+def cmd_room(args) -> int:
+    if not args.session:
+        print("세션 id 가 필요합니다 — 슬래시 명령 /hermes-room 이 현재 방을 넘깁니다 (직접: room --session <id>)")
+        return 0
+    room = collect_room(args.project, load_roster(args.project), args.session)
+    print(render_room_line(room) if args.line else render_room(room, args.session))
     return 0
 
 
@@ -341,6 +354,8 @@ def main() -> int:
     ss = sub.add_parser("set-slug", help="@agent-<slug> 로 부를 영문 이름을 붙인다 — 영문 소문자·숫자·-")
     ss.add_argument("name"); ss.add_argument("slug")
     sub.add_parser("sync-mention-files", help=".claude/agents/<slug>.md 를 명부와 맞춘다(멱등)")
+    sub.add_parser("roster", help="명부 전원 — 이름·@호출명·상태·조직·최근 불린 때")
+    rm = sub.add_parser("room", help="이 방(세션)에서 불린 에이전트"); rm.add_argument("--session"); rm.add_argument("--line", action="store_true")
     for name in ("promote", "retire", "rehire"):
         sub.add_parser(name).add_argument("name")
     sub.add_parser("list"); sub.add_parser("whoami")
@@ -373,7 +388,8 @@ def main() -> int:
                 "pin": cmd_pin, "soul-draft": cmd_soul_draft, "templates": cmd_templates,
                 "approve-soul": cmd_approve_soul,
                 "set-slug": lambda a: set_slug(a.project, _human(a.project), a.name, a.slug),
-                "sync-mention-files": lambda a: sync_only(a.project)}[args.cmd](args)
+                "sync-mention-files": lambda a: sync_only(a.project), "room": cmd_room,
+                "roster": lambda a: print(render_roster(load_roster(a.project), last_seen(a.project))) or 0}[args.cmd](args)
     except (RosterError, OrgError, TeachingError, TemplateError, SlugError) as exc:
         print(f"[hermes-agent] 거부: {exc}", file=sys.stderr)
         return 2

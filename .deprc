@@ -59,6 +59,8 @@ tier: 0  scripts/hermes_agent_slug.py
 tier: 2  scripts/hermes_roster.py
 # 에이전트 파일(계획 2026-09-28-agent-mention-bridge): mention_file 은 role_templates(0), mention_cmds 는 roster(2)·slug(0)·mention_file(1)
 tier: 1  scripts/hermes_mention_file.py
+# 명부·방 보기(계획 2026-09-28-agent-room-view): room 은 표준 모듈만, view 도 표준 모듈만
+tier: 0  scripts/hermes_room.py scripts/hermes_roster_view.py
 tier: 3  scripts/hermes_review.py scripts/hermes-agent.py scripts/hermes_mention_cmds.py
 tier: 0  scripts/hermes_summons.py
 tier: 3  scripts/hermes-summon.py
