@@ -69,11 +69,19 @@ assert "다른 방의 떠난담당은 없다" 0 "$(grep -c 떠난담당 "$TMP/ro
 assert "명부 밖: code-reviewer 1" 1 "$(grep -cE 'code-reviewer[^0-9]+1' "$TMP/room")"
 assert "명부 밖: claude-code-guide 1" 1 "$(grep -cE 'claude-code-guide[^0-9]+1' "$TMP/room")"
 assert "내부 보조는 이름 없이 건수(3)" 1 "$(grep -cE '보조 호출[^0-9]+3' "$TMP/room")"
-assert "--line 한 줄" "방: 백로그담당(2) · 도구 2 · 보조 3" "$(A room --session "$S1" --line)"
-assert "--line 명부 에이전트 없는 방" "방: 명부 에이전트 없음 · 도구 0 · 보조 0" "$(A room --session nobody-session --line)"
+assert "상세 보기 첫 줄: 지금 일하는 중 없음" 1 "$(grep -c '^지금 일하는 중: 없음' "$TMP/room")"
+assert "--line: 지금·이 방에서 불림만(도구·보조는 상세 보기로)" "지금: 없음 · 이 방에서 불림: 백로그담당 2회" "$(A room --session "$S1" --line)"
+assert "--line 명부 에이전트 없는 방" "지금: 없음 · 이 방에서 불린 명부 에이전트 없음" "$(A room --session nobody-session --line)"
+# @ 호출이 시작만 되고 아직 안 끝났다 = 지금 일하는 중 (task.assigned decision 에 명부 id — SubagentStart 이력 훅 모양)
+ev "{\"kind\":\"task.assigned\",\"task_id\":\"sub-run-1\",\"actor\":\"agent:main\",\"session_id\":\"$S1\",\"decision\":\"match=mention slug=backlog-lead agent=$BL\",\"evidence\":{\"template\":\"backlog-lead\"},\"ts\":\"2026-09-28T03:00:00Z\"}"
+ev "{\"kind\":\"task.assigned\",\"task_id\":\"sub-done-1\",\"actor\":\"agent:main\",\"session_id\":\"$S1\",\"decision\":\"match=mention slug=backlog-lead agent=$BL\",\"evidence\":{\"template\":\"backlog-lead\"},\"ts\":\"2026-09-28T02:29:00Z\"}"
+ev "{\"kind\":\"task.finished\",\"task_id\":\"sub-done-1\",\"actor\":\"agent:$BL\",\"session_id\":\"$S1\",\"claimed\":\"success\",\"evidence\":{\"template\":\"backlog-lead\"},\"ts\":\"2026-09-28T02:31:00Z\"}"
+assert "시작만 있는 @ 호출 → 지금 일하는 중, 끝난 것은 셈만" "지금: 백로그담당 일하는 중 · 이 방에서 불림: 백로그담당 4회" "$(A room --session "$S1" --line)"
+assert "상세 보기에도 일하는 중" 1 "$(A room --session "$S1" | grep -c '^지금 일하는 중: 백로그담당')"
+assert "다른 방에서는 일하는 중이 안 보인다" "지금: 없음 · 이 방에서 불림: 백로그담당 1회, 떠난담당 1회" "$(A room --session "$S2" --line)"
 A room >/dev/null 2>&1; assert "세션 없이 부르면 rc 0(안내만)" 0 "$?"
 mv "$P/.hermes/state.db" "$TMP/state.db.hold"
-assert "DB 없음 --line → 빈 방 한 줄" "방: 명부 에이전트 없음 · 도구 0 · 보조 0" "$(A room --session "$S1" --line)"
+assert "DB 없음 --line → 빈 방 한 줄" "지금: 없음 · 이 방에서 불린 명부 에이전트 없음" "$(A room --session "$S1" --line)"
 mv "$TMP/state.db.hold" "$P/.hermes/state.db"
 
 echo ""
@@ -88,7 +96,7 @@ for sk in hermes-roster hermes-room; do
 done
 assert "/hermes-roster 주입 결과 = roster 명령 출력" "$(A roster | md5sum)" "$(bang hermes-roster | md5sum)"
 assert "/hermes-room 주입 결과 = room --session 출력" "$(A room --session "$S1" | md5sum)" "$(bang hermes-room | md5sum)"
-assert "/hermes-room 주입 결과에 이 방의 명부 에이전트" 1 "$(bang hermes-room | grep -c 백로그담당)"
+assert "/hermes-room 주입 결과에 이 방의 명부 에이전트" 1 "$(bang hermes-room | grep -q 백로그담당 && echo 1 || echo 0)"
 
 echo ""
 echo "PASS=$PASS FAIL=$FAIL"

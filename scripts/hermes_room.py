@@ -6,6 +6,8 @@
   명부 에이전트   actor 가 명부 id (main 제외)
   내부 보조       evidence.template == "claude" — 세션 폴더에 대화 파일이 없는 Claude Code 내부 호출(2026-09-28 확인)
   명부 밖         그 밖(code-reviewer · claude-code-guide 등) — 종류별 건수
+  일하는 중       이 방의 @ 호출 task.assigned(decision "match=mention … agent=<id>") 중 같은 task_id 의 finished 가 아직 없는 것.
+                  시간 상한은 두지 않는다 — 끝 기록이 빠지는 것은 SubagentStop 훅 실패뿐이고, 세션이 죽으면 방도 새로 열린다.
 DB·표가 없으면 빈 결과(오류 아님) — 상태줄·슬래시 명령이 세션을 흔들면 안 된다.
 계획: docs/exec-plans/active/2026-09-28-agent-room-view.md 목표 1·2
 
@@ -38,8 +40,30 @@ def _roster_ids(roster: dict) -> dict:
     return {a["agent_id"]: a for a in roster.get("agents") or [] if a.get("name") != _MAIN}
 
 
+def _working(project: str, agents: dict, session_id: str) -> list:
+    """이 방에서 @ 로 불려 아직 안 끝난 명부 에이전트 id(시작 순, 중복 없음)."""
+    rows = _rows(project, "SELECT a.decision FROM journal_events a WHERE a.kind='task.assigned' AND a.session_id=? "
+                          "AND a.decision LIKE 'match=mention %' AND NOT EXISTS (SELECT 1 FROM journal_events f "
+                          "WHERE f.kind='task.finished' AND f.task_id=a.task_id) ORDER BY a.ts", (session_id,))
+    ids = [w[len("agent="):] for (d,) in rows for w in (d or "").split() if w.startswith("agent=")]
+    return [i for n, i in enumerate(ids) if i in agents and i not in ids[:n]]
+
+
+def _template(evidence) -> str:
+    try:
+        return (json.loads(evidence or "{}") or {}).get("template") or "unknown"
+    except ValueError:
+        return "unknown"
+
+
+def _member(agents: dict, agent_id: str) -> dict:
+    a = agents[agent_id]
+    return {"name": a["name"], "slug": a.get("slug"), "agent_id": agent_id, "count": 0, "last": ""}
+
+
 def collect_room(project: str, roster: dict, session_id: str) -> dict:
-    """{"members": [{name, slug, agent_id, count, last}], "tools": {종류: 건수}, "internal": 건수}. members 는 최근순."""
+    """{"members": [{name, slug, agent_id, count, last}], "working": [이름…], "tools": {종류: 건수}, "internal": 건수}.
+    members 는 최근순, count 는 끝난 호출 + 지금 일하는 중인 호출."""
     agents = _roster_ids(roster)
     members, tools, internal = {}, {}, 0
     rows = _rows(project, "SELECT actor, evidence, ts FROM journal_events "
@@ -47,21 +71,20 @@ def collect_room(project: str, roster: dict, session_id: str) -> dict:
     for actor, evidence, ts in rows:
         actor_id = (actor or "").split(":", 1)[-1]
         if actor_id in agents:
-            m = members.setdefault(actor_id, {"name": agents[actor_id]["name"], "slug": agents[actor_id].get("slug"),
-                                              "agent_id": actor_id, "count": 0, "last": ""})
+            m = members.setdefault(actor_id, _member(agents, actor_id))
             m["count"] += 1
             m["last"] = max(m["last"], ts or "")
             continue
-        try:
-            template = (json.loads(evidence or "{}") or {}).get("template") or "unknown"
-        except ValueError:
-            template = "unknown"
+        template = _template(evidence)
         if template == INTERNAL_TEMPLATE:
             internal += 1
         else:
             tools[template] = tools.get(template, 0) + 1
+    working = _working(project, agents, session_id)
+    for agent_id in working:
+        members.setdefault(agent_id, _member(agents, agent_id))["count"] += 1
     ordered = sorted(members.values(), key=lambda m: m["last"], reverse=True)
-    return {"members": ordered, "tools": tools, "internal": internal}
+    return {"members": ordered, "working": [agents[i]["name"] for i in working], "tools": tools, "internal": internal}
 
 
 def last_seen(project: str) -> dict:

@@ -53,8 +53,12 @@ def render_roster(roster: dict, seen: dict) -> str:
     return "\n".join(body + [f"({len(rows)}명 · 은퇴자는 맨 아래 · 부르기: @<호출명 앞부분> 또는 한글 이름)"])
 
 
+def _now_text(room: dict) -> str:
+    return ", ".join(f"{n} 일하는 중" for n in room.get("working") or []) or "없음"
+
+
 def render_room(room: dict, session_id: str) -> str:
-    out = [f"이 방(세션 {session_id[:8]}…)에서 불린 에이전트"]
+    out = [f"지금 일하는 중: {_now_text(room)}", "", f"이 방(세션 {session_id[:8]}…)에서 불린 에이전트 — 횟수는 끝난 호출 + 일하는 중"]
     if room["members"]:
         rows = [[m["name"], f"@agent-{m['slug']}" if m.get("slug") else "-", f"{m['count']}회", local_when(m["last"])]
                 for m in room["members"]]
@@ -62,12 +66,13 @@ def render_room(room: dict, session_id: str) -> str:
     else:
         out.append("명부 에이전트: 없음")
     if room["tools"]:
-        out.append("명부 밖 에이전트: " + " · ".join(f"{k} {v}" for k, v in sorted(room["tools"].items())))
-    out.append(f"내부 보조 호출: {room['internal']}건 (Claude Code 가 안에서 띄운 것 — 이름 없이 셈)")
+        out.append("명부 밖 에이전트(끝난 호출): " + " · ".join(f"{k} {v}회" for k, v in sorted(room["tools"].items())))
+    out.append(f"내부 보조 호출: {room['internal']}건 (Claude Code 가 안에서 띄운 것 — 사용자가 부르지 않았고 이름이 없다)")
     return "\n".join(out)
 
 
 def render_room_line(room: dict) -> str:
-    """상태줄 한 줄 — '방: 백로그 관리자(2) · 도구 2 · 보조 40'."""
-    names = ", ".join(f"{m['name']}({m['count']})" for m in room["members"]) or "명부 에이전트 없음"
-    return f"방: {names} · 도구 {sum(room['tools'].values())} · 보조 {room['internal']}"
+    """상태줄 한 줄 — '지금: 없음 · 이 방에서 불림: 백로그 관리자 2회'. 명부 밖·내부 보조는 /hermes-room 상세 보기에만.
+    상태줄에 떠 있으면 '지금 누가 있나' 로 읽히므로 지금(일하는 중)과 누적(불림)을 글자로 가른다(사용자 지적 2026-09-28)."""
+    called = ", ".join(f"{m['name']} {m['count']}회" for m in room["members"])
+    return f"지금: {_now_text(room)} · " + (f"이 방에서 불림: {called}" if called else "이 방에서 불린 명부 에이전트 없음")
