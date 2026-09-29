@@ -16,7 +16,9 @@ import json
 import os
 import sqlite3
 import sys
-from datetime import datetime
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from hermes_db_backup import backup_db  # noqa: E402
 
 ENTRYPOINT_SCAN_LINES = 60  # 실측: 진입 표시는 기록 앞 10줄 안에 나온다 — 여유를 두고 60줄까지만 본다
 
@@ -70,17 +72,6 @@ def recount_used(con, skill_paths: list) -> None:
             "(SELECT COUNT(*) FROM skill_injection WHERE skill_path = ?) WHERE skill_path = ?",
             (path, path),
         )
-
-
-def backup_db(con, db_path: str) -> str:
-    """sqlite 백업 API — 파일 복사와 달리 WAL 에만 있는 최근 기록도 담는다. 이미 있는 백업은 덮지 않는다."""
-    dest = f"{db_path}.bak-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
-    out = sqlite3.connect(dest)
-    try:
-        con.backup(out)
-    finally:
-        out.close()
-    return dest
 
 
 def main() -> int:

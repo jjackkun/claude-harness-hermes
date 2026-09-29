@@ -33,11 +33,13 @@ try:
     d = json.load(sys.stdin)
 except Exception:
     sys.exit(0)
-print(d.get("prompt", "") or "")
+# 세션 ID 를 첫 줄에 둔다 — 프롬프트는 여러 줄일 수 있어 뒤에 두면 2번째 줄이 세션 ID 로 읽힌다
+# (2026-09-29 실측: 회상 표시 203건 중 176건이 프롬프트 조각이었다).
 print(d.get("session_id", "") or "")
+print(d.get("prompt", "") or "")
 ' 2>/dev/null || true)"
-  prompt="$(printf '%s\n' "$parsed" | sed -n 1p)"
-  session_id="$(printf '%s\n' "$parsed" | sed -n 2p)"
+  session_id="$(printf '%s\n' "$parsed" | sed -n 1p)"
+  prompt="$(printf '%s\n' "$parsed" | sed 1d)"
 fi
 
 # ── 회상 자동주입 (세션 첫 프롬프트 1회) — stdout 출력이 컨텍스트로 주입됨 ──
