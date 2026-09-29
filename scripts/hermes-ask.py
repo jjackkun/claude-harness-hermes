@@ -6,7 +6,7 @@
   report                            정답지 표본 수 · 놓침 · 95% 상한 · 대기 문장의 사람 판정 · 물음 횟수
 
 이 명령은 모델도 부를 수 있다. 사용자가 폼에서 고른 값만 기록해야 한다(안내 문구에 적혀 있다).
-계획: docs/exec-plans/active/2026-09-29-privacy-gate-hardening.md 목표 5~7
+계획: docs/exec-plans/completed/2026-09-29-privacy-gate-hardening.md 목표 5~7
 """
 
 import argparse

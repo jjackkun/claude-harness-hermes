@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 올리기 전 판정 강화 — A 단계 (계획 docs/exec-plans/active/2026-09-29-privacy-gate-hardening.md 목표 5~7).
+# 올리기 전 판정 강화 — A 단계 (계획 docs/exec-plans/completed/2026-09-29-privacy-gate-hardening.md 목표 5~7).
 #
 #   1 list: 항목 상한 4 · 우선순위(문장 대기 → 성향 대기 → 표본) · 표본 1칸 예약 · 세션당 1회 · 0건이면 침묵
 #   2 answer: 문장 keep|drop · 성향 approve|reject · 표본 ok|leak(leak 이면 drop 으로 바꾸고 파일을 알림) · later 는 기록 안 함

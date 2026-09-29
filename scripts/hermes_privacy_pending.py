@@ -11,7 +11,7 @@
 
 판정 표에는 **대기(pending) 문장만 원문**을 둔다(사람에게 보이려고). 통과·둠·지움은 해시만으로 충분해 원문을 비운다.
 파일로 나가는 문장은 판정 전에 `scrub` 으로 지금 규칙에 맞춰 가린다 — 판정한 문장과 파일에 쓴 문장의 해시가 같아야
-게이트가 통과한다. 계획: docs/exec-plans/active/2026-09-29-privacy-gate-hardening.md 목표 1·3
+게이트가 통과한다. 계획: docs/exec-plans/completed/2026-09-29-privacy-gate-hardening.md 목표 1·3
 
 공개: ensure_table · text_hash · scrub · mark · status_of · allowed · pending_rows · decide
 """

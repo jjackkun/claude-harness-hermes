@@ -4,7 +4,7 @@
 칸별 문장 · 스킬 본문 통째. 그 밖의 칸(id·시각·주제)은 건드리지 않는다. JSON 은 문자열 값 단위로 가려 유효성을 지킨다.
 추적 중이고 변경 없는 파일은 git 이 백업이고, 그 밖의 파일은 원본을 백업 폴더에 복사한 뒤 쓴다.
 적용 뒤 다시 가려 보아 또 달라지는 파일(마스킹이 멱등이 아님)은 쓰지 않고 실패로 돌려준다.
-계획: docs/exec-plans/active/2026-09-29-privacy-gate-hardening.md 목표 4
+계획: docs/exec-plans/completed/2026-09-29-privacy-gate-hardening.md 목표 4
 
 공개: KNOWLEDGE_GLOBS · plan · apply
 """

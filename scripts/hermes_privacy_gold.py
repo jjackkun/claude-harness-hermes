@@ -2,7 +2,7 @@
 
 사람이 "이 통과 문장도 올려도 됩니까"에 답한 결과를 **해시와 판정(ok·leak)만** 쌓는다 — 원문은 저장하지 않는다.
 같은 문장은 해시로 한 번만 센다. 통계는 "스테이징된 문장 중 사람이 응답한 표본" 기준이며 모집단 전체의 보증이 아니다.
-계획: docs/exec-plans/active/2026-09-29-privacy-gate-hardening.md 목표 7
+계획: docs/exec-plans/completed/2026-09-29-privacy-gate-hardening.md 목표 7
 
 공개: TARGET · ensure_table · known · record · count · stats
 """

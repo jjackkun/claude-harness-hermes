@@ -19,6 +19,8 @@ from datetime import datetime, timedelta, timezone
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from hermes_keywords import split_keywords  # noqa: E402  (토큰 분해 — 정의를 한 곳에 둔다)
+from hermes_redact import project_dir_for_db  # noqa: E402
+from hermes_skill_write import write_skill_file  # noqa: E402  (스킬 파일은 가려서 쓴다)
 
 
 EVOLVE_COOLDOWN_HOURS = 24
@@ -233,8 +235,7 @@ def evolve_skill(db_path: str, keyword: str, feedback: str) -> str:
         print(f"[hermes] EVOLVE_SKIPPED:{skill_name} (내용 변경 없음)", file=sys.stderr)
         return "SKIPPED"
 
-    with open(skill_path, "w", encoding="utf-8") as f:
-        f.write(new_content.rstrip() + "\n")
+    write_skill_file(skill_path, new_content.rstrip() + "\n", project_dir_for_db(db_path))
 
     record_evolution(db_path, skill_path, new_ver)
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 올리기 전 판정 강화 — B 단계 (계획 docs/exec-plans/active/2026-09-29-privacy-gate-hardening.md 목표 1~4).
+# 올리기 전 판정 강화 — B 단계 (계획 docs/exec-plans/completed/2026-09-29-privacy-gate-hardening.md 목표 1~4).
 #
 #   1 내보내기: 파일로 나가는 기억·이력·대화 요약 문장은 지금 규칙으로 가린 것이고, 판정 해시와 파일 문장이 같다
 #   2 게이트: 다시 가리면 달라지는 스테이징 문장은 막는다 · 정상 문장은 통과 · 모듈이 없으면 종료 3

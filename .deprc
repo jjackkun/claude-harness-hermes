@@ -16,7 +16,7 @@ tier: 0  assets/hooks/claude_config_scan.py
 # 세션 고정 비용 표(계획 2026-09-21-context-budget): 표준 모듈만.
 tier: 0  assets/hooks/context_budget.py
 tier: 1  scripts/hermes-cleanup.py
-tier: 0  scripts/hermes-correlate.py scripts/hermes-evolve-skill.py
+tier: 0  scripts/hermes-correlate.py
 tier: 0  scripts/hermes-increment.py scripts/hermes-manager.py scripts/hermes-message.py
 tier: 0  scripts/hermes-prune.py
 # 판정 재측정·원장 정리(계획 2026-09-29-skill-yield-integrity): repair 는 표준 모듈만, replay 는 correlate(0)를 importlib 로 불러 쓴다.
@@ -26,6 +26,10 @@ tier: 1  scripts/hermes-yield-repair.py scripts/hermes-recall-repair.py
 tier: 2  scripts/hermes_privacy_scrub_files.py scripts/hermes-privacy-scrub.py
 # 커밋 때 묻기(같은 계획): staged·gold 는 표준 모듈만, ask_items 는 persona_view(1)를 쓰므로 2, 명령줄은 그 위.
 tier: 0  scripts/hermes_privacy_staged.py scripts/hermes_privacy_gold.py
+# 판정 표와 내보내기(같은 계획): pending 은 redact(1) 위 · 내보내기 모듈은 pending 위 · 지식 파일 명령은 그 위.
+tier: 1  scripts/hermes_privacy_pending.py
+tier: 2  scripts/hermes_memory_file.py scripts/hermes_journal_file.py scripts/hermes_conversation_file.py
+tier: 3  scripts/hermes-knowledge-files.py
 tier: 2  scripts/hermes_ask_items.py
 tier: 3  scripts/hermes-ask.py
 tier: 1  scripts/hermes_yield_replay.py
@@ -93,6 +97,8 @@ tier: 4  scripts/hermes-propose.py
 # 스킬 4층(계획 5): layers 는 uuid7(tier0)만 import → tier1. 색인기는 layers 를 import → tier2.
 tier: 1  scripts/hermes_skill_layers.py
 tier: 0  scripts/hermes_crystallize_evidence.py   # 결정화 증거 수집(표준 모듈만) — crystallize(1) 가 부른다
+# 스킬 쓰기(계획 2026-09-29-privacy-gate-hardening): 가려서 쓰는 함수를 결정화·진화가 함께 쓴다 — 진화는 redact(1)를 알게 되어 0 에서 1 로 올렸다.
+tier: 1  scripts/hermes_skill_write.py scripts/hermes-evolve-skill.py
 tier: 1  assets/hooks/check-secrets.py scripts/hermes-crystallize.py
 tier: 2  scripts/hermes-index-skills.py scripts/hermes_skill_extends.py
 tier: 1  scripts/hermes_redact.py scripts/hermes_search_fallback.py
@@ -119,7 +125,8 @@ forbid: assets/hooks/*.py -> scripts/*.py
 optional: assets/hooks/check-secrets.py -> hermes_secret_values
 # R-privacy 게이트: 문장 추출·판정 표 모듈이 없으면(구버전 스크립트) 종료 코드 3 으로 알리고 건너뛴다 — 커밋을 죽이지 않는다.
 optional: assets/hooks/check-privacy.py -> hermes_privacy_staged
-tier: 0  assets/hooks/check-privacy.py
+optional: assets/hooks/check-privacy.py -> hermes_privacy_pending
+tier: 2  assets/hooks/check-privacy.py
 # 커밋 게이트 훅(표준 모듈만, 다른 scripts 를 import 하지 않는다) — 2026-09-20 자기 계약 검사가 미등록으로 잡음
 tier: 0  scripts/hooks/complexity.py scripts/hooks/coverage_probe.py scripts/hooks/depcheck.py scripts/hooks/design_cover.py scripts/hooks/doc_counts.py scripts/hooks/gate_event.py scripts/hooks/gate_report.py scripts/hooks/out_report.py
 # 대시보드(계획 2026-09-18-hermes-dashboard): html 은 표준 모듈만, data 는 handoff_queue·owner_memory(2)·skill_layers(1)·skill_yield(0)·hooks/gate_report(0) 를 쓴다

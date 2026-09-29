@@ -4,7 +4,7 @@
       .hermes/skills/**/*.md · .hermes/agents/*/skills/**/*.md
 jsonl 은 이번에 **더해진 줄**만 본다(이미 올라간 줄은 이미 통과했다). 스킬·대화 요약은 스테이징된 본문 전체.
 git 은 현재 작업 디렉터리(저장소 안)에서 부른다.
-계획: docs/exec-plans/active/2026-09-29-privacy-gate-hardening.md (게이트 로직을 그대로 옮김 — 동작 동일)
+계획: docs/exec-plans/completed/2026-09-29-privacy-gate-hardening.md (게이트 로직을 그대로 옮김 — 동작 동일)
 
 공개: PATTERNS · staged_paths · texts_of · staged_texts
 """

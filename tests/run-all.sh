@@ -257,6 +257,7 @@ REGISTERED_TESTS=(
   doc-counts-autofix-test.sh
   hermes-privacy-scrub-test.sh
   hermes-ask-test.sh
+  hermes-skill-write-test.sh
   cli-prompt-stdin-test.sh
   hermes-rule-candidates-test.sh
   hermes-evolve-vocab-test.sh

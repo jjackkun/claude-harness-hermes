@@ -5,7 +5,7 @@
   files  지식 파일(스킬·기억·이력·대화 요약)을 지금 마스킹 규칙으로 다시 가린다. 추적 안 되는/바뀐 파일은 백업한다.
 
 사용: python3 scripts/hermes-privacy-scrub.py db|files [--project 경로] [--apply]
-계획: docs/exec-plans/active/2026-09-29-privacy-gate-hardening.md 목표 4
+계획: docs/exec-plans/completed/2026-09-29-privacy-gate-hardening.md 목표 4
 """
 
 import argparse

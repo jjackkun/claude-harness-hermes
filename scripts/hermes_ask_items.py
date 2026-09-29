@@ -3,7 +3,7 @@
 항목 id: `p:<해시8>` 문장 대기 · `s:<라벨>` 성향 승인 · `g:<해시8>` 표본. 한 폼은 질문 4개까지라 합이 4 를 넘으면 뒤에서 자른다.
 표본 목표(정답지)에 못 미친 동안은 1칸을 표본용으로 예약한다 — 대기가 많아도 정답지가 자라도록.
 프로젝트 DB 와 전역 DB(성향)를 함께 읽는 곳은 여기 한 곳이다(성향은 `persona_items` 하나로만).
-계획: docs/exec-plans/active/2026-09-29-privacy-gate-hardening.md 목표 5
+계획: docs/exec-plans/completed/2026-09-29-privacy-gate-hardening.md 목표 5
 
 공개: MAX_ITEMS · persona_items · privacy_items · gold_candidates · collect · already_asked · mark_asked
 """

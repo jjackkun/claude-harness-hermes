@@ -25,6 +25,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from hermes_skills import extract_keywords  # noqa: E402  (본문 키워드 추출 공유 헬퍼)
 from hermes_reversed_guard import reversal_hold  # noqa: E402  (철회 보류 판정, L-06)
 from hermes_skill_yield import is_generic_key  # noqa: E402  (일반 코드 단어 키 거부, 계획 skill-yield-junk)
+from hermes_privacy_pending import scrub  # noqa: E402  (모델 출력의 비밀을 이름 짓기 전에 가린다)
+from hermes_skill_write import write_skill_file  # noqa: E402  (스킬 파일은 가려서 쓴다)
 
 
 from hermes_crystallize_evidence import (  # noqa: E402
@@ -412,12 +414,13 @@ def crystallize(db_path: str, keys: list[str], project_dir: str, agent_id: str =
             print(f"[hermes-crystallize] SKIP:{key} — 콘텐츠 생성 실패")
             continue
 
+        # 모델 출력에 비밀이 있을 수 있다 — 이름을 짓기 전에 가린다(제목이 파일명이 된다)
+        content = scrub(content, project_dir)
         # 파일명은 패턴 키가 아니라 생성된 본문의 제목에서 뽑는다
         filename = skill_filename(content, key)
         skill_path = os.path.join(skills_dir, filename)
 
-        with open(skill_path, "w", encoding="utf-8") as f:
-            f.write(content + "\n")
+        write_skill_file(skill_path, content + "\n", project_dir)
 
         register_skill(db_path, skill_path, key, agent_id=agent_id)
         print(f"[hermes] DONE:{filename} (키: {key})")
