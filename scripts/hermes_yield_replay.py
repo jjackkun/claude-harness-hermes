@@ -53,7 +53,7 @@ def _entrypoint(path):
 def load(db, projects_dir):
     """→ (짝 목록 [(skill, sid)], 세션별 토큰, 스킬별 키워드). 사람 세션·도구 토큰 1개 이상만."""
     corr = _correlate()
-    con = sqlite3.connect(db)
+    con = sqlite3.connect(f"file:{os.path.abspath(db)}?mode=ro", uri=True)  # 읽기 전용으로만 연다
     kws = {p: {k.strip().lower() for k in (k or "").split(",") if k.strip()}
            for p, k in con.execute("SELECT skill_path, keywords FROM skill_index")}
     pairs, toks, seen = set(), {}, {}

@@ -83,6 +83,12 @@ for sid, corr in [("sdk-a", 0), ("sdk-judged", 1), ("human-a", 0), ("missing-a",
     c.execute("INSERT INTO skill_injection (session_id, skill_path, source, correlated) VALUES (?,?,?,?)", (sid, sys.argv[2], "prompt", corr))
 c.commit()
 PY
+python3 - "$DB" <<'PY'
+import sqlite3, sys
+c = sqlite3.connect(sys.argv[1])
+c.execute("INSERT OR REPLACE INTO skill_index (skill_path, keywords, used_count) VALUES ('untouched-skill', 'x,y', 7)")   # 원장 행이 없는 옛 카운트
+c.commit()
+PY
 BEFORE_ROWS="$(q "SELECT COUNT(*) FROM skill_injection")"
 python3 "$S/hermes-yield-repair.py" --db "$DB" --projects-dir "$T/projects" >/dev/null
 assert "미리보기는 DB 를 바꾸지 않는다" "$BEFORE_ROWS" "$(q "SELECT COUNT(*) FROM skill_injection")"
@@ -92,6 +98,7 @@ assert "판정 끝난 sdk-cli 행은 남았다" 1 "$(q "SELECT COUNT(*) FROM ski
 assert "사람 세션 행은 남았다" 1 "$(q "SELECT COUNT(*) FROM skill_injection WHERE session_id='human-a'")"
 assert "기록 없는 세션 행은 남았다" 1 "$(q "SELECT COUNT(*) FROM skill_injection WHERE session_id='missing-a'")"
 assert "백업 파일이 생겼다" 1 "$(ls "$DB".bak-* 2>/dev/null | wc -l | tr -d ' ')"
+assert "영향 없는 스킬의 옛 카운트는 0 으로 안 지워진다" 7 "$(q "SELECT used_count FROM skill_index WHERE skill_path='untouched-skill'")"
 assert "apply 뒤 used_count = 원장 행 수" "$(q "SELECT COUNT(*) FROM skill_injection WHERE skill_path LIKE '%deploy-check%'")" "$(q "SELECT used_count FROM skill_index WHERE skill_path LIKE '%deploy-check%'")"
 
 echo "== 2. 재판정 도구: 진짜 짝이 가짜 짝보다 도움률이 높다"

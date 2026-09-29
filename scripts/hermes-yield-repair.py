@@ -4,7 +4,8 @@
 내부 호출은 대화 기록 앞부분의 진입 표시(entrypoint)가 `sdk-cli` 인 세션으로만 가른다(사람 세션은 `cli`).
 프롬프트 문구로 추측하지 않는다. 기록 파일이 없거나 진입 표시를 못 읽으면 지우지 않는다.
 이미 판정이 끝난 행(correlated=1)은 도움·소용없음 누계와 어긋나므로 지우지 않고 알린다.
---apply 는 지우기 직전 DB 를 `state.db.bak-<날짜>` 로 복사하고, used_count 를 원장 행 수로 다시 센다.
+--apply 는 지우기 직전 DB 를 sqlite 백업 API 로(WAL 안의 최근 기록까지) `state.db.bak-<날짜시각>` 에 복사하고,
+지운 행이 속했던 스킬의 used_count 만 원장 행 수로 다시 센다(원장에 없던 옛 카운트를 0 으로 만들지 않는다).
 
 사용: python3 scripts/hermes-yield-repair.py [--db .hermes/state.db] [--projects-dir ~/.claude/projects] [--apply]
 """
@@ -13,10 +14,9 @@ import argparse
 import glob
 import json
 import os
-import shutil
 import sqlite3
 import sys
-from datetime import date
+from datetime import datetime
 
 ENTRYPOINT_SCAN_LINES = 60  # 실측: 진입 표시는 기록 앞 10줄 안에 나온다 — 여유를 두고 60줄까지만 본다
 
@@ -63,11 +63,24 @@ def judged_rows(con, sids: list) -> int:
     ).fetchone()[0]
 
 
-def recount_used(con) -> None:
-    con.execute(
-        "UPDATE skill_index SET used_count = "
-        "(SELECT COUNT(*) FROM skill_injection WHERE skill_injection.skill_path = skill_index.skill_path)"
-    )
+def recount_used(con, skill_paths: list) -> None:
+    for path in skill_paths:
+        con.execute(
+            "UPDATE skill_index SET used_count = "
+            "(SELECT COUNT(*) FROM skill_injection WHERE skill_path = ?) WHERE skill_path = ?",
+            (path, path),
+        )
+
+
+def backup_db(con, db_path: str) -> str:
+    """sqlite 백업 API — 파일 복사와 달리 WAL 에만 있는 최근 기록도 담는다. 이미 있는 백업은 덮지 않는다."""
+    dest = f"{db_path}.bak-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
+    out = sqlite3.connect(dest)
+    try:
+        con.backup(out)
+    finally:
+        out.close()
+    return dest
 
 
 def main() -> int:
@@ -90,14 +103,13 @@ def main() -> int:
     if not args.apply:
         print("미리보기입니다. 지우려면 --apply 를 붙이십시오. (DB 는 바뀌지 않았습니다)")
         return 0
-    backup = f"{args.db}.bak-{date.today().isoformat()}"
-    shutil.copy2(args.db, backup)
-    cur = con.execute(
-        f"DELETE FROM skill_injection WHERE COALESCE(correlated, 0) != 1 AND session_id IN ({marks})", internal
-    ) if internal else None
-    recount_used(con)
+    backup = backup_db(con, args.db)
+    cond = f"COALESCE(correlated, 0) != 1 AND session_id IN ({marks})"
+    paths = [r[0] for r in con.execute(f"SELECT DISTINCT skill_path FROM skill_injection WHERE {cond}", internal)] if internal else []
+    cur = con.execute(f"DELETE FROM skill_injection WHERE {cond}", internal) if internal else None
+    recount_used(con, paths)
     con.commit()
-    print(f"지운 행 {cur.rowcount if cur else 0}개 · 백업 {backup} · used_count 를 원장 행 수로 다시 셌습니다")
+    print(f"지운 행 {cur.rowcount if cur else 0}개 · 백업 {backup} · 영향받은 스킬 {len(paths)}개의 used_count 를 원장 행 수로 다시 셌습니다")
     return 0
 
 
