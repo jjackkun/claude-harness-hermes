@@ -25,7 +25,8 @@ if [[ -f "$(dirname "$0")/gate_emit.sh" ]]; then
 fi
 declare -F gate_emit >/dev/null 2>&1 || gate_emit() { :; }
 
-CMD=$(python3 -c "
+INPUT=$(cat 2>/dev/null || true)
+CMD=$(printf '%s' "$INPUT" | python3 -c "
 import sys, json
 try:
     d = json.load(sys.stdin)
@@ -88,6 +89,20 @@ fi
 
 # git commit 감지 — 리뷰 기록(.claude/.review-dirty)이 있으면 soft reminder 만 주입.
 if echo "$CMD" | grep -q "git commit"; then
+  # 사람이 정해야 할 것(문장 확인 대기 · 성향 승인 대기 · 정답지 표본)이 있으면 안내 맨 위에 싣는다.
+  # 세션 ID 는 JSON 을 파이썬으로 읽는다(줄 단위로 자르면 여러 줄 값에서 어긋난다 — 2f0c623). 스크립트·세션 ID 가 없으면 조용히 건너뛴다.
+  ASK_TEXT=""
+  SESSION_ID=$(printf '%s' "$INPUT" | python3 -c "
+import sys, json
+try:
+    print(json.load(sys.stdin).get('session_id') or '')
+except Exception:
+    print('')
+" 2>/dev/null || true)
+  if [[ -n "$SESSION_ID" && -f scripts/hermes-ask.py ]]; then
+    ASK_TEXT=$(python3 scripts/hermes-ask.py list --session "$SESSION_ID" 2>/dev/null || true)
+  fi
+  export ASK_TEXT
   # 여기는 분모가 성립한다 — 커밋 시도당 빚이 남아 있었는가.
   if [[ -f .claude/.review-dirty ]]; then
     gate_emit R-review warn pretooluse "" "빚이 남은 채 커밋 시도"
@@ -97,12 +112,14 @@ if echo "$CMD" | grep -q "git commit"; then
   if [[ -f .claude/.review-dirty ]]; then
     DIRTY_SUMMARY=$(head -5 .claude/.review-dirty 2>/dev/null || echo "(read error)")
     python3 - "$DIRTY_SUMMARY" <<'PY'
-import json, sys
+import json, os, sys
 summary = sys.argv[1]
+ask = os.environ.get("ASK_TEXT", "").strip()
 out = {
   "hookSpecificOutput": {
     "hookEventName": "PreToolUse",
     "additionalContext": (
+      (ask + "\n\n" if ask else "") +
       "[R-review] 최근 코드 편집 기록이 있습니다. 변경이 크거나 공유 경계/보안/DB/동시성에 "
       "영향이 있으면 commit 전 code-reviewer 를 사용하세요.\n\n"
       f"{summary}\n\n"
@@ -116,11 +133,13 @@ PY
     exit 0
   fi
   python3 <<'PY'
-import json
+import json, os
+ask = os.environ.get("ASK_TEXT", "").strip()
 out = {
   "hookSpecificOutput": {
     "hookEventName": "PreToolUse",
     "additionalContext": (
+      (ask + "\n\n" if ask else "") +
       "[HARNESS] git commit 감지. 큰 변경이나 공유 경계 변경이면 "
       "code-reviewer 사용을 고려하세요. 코드·훅·설정 동작을 바꿨다면 "
       "pre-commit-measure 스킬로 주장마다 가장 작은 실행을 돌려 메시지에 실측: 을 남기세요."

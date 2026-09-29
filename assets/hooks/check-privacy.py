@@ -12,65 +12,16 @@ jsonl 은 이번에 **더해진 줄**만 본다(이미 올라간 줄은 이미 �
 계획: docs/exec-plans/completed/2026-09-28-carry-agent-knowledge.md 목표 8
 """
 
-import fnmatch
-import json
 import os
 import sqlite3
 import subprocess
 import sys
 
-_PATTERNS = (".hermes/agents/*/memory.jsonl", ".hermes/agents/*/conversations/*", ".hermes/journal.jsonl",
-             ".hermes/skills/*.md", ".hermes/agents/*/skills/*.md")
-_SLOTS = ("decisions", "open", "prefs", "facts", "next")
 _SHOW = 5                                  # 메시지에 보일 문장 수 — 나머지는 확인 명령이 보인다
 
 
 def _git(*args) -> str:
     return subprocess.run(["git", *args], capture_output=True, text=True).stdout
-
-
-def _staged() -> list:
-    names = _git("diff", "--cached", "--name-only", "--diff-filter=ACM").splitlines()
-    return [n for n in names if any(fnmatch.fnmatch(n, p) for p in _PATTERNS)]
-
-
-def _added_json_lines(path: str) -> list:
-    out = []
-    for line in _git("diff", "--cached", "-U0", "--", path).splitlines():
-        if line.startswith("+") and not line.startswith("+++"):
-            try:
-                out.append(json.loads(line[1:]))
-            except ValueError:
-                continue
-    return out
-
-
-def _memory_texts(path: str) -> list:
-    rows = [r for r in _added_json_lines(path) if isinstance(r, dict)]
-    return [r["body"] for r in rows if r.get("body")]
-
-
-def _journal_texts(path: str) -> list:
-    rows = [r for r in _added_json_lines(path) if isinstance(r, dict)]
-    texts = [r[k] for r in rows for k in ("intent", "lesson") if r.get(k)]
-    return texts + [r["decision"] for r in rows if r.get("kind") == "decision" and r.get("decision")]
-
-
-def _conversation_texts(blob: str) -> list:
-    try:
-        slots = (json.loads(blob) or {}).get("slots") or {}
-    except ValueError:
-        return [blob]                      # 깨진 파일 — 통째로 판정 기록이 없으니 막힌다
-    return [str(x) for k in _SLOTS for x in (slots.get(k) or [])]
-
-
-def _texts(path: str) -> list:
-    if path.endswith("memory.jsonl"):
-        return _memory_texts(path)
-    if path.endswith("journal.jsonl"):
-        return _journal_texts(path)
-    blob = _git("show", f":{path}")
-    return _conversation_texts(blob) if "/conversations/" in path else [blob]
 
 
 def _first_line(text) -> str:
@@ -98,9 +49,8 @@ def _report(bad: list, drift: list) -> int:
 
 def main() -> int:
     top = _git("rev-parse", "--show-toplevel").strip()
-    staged = _staged()
-    if not staged:
-        return 0
+    if not any(n.startswith(".hermes/") for n in _git("diff", "--cached", "--name-only", "--diff-filter=ACM").splitlines()):
+        return 0                            # 지식 파일이 스테이징되지 않았다 — 모듈을 부를 필요도 없다
     scripts, db = os.path.join(top, "scripts"), os.path.join(top, ".hermes", "state.db")
     if not (os.path.isfile(db) and os.path.isfile(os.path.join(scripts, "hermes_privacy_pending.py"))):
         print("[R-privacy] 판정 표 없음 — 건너뜀", file=sys.stderr)
@@ -108,11 +58,14 @@ def main() -> int:
     sys.path.insert(0, scripts)
     try:
         from hermes_privacy_pending import allowed, scrub
+        from hermes_privacy_staged import staged_texts
     except ImportError as exc:              # 스크립트가 구버전이라 필요한 모듈이 없다 — 조용히 넘기지 않고 알린다
         print(f"[R-privacy] 하네스 스크립트가 구버전이라 이 검사를 건너뜁니다 — 재설치 필요(bash update-all.sh): {exc}", file=sys.stderr)
         return 3
+    texts = staged_texts()
+    if not texts:
+        return 0
     con = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
-    texts = [(p, t) for p in staged for t in _texts(p)]
     bad = [(p, t) for p, t in texts if not allowed(con, t)]
     drift = [(p, t) for p, t in texts if scrub(t, top) != t]     # 게이트도 내보내기와 같은 project 로 가린다
     con.close()
