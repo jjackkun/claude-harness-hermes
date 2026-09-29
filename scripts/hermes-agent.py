@@ -33,6 +33,7 @@ from hermes_soul_draft import DRAFT_MARK, draft_soul, is_untouched_draft  # noqa
 from hermes_owner_memory import no_owner_since, record_no_owner  # noqa: E402
 from hermes_agent_slug import SlugError, assign_slug  # noqa: E402
 from hermes_mention_cmds import set_slug, sync_and_report, sync_only  # noqa: E402
+from hermes_agent_rename import rename_agent  # noqa: E402
 from hermes_room import collect_room, last_seen  # noqa: E402
 from hermes_roster_view import render_roster, render_room, render_room_line  # noqa: E402
 from hermes_hag_line import hag_line  # noqa: E402  (상태줄 방 줄, 계획 hag-rooms-ui)
@@ -129,6 +130,9 @@ def cmd_hire(args) -> int:
     print(f"입사: {agent['name']} ({agent['agent_id']}) status={agent['status']} org={agent['org']}")
     print(f"정체성: {os.path.relpath(folder, project)}/  — SOUL.md 초안을 읽고 고친 뒤 초안 줄을 지우면 승인"
           + (f" (템플릿 {args.template} 절 포함)" if args.template else ""))
+    if not agent.get("slug"):
+        print("[hermes-agent] 영문 호출명이 없어 `@hag` 목록·`claude --agent` 로 부를 수 없습니다 — "
+              f"hermes-agent.py set-slug \"{agent['name']}\" <영문-호출명>")
     return 0
 
 
@@ -352,6 +356,8 @@ def main() -> int:
     sub = ap.add_subparsers(dest="cmd", required=True)
     h = sub.add_parser("hire"); h.add_argument("name"); h.add_argument("--org", default="")
     h.add_argument("--template"); h.add_argument("--slug", help="@agent-<slug> 로 부를 영문 이름(선택)")
+    rn = sub.add_parser("rename", help="이름을 바꾼다 — id 는 그대로(사람만)")
+    rn.add_argument("name"); rn.add_argument("new_name")
     ss = sub.add_parser("set-slug", help="@agent-<slug> 로 부를 영문 이름을 붙인다 — 영문 소문자·숫자·-")
     ss.add_argument("name"); ss.add_argument("slug")
     sub.add_parser("sync-mention-files", help=".claude/agents/<slug>.md 를 명부와 맞춘다(멱등)")
@@ -389,6 +395,7 @@ def main() -> int:
                 "pin": cmd_pin, "soul-draft": cmd_soul_draft, "templates": cmd_templates,
                 "approve-soul": cmd_approve_soul,
                 "set-slug": lambda a: set_slug(a.project, _human(a.project), a.name, a.slug),
+                "rename": lambda a: rename_agent(a.project, _human(a.project), a.name, a.new_name),
                 "sync-mention-files": lambda a: sync_only(a.project), "room": cmd_room,
                 "roster": lambda a: print(render_roster(load_roster(a.project), last_seen(a.project))) or 0}[args.cmd](args)
     except (RosterError, OrgError, TeachingError, TemplateError, SlugError) as exc:

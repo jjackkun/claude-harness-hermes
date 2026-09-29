@@ -154,5 +154,19 @@ assert "summons/ 무시" 무시 "$(ig .hermes/summons/abc.pending)"
 cd "$REPO_ROOT"
 
 echo ""
+echo "== 이름 바꾸기 · 호출명 없는 입사 안내 (2026-09-29 사용자: 이름을 지을 수 있어야 한다)"
+A hire 이름짓기전 --org 기획,담당,공통 >"$TMP/hire2.out" 2>&1
+assert "호출명 없이 입사하면 set-slug 안내" 1 "$(grep -c 'set-slug' "$TMP/hire2.out")"
+RID="$(roster_field 이름짓기전 agent_id)"
+A rename 이름짓기전 하늘 >/dev/null 2>&1
+assert "rename → 새 이름" "$RID" "$(roster_field 하늘 agent_id)"
+assert "rename → 옛 이름은 명부에 없다" none "$(roster_field 이름짓기전 agent_id 2>/dev/null)"
+assert "SOUL 머리 name 도 바뀐다" 1 "$(grep -c '^name: 하늘$' "$P/.hermes/agents/$RID/SOUL.md")"
+assert "SOUL 제목도 바뀐다" 1 "$(grep -c '^# 하늘$' "$P/.hermes/agents/$RID/SOUL.md")"
+assert "이름 바꿈이 이력에 남는다" 1 "$(python3 -c "
+import sqlite3;print(sqlite3.connect('$P/.hermes/state.db').execute(\"select count(*) from journal_events where kind='decision' and decision like 'rename 이름짓기전%'\").fetchone()[0])" 2>/dev/null || echo 0)"
+assert "이미 있는 이름으로는 못 바꾼다" 2 "$(A rename 하늘 유저기획 >/dev/null 2>&1; echo $?)"
+
+echo ""
 echo "PASS=$PASS FAIL=$FAIL"
 [[ $FAIL -eq 0 ]]
