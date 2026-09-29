@@ -18,7 +18,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from hermes_person import person  # noqa: E402
-from hermes_privacy_pending import allowed  # noqa: E402
+from hermes_privacy_pending import allowed, scrub  # noqa: E402
 from hermes_summary_owner import ensure_agent_column  # noqa: E402
 
 SLOT_KEYS = ("decisions", "open", "prefs", "facts", "next")
@@ -36,13 +36,18 @@ def _slots(raw) -> dict:
     return {k: [str(x) for x in (data.get(k) or []) if str(x).strip()] for k in SLOT_KEYS}
 
 
+def _masked_slots(raw, project=None) -> dict:
+    """칸별 문장을 지금 규칙으로 가린 값 — 판정과 파일 쓰기가 같은 문장을 쓰게 한다."""
+    return {k: [scrub(t, project) for t in v] for k, v in _slots(raw).items()}
+
+
 def _agent_rows(con) -> list:
     ensure_agent_column(con)
     return con.execute("SELECT session_id, agent_id, person, slots_json, updated_at, turn_count "
                        "FROM session_summary WHERE agent_id IS NOT NULL AND agent_id != ''").fetchall()
 
 
-def judge_items(con, agent_only: bool = False) -> list:
+def judge_items(con, agent_only: bool = False, project=None) -> list:
     """판정할 요약 항목 [(kind, ref, text)]. agent_only 면 에이전트 요약만(아니면 공통 포함)."""
     ensure_agent_column(con)
     sql = "SELECT session_id, slots_json FROM session_summary"
@@ -50,7 +55,7 @@ def judge_items(con, agent_only: bool = False) -> list:
         sql += " WHERE agent_id IS NOT NULL AND agent_id != ''"
     items = []
     for sid, raw in con.execute(sql).fetchall():
-        items += [("summary", sid, text) for k in SLOT_KEYS for text in _slots(raw)[k]]
+        items += [("summary", sid, text) for k in SLOT_KEYS for text in _masked_slots(raw, project)[k]]
     return items
 
 
@@ -61,7 +66,7 @@ def export(con, project: str) -> int:
         folder = os.path.join(project, ".hermes", "agents", aid)
         if not os.path.isfile(os.path.join(folder, "SOUL.md")):
             continue
-        slots = {k: [t for t in v if allowed(con, t)] for k, v in _slots(raw).items()}
+        slots = {k: [t for t in v if allowed(con, t)] for k, v in _masked_slots(raw, project).items()}
         body = {"session_id": sid, "agent_id": aid, "person": who or me, "updated_at": upd,
                 "turn_count": turns or 0, "slots": slots}
         path = os.path.join(folder, "conversations", _safe(who or me), _safe(sid) + ".json")

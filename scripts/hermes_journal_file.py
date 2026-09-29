@@ -20,7 +20,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from hermes_handoff_queue import _CLOSING  # noqa: E402  (인계를 닫는 종류 — 같은 목록을 두 곳에 두지 않는다)
 from hermes_journal_schema import COLUMNS, ensure_schema  # noqa: E402
 from hermes_jsonl_lock import locked_append  # noqa: E402
-from hermes_privacy_pending import allowed  # noqa: E402
+from hermes_privacy_pending import allowed, scrub  # noqa: E402
 from hermes_roster import load_roster  # noqa: E402
 
 FILE = os.path.join(".hermes", "journal.jsonl")
@@ -41,20 +41,24 @@ def _template(evidence) -> str:
         return ""
 
 
+_TEXT_FIELDS = ("intent", "lesson", "decision")   # _texts 가 판정하는 사람 문장 칸
+
+
+def _exportable(r: dict, roster: set, handed: set) -> bool:
+    """올릴 만한 줄인가 — 항상 올리는 종류 · 교훈이 있는 줄 · 명부 에이전트가 끝낸 일 · 넘긴 일을 닫는 줄."""
+    return bool(r["kind"] in _ALWAYS or r["lesson"]
+                or (r["kind"] == "task.finished" and _template(r["evidence"]) in roster)
+                or (r["kind"] in _CLOSING and r["task_id"] in handed))
+
+
 def select(con, project: str) -> list:
-    """올릴 줄(dict), 시각 순."""
+    """올릴 줄(dict), 시각 순. 사람 문장 칸은 지금 규칙으로 가린 값 — 판정·쓰기가 같은 문장을 쓴다."""
     ensure_schema(con)
     rows = [dict(zip(COLUMNS, r)) for r in con.execute(
         "SELECT {} FROM journal_events ORDER BY ts, event_id".format(", ".join(COLUMNS)))]
     roster = _roster_keys(project)
     handed = {r["task_id"] for r in rows if r["kind"] == "task.assigned"}
-    out = []
-    for r in rows:
-        if (r["kind"] in _ALWAYS or r["lesson"]
-                or (r["kind"] == "task.finished" and _template(r["evidence"]) in roster)
-                or (r["kind"] in _CLOSING and r["task_id"] in handed)):
-            out.append(r)
-    return out
+    return [{**r, **{f: scrub(r[f], project) for f in _TEXT_FIELDS}} for r in rows if _exportable(r, roster, handed)]
 
 
 def _texts(row: dict) -> list:

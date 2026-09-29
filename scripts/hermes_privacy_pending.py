@@ -9,10 +9,19 @@
 사람의 결정(keep·drop)은 기계 판정이 덮어쓰지 않는다.
 계획: docs/exec-plans/completed/2026-09-28-carry-agent-knowledge.md 목표 2 · 3
 
-공개: ensure_table · text_hash · mark · status_of · allowed · pending_rows · decide
+판정 표에는 **대기(pending) 문장만 원문**을 둔다(사람에게 보이려고). 통과·둠·지움은 해시만으로 충분해 원문을 비운다.
+파일로 나가는 문장은 판정 전에 `scrub` 으로 지금 규칙에 맞춰 가린다 — 판정한 문장과 파일에 쓴 문장의 해시가 같아야
+게이트가 통과한다. 계획: docs/exec-plans/active/2026-09-29-privacy-gate-hardening.md 목표 1·3
+
+공개: ensure_table · text_hash · scrub · mark · status_of · allowed · pending_rows · decide
 """
 
 import hashlib
+import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from hermes_redact import redact  # noqa: E402
 
 _HUMAN = ("keep", "drop")
 _ALLOWED = ("clean", "keep")
@@ -29,13 +38,19 @@ def text_hash(text: str) -> str:
     return hashlib.sha256(str(text).strip().encode("utf-8")).hexdigest()[:32]
 
 
+def scrub(text, project=None):
+    """지금 마스킹 규칙으로 가린 문장. 판정·비교·쓰기가 모두 이 값을 쓴다."""
+    return redact(text, project) if text else text
+
+
 def mark(con, kind: str, ref: str, text: str, status: str) -> None:
     """기계 판정을 적는다(clean·pending). 사람이 이미 정한 문장은 건드리지 않는다."""
     ensure_table(con)
+    kept = str(text).strip() if status == "pending" else ""     # 대기만 원문 — 나머지는 해시로 충분
     con.execute("INSERT INTO privacy_review (hash, kind, ref, text, status) VALUES (?,?,?,?,?) "
-                "ON CONFLICT(hash) DO UPDATE SET status=excluded.status, ts=CURRENT_TIMESTAMP "
+                "ON CONFLICT(hash) DO UPDATE SET status=excluded.status, text=excluded.text, ts=CURRENT_TIMESTAMP "
                 "WHERE privacy_review.status NOT IN ('keep','drop')",
-                (text_hash(text), kind, ref, str(text).strip(), status))
+                (text_hash(text), kind, ref, kept, status))
 
 
 def status_of(con, text: str):
@@ -62,5 +77,5 @@ def decide(con, hash_: str, choice: str) -> bool:
     if choice not in _HUMAN:
         raise ValueError(f"choice 는 {_HUMAN} 중 하나: {choice}")
     ensure_table(con)
-    cur = con.execute("UPDATE privacy_review SET status=?, ts=CURRENT_TIMESTAMP WHERE hash=?", (choice, hash_))
+    cur = con.execute("UPDATE privacy_review SET status=?, text='', ts=CURRENT_TIMESTAMP WHERE hash=?", (choice, hash_))
     return cur.rowcount > 0

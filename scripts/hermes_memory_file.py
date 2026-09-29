@@ -21,7 +21,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from hermes_memory_events import COLUMNS, ensure_memory_schema  # noqa: E402
 from hermes_jsonl_lock import SAFE_ID, locked_append  # noqa: E402
-from hermes_privacy_pending import allowed  # noqa: E402
+from hermes_privacy_pending import allowed, scrub  # noqa: E402
 
 FILE = "memory.jsonl"
 
@@ -32,21 +32,22 @@ def _agents_dir(project: str) -> str:
 
 
 
-def _rows(con) -> list:
+def _rows(con, project=None) -> list:
+    """본문은 지금 규칙으로 가린 값 — 판정과 파일 쓰기가 같은 문장을 쓰게 한다."""
     ensure_memory_schema(con)
     cur = con.execute("SELECT {} FROM memory_events ORDER BY ts, memory_id".format(", ".join(COLUMNS)))
-    return [dict(zip(COLUMNS, r)) for r in cur.fetchall()]
+    return [{**d, "body": scrub(d["body"], project)} for d in (dict(zip(COLUMNS, r)) for r in cur.fetchall())]
 
 
-def judge_items(con) -> list:
+def judge_items(con, project=None) -> list:
     """판정할 문장 [(kind, ref, text)] — 본문이 있는 이벤트."""
-    return [("memory", r["memory_id"], r["body"]) for r in _rows(con) if r["body"]]
+    return [("memory", r["memory_id"], r["body"]) for r in _rows(con, project) if r["body"]]
 
 
 def export(con, project: str) -> int:
     """판정을 통과한 새 이벤트를 에이전트별 파일 끝에 붙인다. 붙인 줄 수."""
     by_agent = {}
-    for row in _rows(con):
+    for row in _rows(con, project):
         aid = str(row["agent_id"] or "")
         if not SAFE_ID.fullmatch(aid) or not os.path.isfile(os.path.join(_agents_dir(project), aid, "SOUL.md")):
             continue

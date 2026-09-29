@@ -576,6 +576,9 @@ $PRIVACY_OUT")
     gate_add R-privacy block precommit "" "확인 안 된 문장"
   elif (( PRIVACY_RC == 2 )); then
     gate_add R-privacy skipped precommit "" "판정 표 없음"
+  elif (( PRIVACY_RC == 3 )); then
+    echo "$PRIVACY_OUT"
+    gate_add R-privacy skipped precommit "" "구버전 스크립트"
   else
     gate_add R-privacy pass precommit "" "확인 끝"
   fi

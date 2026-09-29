@@ -60,7 +60,7 @@ def cmd_export(project: str) -> int:
     con = _connect(project)
     if con is None:
         return 0
-    items = (conversations.judge_items(con) + memory.judge_items(con)
+    items = (conversations.judge_items(con, project=project) + memory.judge_items(con, project)
              + journal.judge_items(con, project) + skill_items(project) + pattern_items(con))
     judged = judge_and_mark(con, items)
     m, c, j = memory.export(con, project), conversations.export(con, project), journal.export(con, project)
