@@ -92,7 +92,7 @@ async def test_create_user(client):
     res = await client.post("/users", json={
         "email": "a@b.com",
         "name": "Alice",
-        "password": "secret123",
+        "password": "fake-pw-123",
     })
     assert res.status_code == 201
     body = res.json()
@@ -100,7 +100,7 @@ async def test_create_user(client):
     assert "password" not in body  # response_model should strip it
 
 async def test_create_user_duplicate(client):
-    payload = {"email": "a@b.com", "name": "A", "password": "secret123"}
+    payload = {"email": "a@b.com", "name": "A", "password": "fake-pw-123"}
     await client.post("/users", json=payload)
     res = await client.post("/users", json=payload)
     assert res.status_code == 409
@@ -122,7 +122,7 @@ async def auth_headers(db, client) -> dict[str, str]:
     from app.api.users.schemas import UserCreate
 
     user = await create_user(db, UserCreate(
-        email="test@test.com", name="Test", password="secret123",
+        email="test@test.com", name="Test", password="fake-pw-123",
     ))
     token = create_access_token(user.id)
     return {"Authorization": f"Bearer {token}"}
