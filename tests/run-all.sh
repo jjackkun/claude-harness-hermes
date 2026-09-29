@@ -252,6 +252,7 @@ REGISTERED_TESTS=(
   hermes-persona-distill-test.sh
   hermes-persona-score-test.sh
   hermes-persona-inject-test.sh
+  hermes-yield-integrity-test.sh
   cli-prompt-stdin-test.sh
   hermes-rule-candidates-test.sh
   hermes-evolve-vocab-test.sh

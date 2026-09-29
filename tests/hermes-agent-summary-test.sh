@@ -115,7 +115,8 @@ big = json.dumps({"facts": ["긴줄" * 400] * 5}, ensure_ascii=False)
 for i in range(4):
     c.execute("INSERT INTO session_summary (session_id, project_id, slots_json, agent_id, updated_at) VALUES (?,?,?,?,?)",
               (f"big-{i}", "p", big, sys.argv[2], f"2026-09-2{i} 00:00:00"))
-c.execute("INSERT INTO session_summary (session_id, project_id, slots_json, updated_at) VALUES ('common-x','p','{\"facts\":[\"공통비밀\"]}','2026-09-29 00:00:00')")
+# 최신이어야 하는 행이라 미래 고정 날짜를 쓴다 — 실제 날짜(2026-09-29)를 박아 두면 그날이 오는 순간 '지금' 저장 행에 밀려 깨진다(2026-09-29 발견)
+c.execute("INSERT INTO session_summary (session_id, project_id, slots_json, updated_at) VALUES ('common-x','p','{\"facts\":[\"공통비밀\"]}','2099-01-01 00:00:00')")
 c.commit()
 PY
 O="$(render "$GQ")"

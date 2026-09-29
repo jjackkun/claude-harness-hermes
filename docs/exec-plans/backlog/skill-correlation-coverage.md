@@ -1,5 +1,8 @@
 # 스킬 주입의 "도움 판정" 이 대부분 이뤄지지 않고, 이뤄지면 거의 다 "도움" 이다
 
+> **착수됨(2026-09-29):** 실행 계획 `docs/exec-plans/completed/2026-09-29-skill-yield-integrity.md` 로 옮겼다.
+> 재측정 결과 "판정 누락"의 실체는 내부 모델 호출(진입 sdk-cli)이 스킬을 받는 잡음이었다(865/890 세션). 이 문서는 기록으로만 남긴다.
+
 > 출처: `docs/exec-plans/completed/2026-09-22-skill-yield-judged.md` §3
 
 ## 문제

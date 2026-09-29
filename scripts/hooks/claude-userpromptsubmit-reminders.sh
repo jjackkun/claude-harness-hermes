@@ -83,7 +83,10 @@ fi
 [[ $_has_plan_output -eq 1 ]] && echo "---" 
 
 # ── 헤르메스 FTS5 스킬 검색 + 주입 ──────────────────────────────────────────
-if command -v python3 >/dev/null 2>&1; then
+# HERMES_DISABLED=1 은 헤르메스가 스스로 띄운 내부 모델 호출(요약·판정)의 표시다. 그런 호출에는 스킬을 넣지 않는다 —
+# 넣으면 매 호출 약 1.5KB 가 낭비되고, 주입 원장이 사람의 대화가 아닌 기록으로 채워져 도움 판정을 흐린다
+# (2026-09-29 실측: 주입 세션 890개 중 865개가 내부 호출). Stop 훅·PostToolUse 훅은 이미 같은 검사를 한다.
+if [[ "${HERMES_DISABLED:-0}" != "1" ]] && command -v python3 >/dev/null 2>&1; then
   _hermes_db="$PWD/.hermes/state.db"
   _hermes_scripts="$(cd "$(dirname "$0")/../.." 2>/dev/null && pwd)/scripts"
   _hermes_search="$_hermes_scripts/hermes-search.py"

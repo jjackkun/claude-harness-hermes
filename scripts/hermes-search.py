@@ -465,22 +465,30 @@ def main():
         try:
             con = connect_db(args.db)
             printed_paths = {p for _inj, p, _is_mesh in injections}
-            # 인덱스 매칭분 used_count 증가 — 실제로 출력된 db 매칭 스킬만(하위호환 — 세션ID 무관)
-            for r in db_results:
-                if r["path"] not in printed_paths:
-                    continue
-                con.execute(
-                    "UPDATE skill_index SET used_count = used_count + 1 WHERE skill_path=?",
-                    (r["path"],),
-                )
-            # 주입 원장 기록 — 실제 프롬프트에 주입된 스킬(injections)만. deduped 결과라 재중복 제거 불필요.
             if args.session_id:
+                # 주입 원장 기록 — 실제 프롬프트에 주입된 스킬(injections)만. deduped 결과라 재중복 제거 불필요.
                 _ensure_injection_source_column(con)
                 for _inj, p, _is_mesh in injections:
                     con.execute(
                         "INSERT INTO skill_injection (session_id, skill_path, source) "
                         "VALUES (?, ?, ?)",
                         (args.session_id, p, args.source),
+                    )
+                    # used_count 는 원장 행 수와 같다(따로 +1 하면 어긋난다 — 2026-09-29 실측 3,725 대 4,289)
+                    con.execute(
+                        "UPDATE skill_index SET used_count = "
+                        "(SELECT COUNT(*) FROM skill_injection WHERE skill_path = ?) "
+                        "WHERE skill_path = ?",
+                        (p, p),
+                    )
+            else:
+                # 세션ID 없음 → 원장에 못 남긴다: 옛 방식(출력된 인덱스 매칭분 +1, 하위호환)
+                for r in db_results:
+                    if r["path"] not in printed_paths:
+                        continue
+                    con.execute(
+                        "UPDATE skill_index SET used_count = used_count + 1 WHERE skill_path=?",
+                        (r["path"],),
                     )
             con.commit()
             con.close()
