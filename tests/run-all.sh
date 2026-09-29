@@ -258,6 +258,7 @@ REGISTERED_TESTS=(
   hermes-privacy-scrub-test.sh
   hermes-ask-test.sh
   hermes-skill-write-test.sh
+  hermes-sync-decision-test.sh
   cli-prompt-stdin-test.sh
   hermes-rule-candidates-test.sh
   hermes-evolve-vocab-test.sh

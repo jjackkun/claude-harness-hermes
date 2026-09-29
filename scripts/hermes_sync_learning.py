@@ -17,6 +17,7 @@ import hermes_crypto as crypto
 from hermes_keys import key_path
 from hermes_summary_owner import ensure_agent_column
 from hermes_privacy_pending import allowed  # 판정 통과만 운반(계획 carry-agent-knowledge 목표 9)
+from hermes_sync_decisions import PREFIX as DECISION_PREFIX, import_decision, outgoing_decisions  # 사람 결정(계획 carry-privacy-decisions)
 
 _SUMMARY_SQL = """
 CREATE TABLE IF NOT EXISTS session_summary (
@@ -127,6 +128,7 @@ def outgoing_learning(con, lock, done: set, project: str = None) -> dict:
     free = _free_fn(lock, project)
     out = _outgoing_summaries(con, free, done)
     out.update(_outgoing_patterns(con, free, done))
+    out.update(outgoing_decisions(con, done))
     return out
 
 
@@ -166,7 +168,7 @@ def _import_pattern(con, universe_id: str, remote: str, body: dict) -> bool:
 
 
 def import_learning(con, universe_id: str, remote: str, data: bytes, when: str) -> bool:
-    """summary/·pattern/ 조각을 되넣는다. 요약은 updated_at 최신만, 패턴은 키별 max. 받은 경로는 sync_cursor 에 적는다."""
+    """summary/·pattern/·decision/ 조각을 되넣는다. 요약은 updated_at 최신만, 패턴은 키별 max. 받은 경로는 sync_cursor 에 적는다."""
     try:
         body = json.loads(data.decode("utf-8"))
     except (ValueError, UnicodeDecodeError):
@@ -177,6 +179,8 @@ def import_learning(con, universe_id: str, remote: str, data: bytes, when: str) 
         ok = _import_summary(con, universe_id, body)
     elif remote.startswith("pattern/"):
         ok = _import_pattern(con, universe_id, remote, body)
+    elif remote.startswith(DECISION_PREFIX):
+        ok = import_decision(con, body)
     else:
         ok = False
     if not ok:

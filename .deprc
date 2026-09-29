@@ -32,6 +32,8 @@ tier: 2  scripts/hermes_memory_file.py scripts/hermes_journal_file.py scripts/he
 tier: 3  scripts/hermes-knowledge-files.py
 tier: 2  scripts/hermes_ask_items.py
 tier: 3  scripts/hermes-ask.py
+# 사람 결정 운반(계획 2026-09-29-carry-privacy-decisions): pending(1) 위, 운반 학습 모듈이 부른다.
+tier: 2  scripts/hermes_sync_decisions.py
 tier: 1  scripts/hermes_yield_replay.py
 tier: 0  scripts/hermes_reuse.py scripts/hermes_secret_values.py scripts/hermes_skills.py
 tier: 0  scripts/hermes_skill_render.py

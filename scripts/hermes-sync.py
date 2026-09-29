@@ -158,7 +158,7 @@ def _import_all(con, project: str, uid: str, paths, plain: bool = False) -> int:
             con.execute("INSERT OR IGNORE INTO sync_cursor (path, imported_at) VALUES (?, 'skip:locked')", (path,))
             con.commit()
             continue
-        if path.startswith(("summary/", "pattern/")):
+        if path.startswith(("summary/", "pattern/", "decision/")):
             got += import_learning(con, uid, path, data, _now())
     return got
 

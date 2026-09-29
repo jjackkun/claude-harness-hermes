@@ -7,3 +7,5 @@
 - [ai-create 제외](project-ai-create-excluded.md) — 2026-09-22 전파 대상에서 뺌(이 컴퓨터 2곳), 풀·커밋 제안 금지
 - [전체 시험은 마지막 한 번](feedback-full-suite-once.md) — 단계마다 5분 30초 묶음 반복 금지; 바뀐 부분 시험만, R-cx 먼저
 - [문서 만들면 바로 리뷰](feedback-review-docs-after-writing.md) — 묻지 말고 planner-lite·architect-lite·대조를 돌리고 지적은 코드로 가려 반영
+- [zeroday 는 프라이빗 — 다시 가리기 제안 금지](project-zeroday-private-no-rescrub.md) — 스킬 18개 scrub files 안 함, 커밋이 게이트에 막힐 때만 안내
+- [원문 보관소는 공장에 안 넣는다](project-raw-vault-out-of-scope.md) — 서랍식 암호화 원문 보관은 개인·비공개 팀 도구로, 공장 기능 제안 금지
