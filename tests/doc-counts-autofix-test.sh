@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 문서 수치 자동 갱신 시험 (계획 docs/exec-plans/active/2026-09-29-doc-counts-autofix.md 목표 1~3).
+# 문서 수치 자동 갱신 시험 (계획 docs/exec-plans/completed/2026-09-29-doc-counts-autofix.md 목표 1~3).
 #
 #   1 수치가 낡음 → sync-doc-counts.sh --stage 가 마커 블록만 다시 쓰고 스테이징한다
 #   2 대상 파일에 스테이징 안 된 변경 → 그 파일은 건드리지 않는다(차단 유지)
