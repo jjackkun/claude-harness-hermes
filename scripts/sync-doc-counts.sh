@@ -6,7 +6,10 @@
 # 읽기·판정은 assets/hooks/doc_counts.py 몫이다. 여기는 *쓰기만* 한다.
 # 같은 것을 두 곳에서 정의하면 반드시 갈라진다 (iface_width.py 통합과 같은 판단).
 #
-# 사용: bash scripts/sync-doc-counts.sh [파일...]   (인자 없으면 기본 대상)
+# 사용: bash scripts/sync-doc-counts.sh [--stage] [파일...]   (인자 없으면 기본 대상)
+#   --stage  커밋 검사(R-doc)가 부른다. 스테이징 안 된 변경이 없는 파일만 갱신하고 git add 한다 —
+#            사용자의 다른 편집을 같이 올리지 않기 위해서다. 변경이 있는 파일은 건드리지 않고
+#            비영 종료(수치가 아직 낡음)로 알려, 검사가 예전처럼 막고 안내하게 한다.
 
 set -euo pipefail
 
@@ -15,6 +18,9 @@ cd "$(cd "$(dirname "$0")/.." && pwd)"
 COUNTS="assets/hooks/doc_counts.py"
 [[ -f "$COUNTS" ]] || { echo "doc_counts.py 없음: $COUNTS" >&2; exit 1; }
 command -v python3 >/dev/null 2>&1 || { echo "python3 없음" >&2; exit 1; }
+
+STAGE=0
+if [[ "${1:-}" == "--stage" ]]; then STAGE=1; shift; fi
 
 if [[ $# -gt 0 ]]; then
   TARGETS=("$@")
@@ -28,6 +34,10 @@ for f in "${TARGETS[@]}"; do
   [[ -f "$f" ]] || { echo "  건너뜀 (없음): $f"; continue; }
   if ! grep -qF '<!--===DS:COUNTS:BEGIN===-->' "$f"; then
     echo "  건너뜀 (마커 없음): $f"
+    continue
+  fi
+  if [[ $STAGE -eq 1 ]] && ! git diff --quiet -- "$f"; then
+    echo "  건너뜀 (스테이징 안 된 변경 있음): $f"
     continue
   fi
   BODY="$BODY" python3 - "$f" <<'PY' || exit 1
@@ -54,6 +64,7 @@ head, rest = s.split(b, 1)
 _, tail = rest.split(e, 1)
 io.open(p, "w", encoding="utf-8", newline="").write(head + b + nl + body + nl + e + tail)
 PY
+  [[ $STAGE -eq 1 ]] && git add -- "$f"
   echo "  갱신: $f"
 done
 

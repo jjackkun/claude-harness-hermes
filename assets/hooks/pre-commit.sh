@@ -342,15 +342,27 @@ else
       gate_add R-doc pass precommit "" "문서 수치 일치"
       ;;
     1)
-      echo ""
-      echo "[R-doc] 문서가 주장하는 수치가 소스와 다릅니다."
-      echo "$DOC_OUT"
-      echo "  → 고치는 법: bash scripts/sync-doc-counts.sh"
-      echo "     수치 블록은 생성물입니다. 손으로 고치면 다음 갱신이 덮습니다."
-      echo "  근거: docs/design-docs/core-beliefs.md#r-doc"
-      echo ""
-      FAIL=1
-      gate_add R-doc block precommit "" "문서 수치 불일치"
+      # 낡은 수치는 기계가 다시 쓸 수 있다 — 스테이징 안 된 변경이 없는 파일만 갱신·스테이징하고 다시 검사한다.
+      # 부분 커밋(임시 색인)에서는 여기서 한 git add 가 커밋에 안 실리므로 시도하지 않는다.
+      DOC_FIXED=0
+      if [[ -f scripts/sync-doc-counts.sh && ( -z "${GIT_INDEX_FILE:-}" || "${GIT_INDEX_FILE##*/}" == index ) ]]; then
+        bash scripts/sync-doc-counts.sh --stage "${DOC_TARGETS[@]}" >/dev/null 2>&1 || true
+        python3 "$CHECK_DOC" check "${DOC_TARGETS[@]}" >/dev/null 2>&1 && DOC_FIXED=1
+      fi
+      if [[ $DOC_FIXED -eq 1 ]]; then
+        echo "[R-doc] 문서 수치가 낡아 자동 갱신하고 스테이징했습니다 (대상: ${DOC_TARGETS[*]})"
+        gate_add R-doc pass precommit "" "문서 수치 자동 갱신"
+      else
+        echo ""
+        echo "[R-doc] 문서가 주장하는 수치가 소스와 다릅니다."
+        echo "$DOC_OUT"
+        echo "  → 고치는 법: bash scripts/sync-doc-counts.sh"
+        echo "     수치 블록은 생성물입니다. 손으로 고치면 다음 갱신이 덮습니다."
+        echo "  근거: docs/design-docs/core-beliefs.md#r-doc"
+        echo ""
+        FAIL=1
+        gate_add R-doc block precommit "" "문서 수치 불일치"
+      fi
       ;;
     *)
       echo "[R-doc] 수치를 산출할 수 없어 검사를 건너뜁니다 (게이트가 꺼진 상태입니다)"

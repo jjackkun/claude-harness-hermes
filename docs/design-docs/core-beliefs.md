@@ -302,8 +302,10 @@ DB 키워드 감지 시 additionalContext 로 안내 주입.
 
 README·CLAUDE.md 주입 블록의 수치 구간은 **생성물**이다. 사람이 쓰지 않는다.
 `assets/hooks/doc_counts.py` 가 소스에서 산출하고, pre-commit 이 대조해 어긋나면 **차단**한다.
+다만 낡은 수치는 pre-commit 이 먼저 `sync-doc-counts.sh --stage` 로 다시 쓰고 스테이징한 뒤 재검사한다
+(계획 `2026-09-29-doc-counts-autofix`). 스테이징 안 된 변경이 있는 파일 · 부분 커밋 · 갱신 실패이면 예전처럼 차단한다.
 
-갱신: `bash scripts/sync-doc-counts.sh`
+수동 갱신: `bash scripts/sync-doc-counts.sh`
 
 **왜 이 룰이 생겼는가** (2026-09-08 실측):
 README 가 18일간 "훅 8종"(실제 12) · "pre-commit 4단 검사"(실제 15종) 라고 말하고 있었고,

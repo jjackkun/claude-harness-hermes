@@ -254,6 +254,7 @@ REGISTERED_TESTS=(
   hermes-persona-inject-test.sh
   hermes-yield-integrity-test.sh
   hermes-recall-marker-integrity-test.sh
+  doc-counts-autofix-test.sh
   cli-prompt-stdin-test.sh
   hermes-rule-candidates-test.sh
   hermes-evolve-vocab-test.sh

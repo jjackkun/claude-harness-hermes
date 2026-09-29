@@ -320,11 +320,12 @@ Claude 전용 `CLAUDE.md`, `.claude/settings.json` / `.claude/settings.local.jso
 <!--===DS:COUNTS:BEGIN===-->
 - 세션 중 실행 훅 **16종** + 훅이 공유하는 판정 모듈 **14개**
 - git pre-commit 게이트 **21종** — 차단 12 / 경고 9
-- 스킬 **6종** · 에이전트 **12종** · 테스트 **113개**
+- 스킬 **6종** · 에이전트 **12종** · 테스트 **114개**
 <!--===DS:COUNTS:END===-->
 
 > 위 수치는 `assets/hooks/doc_counts.py` 가 소스에서 산출합니다. 손으로 고치지 마십시오 —
-> `bash scripts/sync-doc-counts.sh` 로 갱신하고, 어긋난 채 커밋하면 **R-doc 이 막습니다**.
+> 커밋할 때 R-doc 이 낡은 수치를 자동으로 갱신해 스테이징합니다. 자동 갱신이 안 되는 경우(스테이징 안 된 변경이 있는 파일 · 부분 커밋 · 갱신 실패)에만
+> **막으므로** 그때 `bash scripts/sync-doc-counts.sh` 로 직접 갱신합니다.
 
 - **게이트 발화 기록**: `.harness/gate-events.jsonl`
 - **CLAUDE.md 섹션**: 불변 규칙 체크리스트 + 작업 기록 시스템 안내 자동 삽입
