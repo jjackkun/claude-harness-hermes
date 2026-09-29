@@ -77,30 +77,9 @@ def migrate_db_file(db_path: str):
 def _apply_schema(con: sqlite3.Connection, scope: str):
     cur = con.cursor()
 
-    # session_history — FTS5 전문 검색 (1층 세션 기억)
-    cur.execute("""
-        CREATE VIRTUAL TABLE IF NOT EXISTS session_history USING fts5(
-            content,
-            role,
-            timestamp UNINDEXED,
-            project_id UNINDEXED,
-            session_id UNINDEXED
-        )
-    """)
-
-    # harness_rules — 결정화된 규칙 (2층 영구 기억)
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS harness_rules (
-            rule_id           INTEGER PRIMARY KEY AUTOINCREMENT,
-            trigger_keywords  TEXT    NOT NULL,
-            instruction       TEXT    NOT NULL,
-            source_session_id TEXT,
-            scope             TEXT    DEFAULT 'local',
-            version           INTEGER DEFAULT 1,
-            created_at        DATETIME DEFAULT CURRENT_TIMESTAMP,
-            updated_at        DATETIME DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
+    # session_history(원문 검색 색인)·harness_rules·compaction_log·session_reuse 는 만들지 않는다 —
+    # 원문 저장 중단(T-23) 뒤 읽고 쓰는 코드가 없어졌다. 옛 DB 의 표는 hermes-db-prune.py 로 걷는다.
+    # 계획: docs/exec-plans/completed/2026-09-29-drop-dead-tables.md
 
     # skill_index — 스킬 파일 메타데이터 (3층 스킬 기억)
     # last_evolved_at: 진화 쿨다운 기준 시각 (H3)
@@ -206,32 +185,6 @@ def _apply_schema(con: sqlite3.Connection, scope: str):
         CREATE TABLE IF NOT EXISTS recall_marker (
             session_id  TEXT PRIMARY KEY,
             injected_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
-
-    # session_reuse — 세션 재활용 추적 (생애주기 린트 ② 미사용 신호, Part D)
-    # session_id='__epoch__' 예약 행은 tracking_epoch 마커(추적 도입 원년) —
-    # hermes_reuse.ensure_reuse_table 이 최초 1회 찍는다. 정본 DDL 은 여기.
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS session_reuse (
-            session_id     TEXT PRIMARY KEY,
-            last_reused_at TEXT,
-            reuse_count    INTEGER DEFAULT 0
-        )
-    """)
-
-    # compaction_log — 생애주기 압축 감사 기록 (무엇을·언제·왜 압축했는지, Part D)
-    # 옛 생애주기 압축(걷음, T-23)이 쓰던 표 — 이미 쌓인 기록 때문에 만들기는 남긴다. 정본은 여기.
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS compaction_log (
-            id            INTEGER PRIMARY KEY AUTOINCREMENT,
-            run_at        DATETIME DEFAULT CURRENT_TIMESTAMP,
-            cluster_topic TEXT,
-            session_ids   TEXT,
-            lines_before  INTEGER,
-            lines_after   INTEGER,
-            report_path   TEXT,
-            reason        TEXT
         )
     """)
 

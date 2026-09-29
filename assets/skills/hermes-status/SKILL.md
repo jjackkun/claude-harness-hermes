@@ -25,8 +25,7 @@ if not os.path.isfile(db):
 else:
     con = sqlite3.connect(db)
     skill_count   = con.execute("SELECT COUNT(*) FROM skill_index").fetchone()[0]
-    rule_count    = con.execute("SELECT COUNT(*) FROM harness_rules").fetchone()[0]
-    session_count = con.execute("SELECT COUNT(*) FROM session_history").fetchone()[0]
+    summary_count = con.execute("SELECT COUNT(*) FROM session_summary").fetchone()[0]
     pending       = con.execute("SELECT COUNT(*) FROM pattern_count WHERE crystallized=0 AND count>=2").fetchone()[0]
 
     latest = con.execute(
@@ -40,7 +39,7 @@ else:
     print("╔══════════════════════════════════════════╗")
     print("║       헤르메스 현황 (Hermes Status)       ║")
     print("╠══════════════════════════════════════════╣")
-    print(f"║  스킬: {skill_count:<6} 규칙: {rule_count:<6} 세션: {session_count:<6}   ║")
+    print(f"║  스킬: {skill_count:<6} 세션 요약: {summary_count:<6}        ║")
     print(f"║  결정화 대기 패턴: {pending}개                    ║")
     print("╠══════════════════════════════════════════╣")
     if latest:

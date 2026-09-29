@@ -58,12 +58,6 @@ def main() -> int:
     try:
         if op == "query":
             emit(cur.execute(args[0]))
-        elif op == "search":
-            emit(cur.execute(
-                "SELECT content FROM session_history "
-                "WHERE session_history MATCH ? LIMIT 5",
-                (args[0],),
-            ))
         elif op == "skill_search":
             emit(cur.execute(
                 "SELECT skill_path FROM skill_index WHERE keywords LIKE ? "
@@ -142,14 +136,6 @@ hermes_query() {
   _hermes_py "$db" query "$sql"
 }
 
-# hermes_search <db_path> <keyword>
-# session_history FTS5 검색 — 관련 내용 최대 5개 반환
-hermes_search() {
-  local db="$1"
-  local keyword="$2"
-  _hermes_py "$db" search "$keyword"
-}
-
 # hermes_skill_search <db_path> <keyword>
 # skill_index에서 키워드로 관련 스킬 경로 반환
 hermes_skill_search() {
@@ -208,10 +194,9 @@ hermes_status() {
   local db="$1"
   [[ -f "$db" ]] || { echo "[hermes] DB not found: $db"; return 1; }
 
-  local skill_count rule_count session_count
+  local skill_count summary_count
   skill_count=$(_hermes_py "$db" query "SELECT COUNT(*) FROM skill_index;")
-  rule_count=$(_hermes_py "$db" query "SELECT COUNT(*) FROM harness_rules;")
-  session_count=$(_hermes_py "$db" query "SELECT COUNT(*) FROM session_history;")
+  summary_count=$(_hermes_py "$db" query "SELECT COUNT(*) FROM session_summary;")
 
   local latest_skill
   latest_skill=$(_hermes_py "$db" query "SELECT skill_path, created_at FROM skill_index ORDER BY created_at DESC LIMIT 1;")
@@ -222,7 +207,7 @@ hermes_status() {
   echo "╔══════════════════════════════════════╗"
   echo "║        헤르메스 현황 (Hermes)         ║"
   echo "╠══════════════════════════════════════╣"
-  printf "║  스킬: %-5s  규칙: %-5s  세션: %-5s ║\n" "$skill_count" "$rule_count" "$session_count"
+  printf "║  스킬: %-5s  세션 요약: %-5s        ║\n" "$skill_count" "$summary_count"
   echo "╠══════════════════════════════════════╣"
   [[ -n "$latest_skill" ]] && echo "║  최근 스킬: $latest_skill"
   [[ -n "$top_skill"    ]] && echo "║  최다 활용: $top_skill"

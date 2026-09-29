@@ -259,6 +259,7 @@ REGISTERED_TESTS=(
   hermes-ask-test.sh
   hermes-skill-write-test.sh
   hermes-sync-decision-test.sh
+  hermes-db-prune-test.sh
   cli-prompt-stdin-test.sh
   hermes-rule-candidates-test.sh
   hermes-evolve-vocab-test.sh
@@ -283,7 +284,6 @@ REGISTERED_TESTS=(
   hermes-dream-test.sh
   hermes-cleanup-lock-test.sh
   hermes-recall-measurement-test.sh
-  hermes-recall-history-search-test.sh
   uninstall-roundtrip-test.sh
   copy-install-test.sh
   install-receipt-test.sh

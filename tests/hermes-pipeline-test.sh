@@ -38,6 +38,12 @@ check() { # check <desc> <cond...>
     fail=$((fail+1))
   fi
 }
+# 대화 원문은 저장하지 않는다(T-23) — 원문 표(session_history)는 새 DB 에 없다. 표가 없거나 행이 0 이면 0.
+raw_rows() { python3 -c "
+import sqlite3, sys
+c = sqlite3.connect(sys.argv[1])
+has = c.execute(\"SELECT COUNT(*) FROM sqlite_master WHERE name='session_history'\").fetchone()[0]
+print(c.execute('SELECT COUNT(*) FROM session_history WHERE session_id=?', (sys.argv[2],)).fetchone()[0] if has else 0)" "$DB" "$1"; }
 sql() { python3 -c "
 import sqlite3,sys
 # 예외를 빈 문자열로 삼키면 단언이 근거 없이 실패한다(2026-08-25).
@@ -129,10 +135,10 @@ open(sys.argv[1],'w').write('\n'.join(lines))
 mkmsg "$TR" 3 alpha
 
 python3 "$S/hermes-save-session.py" --db "$DB" --transcript "$TR" --project-id proj --session-id sessA >/dev/null
-n1=$(sql "SELECT COUNT(*) FROM session_history WHERE session_id='sessA'")
+n1=$(raw_rows sessA)
 mkmsg "$TR" 4 alpha   # 다음 턴 — transcript 가 자람
 python3 "$S/hermes-save-session.py" --db "$DB" --transcript "$TR" --project-id proj --session-id sessA >/dev/null
-n2=$(sql "SELECT COUNT(*) FROM session_history WHERE session_id='sessA'")
+n2=$(raw_rows sessA)
 echo "  (sessA 1차=${n1}행, 재저장 후=${n2}행 — 0 기대: 대화 원문은 저장하지 않는다, 계획 carry-agent-knowledge 목표 10)"
 check "세션 저장이 대화 원문을 남기지 않는다" test "$n1$n2" = "00"
 pc=$(sql "SELECT COALESCE((SELECT count FROM pattern_count WHERE pattern_key='hermes-pipeline-test'),0)")
@@ -171,7 +177,12 @@ check "crystallized=1" test "$cz" = "1"
 si=$(sql "SELECT COUNT(*) FROM skill_index WHERE skill_path='$SKILL_MD'")
 check "skill_index 등록" test "$si" = "1"
 # 계획 5 목표 11(L-05): global.db harness_rules 쓰기를 중단했다 — 결정화해도 기록되지 않는다.
-gr=$(python3 -c "import sqlite3,os;p=os.path.expanduser('$HOME/.hermes/global.db');print(sqlite3.connect(p).execute(\"SELECT COUNT(*) FROM harness_rules WHERE trigger_keywords='hermes-pipeline-test'\").fetchone()[0] if os.path.isfile(p) else 0)")
+gr=$(python3 -c "
+import sqlite3, os
+p = os.path.expanduser('$HOME/.hermes/global.db')
+c = sqlite3.connect(p) if os.path.isfile(p) else None
+has = c and c.execute(\"SELECT COUNT(*) FROM sqlite_master WHERE name='harness_rules'\").fetchone()[0]   # 새 전역 DB 에는 표가 없다
+print(c.execute(\"SELECT COUNT(*) FROM harness_rules WHERE trigger_keywords='hermes-pipeline-test'\").fetchone()[0] if has else 0)")
 check "global.db 에 기록 안 함(목표 11, 쓰기 중단)" test "$gr" = "0"
 
 echo ""
@@ -247,7 +258,7 @@ for _ in range(100):
 else:
     print("WARN: hook done 마커 2개 대기 타임아웃", file=sys.stderr)
 EOF
-hn=$(sql "SELECT COUNT(*) FROM session_history WHERE session_id='hook-sess-1'")
+hn=$(raw_rows hook-sess-1)
 echo "  (hook-sess-1 원문 행수=${hn} — 0 기대: 원문 저장 안 함)"
 check "Stop 훅 2회 실행에도 원문 0행" test "$hn" = "0"
 hsum=$(sql "SELECT COUNT(*) FROM session_summary WHERE session_id='hook-sess-1'")
@@ -568,7 +579,8 @@ redact_ok() {
 python3 - "$DB" <<'PY'
 import sqlite3, sys
 con=sqlite3.connect(sys.argv[1])
-assert con.execute("SELECT COUNT(*) FROM session_history WHERE session_id='redactA'").fetchone()[0] == 0, "원문 저장됨"
+has = con.execute("SELECT COUNT(*) FROM sqlite_master WHERE name='session_history'").fetchone()[0]
+assert not has or con.execute("SELECT COUNT(*) FROM session_history WHERE session_id='redactA'").fetchone()[0] == 0, "원문 저장됨"
 dump="\n".join(con.iterdump())
 con.close()
 for leak in ("ghp_abcdefghijklmnopqrstuvwxyz0123456789", "superSecret99", "auth middleware 토큰 검증"):

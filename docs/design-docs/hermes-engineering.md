@@ -97,17 +97,14 @@ pnpm-version-lock.md 발견
 
 ### 핵심 테이블 (SQLite)
 
-**session_history** (FTS5 전문 검색)
-- `content` — 대화 내용 (검색 대상)
-- `role` — user / agent / tool
-- `timestamp`
-- `project_id`
+> **걷은 표 (2026-09-29)**: 초기 설계의 `session_history`(FTS5 원문 검색) · `harness_rules` · `compaction_log` · `session_reuse` 는
+> 새 DB 에 만들지 않는다. 원문을 저장하지 않게 된(T-23) 뒤 읽고 쓰는 코드가 없어졌고, 지운 원문의 검색 색인 조각이 DB 용량의
+> 대부분을 차지했다. 옛 DB 는 `python3 scripts/hermes-db-prune.py [--apply]` 로 정리한다. 전역 DB 의 `harness_rules`(옛 행)는 남긴다.
+> 회상은 대화 요약(`session_summary`)만 검색한다. 계획: `docs/exec-plans/completed/2026-09-29-drop-dead-tables.md`
 
-**harness_rules** (결정화된 규칙)
-- `trigger_keywords` — 발동 키워드
-- `instruction` — 실제 규칙 내용
-- `source_session_id` — 근거 대화 ID
-- `version` — 피드백으로 수정될 때마다 증가
+**session_summary** (대화 요약 — 회상의 재료)
+- `slots_json` — 5칸(결정·열린 일·선호·사실·다음)
+- `agent_id`, `person` — 누구의 어떤 대화인지
 
 **skill_index** (생성된 스킬 파일 메타데이터)
 - `skill_path` — .md 파일 경로

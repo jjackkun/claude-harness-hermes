@@ -41,7 +41,8 @@ CLAUDE_PROJECT_DIR="$ELSEWHERE" python3 "$SCRIPTS/hermes-save-session.py" --db "
 python3 - "$DB" <<'PY'
 import sqlite3, sys
 con = sqlite3.connect(sys.argv[1])
-raw = con.execute("SELECT COUNT(*) FROM session_history WHERE session_id='sessA'").fetchone()[0]
+has = con.execute("SELECT COUNT(*) FROM sqlite_master WHERE name='session_history'").fetchone()[0]   # 새 DB 에는 원문 표가 없다
+raw = con.execute("SELECT COUNT(*) FROM session_history WHERE session_id='sessA'").fetchone()[0] if has else 0
 dump = "\n".join(con.iterdump())
 print("LEAK" if raw or "Qx7vRn2Lp9Ttz" in dump or "운영 계정 정보" in dump else "CLEAN")
 PY

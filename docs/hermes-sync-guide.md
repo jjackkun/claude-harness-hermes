@@ -87,4 +87,4 @@ python3 scripts/hermes-sync.py pull       # (다음 컴퓨터) 이 컴퓨터 자
 - 열쇠 파일을 저장소·채팅·세션에 넣지 않는다.
 - 복제 에이전트(`hermes-propose.py template`)에 기억을 싣지 않는다.
 - `state.db` 를 커밋하지 않는다. 사람이 관리하는 개인정보 목록도 두지 않는다(마스킹은 자동, T-20).
-- 이미 쌓인 옛 원문(`session_history`, `.hermes/history/`)을 코드가 지우지 않는다 — 지울지는 사람이 정한다.
+- 이미 쌓인 옛 원문 파일(`.hermes/history/`)을 코드가 지우지 않는다 — 지울지는 사람이 정한다. (옛 원문 검색 표 `session_history` 는 `hermes-db-prune.py` 로 걷을 수 있다.)
