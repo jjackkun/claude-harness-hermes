@@ -173,7 +173,8 @@ install_harness_pre_commit() {
   # `source gate_emit.sh` 가 실패해 `gate_add` 가 no-op 이 되고 —
   # **pre-commit 은 정상 동작하면서 관측만 조용히 꺼진다.** 아무도 눈치채지 못한다.
   local gate_src
-  for gate_src in gate_event.py gate_emit.sh; do
+  # pytest_gate.sh — R-test 의 pytest 고르기·시간/건너뜀 경고(계획 2026-09-30-test-speed-gate). 같은 형제 규칙.
+  for gate_src in gate_event.py gate_emit.sh pytest_gate.sh; do
     if [[ -f "$ASSETS_DIR/hooks/$gate_src" ]]; then
       if _install_git_hook "$project_path" "$ASSETS_DIR/hooks/$gate_src" "$gate_src"; then
         log_info "  hook    → .git/hooks/$gate_src"

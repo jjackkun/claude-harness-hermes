@@ -240,12 +240,19 @@ if [[ -n "$PY_OWN_FILES" ]]; then
   for cand in tests backend/tests; do
     [[ -d "$cand" ]] && PYTEST_DIR="$cand" && break
   done
-  # venv pytest 우선, 없으면 시스템 pytest
-  PYTEST_BIN=""
-  for cand in backend/venv/bin/pytest venv/bin/pytest; do
-    [[ -x "$cand" ]] && PYTEST_BIN="$cand" && break
-  done
-  [[ -z "$PYTEST_BIN" ]] && command -v pytest >/dev/null 2>&1 && PYTEST_BIN="pytest"
+  # 프로젝트 가상환경 pytest 우선(.venv → venv), 없으면 시스템 — 고르기·경고는 pytest_gate.sh.
+  # 도우미가 없으면(옛 설치) 옛 순서로 돈다.
+  PYTEST_BIN=""; PYTEST_FROM_SYSTEM=0
+  if [[ -f "$(dirname "$0")/pytest_gate.sh" ]]; then
+    # shellcheck source=/dev/null
+    source "$(dirname "$0")/pytest_gate.sh"
+    PYTEST_BIN=$(pytest_pick_bin); [[ "$PYTEST_BIN" == pytest ]] && PYTEST_FROM_SYSTEM=1
+  else
+    for cand in backend/venv/bin/pytest venv/bin/pytest; do
+      [[ -x "$cand" ]] && PYTEST_BIN="$cand" && break
+    done
+    [[ -z "$PYTEST_BIN" ]] && command -v pytest >/dev/null 2>&1 && PYTEST_BIN="pytest"
+  fi
   if [[ -z "$PYTEST_DIR" || -z "$PYTEST_BIN" ]]; then
     gate_add R-test skipped precommit "" "pytest 또는 테스트 디렉터리 없음"
     # 조용히 건너뛰지 않는다 — 판정 불가를 통과처럼 보이게 하면 "게이트가 돌았다" 고 착각한다(2026-09-20: 이 줄이 없어 스모크 테스트가 09-08 부터 빨갰다).
@@ -270,7 +277,14 @@ if [[ -n "$PY_OWN_FILES" ]]; then
       gate_add R-test skipped precommit "" "pytest 실행 불가"
     else
       # 종료코드 캡처. 0=통과, 5=수집 0개.
+      PYTEST_T0=$SECONDS
       PYTEST_OUT=$("$PYTEST_BIN" "$PYTEST_DIR" -q 2>&1) && PYTEST_RC=0 || PYTEST_RC=$?
+      PYTEST_SECS=$(( SECONDS - PYTEST_T0 ))
+      # 통과여도 알릴 것(시간·건너뜀·시스템 대체) — 차단하지 않고 경고로만
+      if declare -F pytest_notes >/dev/null; then
+        PYTEST_NOTES=$(pytest_notes "$PYTEST_SECS" "$PYTEST_OUT")
+        [[ -n "$PYTEST_NOTES" ]] && WARNINGS+=("$PYTEST_NOTES")
+      fi
       if [[ "$PYTEST_RC" -eq 5 ]]; then
         # (b) 수집 0개 — 차단하지 않는다. 파이썬 없는 프로젝트도 설치 대상이므로
         #     막으면 안 된다. 다만 조용히 넘기면 게이트가 죽은 줄 모른다.
@@ -293,9 +307,9 @@ $(echo "$PYTEST_OUT" | tail -30)
 EOF
 )")
         FAIL=1
-        gate_add R-test block precommit "" "pytest 실패 (rc=$PYTEST_RC)"
+        gate_add R-test block precommit "" "pytest 실패 (rc=$PYTEST_RC) ${PYTEST_SECS}초"
       else
-        gate_add R-test pass precommit "" "pytest 통과"
+        gate_add R-test pass precommit "" "pytest 통과 ${PYTEST_SECS}초"
       fi
     fi
   fi

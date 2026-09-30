@@ -260,6 +260,7 @@ REGISTERED_TESTS=(
   hermes-skill-write-test.sh
   hermes-sync-decision-test.sh
   hermes-db-prune-test.sh
+  r-test-venv-test.sh
   cli-prompt-stdin-test.sh
   hermes-rule-candidates-test.sh
   hermes-evolve-vocab-test.sh

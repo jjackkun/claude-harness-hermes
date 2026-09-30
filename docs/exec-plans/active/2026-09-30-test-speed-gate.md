@@ -19,8 +19,8 @@
 ## 2. 목표 (What — 검증 가능한 형태)
 
 **Phase A — 게이트 결함 (지금)**
-- [ ] 목표 1 — **R-test 는 프로젝트 가상환경의 pytest 를 먼저 쓴다.** 찾는 순서: `backend/.venv` → `backend/venv` → `.venv` → `venv` → 시스템. 시스템으로 떨어지면 경고 한 줄을 남긴다(조용한 대체 금지). 실행 위치는 지금처럼 저장소 루트이고 pytest 가 `backend/pyproject.toml` 을 찾아 rootdir·`pythonpath` 를 잡는다 — 이 전제가 실제로 맞는지 **terminal-shipping 에서 `.venv` pytest 로 게이트를 한 번 돌려** 수집 오류가 없는지 확인한다. 검증: `bash tests/r-test-venv-test.sh`(`.venv` 만 있는 가짜 프로젝트에서 그 pytest 가 불린다 · 아무것도 없으면 시스템 + 경고) · terminal-shipping 실측 1회.
-- [ ] 목표 2 — **R-test 가 걸린 시간을 남기고, 길면 원인을 짚는다.** pytest 앞뒤로 `date +%s` 를 재서 게이트 기록 `detail` 문자열에 `N초` 를 덧붙이고(기존 `gate_add` 시그니처 그대로 — `gate_report.py` 는 `detail` 을 파싱하지 않으므로 영향 없음을 확인한다), 에이전트 도구 한도(600초)의 절반(300초)을 넘으면 경고한다: "CPU 사용률이 낮으면 DB·네트워크를 기다린 것 — 시험 DB 가 원격인지 보라". 통과여도 결과의 건너뜀(skipped) 수가 통과 수보다 많으면 "대부분 건너뜀 — 시험 DB 가 꺼져 있을 수 있다" 도 경고한다(skip 이 통과로 보이는 틈, 계획 검토 지적). 검증: 같은 시험(느린 가짜 pytest → 경고 · 빠른 것 → 경고 없음 · 기록에 초가 남음 · 건너뜀이 많으면 경고).
+- [x] 목표 1 — **R-test 는 프로젝트 가상환경의 pytest 를 먼저 쓴다.** 찾는 순서: `backend/.venv` → `backend/venv` → `.venv` → `venv` → 시스템. 시스템으로 떨어지면 경고 한 줄을 남긴다(조용한 대체 금지). 실행 위치는 지금처럼 저장소 루트이고 pytest 가 `backend/pyproject.toml` 을 찾아 rootdir·`pythonpath` 를 잡는다 — 이 전제가 실제로 맞는지 **terminal-shipping 에서 `.venv` pytest 로 게이트를 한 번 돌려** 수집 오류가 없는지 확인한다. 검증: `bash tests/r-test-venv-test.sh`(`.venv` 만 있는 가짜 프로젝트에서 그 pytest 가 불린다 · 아무것도 없으면 시스템 + 경고) · terminal-shipping 실측 1회.
+- [x] 목표 2 — **R-test 가 걸린 시간을 남기고, 길면 원인을 짚는다.** pytest 앞뒤로 `date +%s` 를 재서 게이트 기록 `detail` 문자열에 `N초` 를 덧붙이고(기존 `gate_add` 시그니처 그대로 — `gate_report.py` 는 `detail` 을 파싱하지 않으므로 영향 없음을 확인한다), 에이전트 도구 한도(600초)의 절반(300초)을 넘으면 경고한다: "CPU 사용률이 낮으면 DB·네트워크를 기다린 것 — 시험 DB 가 원격인지 보라". 통과여도 결과의 건너뜀(skipped) 수가 통과 수보다 많으면 "대부분 건너뜀 — 시험 DB 가 꺼져 있을 수 있다" 도 경고한다(skip 이 통과로 보이는 틈, 계획 검토 지적). 검증: 같은 시험(느린 가짜 pytest → 경고 · 빠른 것 → 경고 없음 · 기록에 초가 남음 · 건너뜀이 많으면 경고).
 
 **Phase B — 공통 규칙 (terminal-shipping 실측 뒤)**
 - [ ] 목표 3 — **규칙: 시험 DB 는 시험하는 PC 에 둔다.** `docs/design-docs/core-beliefs.md` 에 원칙과 근거(terminal-shipping 전후 수치)를 적고, `run-to-the-end` 스킬의 "오래 걸리는 시험" 절에 "먼저 CPU 사용률을 잰다 — 낮으면 기다림이 원인" 을 넣는다. 검증: 문서 대조 리뷰 · 스킬 발동 문구 확인.
@@ -71,7 +71,9 @@
 
 ## 7. 발견·예외
 
-- R-test 는 프로젝트 파이썬이 바뀐 커밋마다 전체 시험을 돈다. terminal-shipping 처럼 18분이면 커밋 하나가 18분이다 — Phase A 의 시간 기록으로 실제 빈도를 먼저 본다.
+- ~~R-test 는 프로젝트 파이썬이 바뀐 커밋마다 전체 시험을 돈다~~ → **정정(2026-09-30 실측):** R-test 는 `tests` 를 `backend/tests` 보다 먼저 고르는데 terminal-shipping 에는 둘 다 있어 **루트 `tests/`(도구 시험 292개, 8.6초)만** 돌아 왔다. 백엔드 1,465개는 커밋 때 한 번도 돌지 않았고, 18분 실행은 에이전트가 직접 돌린 `pnpm test` 였다. 백엔드 시험을 게이트에 넣는 것은 로컬 시험 DB 전(18분)에는 하지 않는다 — terminal-shipping 계획이 끝난 뒤 Phase B 에서 "두 폴더 모두" 를 정한다.
+- 소우주 가상환경 조사(2026-09-30): `backend/venv`(pytest 있음) — rim-kanban · upbit-ai-trading · kis-trading / `backend/.venv` — terminal-shipping(이번에 처음 제 가상환경으로 돈다) / 없음 — 나머지(시스템 pytest, 경고 없음). `.venv` 와 `venv` 가 함께 있는 곳은 없다.
+- 시스템 pytest 경고는 처음 설계("시스템으로 떨어지면 항상 경고")가 기존 스모크 시험("통과하면 침묵")에 걸렸다 — 가상환경 없이 시스템 pytest 를 쓰는 구성(이 공장 포함)은 정상이다. **가상환경 폴더가 있는데 pytest 가 없을 때만** 경고하도록 좁혔다.
 
 ## 8. 회고 (완료 시 작성)
 
