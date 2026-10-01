@@ -91,6 +91,10 @@ tier: 0  scripts/hermes_memory_events.py scripts/hermes_memory_conflicts.py
 # 결정화 철회 보류(계획 2026-09-18-crystallize-reversed-guard): 표준 모듈만, crystallize(1) 가 import.
 tier: 0  scripts/hermes_reversed_guard.py
 tier: 1  scripts/hermes_memory_view.py scripts/hermes_memory_select.py
+# 에이전트 대화 요약 조회(주입·검색 공용) — 표준 모듈과 hermes_person 만 부른다(계획 2026-10-01-agent-recall).
+tier: 1  scripts/hermes_agent_summaries.py
+# 에이전트 기억 검색: 명부(hermes_roster, 2)·슬러그(0)·기억(0)·요약(1)을 부르므로 그 위(3). hermes-agent.py(3)가 지연 import 한다 — 같은 tier 참조는 허용.
+tier: 3  scripts/hermes_agent_recall.py
 tier: 2  scripts/hermes_soul_render.py   # 출근 본문 — memory_select(1) 를 지연 import (계획 2026-09-28-agent-mention-bridge 목표 4)
 # 인계 봉투(계획 2026-09-15-agent-identity 목표 10·11·12): done_when 은 표준 모듈만,
 # handoff 는 done_when·journal·journal_views·uuid7 을 import 한다(최상위 tier 1 → handoff tier 2).

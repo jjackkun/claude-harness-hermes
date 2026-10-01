@@ -8,7 +8,7 @@
 DB·칸이 없으면 빈 문자열(오류 아님) — 출근이 이 때문에 서면 안 된다.
 계획: docs/exec-plans/completed/2026-09-28-agent-conversation-memory.md 목표 4
 
-공개: SECTION_HEADER · render_agent_summaries
+공개: SECTION_HEADER · render_agent_summaries · agent_summary_rows · summary_block
 """
 
 import json
@@ -24,7 +24,11 @@ _CAP = 4096
 _LABELS = (("decisions", "결정"), ("facts", "사실"), ("open", "남은 일"), ("next", "다음"))
 
 
-def _rows(project: str, agent_id: str, who: str) -> list:
+def agent_summary_rows(project: str, agent_id: str, who: str) -> list:
+    """(session_id, slots_json, updated_at) 최근 순 — 이 에이전트가 `who` 와 나눈 대화. 주입과 검색이 같이 쓴다.
+
+    저장소 파일이 없으면 빈 목록. **읽기 실패(잠김 등)는 sqlite3.Error 로 올린다** — 주입(`_rows`)은 세션이 서야 하므로
+    삼키지만, 검색(recall)은 "읽지 못함" 과 "없음" 을 구분해야 거짓 "찾지 못했습니다" 가 안 나온다."""
     db = os.path.join(project, ".hermes", "state.db")
     if not os.path.isfile(db):
         return []
@@ -33,13 +37,25 @@ def _rows(project: str, agent_id: str, who: str) -> list:
     for where, params in queries:
         try:
             con = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
-            rows = con.execute("SELECT session_id, slots_json, updated_at FROM session_summary "
-                               f"{where} ORDER BY updated_at DESC", params).fetchall()
-            con.close()
-            return rows
-        except sqlite3.Error:
-            continue
-    return []                              # 칸·표 없음 — 아직 C-29 이전 DB
+            try:
+                return con.execute("SELECT session_id, slots_json, updated_at FROM session_summary "
+                                   f"{where} ORDER BY updated_at DESC", params).fetchall()
+            finally:
+                con.close()
+        except sqlite3.OperationalError as exc:
+            if "no such table" in str(exc):
+                return []                              # 표 없음 — 아직 요약이 없는 DB
+            if "no such column" not in str(exc):
+                raise                                  # 잠김 등 — 진짜 읽기 실패
+    return []                                          # 칸 없음 — 아직 C-29 이전 DB
+
+
+def _rows(project: str, agent_id: str, who: str) -> list:
+    """주입용 — 읽기 실패도 빈 목록(출근이 이 때문에 서면 안 된다)."""
+    try:
+        return agent_summary_rows(project, agent_id, who)
+    except sqlite3.Error:
+        return []
 
 
 def _block(session_id: str, raw: str, updated_at: str) -> str:
@@ -54,6 +70,9 @@ def _block(session_id: str, raw: str, updated_at: str) -> str:
         if items:
             lines.append(f"  {label}: " + " / ".join(items))
     return "\n".join(lines) if len(lines) > 1 else ""
+
+
+summary_block = _block          # 검색(recall)이 같은 글자 모양을 쓴다
 
 
 def _fit(text: str, room: int) -> str:

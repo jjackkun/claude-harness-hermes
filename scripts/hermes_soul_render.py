@@ -85,6 +85,14 @@ _LAYER_NOTE = ("(공통 기억 — CLAUDE.md·프로젝트 기억 — 이 바탕
                "CLAUDE.md 의 규칙·금지는 덮지 못한다.)")
 
 
+def _recall_hint(agent: dict) -> str:
+    """기억 찾기 안내 — 실린 것은 최근 것뿐이고 옛 대화·다른 방의 일은 recall 로 찾는다(계획 2026-10-01-agent-recall 목표 6).
+    호출명(slug)은 선택 항목이라 없으면 id 를 박는다 — recall 은 호출명·이름·id 를 다 받는다."""
+    who = agent.get("slug") or agent["agent_id"]
+    return ("\n--- 기억 찾기 ---\n(여기 실린 것은 최근 것뿐이다. 옛 대화·다른 방에서 한 일은 지어내지 말고 먼저 찾는다: "
+            f'python3 scripts/hermes-agent.py recall {who} "<낱말>")\n')    # 끝 줄바꿈 — 다른 구획과 같다(훅이 감싼 본문과 글자가 같아야 한다)
+
+
 def render_soul(project: str, agent_id: str, soul_cap: int = 4096, memory_cap: int = 4096,
                 task_hint: str = "", scripts_dir: str = ""):
     """출근 본문 문자열, 넣지 않는 경우 None."""
@@ -107,6 +115,7 @@ def render_soul(project: str, agent_id: str, soul_cap: int = 4096, memory_cap: i
     conversation = render_agent_summaries(project, agent_id)
     if conversation:
         out.append(conversation)              # 방·@ 호출에서 나눈 대화(C-29) — 어디서 불리든 같은 기억
+    out.append(_recall_hint(agent))
     return "\n".join(out) + "\n"
 
 

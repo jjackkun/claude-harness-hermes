@@ -24,14 +24,16 @@ P="$T/proj"; mkdir -p "$P/.hermes/agents"
 ID_ACTIVE="01a0ae58-6aa6-7202-ae81-7d27af7b5617"
 ID_RETIRED="01a0ae58-6a84-75bd-8bfa-9c85c2ce2be4"
 ID_NODIR="01a0ad8a-e5ff-7026-bedf-0bbf3df3d334"
+ID_SLUG="01a0c111-0000-7000-8000-000000000009"
 cat > "$P/.hermes/agents.json" <<EOF
 {"agents": [
   {"agent_id": "$ID_NODIR",   "name": "main",   "status": "active",  "org": {}},
   {"agent_id": "$ID_ACTIVE",  "name": "선적QA",  "status": "active",  "org": {"discipline": "QA"}},
-  {"agent_id": "$ID_RETIRED", "name": "옛담당",  "status": "retired", "org": {"discipline": "QA"}}
+  {"agent_id": "$ID_RETIRED", "name": "옛담당",  "status": "retired", "org": {"discipline": "QA"}},
+  {"agent_id": "$ID_SLUG",    "name": "호출명담당", "slug": "slug-qa", "status": "active", "org": {}}
 ]}
 EOF
-for id in "$ID_ACTIVE" "$ID_RETIRED"; do
+for id in "$ID_ACTIVE" "$ID_RETIRED" "$ID_SLUG"; do
   mkdir -p "$P/.hermes/agents/$id"
   printf '# 정체성\n\n## 역할\n선적 조회 화면의 회귀 테스트를 맡는다.\n' > "$P/.hermes/agents/$id/SOUL.md"
   printf '# 기억\n\n- 2026-09-17 회귀 테스트 3건 작성\n' > "$P/.hermes/agents/$id/MEMORY.md"
@@ -57,6 +59,13 @@ assert "기억 머리말: 공통이 바탕 · 같은 주제는 이 에이전트 
 assert "  CLAUDE.md 의 규칙·금지는 덮지 못한다" "1" "$(printf '%s' "$OUT" | grep -c 'CLAUDE.md 의 규칙·금지는 덮지 못한다')"
 assert "  머리말은 MEMORY 구획 안(머리 바로 다음 줄)" "1" "$(printf '%s' "$OUT" | awk '/^--- MEMORY.md ---$/{getline n; print (n ~ /^\(공통 기억/)?1:0}')"
 assert "stderr 무출력" "" "$ERR"
+# 목표 6 (계획 agent-recall): 실린 것은 최근 것뿐 — 옛 대화·다른 방의 일은 지어내지 말고 recall 로 찾는다는 안내 한 줄
+assert "기억 찾기 안내: 호출명이 없으면 id 로 recall" "1" "$(printf '%s' "$OUT" | grep -c "recall $ID_ACTIVE \"<낱말>\"")"
+assert "  지어내지 말고 먼저 찾는다" "1" "$(printf '%s' "$OUT" | grep -c '지어내지 말고 먼저 찾는다')"
+assert "  안내 구획(머리 + 한 줄)은 300 B 이하" "1" "$(printf '%s' "$OUT" | awk '/^--- 기억 찾기 ---$/{f=1} f' | wc -c | awk '{print ($1>0 && $1<=300)?1:0}')"
+run "$ID_SLUG"
+assert "  호출명이 있으면 호출명으로 recall" "1" "$(printf '%s' "$OUT" | grep -c 'recall slug-qa "<낱말>"')"
+run "$ID_ACTIVE"
 
 echo "[2] 목표 2 — 넣지 않는 경우"
 run ""; assert "환경변수 없음 → 무출력" "" "$OUT"; assert "  rc 0" "0" "$RC"

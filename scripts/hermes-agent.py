@@ -350,6 +350,11 @@ def cmd_pin(args) -> int:
     return 0
 
 
+def cmd_recall(args) -> int:
+    from hermes_agent_recall import run   # 지연 import — 이 모듈 때문에 다른 명령이 못 서는 일이 없게
+    return run(args.project, args.agent, " ".join(args.words))
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="헤르메스 에이전트 명부")
     ap.add_argument("--project", default=os.getcwd())
@@ -376,6 +381,8 @@ def main() -> int:
     t.add_argument("name"); t.add_argument("body"); t.add_argument("--about", required=True)
     nt = sub.add_parser("note", help="소환된 에이전트가 배운 것 한 줄을 남긴다(HERMES_AGENT_ID 세션)")
     nt.add_argument("body"); nt.add_argument("--about", required=True)
+    rc_ = sub.add_parser("recall", help="이 에이전트의 옛 대화·기억에서 찾는다 — 다른 방에서 한 일도(계획 agent-recall)")
+    rc_.add_argument("agent", help="호출명 · 이름 · id"); rc_.add_argument("words", nargs="*", help="찾을 낱말(2자 이상 · 최대 8개). -로 시작하면 -- 뒤에")
     pn = sub.add_parser("pin", help="기억 하나를 핀/해제 — 주입에 항상 포함")
     pn.add_argument("name"); pn.add_argument("memory_id")
     tp = sub.add_parser("templates", help="역할 템플릿 목록(ECC 68 + cumora 4) — hire --template 에 쓴다")
@@ -393,7 +400,7 @@ def main() -> int:
         return {"list": cmd_list, "whoami": cmd_whoami, "match": cmd_match, "no-owner": cmd_no_owner,
                 "refresh-memory": cmd_refresh_memory, "teach": cmd_teach, "note": cmd_note,
                 "pin": cmd_pin, "soul-draft": cmd_soul_draft, "templates": cmd_templates,
-                "approve-soul": cmd_approve_soul,
+                "approve-soul": cmd_approve_soul, "recall": cmd_recall,
                 "set-slug": lambda a: set_slug(a.project, _human(a.project), a.name, a.slug),
                 "rename": lambda a: rename_agent(a.project, _human(a.project), a.name, a.new_name),
                 "sync-mention-files": lambda a: sync_only(a.project), "room": cmd_room,

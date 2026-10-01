@@ -212,6 +212,9 @@ python3 scripts/hermes-summon.py run "<이름|id>" --task "<한 줄 지시>" [--
 **이어서 일할 때는 방을 연다.** `@` 호출은 호출마다 새로 부르는 것이라 대화 맥락이 이어지지 않는다. 그 에이전트와 계속 일하려면
 `claude --agent <호출명> --name <방이름>` 으로 방을 열고(SOUL·기억은 세션 시작 훅이 넣는다), 나중에 `claude --resume <방이름>` 으로 돌아온다.
 이름을 몰라도 `hermes-chat [이름 일부]` 가 명부에서 골라 연다. `/hermes-roster` 표 아래에 호출명마다 방 여는 명령이 나온다.
+**다른 방에서 한 일은 기억에서 찾는다.** 방마다 대화가 따로라 A방의 일을 C방 에이전트가 모를 수 있다. 세션 시작 때 실리는 것은 최근 요약·기억(각 4KB)뿐이므로,
+모르는 것은 지어내지 말고 `python3 scripts/hermes-agent.py recall <호출명|이름|id> "<낱말>"` 로 찾는다 — 그 에이전트가 **부른 사람과** 나눈 모든 방·`@` 호출의 요약과 철회되지 않은 기억에서 낱말이 맞는 것을 가져온다.
+못 찾으면 못 찾았다고 말한다(원문은 저장하지 않으므로 원문이 필요하면 그 방을 `claude --resume` 한다).
 
 ```bash
 python3 scripts/hermes-agent.py set-slug "<이름>" <slug>     # 영문 소문자·숫자·- — 붙이면 .claude/agents/<slug>.md 가 생긴다
