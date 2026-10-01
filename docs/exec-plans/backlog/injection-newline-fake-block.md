@@ -16,4 +16,4 @@
 공통 렌더러(`_block`)에서 항목 안의 줄바꿈을 공백으로 접거나, 줄 앞의 표지를 막는다. 그러면 검색의 `_defang` 도 필요 없어진다.
 세션 주입은 모든 세션의 시작이라 바뀌면 `hermes-soul-inject-test` · `hermes-agent-summary-test` 의 본문 대조가 모두 영향받는다 — 계획서를 쓰고 한다.
 
-근거: `docs/exec-plans/active/2026-10-01-agent-recall.md` §7 (구현 리뷰 N4).
+근거: `docs/exec-plans/completed/2026-10-01-agent-recall.md` §7 (구현 리뷰 N4).

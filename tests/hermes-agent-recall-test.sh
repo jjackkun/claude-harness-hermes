@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 에이전트 기억 검색 `hermes-agent.py recall` (계획 docs/exec-plans/active/2026-10-01-agent-recall.md 목표 1~7 · 9).
+# 에이전트 기억 검색 `hermes-agent.py recall` (계획 docs/exec-plans/completed/2026-10-01-agent-recall.md 목표 1~7 · 9).
 #
 # 사용자 시나리오: 방 A·B·C 가 따로 있고 같은 에이전트가 각 방에서 대화했다. C 에서 A 의 일을 물으면 모를 수 있다 →
 # 에이전트가 자기 기억(대화 요약 · 살아 있는 기억)에서 찾아 온다.
