@@ -261,6 +261,7 @@ REGISTERED_TESTS=(
   hermes-sync-decision-test.sh
   hermes-db-prune-test.sh
   r-test-venv-test.sh
+  r-test-dirs-test.sh
   cli-prompt-stdin-test.sh
   hermes-rule-candidates-test.sh
   hermes-evolve-vocab-test.sh

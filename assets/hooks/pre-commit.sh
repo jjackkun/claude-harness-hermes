@@ -236,10 +236,14 @@ fi
 # 무관한 실패에 막힌다** — 2026-08-25 전파에서 실제로 발생했다(rim-kanban).
 # 프로젝트 파이썬이 함께 바뀌면 PY_STRUCT_FILES 가 비지 않으므로 그대로 돌아간다.
 if [[ -n "$PY_OWN_FILES" ]]; then
-  PYTEST_DIR=""
+  # 있는 시험 폴더는 **전부** 한 번에 돈다. 예전에는 첫 폴더에서 break 해서, 둘 다 있는
+  # terminal-shipping 은 루트 tests/(탐침 292개)만 돌고 백엔드 1,465개는 커밋 때 한 번도
+  # 안 돌았다(2026-09-30 실측). 시간은 아래 300초 경고가 지킨다.
+  PYTEST_DIRS=()
   for cand in tests backend/tests; do
-    [[ -d "$cand" ]] && PYTEST_DIR="$cand" && break
+    [[ -d "$cand" ]] && PYTEST_DIRS+=("$cand")
   done
+  PYTEST_DIR="${PYTEST_DIRS[*]:-}"
   # 프로젝트 가상환경 pytest 우선(.venv → venv), 없으면 시스템 — 고르기·경고는 pytest_gate.sh.
   # 도우미가 없으면(옛 설치) 옛 순서로 돈다.
   PYTEST_BIN=""; PYTEST_FROM_SYSTEM=0
@@ -278,7 +282,7 @@ if [[ -n "$PY_OWN_FILES" ]]; then
     else
       # 종료코드 캡처. 0=통과, 5=수집 0개.
       PYTEST_T0=$SECONDS
-      PYTEST_OUT=$("$PYTEST_BIN" "$PYTEST_DIR" -q 2>&1) && PYTEST_RC=0 || PYTEST_RC=$?
+      PYTEST_OUT=$("$PYTEST_BIN" "${PYTEST_DIRS[@]}" -q 2>&1) && PYTEST_RC=0 || PYTEST_RC=$?
       PYTEST_SECS=$(( SECONDS - PYTEST_T0 ))
       # 통과여도 알릴 것(시간·건너뜀·시스템 대체) — 차단하지 않고 경고로만
       if declare -F pytest_notes >/dev/null; then
