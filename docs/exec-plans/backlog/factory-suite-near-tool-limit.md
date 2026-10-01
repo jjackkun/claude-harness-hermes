@@ -36,4 +36,4 @@
 - 시험을 지우거나 건너뛰는 것(통과를 얻으려고 덜 돌리지 않는다).
 - 이 백로그에서 곧바로 시험 구조를 바꾸는 것 — 먼저 시험별 시간을 재고 계획서를 쓴다.
 
-근거: `docs/exec-plans/completed/2026-09-30-test-speed-gate.md`(CPU 먼저 재기), `docs/exec-plans/active/2026-10-01-out-shape-agent-fields.md` §7(577초 관찰).
+근거: `docs/exec-plans/completed/2026-09-30-test-speed-gate.md`(CPU 먼저 재기), `docs/exec-plans/completed/2026-10-01-out-shape-agent-fields.md` §7(577초 관찰).

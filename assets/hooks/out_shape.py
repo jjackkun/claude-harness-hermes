@@ -11,7 +11,7 @@ R-out 의 `cmd:<머리>` 는 `cd X &&` 를 걷어낸 첫 단어라, 한 호출�
   heads  각 명령(파이프 단계 포함)의 머리, 최대 6개. 머리는 첫 단어의 basename(인터프리터면 둘째 단어까지).
          **`[A-Za-z0-9_.+-]` 밖의 글자가 든 머리는 `?`** — 따옴표·치환·괄호가 머리 자리에 와도 값이 새지 않는다.
 
-계획: docs/exec-plans/active/2026-10-01-out-shape-agent-fields.md 목표 1 · 2 · 3
+계획: docs/exec-plans/completed/2026-10-01-out-shape-agent-fields.md 목표 1 · 2 · 3
 
 공개: shape_of · fields_text
 """

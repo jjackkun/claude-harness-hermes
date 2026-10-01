@@ -30,7 +30,7 @@
 - [x] 목표 5 — **`out_report.py --by shape|agent` 가 새 필드로 분포를 낸다.** 모양별(단일·파이프·묶음·heredoc) · 에이전트별 n · p50 · p90 · max · 초과 · 합계. 새 필드 없는 옛 레코드는 `(기록 이전)` 으로 묶인다. 검증: 픽스처 events 파일 → 표 · 옛 레코드만 → `(기록 이전)` 한 줄.
 - [x] 목표 6 — **관측이 조용히 꺼지지 않는다.** `out_shape` 를 못 불러오면 **`shape=err` 표식**을 `detail` 에 남기고 머리는 예전대로 기록한다. 검증: 시험 — 설치된 훅 옆에서 `out_shape.py` 를 치우고 돌리면 `shape=err` 가 보이고 `path` 는 `cmd:<머리>`. 설치 시험 — `out_shape.py` 가 설치본 `scripts/hooks/` 에 복사된다.
 - [x] 목표 7 — **훅 비용이 감당할 만하다.** 이 훅은 **세션의 모든 Bash 호출**에 돈다. Step 1 실측: 훅 1회 중앙 **68ms**(p90 74ms, 20회), Bash 호출 시간 중앙 **161ms**(2,744건). 기준: 전 대비 **중앙 +20ms 이하**(중앙 호출의 약 12%) 이고 p90 도 §7 에 적는다. 넘으면 모양 계산을 훅에 인라인한다. 검증: 훅(`bash claude-posttooluse-output-budget.sh`)을 전·후 **번갈아 40회** 돌려 중앙·p90 차이를 잰다 — 순차로 재면 시스템 부하 변동이 한쪽에 몰린다(§7).
-- [ ] 목표 8 — **전파 뒤 새 필드가 실제로 쌓인다.** 대상은 공장 + 소우주 8곳(`zeroday-frontend` `novel-ab` `novel-bc` `rim-kanban` `jjackkun_bot` `teulankkae` `upbit-ai-trading` `kis-trading`, terminal-shipping 은 사용자 몫). 검증: 공장은 Bash 를 한 번 부른 뒤 `tail -1 .harness/gate-events.jsonl` 에 `seg=` · 각 소우주는 **설치본 `scripts/hooks/` 를 일회용 폴더에 복사**해 합성 페이로드를 훅에 넣으면 `detail` 에 `seg=` 가 있고 `shape=err` 가 없다(파일 존재만이 아니라 동작을 본다).
+- [x] 목표 8 — **전파 뒤 새 필드가 실제로 쌓인다.** 대상은 공장 + 소우주 8곳(`zeroday-frontend` `novel-ab` `novel-bc` `rim-kanban` `jjackkun_bot` `teulankkae` `upbit-ai-trading` `kis-trading`, terminal-shipping 은 사용자 몫). 검증: 공장은 Bash 를 한 번 부른 뒤 `tail -1 .harness/gate-events.jsonl` 에 `seg=` · 각 소우주는 **설치본 `scripts/hooks/` 를 일회용 폴더에 복사**해 합성 페이로드를 훅에 넣으면 `detail` 에 `seg=` 가 있고 `shape=err` 가 없다(파일 존재만이 아니라 동작을 본다).
 
 ## 2-bis. 착수 전 확인한 사실 (2026-10-01)
 
@@ -105,10 +105,11 @@
 - 2026-10-01 **속성 시험이 리뷰가 놓친 누출 하나를 더 잡았다**: 줄 끝 `\` 로 이어진 줄(`ls \` 줄바꿈 `비밀`)을 새 명령으로 읽어 인자가 머리로 샜다 → 줄 이음을 이은 뒤 처리. 개별 케이스를 늘리는 것보다 "머리가 아닌 모든 자리에 표지를 넣는다" 는 속성 한 줄이 더 넓게 잡는다.
 - 2026-10-01 재측정(고친 뒤): 훅 비용 번갈아 40회 중앙 62→67ms(**+5**) · p90 67→74ms(**+7**). 시험 `out-shape-test` **65/65**, `output-budget-test` 27/27.
 - 남은 노출(범위 밖, 백로그): 훅의 기존 `head_of`(`path` 칸의 `cmd:<머리>`)는 인터프리터 둘째 단어를 **아무 단어나** 붙인다 — `cmd:python3 <토큰 모양>`. 이 계획이 건드리지 않기로 한 부분이고, 새 `heads` 가 더 엄격하다. `docs/exec-plans/backlog/r-out-path-head-second-word.md`.
+- 2026-10-01 **목표 8 확인(전파 뒤)**: 공장 + 소우주 8곳(`zeroday-frontend` `novel-ab` `novel-bc` `rim-kanban` `jjackkun_bot` `teulankkae` `upbit-ai-trading` `kis-trading`)의 **설치본 훅 폴더를 일회용 복사본에 놓고 합성 페이로드를 통과**시켰다 — 9곳 모두 `seg=2 pipe=1 … heads=cat,head,echo` 가 쌓이고 `shape=err` 없음 · 값 유출 0건. 같은 스크립트가 전파 전 `rim-kanban` 에서는 "필드 없음 · out_shape.py 없음" 을 냈다(음성 대조). 커밋·푸시는 6곳(`zeroday-frontend` 는 설치만, `teulankkae` 는 git 아님). terminal-shipping 은 사용자 몫이다.
 - 관찰(범위 밖): 공장 전체 시험이 577초(CPU 167%)로 도구 한도 600초에 바짝 붙었다 — 시험 하나가 늘 때마다 한도를 넘을 수 있다. `test-speed-gate` 의 교훈(오래 걸리면 CPU 먼저 재기)을 이 저장소에도 적용할 차례다.
 
-## 8. 회고 (완료 시 작성)
+## 8. 회고
 
-- 잘된 것:
-- 잘못된 것:
-- 다음 룰 후보:
+- 잘된 것: **정정에서 출발했다** — 요약 표의 한 칸(`cat` 행)으로 규칙을 만들려다 원자료(대화 기록)로 한 번 더 보고 접었고, 그 빈자리(명령 모양)를 관측 필드로 채웠다. 리뷰를 두 번 돌려(계획 `planner-lite` · 구현 `code-reviewer`) 둘 다 실결함을 잡았다. 변이 검사 3종으로 시험이 실제로 회귀를 잡는지 확인했고, "값 0건" 시험이 빈 출력에서 통과하는 약점도 스스로 찾아 고쳤다.
+- 잘못된 것: **비밀값 비유출이 핵심 요구인데 첫 구현은 개별 케이스로만 시험했다** — 따옴표·`$( )` 안의 heredoc 본문 첫 단어가 `heads` 로 새는 Block 을 리뷰어가 찾았다(커밋마다 쓰는 `git commit -m "$(cat <<'EOF' …)"` 꼴). P9 가 문서의 가짜 값을 잡아 커밋이 막힌 **덕에** 푸시·전파 전에 드러났다 — 우연이었다. 속성 시험(머리가 아닌 모든 자리에 표지)을 처음부터 썼어야 했고, 그 속성 시험이 리뷰가 놓친 누출(줄 이음) 하나를 더 잡았다. 훅 비용을 처음에 순차로 재서 +85ms 노이즈에 속을 뻔했다.
+- 다음 룰 후보: ① **"새지 않는다" 류 요구는 개별 케이스가 아니라 속성(표지를 모든 자리에)으로 시험한다** — 이번에 2번 효과를 봤다. ② 전후 성능 비교는 번갈아 잰다(순차는 부하 변동이 한쪽에 몰린다) — `test-speed-gate`·이 계획에서 반복 관측. ③ 같은 규칙이 훅 안(`head_of`)과 모듈(`heads`)에 둘이면 어긋난다 → 백로그 `r-out-path-head-second-word` 에서 하나로.

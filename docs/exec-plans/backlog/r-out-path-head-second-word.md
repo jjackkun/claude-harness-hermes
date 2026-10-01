@@ -25,4 +25,4 @@
 
 - 위 1·2 는 `out_report` 의 머리별 분포를 바꾸므로, 바꾸기 전 `--by head` 표를 저장해 전후를 대조한다.
 
-근거: `docs/exec-plans/active/2026-10-01-out-shape-agent-fields.md` §7 (구현 리뷰).
+근거: `docs/exec-plans/completed/2026-10-01-out-shape-agent-fields.md` §7 (구현 리뷰).

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # out_shape.py — Bash 명령 한 줄에서 모양(seg · pipe · hd · heads)만 뽑고, 값·인자는 절대 돌려주지 않는다.
-# 계획: docs/exec-plans/active/2026-10-01-out-shape-agent-fields.md 목표 1 · 2 · 3
+# 계획: docs/exec-plans/completed/2026-10-01-out-shape-agent-fields.md 목표 1 · 2 · 3
 #
 # 왜 모양인가: R-out 의 명령 머리는 `cd X &&` 를 걷어낸 첫 단어라, 한 호출에 여러 명령을 묶으면(전체의 65%)
 # 바이트를 낸 명령이 가려진다(tool-output-budget §7-6 정정). 모양을 남기면 "묶음이 큰 출력을 내는가" 를 상시 볼 수 있다.
