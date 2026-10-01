@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # R-test 게이트: 프로젝트 가상환경의 pytest 를 먼저 쓰고, 걸린 시간·건너뜀을 보이게 한다
-# (계획 docs/exec-plans/active/2026-09-30-test-speed-gate.md 목표 1·2).
+# (계획 docs/exec-plans/completed/2026-09-30-test-speed-gate.md 목표 1·2).
 #
 #   1 backend/.venv 의 pytest 를 고른다(uv 프로젝트) · .venv 와 venv 가 함께 있으면 .venv
 #   2 가상환경이 없으면 시스템 pytest(경고 없음 — 정상) · 가상환경 폴더가 있는데 pytest 가 없으면 시스템 + 경고

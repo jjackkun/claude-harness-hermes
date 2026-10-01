@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # R-test 게이트: 시험 폴더가 둘이면(tests · backend/tests) 둘 다 한 번에 돈다
-# (계획 docs/exec-plans/active/2026-09-30-test-speed-gate.md 목표 3 · Step B2).
+# (계획 docs/exec-plans/completed/2026-09-30-test-speed-gate.md 목표 3 · Step B2).
 #
 # 예전에는 `for cand in tests backend/tests; do … break` 라서 첫 폴더만 돌았다.
 # terminal-shipping 은 둘 다 있어 루트 tests/(탐침 292개)만 돌고 백엔드 1,465개는 커밋 때
