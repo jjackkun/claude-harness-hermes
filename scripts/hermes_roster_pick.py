@@ -2,7 +2,7 @@
 """사람이 고를 수 있는 명부 에이전트를 찾는 것만 담당한다 — hermes-chat 번호 목록과 `@hag` 입력 목록이 같이 쓴다.
 
 고를 수 있음 = slug 가 있고(부를 이름이 있다) 은퇴하지 않았다. 명부 순서 그대로.
-계획: docs/exec-plans/active/2026-09-28-hermes-chat.md 목표 6 · 7
+계획: docs/exec-plans/completed/2026-09-28-hermes-chat.md 목표 6 · 7
 
 공개: find_project · pickable · org_label · match · room_name
 """

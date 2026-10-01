@@ -48,15 +48,15 @@
       `HERMES_AGENT_ID` 가 있으면 지금 그대로(소환 경로 우선). `startup`·`resume`·`compact` 모두 넣는다(`--resume` 뒤에도 정체성 유지).
       검증: 픽스처 입력 `{"source":"startup","agent_type":"backlog-manager"}` → stdout 첫 줄에 백로그 관리자 머리줄 · 명부 밖 slug·은퇴자·`Explore` → stdout 0 B.
       실측: 실제 `claude --agent backlog-manager` 에서 "네 SOUL 첫 줄" 에 SOUL 원문 첫 줄로 답한다.
-- [ ] 2 — **내부 보조 호출이 방 주인의 호출로 세어지지 않는다.**
+- [x] 2 — **내부 보조 호출이 방 주인의 호출로 세어지지 않는다.**
       SubagentStop 이력 훅: 같은 `agent_id` 의 SubagentStart(`task.assigned`) 가 없으면 명부 id 로 적지 않는다.
       검증: `--agent` 세션 픽스처에서 SubagentStart 없는 SubagentStop 3건 → 명부 에이전트 호출 0 · 내부 보조 3.
 - [x] 3 — **방 주인이 구성원 표시에 보인다.**
       세션 시작 때 주인을 이력에 한 줄(예: `task.assigned` decision `match=owner slug=…`) 남기고, `collect_room`·상태줄이 "주인: 백로그 관리자" 를 따로 보인다.
       검증: 주인 방 + 손님 1명 픽스처 → 상태줄에 주인·손님 둘 다, 손님 횟수만 셈.
-- [ ] 4 — **쓰는 법 안내.** `hermes-agent` 스킬·`/hermes-roster` 표 아래에 방 여는 명령 한 줄(`claude --agent <호출명> --name <방>`).
+- [x] 4 — **쓰는 법 안내.** `hermes-agent` 스킬·`/hermes-roster` 표 아래에 방 여는 명령 한 줄(`claude --agent <호출명> --name <방>`).
       검증: `/hermes-roster` 출력에 호출명마다 방 여는 명령이 보인다.
-- [ ] 5 — **기억 층(사용자 결정 2026-09-28).** 공통이 바탕, 에이전트 기억이 위를 덮는다 — 같은 `about` 키면 에이전트 쪽.
+- [x] 5 — **기억 층(사용자 결정 2026-09-28).** 공통이 바탕, 에이전트 기억이 위를 덮는다 — 같은 `about` 키면 에이전트 쪽.
       공통 층은 2절 856줄로 이미 실린다. 남은 것은 "덮어쓴다" 를 SOUL 렌더에서 드러내는 것 — 착수 때 범위를 다시 잰다.
       검증: 같은 `about` 이 공통·개인에 다른 픽스처 → 주입 본문에 개인 쪽만.
 - [x] 6 — **`@hag` 약속어: 치는 도중 목록에 명부 에이전트만 뜬다(2026-09-28 사용자 결정).**
@@ -74,7 +74,7 @@
       검증: 픽스처 명부 2명 → 번호 목록 · `2` 입력 → `--dry-run` 이 `claude --agent backlog-manager --name 백로그관리자방` · 은퇴자 안 보임 · 명부 0명·hermes 아님 → 안내 후 exit 1.
       실측: tmux 에서 `hermes-chat` → 번호 → 방이 열리고 "네 SOUL 첫 줄" 에 SOUL 원문 첫 줄로 답한다(목표 1 과 함께).
 
-- [ ] 8 — **어디서 대화하든 그 에이전트가 자기와 나눈 대화를 기억한다(2026-09-28 사용자 결정).**
+- [x] 8 — **어디서 대화하든 그 에이전트가 자기와 나눈 대화를 기억한다(2026-09-28 사용자 결정) — 별도 계획에서 완료.**
       → 별도 계획: `docs/exec-plans/completed/2026-09-28-agent-conversation-memory.md` (C-29 — 대화 요약에 에이전트 키).
       "배운 것 한 줄"(답 끝 줄을 훅이 옮기기) 안은 접음 — 사용자: 이미 대화 핑퐁을 요약해 DB 에 넣고 있으니 그것을 에이전트 기억으로.
 
@@ -107,6 +107,7 @@
   - `assets/hooks/claude-userpromptsubmit-hag.sh` — 보낸 글의 `hag:<slug>`·`@hag` 를 알아보고 넘기기/명부 표 지시를 넣는다(목표 6)
   - `lib/settings_file_suggestion.py` — 설정 생성기가 `fileSuggestion` 을 넣고 걷는 규칙(사용자 값 보존)
   - `tests/hermes-hag-test.sh` — 목표 6 시험
+- **2026-10-01 마무리(목표 2 · 4 · 5) 수정 파일:** `assets/hooks/claude-subagentstop-journal.sh`(Start 없는 Stop = 내부 보조) · `scripts/hermes_roster_view.py`(표 아래 방 열기 구역) · `scripts/hermes_soul_render.py`(기억 층 머리말) · `assets/skills/hermes-roster/SKILL.md` · `assets/skills/hermes-agent/SKILL.md`(안내 문구, description 은 그대로) · 시험 `tests/hermes-agent-mention-test.sh` · `tests/hermes-agent-room-test.sh` · `tests/hermes-soul-inject-test.sh`. 신규 파일 없음.
 - 룰: C-28 (주인 이력 표기 — 목표 3 에서 쓴다, 이번 범위 밖)
 
 ## 6. 의사결정 로그
@@ -116,6 +117,10 @@
 - 2026-09-28: `@hag` 채택(목표 6) — 근거: 새 트리거 불가·기호 불가(실측), fileSuggestion 교체로 `@hag` 에 명부만 뜸(실측), 사용자가 `hag` 제안. `@hagent` 는 걷어 냄.
 - 2026-09-28: 목표 8 은 "배운 것 한 줄" 대신 기존 대화 요약에 에이전트 키(C-29) — 근거: 사용자 정정("이미 핑퐁을 요약해 DB 에 넣고 있다"), 키는 스킬·교훈에만 있고 요약에 없음(DB 실측).
 - 2026-09-28: 이번 착수는 목표 1 · 7 만. 2·3·4·5 는 다음. 6(`@hagent`)은 별도 계획 `2026-09-28-hagent-call.md` — 사용자가 `@` 목록 방식은 "불편하다" 로 접음.
+
+- 2026-10-01 목표 2: **Start 없는 명부 slug Stop 은 `actor=agent:<서브에이전트 id>` · `evidence.template=claude`(내부 보조)로 적는다** — 근거: 방 집계(`hermes_room`)가 이미 `template=="claude"` 를 내부 보조로 세므로 새 분류를 만들 필요가 없다. 손해: 같은 방 주인의 *진짜* 호출이 Start 훅 실패로 Start 없이 Stop 만 남으면 내부 보조로 잘못 세인다(Start 훅은 같은 settings 에 함께 등록돼 실패 가능성이 낮다). DB·표를 못 읽어 판정 불가면 예전 동작(명부 id)을 지킨다.
+- 2026-10-01 목표 4: 표 아래 **방 열기 구역**(호출명 있는 재직자마다 `claude --agent <slug> --name <방이름>`) — 방 이름은 `hermes-chat` 과 같은 `room_name`. 은퇴자·호출명 없는 사람은 연 수 없어 뺀다.
+- 2026-10-01 목표 5: **"같은 `about` 이면 개인 쪽만" 을 기계로 비교하지 않고 주입 본문에 머리말로 드러낸다** — 근거: 공통 층(`CLAUDE.md`·프로젝트 기억)은 공식이 싣는 마크다운이라 `about` 키가 없어 비교할 대상이 없다. 계획서가 이미 "덮어쓴다를 SOUL 렌더에서 드러내는 것" 으로 범위를 좁혀 두었다. **덮는 범위는 기억·선호까지**이고 `CLAUDE.md` 의 규칙·금지는 덮지 못한다고 못 박았다 — 에이전트 기억이 규칙을 무력화하는 통로가 되면 안 된다. 손해: 모델이 그 문장을 얼마나 따르는지는 재지 않았다(실제 세션 실측 없음).
 
 ## 7. 발견·예외
 
@@ -144,9 +149,18 @@
   발견: 하위 폴더에서 연 세션(`--settings` 시험)에서는 제안 명령이 불리지 않았다 — 모든 훅과 같은 `${CLAUDE_PROJECT_DIR}` 조건. 프로젝트 루트에서 여는 것이 전제.
   대가: `@` 파일 목록은 기본 대신 우리 스크립트(이름 포함 > 경로 포함 > 흩어진 글자, git 추적+미추적 파일, 15줄)가 맡는다. 폴더 항목은 내지 않는다.
 
+- 2026-10-01 목표 2 시험 중 발견: **bash 작은따옴표(`python3 -c '…'`) 안의 파이썬에 SQL 작은따옴표를 쓰면 bash 가 벗겨 열 이름이 된다**(`kind='task.assigned'` → `kind=task.assigned`). "판정 불가면 예전 동작" 폴백이 그 오류를 삼켜 훅은 조용히 옛 동작을 했고, **시험이 RED 로 잡았다**(86 중 3 실패). 값을 파라미터로 넘겨 고쳤다. 폴백이 버그를 가릴 수 있다는 점은 `silent-failure-hunter` 가 노릴 모양이다.
+- 2026-10-01 시험: `hermes-agent-mention` 86/0 · `hermes-agent-room` 35/0 · `hermes-soul-inject` 38/0. **실제 세션 실측은 하지 않았다** — 내부 보조 호출(입력 추천·`/btw`)을 일부러 일으킬 수 없어 목표 2 는 픽스처만, 목표 4·5 는 출력 문구라 시험으로 갈음했다.
+
 ## 관련
 
 - `docs/exec-plans/backlog/auto-owner-summon.md` 목표 후보 7 (이 문서로 옮김)
 - `docs/exec-plans/completed/2026-09-28-agent-mention-bridge.md` (C-27, `@` 부르기)
 - `docs/exec-plans/completed/2026-09-28-agent-room-view.md` (방 구성원 표시·상태줄)
 - `docs/audits/2026-09-28-agent-chat-room-research.md`
+
+## 8. 회고
+
+- 잘된 것: 목표 1·7(주입·명령)을 먼저 실제 방에서 실측한 덕에 나머지 셋은 문구·집계 수준의 작은 변경으로 끝났다. 목표 5 는 착수 때 범위를 다시 재서(공통 층에 `about` 키가 없음) 계획서의 "기계 비교" 안을 접고 글로 드러내는 안으로 좁혔다. 규칙·금지를 덮지 못한다는 한계를 문구에 넣어 보안 통로가 되는 것을 막았다.
+- 잘못된 것: 훅 안 파이썬의 따옴표 사건 — 폴백이 오류를 삼켜 시험이 아니었다면 몰랐다. 목표 2 를 실제 세션으로 확인하지 못했다(내부 보조 호출을 일으킬 방법이 없음). 방 열기 구역 때문에 기존 시험의 "마지막 줄 = 은퇴자" 필터가 깨질 뻔했다(취약한 필터).
+- 다음 룰 후보: 훅의 `-c '…'` 파이썬 안에서는 작은따옴표를 쓰지 않는다(파라미터로 값을 넘긴다) — 한 번 발생, 재발하면 승격. 오류를 삼키는 폴백에는 시험이 "폴백 경로가 아닌 정상 경로를 탔는가" 를 확인하게 한다.

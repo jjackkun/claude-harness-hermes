@@ -51,6 +51,11 @@ assert "머리 줄에 이름·id" "1" "$(printf '%s' "$OUT" | grep -c "^\[헤르
 assert "SOUL 본문" "1" "$(printf '%s' "$OUT" | grep -c '선적 조회 화면의 회귀 테스트를 맡는다')"
 assert "MEMORY 본문" "1" "$(printf '%s' "$OUT" | grep -c '회귀 테스트 3건 작성')"
 assert "구획 머리 둘(SOUL·MEMORY)" "2" "$(printf '%s' "$OUT" | grep -cE '^--- (SOUL|MEMORY)\.md ---$')"
+# 목표 5 (hermes-chat): 기억은 층 — 공통(CLAUDE.md·프로젝트 기억)이 바탕이고 같은 주제는 이 에이전트의 기억이 덮는다.
+# 공통 층에는 about 키가 없어 기계로 비교할 수 없다 → 주입 본문에 글로 드러낸다. 단 규칙·금지는 덮지 못한다.
+assert "기억 머리말: 공통이 바탕 · 같은 주제는 이 에이전트 기억(1줄)" "1" "$(printf '%s' "$OUT" | grep -c '^(공통 기억')"
+assert "  CLAUDE.md 의 규칙·금지는 덮지 못한다" "1" "$(printf '%s' "$OUT" | grep -c 'CLAUDE.md 의 규칙·금지는 덮지 못한다')"
+assert "  머리말은 MEMORY 구획 안(머리 바로 다음 줄)" "1" "$(printf '%s' "$OUT" | awk '/^--- MEMORY.md ---$/{getline n; print (n ~ /^\(공통 기억/)?1:0}')"
 assert "stderr 무출력" "" "$ERR"
 
 echo "[2] 목표 2 — 넣지 않는 경우"

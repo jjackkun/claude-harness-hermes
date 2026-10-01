@@ -4,7 +4,7 @@
 fileSuggestion 은 `@` 파일 목록을 통째로 교체하는 한 칸짜리 설정이다(settings-reference "fileSuggestion").
 사용자가 자기 스크립트를 넣어 두었으면 우리 것으로 덮지 않는다 — 덮으면 사용자의 파일 검색이 사라진다.
 우리 것 = command 에 hermes_file_suggest 가 들어 있다. 프리셋이 빠지면 우리 것만 걷는다.
-계획: docs/exec-plans/active/2026-09-28-hermes-chat.md 목표 6
+계획: docs/exec-plans/completed/2026-09-28-hermes-chat.md 목표 6
 
 공개: OURS_MARK · apply_file_suggestion
 """

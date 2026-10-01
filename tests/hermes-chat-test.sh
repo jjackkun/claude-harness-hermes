@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# hermes-chat 검증 (계획 docs/exec-plans/active/2026-09-28-hermes-chat.md 목표 1 · 3 · 7).
+# hermes-chat 검증 (계획 docs/exec-plans/completed/2026-09-28-hermes-chat.md 목표 1 · 3 · 7).
 #
 #   - 목표 1: `claude --agent <slug>` 세션 — HERMES_AGENT_ID 없이 입력 agent_type 으로 SOUL·기억이 들어간다
 #             startup·resume·compact 모두 · 명부 밖 slug·은퇴자·내장(Explore) → 무출력 · 환경변수(소환)가 우선

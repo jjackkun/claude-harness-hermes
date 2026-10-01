@@ -6,7 +6,7 @@
 나머지는 기본 목록을 대신할 만큼 파일을 찾아 준다.
 입력: stdin {"query": "...", "cwd": "..."} · 출력: 한 줄에 하나, 최대 15줄 · 어떤 오류에도 exit 0(목록이 비는 것뿐).
 명부 줄 `<이름> · <분야/직급/조직> · hag:<slug>` — 고르면 `@"…"` 로 들어가고 보낸 뒤 훅이 hag:<slug> 를 읽는다.
-계획: docs/exec-plans/active/2026-09-28-hermes-chat.md 목표 6
+계획: docs/exec-plans/completed/2026-09-28-hermes-chat.md 목표 6
 """
 
 import json

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# `@hag` 약속어 검증 (계획 docs/exec-plans/active/2026-09-28-hermes-chat.md 목표 6).
+# `@hag` 약속어 검증 (계획 docs/exec-plans/completed/2026-09-28-hermes-chat.md 목표 6).
 #
 #   - 1 제안 스크립트(fileSuggestion): `@hag…` → 명부 에이전트 줄(hag:<slug>)만 · 뒤 글자로 거르기 · 은퇴자·slug 없는 사람 제외
 #                                      그 밖 → 파일 경로(흩어진 글자 검색, 이름 일치가 앞) · 15줄 상한 · hermes 아니면 hag 도 파일 검색

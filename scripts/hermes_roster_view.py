@@ -9,6 +9,8 @@
 import unicodedata
 from datetime import datetime
 
+from hermes_roster_pick import room_name
+
 _STATUS_ORDER = {"active": 0, "probation": 1, "retired": 2}
 _STATUS_KO = {"active": "재직", "probation": "수습", "retired": "은퇴"}
 
@@ -50,7 +52,20 @@ def render_roster(roster: dict, seen: dict) -> str:
     if not rows:
         return "명부에 에이전트가 없습니다 (입사: hermes-agent.py hire)"
     body = _table(rows, ["이름", "호출", "상태", "분야/직급/조직", "최근 불린 때"])
-    return "\n".join(body + [f"({len(rows)}명 · 은퇴자는 맨 아래 · 부르기: @<호출명 앞부분> 또는 한글 이름)"])
+    footer = [f"({len(rows)}명 · 은퇴자는 맨 아래 · 부르기: @<호출명 앞부분> 또는 한글 이름)"]
+    return "\n".join(body + footer + _room_commands(agents))
+
+
+def _room_commands(agents: list) -> list:
+    """이어서 일할 때 여는 방 명령 — 호출명(slug)이 있는 재직자마다 한 줄. 은퇴자·호출명 없는 사람은 연 수 없다.
+    방 이름은 hermes-chat 과 같은 규칙(room_name)이라 `claude --resume <방이름>` 으로 돌아올 수 있다."""
+    openable = [a for a in agents if a.get("slug") and a.get("status") != "retired"]
+    if not openable:
+        return []
+    width = max(_width(a["name"]) for a in openable)
+    lines = ["", "방 열기 (이어서 일할 때 — 매번 @ 로 부르면 맥락이 끊깁니다):"]
+    lines += [f"  {_pad(a['name'], width)}  claude --agent {a['slug']} --name {room_name(a)}" for a in openable]
+    return lines + ["  이름을 몰라도: hermes-chat [이름 일부]   · 돌아오기: claude --resume <방이름>"]
 
 
 def _now_text(room: dict) -> str:

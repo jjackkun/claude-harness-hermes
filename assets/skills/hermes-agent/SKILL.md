@@ -209,6 +209,10 @@ python3 scripts/hermes-summon.py run "<이름|id>" --task "<한 줄 지시>" [--
 한글 이름으로("백로그 관리자한테 …") 말해도 서브에이전트로 불린다. SOUL·기억은 훅이 넣고, 이력도 그 에이전트 이름으로 남는다.
 부모 세션 안에서 돌므로 짧은 일에 맞고, 격리·긴 일은 위의 소환(run)이 맞다.
 
+**이어서 일할 때는 방을 연다.** `@` 호출은 호출마다 새로 부르는 것이라 대화 맥락이 이어지지 않는다. 그 에이전트와 계속 일하려면
+`claude --agent <호출명> --name <방이름>` 으로 방을 열고(SOUL·기억은 세션 시작 훅이 넣는다), 나중에 `claude --resume <방이름>` 으로 돌아온다.
+이름을 몰라도 `hermes-chat [이름 일부]` 가 명부에서 골라 연다. `/hermes-roster` 표 아래에 호출명마다 방 여는 명령이 나온다.
+
 ```bash
 python3 scripts/hermes-agent.py set-slug "<이름>" <slug>     # 영문 소문자·숫자·- — 붙이면 .claude/agents/<slug>.md 가 생긴다
 python3 scripts/hermes-agent.py sync-mention-files          # 명부와 에이전트 파일 다시 맞추기(멱등)

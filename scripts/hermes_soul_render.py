@@ -78,6 +78,13 @@ def _selected_memory(project: str, agent: dict, task_hint: str, scripts_dir: str
         return None
 
 
+# 기억 층(사용자 결정 2026-09-28, 계획 hermes-chat 목표 5): 공통(CLAUDE.md·프로젝트 기억 — 공식이 이미 싣는다)이 바탕이고
+# 같은 주제는 이 에이전트의 기억이 덮는다. 공통 층에는 about 키가 없어 기계로 비교할 수 없으므로 본문에 글로 드러낸다.
+# ⚠️ 덮는 것은 기억·선호까지다 — CLAUDE.md 의 규칙·금지를 에이전트 기억이 무력화하는 통로가 되면 안 된다.
+_LAYER_NOTE = ("(공통 기억 — CLAUDE.md·프로젝트 기억 — 이 바탕이고, 같은 주제의 기억·선호가 다르면 아래 이 에이전트의 기억을 따른다. "
+               "CLAUDE.md 의 규칙·금지는 덮지 못한다.)")
+
+
 def render_soul(project: str, agent_id: str, soul_cap: int = 4096, memory_cap: int = 4096,
                 task_hint: str = "", scripts_dir: str = ""):
     """출근 본문 문자열, 넣지 않는 경우 None."""
@@ -96,7 +103,7 @@ def render_soul(project: str, agent_id: str, soul_cap: int = 4096, memory_cap: i
     elif len(mem_text.encode("utf-8")) > memory_cap:
         mem_text = _cut(mem_text.encode("utf-8"), memory_cap, f".hermes/agents/{agent_id}/MEMORY.md")
     if mem_text is not None:
-        out.append(f"\n--- MEMORY.md ---\n{mem_text.rstrip()}\n")
+        out.append(f"\n--- MEMORY.md ---\n{_LAYER_NOTE}\n{mem_text.rstrip()}\n")
     conversation = render_agent_summaries(project, agent_id)
     if conversation:
         out.append(conversation)              # 방·@ 호출에서 나눈 대화(C-29) — 어디서 불리든 같은 기억

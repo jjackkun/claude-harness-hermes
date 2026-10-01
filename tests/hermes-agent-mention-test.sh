@@ -195,6 +195,21 @@ hk "$JSTART" '{"agent_id":"sub-ret-1","agent_type":"design-lead"}' >/dev/null
 hk "$JSTOP" '{"agent_id":"sub-ret-1","agent_type":"design-lead"}' >/dev/null
 assert "은퇴자 @ 호출 → assigned 없음, finished actor 는 서브에이전트 id" "task.finished:agent:sub-ret-1" \
   "$(q "SELECT kind||':'||actor FROM journal_events WHERE task_id=?" sub-ret-1)"
+# 목표 2 (hermes-chat): `claude --agent <slug>` 방에서는 Claude Code 내부 보조 호출이 agent_type=<방 주인 slug> 로
+# SubagentStop 에만 온다(Start 없음). 그것을 "백로그 관리자가 불린 것" 으로 적으면 호출 횟수가 부풀려진다.
+for n in 1 2 3; do hk "$JSTOP" "{\"agent_id\":\"int-bm-$n\",\"agent_type\":\"backlog-manager\",\"session_id\":\"sroom\"}" >/dev/null; done
+assert "Start 없는 명부 slug Stop → 3건 모두 명부 id 가 아닌 서브에이전트 id" "agent:int-bm-1|agent:int-bm-2|agent:int-bm-3" \
+  "$(q "SELECT actor FROM journal_events WHERE session_id='sroom' AND kind='task.finished' ORDER BY task_id")"
+assert "  evidence.template 은 내부 보조(claude)" 3 \
+  "$(q "SELECT count(*) FROM journal_events WHERE session_id='sroom' AND evidence LIKE '%\"template\": \"claude\"%'")"
+assert "  방 집계: 명부 에이전트 호출 0 · 내부 보조 3" "0|3" "$(PYTHONPATH="$REPO_ROOT/scripts" python3 -c "
+import json,sys,hermes_room as r
+c=r.collect_room(sys.argv[1], json.load(open(sys.argv[1]+'/.hermes/agents.json')), 'sroom')
+print('%d|%d' % (sum(m['count'] for m in c['members']), c['internal']))" "$P")"
+hk "$JSTART" '{"agent_id":"guest-bm-1","agent_type":"backlog-manager","session_id":"sroom2"}' >/dev/null
+hk "$JSTOP" '{"agent_id":"guest-bm-1","agent_type":"backlog-manager","session_id":"sroom2"}' >/dev/null
+assert "  손님으로 정말 부른 것(Start 있음)은 그대로 명부 id" "agent:$AID" \
+  "$(q "SELECT actor FROM journal_events WHERE task_id='guest-bm-1' AND kind='task.finished'")"
 assert "JSON 아닌 입력 → rc 0" 0 "$(hk "$JSTART" 'not-json')"
 mv "$P/.hermes/state.db" "$TMP/state.db.hold"
 assert "DB 없음 → rc 0" 0 "$(hk "$JSTART" '{"agent_id":"sub-bm-2","agent_type":"backlog-manager"}')"

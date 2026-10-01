@@ -57,7 +57,14 @@ assert "백로그담당 줄에 @호출명" 1 "$(row 백로그담당 | grep -c '@
 assert "백로그담당 최근 불린 때 = 모든 방 중 최댓값(05:00)" 1 "$(row 백로그담당 | grep -c '2026-09-28 05:00')"
 assert "slug 없는 재직자는 호출명 -" 1 "$(row 조용한담당 | grep -cE '[[:space:]]-[[:space:]]')"
 assert "한 번도 안 불린 에이전트는 최근 불린 때 -" 1 "$(row 조용한담당 | grep -cE '[[:space:]]-$')"
-assert "은퇴자는 맨 아래" 떠난담당 "$(grep -vE '^\s*$|^이름|^─|^\(' "$TMP/roster" | tail -1 | awk '{print $1}')"
+assert "은퇴자는 맨 아래" 떠난담당 "$(grep -vE '^\s*$|^이름|^─|^\(|^방 열기|^  ' "$TMP/roster" | tail -1 | awk '{print $1}')"
+# 목표 4 (hermes-chat): 표 아래에 방 여는 명령 — 호출명(slug)이 있는 재직자마다 한 줄, 은퇴자·호출명 없는 사람은 없다
+assert "재직자(호출명 있음)마다 방 여는 명령" "claude --agent backlog-lead --name 백로그담당방" \
+  "$(grep -oE 'claude --agent backlog-lead --name [^ ]+' "$TMP/roster")"
+assert "  은퇴자 방 여는 명령은 없다" 0 "$(grep -c 'claude --agent gone-lead' "$TMP/roster")"
+assert "  호출명 없는 재직자도 없다" 0 "$(grep -c '조용한담당방' "$TMP/roster")"
+assert "  이름을 몰라도 hermes-chat 안내" 1 "$(grep -c 'hermes-chat' "$TMP/roster")"
+assert "  방 여는 명령은 표 아래(표 행보다 뒤)" 1 "$(awk '/^백로그담당/{r=NR} /claude --agent backlog-lead/{c=NR} END{print (r>0 && c>r)?1:0}' "$TMP/roster")"
 assert "main 은 명부 보기에서 빠진다(사람이 아닌 세션 주체)" 0 "$(grep -cE '^main[[:space:]]' "$TMP/roster")"
 
 echo ""
