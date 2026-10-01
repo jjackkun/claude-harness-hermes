@@ -2,7 +2,7 @@
 
 > 작성일: 2026-09-30
 > 목적: 소우주의 백엔드 시험이 느린 원인(원격 DB 왕복)과 게이트의 결함(가상환경 못 찾음)을 고치고, 검증된 방법을 공통 규칙으로 올린다.
-> 짝 계획: terminal-shipping `docs/exec-plans/active/2026-09-30-local-test-db.md`(로컬 시험 DB 로 옮기기 — 실측의 출처).
+> 짝 계획: terminal-shipping `docs/exec-plans/completed/2026-09-30-local-test-db.md`(2026-10-01 완료)(로컬 시험 DB 로 옮기기 — 실측의 출처).
 > 순서(사용자 결정 2026-09-30): **① 이 계획 Phase A(게이트 결함)** → ② terminal-shipping 로컬 시험 DB → ③ 그 숫자로 **Phase B(공통 규칙)** → 전파.
 
 ## 1. 동기 (Why)
@@ -74,6 +74,8 @@
 - ~~R-test 는 프로젝트 파이썬이 바뀐 커밋마다 전체 시험을 돈다~~ → **정정(2026-09-30 실측):** R-test 는 `tests` 를 `backend/tests` 보다 먼저 고르는데 terminal-shipping 에는 둘 다 있어 **루트 `tests/`(도구 시험 292개, 8.6초)만** 돌아 왔다. 백엔드 1,465개는 커밋 때 한 번도 돌지 않았고, 18분 실행은 에이전트가 직접 돌린 `pnpm test` 였다. 백엔드 시험을 게이트에 넣는 것은 로컬 시험 DB 전(18분)에는 하지 않는다 — terminal-shipping 계획이 끝난 뒤 Phase B 에서 "두 폴더 모두" 를 정한다.
 - 소우주 가상환경 조사(2026-09-30): `backend/venv`(pytest 있음) — rim-kanban · upbit-ai-trading · kis-trading / `backend/.venv` — terminal-shipping(이번에 처음 제 가상환경으로 돈다) / 없음 — 나머지(시스템 pytest, 경고 없음). `.venv` 와 `venv` 가 함께 있는 곳은 없다.
 - 시스템 pytest 경고는 처음 설계("시스템으로 떨어지면 항상 경고")가 기존 스모크 시험("통과하면 침묵")에 걸렸다 — 가상환경 없이 시스템 pytest 를 쓰는 구성(이 공장 포함)은 정상이다. **가상환경 폴더가 있는데 pytest 가 없을 때만** 경고하도록 좁혔다.
+
+- **terminal-shipping 로컬 시험 DB 결과(2026-10-01, 커밋 0d95205f) — Phase B 의 입력.** 전체 1,080초 · CPU 7% → **82.9초 · CPU 78%**, 1,485 통과 · 건너뜀 0. 단계별 setup 24% · call 65% · teardown 11%. 한 줄(`pnpm test:db:up`)로 클러스터·로캘을 지운 상태에서 다시 만들어 전체 통과. 공통 규칙에 넣을 교훈 셋: ① Docker 가 없어도 같은 판을 root 없이 풀 수 있다(`apt-get download` + `dpkg -x`) ② 정렬 규칙(`datcollate`)까지 운영과 맞춰야 한다 — `C.UTF-8` 이면 한글 `ORDER BY` 가 달랐다 ③ 새로 만든 시험 DB 는 **마이그레이션 밖 단계**(인증 함수·기능 씨앗)가 빠지기 쉽다 — 대조 스크립트가 자료까지 봐야 한다. 이제 300초 안이므로 게이트가 `backend/tests` 도 돌지(목표 5 쪽 결정)를 정할 수 있다.
 
 ## 8. 회고 (완료 시 작성)
 
