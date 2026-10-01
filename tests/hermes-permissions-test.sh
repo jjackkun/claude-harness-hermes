@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # 헤르메스 프리셋의 허용 목록 — 읽기 전용 명령 recall 하나만 미리 허용한다
-# (계획 docs/exec-plans/active/2026-10-01-recall-permission.md 목표 1 · 2).
+# (계획 docs/exec-plans/completed/2026-10-01-recall-permission.md 목표 1 · 2).
 #
 # 실제 세션 실측에서 auto mode 가 아닌 사용자는 에이전트가 기억을 찾을 때마다 승인 질문을 받는다는 것이 드러났다.
 # recall 은 읽기 전용(mode=ro)이라 허용해도 안전하다. 다른 hermes-agent.py 하위 명령(teach · note · pin · retire …)은

@@ -19,7 +19,7 @@
 - [x] 목표 1 — **헤르메스 프리셋이 설치된 프로젝트의 `settings.json` 허용 목록에 recall 규칙이 있고, 헤르메스가 없는 프로젝트에는 없다.** 규칙은 `Bash(python3 scripts/hermes-agent.py recall:*)` 하나. 검증: `bash tests/hermes-permissions-test.sh` — `harness hermes` 설치 → 규칙 1개 · `harness` 만 설치 → 0개.
 - [x] 목표 2 — **허용 범위가 recall 하나뿐이다.** `hermes-agent.py` 의 다른 하위 명령을 여는 규칙(`Bash(python3 scripts/hermes-agent.py:*)` · `Bash(python3 scripts/*)` 등)이 이 파일에 없다. 검증: 같은 시험 — `hermes.json` 의 allow 가 정확히 그 한 줄이고 `teach`·`retire`·`approve-soul` 을 여는 규칙이 없다.
 - [x] 목표 3 — **주입 안내가 낱말을 한 번에 여러 개 넣도록 이끈다.** 안내 줄이 `recall <호출명> "<낱말을 한 번에 여러 개>"` 꼴이다. 길이 ≤ 300B 유지. 검증: `bash tests/hermes-soul-inject-test.sh` — 안내 줄 단언(호출명 있음·없음)과 300B 단언.
-- [ ] 목표 4 — **전파된 곳의 설정에 들어간다.** 헤르메스 프리셋이 있는 소우주에 `update-all` 을 돌린 뒤 `settings.json` 허용 목록에 그 규칙이 있다. 검증: 설치 후 각 곳의 `.claude/settings.json` 을 읽어 규칙 유무를 센다(헤르메스 프리셋이 없는 `rim-kanban`·`teulankkae` 는 0개여야 한다).
+- [x] 목표 4 — **전파된 곳의 설정에 들어간다.** 헤르메스 프리셋이 있는 소우주에 `update-all` 을 돌린 뒤 `settings.json` 허용 목록에 그 규칙이 있다. 검증: 설치 후 각 곳의 `.claude/settings.json` 을 읽어 규칙 유무를 센다(헤르메스 프리셋이 없는 `rim-kanban`·`teulankkae` 는 0개여야 한다).
 - [x] 목표 5 — **실제 세션에서 승인 질문 없이 도는 것을 확인한다(auto mode 아님).** 검증: 일회용 프로젝트에 설치한 뒤 `claude --permission-mode default --agent backlog-manager` 로 열어 방 안에서 기억을 물으면 recall 이 **승인 질문 없이** 실행된다 — 규칙 없이(전)는 질문이 뜨는 것도 함께 본다.
 
 ## 3. 비목표 (Out of Scope)
@@ -71,8 +71,12 @@
 
 - 2026-10-01 **구현 리뷰(`code-reviewer`, 보안 관점) — 승인(차단 0 · 경고 0 · 참고 3).** 확인된 것: recall 은 끝까지 읽기 전용(모든 경로 `mode=ro` · 실제 `state.db` 체크섬 전후 동일) · `--project` 는 서브명령 **앞**의 최상위 인자라 `recall … --project /다른경로` 는 argparse 오류로 끝난다 · `recall x '$(touch …)'` 는 인자 문자열로만 처리 · 규칙 문자열과 안내 문구의 상대 경로가 같다 · `update-all` 은 하네스 소유 항목을 걷어낸 뒤 다시 더하고 `dict.fromkeys` 로 중복을 없애 규칙이 한 번만 들어간다(헤르메스 프리셋을 빼면 회수) · 다른 시험(preset-integrity · update-all-roundtrip 34/0)은 영향 없음. 참고: ① 규칙은 프로젝트 루트에서 실행할 때만 맞는다(상대 경로) ② 사용자가 같은 규칙을 직접 적어 두면 프리셋을 뺄 때 하네스 소유로 보고 함께 지워진다 ③ 읽기 전용 연결에서도 `state.db-shm` 의 mtime 은 바뀐다(내용 변경 아님) — "파일이 하나도 안 바뀐다" 고 쓰면 부정확하다.
 
-## 8. 회고 (완료 시 작성)
+- 2026-10-01 **목표 4 확인(전파 뒤)**: 설치 후 각 곳의 `.claude/settings.json` — 헤르메스 프리셋이 있는 7곳(`zeroday-frontend` `novel-ab` `novel-bc` `jjackkun_bot` `upbit-ai-trading` `kis-trading` `terminal-shipping`)은 **recall 규칙 1개 · 그 밖의 `hermes-agent.py` 규칙 0개**, 없는 2곳(`rim-kanban` `teulankkae`)은 0개. 커밋·푸시는 5곳 + `rim-kanban`(문서 수치만), `zeroday-frontend` 는 설치만, terminal-shipping 은 로컬 커밋만(`22df7a26`).
+- 2026-10-01 **전파 중 발견 — terminal-shipping 의 스테이징에 사용자 파일이 섞여 있었다.** 사용자의 카톡 작업 파일 5개(`backend/app/features/kakao/link_*.py` · `main.py` · `test_kakao_link_router.py`)가 이미 스테이징돼 있었다. `stage.py` 는 설치 경로만 더하므로 제 것이 아니다. 첫 커밋은 **R-test 실패로 차단**돼 섞이지 않았고, 설치 산출물 6개를 **경로를 지정해** 커밋했다(`git commit -- <경로>` — 다른 스테이징은 그대로 남는다). 교훈: 공유 작업 트리에서 `stage.py` 로 모으기 전에 **이미 스테이징된 것이 있는지 먼저 본다**(`git diff --cached --name-only`).
+- 2026-10-01 **같은 차단이 새 게이트가 일하는 증거였다**: Phase B 로 R-test 가 `tests` 와 `backend/tests` 를 함께 돌게 된 뒤 처음으로 terminal-shipping 백엔드 시험이 커밋 때 돌아 ① `test_room_case_detach.py:142` 실패 1건(단독·합쳐 돌린 재실행에서는 통과 — 일시적, 같은 PC 의 다른 세션과의 간섭으로 추정하나 확인하지 못함) ② **`test_migration_grants` — 사용자의 새 마이그레이션 `20261001_f6b8d0e2a4c6.py` 가 "GRANT 앞에 REVOKE ALL 을 적는다(R9)" 를 어김**(진짜 위반)을 잡았다. 합쳐 돌린 전체: 1,867개 · 104초.
 
-- 잘된 것:
-- 잘못된 것:
-- 다음 룰 후보:
+## 8. 회고
+
+- 잘된 것: 실측이 허점을 두 번 드러냈다 — 처음 대조군은 사용자 전역 설정(`Bash(python3:*)`)이 이미 허용해 무의미했고, `--setting-sources project` 로 전역을 빼서 비로소 "규칙이 없으면 승인 질문이 뜬다 → 규칙이 있으면 안 뜬다" 를 증명했다. 토큰 질문에 추측이 아니라 실제 세션 기록(`usage`)의 입력 증가로 답했고, 그 측정이 **낱말마다 따로 호출하는 비용(+4,150 vs +947)** 이라는 개선점을 알려 안내 문구를 고치게 했다. 권한 변경은 시험(변이 2종) · 보안 리뷰 · 사용자 승인을 거쳤다.
+- 잘못된 것: 공유 작업 트리(terminal-shipping)에서 스테이징 상태를 보지 않고 `stage.py` 를 돌렸다 — 사용자의 스테이징 파일 5개가 섞일 뻔했고 R-test 차단이 막았다(우연). 첫 대조군 설계가 전역 설정의 영향을 놓쳤다.
+- 다음 룰 후보: ① **공유 작업 트리에서 전파 커밋 전에 `git diff --cached --name-only` 로 남의 스테이징을 확인하고, 커밋은 경로를 지정한다** — 전파 절차(`stage.py`)에 이 확인을 넣는다. ② 권한·설정 효과 검증은 사용자 전역 설정을 뺀 실행(`--setting-sources project`)으로 한다.
