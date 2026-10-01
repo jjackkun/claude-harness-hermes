@@ -265,6 +265,7 @@ REGISTERED_TESTS=(
   out-shape-test.sh
   hermes-agent-recall-test.sh
   hermes-permissions-test.sh
+  userpromptsubmit-backlog-test.sh
   cli-prompt-stdin-test.sh
   hermes-rule-candidates-test.sh
   hermes-evolve-vocab-test.sh

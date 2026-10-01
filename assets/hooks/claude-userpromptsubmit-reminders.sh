@@ -73,9 +73,8 @@ if [[ -d "$BACKLOG_DIR" ]]; then
   if [[ ${#BACKLOG_FILES[@]} -gt 0 ]]; then
     echo ""
     echo "--- [Backlog] ---"
-    for f in "${BACKLOG_FILES[@]}"; do
-      echo "  - $f"
-    done
+    # 경로 목록을 싣지 않는다 — 매 턴 똑같은 N줄이 붙어 비용이 턴 수에 비례한다. 필요하면 ls 로 연다.
+    echo "  ${#BACKLOG_FILES[@]}건 — 목록: $BACKLOG_DIR/"
     _has_plan_output=1
   fi
 fi
