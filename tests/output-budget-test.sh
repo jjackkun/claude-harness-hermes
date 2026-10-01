@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # R-out 게이트 시험 — 실측 바이트로 판정하는지, 그리고 조용해야 할 때 조용한지 본다.
 #
-# 근거: docs/exec-plans/active/2026-09-08-tool-output-budget.md
+# 근거: docs/exec-plans/completed/2026-09-08-tool-output-budget.md
 #
 # 통과만 확인하는 시험은 게이트가 조용히 꺼진 것을 못 잡는다(harness-hooks-smoke.sh 선례).
 # 그래서 임계 초과 페이로드로 **실제 발화**를 확인하고, 판정 불가가 pass 로 새지 않는지도

@@ -42,7 +42,7 @@
 
 ## 왜 지금 하지 않는가
 
-`R-out`(`docs/exec-plans/active/2026-09-08-tool-output-budget.md`)이 아직 데이터를
+`R-out`(`docs/exec-plans/completed/2026-09-08-tool-output-budget.md`)이 아직 데이터를
 모으는 중이다. 2026-09-08 기준 실사용 120건 전부 `pass`, `warn` 1건은 시험으로 만든
 발화(15,000 B)이므로 **실사용 발화는 0건**이다. 판단일은 2026-09-29 다.
 
@@ -87,3 +87,7 @@
 
 "모델을 셀 수 없다면 dispatch 횟수만으로 무엇을 판단할 수 있는지" 를 먼저 정할 것.
 셀 수 있는 것을 세고 답을 못 내는 것이 이 항목이 피하려는 실패다.
+
+## 2026-10-01 판정
+
+`tool-output-budget` 목표 5 판정에서 **승격하지 않기로** 했다. R-out 이벤트(`ts · rule · verdict · stage · path · detail`)에 에이전트·모델 필드가 없어 `model:` 선언의 타당성을 잴 수 없다. 선행 조건: 이벤트에 불린 에이전트와 모델을 남기는 계획. 근거: `docs/exec-plans/completed/2026-09-08-tool-output-budget.md` §7-6.

@@ -398,8 +398,8 @@ README 가 18일간 "훅 8종"(실제 12) · "pre-commit 4단 검사"(실제 15�
 
 ## R-out — 도구 출력의 컨텍스트 비용을 실측한다 {#r-out}
 
-> 상태: Provisional — **관측 전용**. 2026-09-29 에 재판정.
-> 근거: `docs/exec-plans/active/2026-09-08-tool-output-budget.md`
+> 상태: Provisional — **관측 전용**. 2026-10-01 판정: 근거 충족(2,713건 · 임계 초과 2.8% 가 바이트의 28% · 초과의 36% 가 `cat`). 차단·절감은 여전히 이 규칙의 몫이 아니다 — 다음 계획 후보는 계획서 §7-6.
+> 근거: `docs/exec-plans/completed/2026-09-08-tool-output-budget.md`
 
 Bash 도구 호출이 컨텍스트에 넣은 **실제 바이트**(stdout+stderr)를 PostToolUse 에서 재어
 `R-out` 판정 1건으로 남긴다. 임계(현재 8,192 B) 미만이면 침묵하고, 초과하면 다음 호출을

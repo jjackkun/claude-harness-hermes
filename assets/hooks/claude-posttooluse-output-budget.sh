@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # PostToolUse(Bash) hook — Bash 도구 호출이 컨텍스트에 넣은 **실제 바이트**를 기록한다. (R-out)
 #
-# 근거: docs/exec-plans/active/2026-09-08-tool-output-budget.md
+# 근거: docs/exec-plans/completed/2026-09-08-tool-output-budget.md
 #
 # 단일 책임: 출력 크기 1건을 재어 R-out 판정으로 남긴다. 명령을 해석하지 않는다.
 #
