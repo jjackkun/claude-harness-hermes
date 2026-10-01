@@ -21,6 +21,7 @@
 
 set -uo pipefail
 
+HOOK_DIR="$(cd "$(dirname "$0")" 2>/dev/null && pwd)"   # cd 보다 먼저 — out_shape.py 를 이 폴더에서 불러온다
 cd "${CLAUDE_PROJECT_DIR:-$(cd "$(dirname "$0")/../.." 2>/dev/null && pwd)}" 2>/dev/null || true
 
 if [[ -f "$(dirname "$0")/gate_emit.sh" ]]; then
@@ -36,8 +37,10 @@ R_OUT_THRESHOLD=${R_OUT_THRESHOLD:-8192}
 
 # 파싱·판정·메시지 렌더를 python3 한 번에 끝낸다. 축마다 프로세스를 띄우면 관측 비용이
 # 게이트 비용을 넘는다(gate_emit.sh 실측: 기동 1회 21ms).
-#   1행: "<verdict> <bytes> <duration_ms>"
-#   2행 이후: 주입할 JSON (없으면 빈 문자열)
+#   1행: "<verdict> <bytes> <duration_ms> <명령 머리>"  — 마지막 변수가 줄 나머지를 받으므로 머리 뒤에 다른 값을 붙이지 않는다
+#   2행: 모양·에이전트 필드 "seg=.. pipe=.. hd=.. sub=.. agent=.. heads=.."(없으면 빈 줄) — 계획 2026-10-01-out-shape-agent-fields
+#        out_shape.py 를 못 불러오면 "shape=err" (관측이 조용히 꺼지지 않게)
+#   3행: 주입할 JSON (없으면 빈 문자열)
 # 페이로드를 파일로 받아 경로만 넘긴다.
 #   - 히어독은 python3 의 stdin 을 차지하므로 `python3 - <<PY` 로는 페이로드를 읽을 수 없다
 #     (2026-09-08 실측: 전 판정이 skipped 로 샜다. 시험이 잡았다).
@@ -45,7 +48,7 @@ R_OUT_THRESHOLD=${R_OUT_THRESHOLD:-8192}
 PAYLOAD_FILE=$(mktemp "${TMPDIR:-/tmp}/r-out.XXXXXX") || exit 0
 cat > "$PAYLOAD_FILE"
 
-PARSED=$(R_OUT_THRESHOLD="$R_OUT_THRESHOLD" R_OUT_PAYLOAD="$PAYLOAD_FILE" \
+PARSED=$(R_OUT_THRESHOLD="$R_OUT_THRESHOLD" R_OUT_PAYLOAD="$PAYLOAD_FILE" R_OUT_HOOK_DIR="${HOOK_DIR:-}" \
          python3 - <<'PY' 2>/dev/null || true
 import json, os, sys
 
@@ -70,8 +73,10 @@ def head_of(cmd):
         head += " " + toks[1].rsplit("/", 1)[-1]
     return head[:48]
 HEAD = "-"
+EXTRA = ""
 def emit(verdict, nbytes, dur, payload=None):
     print(f"{verdict} {nbytes} {dur} {HEAD}")
+    print(EXTRA)
     print(json.dumps(payload, ensure_ascii=False) if payload else "")
     sys.exit(0)
 
@@ -92,6 +97,16 @@ if not isinstance(d, dict):
 tr = d.get("tool_response")
 dur = d.get("duration_ms") or 0
 HEAD = head_of((d.get("tool_input") or {}).get("command")) if isinstance(d.get("tool_input"), dict) else "-"
+try:
+    # 모양·에이전트 — 값·인자는 out_shape 가 돌려주지 않는다. 못 불러오면 조용히 넘기지 않고 표식을 남긴다.
+    if os.environ.get("R_OUT_HOOK_DIR"):            # 비면 넣지 않는다 — 프로젝트 루트의 같은 이름 모듈을 불러오지 않게
+        sys.path.insert(0, os.environ["R_OUT_HOOK_DIR"])
+    import out_shape
+    _ti = d.get("tool_input")
+    EXTRA = out_shape.fields_text(out_shape.shape_of(_ti.get("command") if isinstance(_ti, dict) else None),
+                                  agent=d.get("agent_type"), sub=bool(d.get("agent_id")))
+except Exception:
+    EXTRA = "shape=err"
 
 # 판정 불가는 통과가 아니다. `pass` 로 세면 분모가 부풀어 발화율이 실제보다 낮아진다
 # — gate_report.py 의 _row() 가 skipped 를 분모에서 빼도록 정의한 이유다.
@@ -131,15 +146,15 @@ rm -f "$PAYLOAD_FILE"
 # 내장 read 로만 가른다. 이 훅은 **세션 내 모든 Bash 호출**에 걸리므로 프로세스 하나가
 # 곧 세션 전체의 곱셈이 된다 — sed 3 + awk 3 을 쓰던 판을 걷어냈다(2026-09-08 검토).
 # 주입 JSON 은 json.dumps 산출이라 항상 한 줄이다.
-VERDICT="" NBYTES="" DUR="" HEAD="" JSON=""
-{ read -r VERDICT NBYTES DUR HEAD; read -r JSON; } <<< "$PARSED"
+VERDICT="" NBYTES="" DUR="" HEAD="" EXTRA="" JSON=""
+{ read -r VERDICT NBYTES DUR HEAD; read -r EXTRA; read -r JSON; } <<< "$PARSED"
 
 [[ -n "${VERDICT:-}" ]] || exit 0
 
 # path 칸에 명령 머리(cmd:<머리>)를 남긴다 — 2026-09-20, 목표 5 "명령별 분포" 를 내려면 어떤 명령이었는지가 있어야 한다.
 case "$VERDICT" in
-  pass)    gate_emit R-out pass    posttooluse "cmd:${HEAD:--}" "${NBYTES}B ${DUR}ms" ;;
-  warn)    gate_emit R-out warn    posttooluse "cmd:${HEAD:--}" "${NBYTES}B ${DUR}ms (임계 ${R_OUT_THRESHOLD}B 초과)" ;;
+  pass)    gate_emit R-out pass    posttooluse "cmd:${HEAD:--}" "${NBYTES}B ${DUR}ms${EXTRA:+ $EXTRA}" ;;
+  warn)    gate_emit R-out warn    posttooluse "cmd:${HEAD:--}" "${NBYTES}B ${DUR}ms (임계 ${R_OUT_THRESHOLD}B 초과)${EXTRA:+ $EXTRA}" ;;
   skipped) gate_emit R-out skipped posttooluse "cmd:${HEAD:--}" "출력 크기 판정 불가" ;;
 esac
 

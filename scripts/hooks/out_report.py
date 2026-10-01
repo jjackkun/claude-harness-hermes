@@ -15,6 +15,10 @@ import time
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _BYTES = re.compile(r"^(\d+)B\b")
+# 2026-10-01 이후 레코드의 detail 꼬리 — out_shape.fields_text 가 만든다. 옛 레코드에는 없다.
+_FIELD = re.compile(r"\b(seg|pipe|hd|sub)=(\d+)\b")
+_AGENT = re.compile(r"\bagent=(\S+)")
+_BEFORE = "(기록 이전)"
 
 
 def _gate_report():
@@ -39,6 +43,45 @@ def parse_rows(records):
     return rows
 
 
+def _shape_class(detail: str) -> str:
+    """detail 꼬리의 모양 → 단일·파이프·묶음·스크립트. heredoc > 묶음 > 파이프 > 단일 순으로 가른다."""
+    if "shape=err" in detail:
+        return "(shape 오류)"
+    f = {k: int(v) for k, v in _FIELD.findall(detail)}
+    if "seg" not in f:
+        return _BEFORE
+    if f["seg"] == 0:
+        return "(명령 없음)"
+    if f.get("hd"):
+        return "스크립트"
+    if f["seg"] >= 2:
+        return "묶음"
+    return "파이프" if f.get("pipe") else "단일"
+
+
+def _agent_key(detail: str) -> str:
+    m = _AGENT.search(detail)
+    if not m:
+        return _BEFORE
+    sub = dict(_FIELD.findall(detail)).get("sub") == "1"
+    return m.group(1) + ("/서브" if sub else "")
+
+
+_KEYS = {"shape": _shape_class, "agent": _agent_key}
+
+
+def parse_by(records, by):
+    """R-out 레코드 → [(키, 바이트, verdict)] — 키는 --by 가 고른 축(모양·에이전트). skipped 는 뺀다."""
+    key_of = _KEYS[by]
+    rows = []
+    for rec in records:
+        detail = str(rec.get("detail") or "")
+        m = _BYTES.match(detail) if rec.get("rule") == "R-out" else None
+        if m:
+            rows.append((key_of(detail), int(m.group(1)), rec.get("verdict")))
+    return rows
+
+
 def _pct(sorted_vals, q):
     return sorted_vals[min(len(sorted_vals) - 1, int(len(sorted_vals) * q))]
 
@@ -57,9 +100,13 @@ def summarize(rows, threshold):
     return out
 
 
-def _render(table, threshold, broken, nrows):
-    lines = [f"R-out 명령별 출력 분포 — {nrows}건, 임계 {threshold:,}B" + (f", 깨진 줄 {broken}" if broken else "")]
-    lines.append(f"{'명령 머리':28} {'n':>5} {'p50':>7} {'p90':>7} {'max':>8} {'초과':>4} {'합계':>10}")
+_TITLES = {"head": ("명령별", "명령 머리"), "shape": ("모양별", "모양"), "agent": ("에이전트별", "에이전트")}
+
+
+def _render(table, threshold, broken, nrows, by="head"):
+    title, label = _TITLES[by]
+    lines = [f"R-out {title} 출력 분포 — {nrows}건, 임계 {threshold:,}B" + (f", 깨진 줄 {broken}" if broken else "")]
+    lines.append(f"{label:28} {'n':>5} {'p50':>7} {'p90':>7} {'max':>8} {'초과':>4} {'합계':>10}")
     for r in table:
         lines.append(f"{r['head'][:28]:28} {r['n']:5} {r['p50']:7,} {r['p90']:7,} {r['max']:8,} {r['over']:4} {r['total']:10,}")
     return "\n".join(lines)
@@ -70,6 +117,8 @@ def main(argv=None):
     ap.add_argument("--since-days", type=int, default=None)
     ap.add_argument("--threshold", type=int, default=int(os.environ.get("R_OUT_THRESHOLD", "8192")))
     ap.add_argument("--events", default=None, help="gate-events.jsonl 경로(기본: 프로젝트의 .harness/)")
+    ap.add_argument("--by", choices=("head", "shape", "agent"), default="head",
+                    help="묶는 축 — head(명령 머리, 기본) · shape(묶음·파이프·단일·스크립트) · agent(에이전트, 서브에이전트는 /서브)")
     args = ap.parse_args(argv)
     gr = _gate_report()
     path = args.events or gr._load_event_module().events_path()
@@ -78,8 +127,8 @@ def main(argv=None):
         return 2
     since = time.time() - args.since_days * 86400 if args.since_days else None
     records, broken = gr.load_events(path, since)
-    rows = parse_rows(records)
-    print(_render(summarize(rows, args.threshold), args.threshold, broken, len(rows)))
+    rows = parse_rows(records) if args.by == "head" else parse_by(records, args.by)
+    print(_render(summarize(rows, args.threshold), args.threshold, broken, len(rows), args.by))
     return 0
 
 

@@ -15,6 +15,8 @@ tier: 0  scripts/hermes_skill_yield.py scripts/edit_factcheck_rate.py
 tier: 0  assets/hooks/claude_config_scan.py
 # 세션 고정 비용 표(계획 2026-09-21-context-budget): 표준 모듈만.
 tier: 0  assets/hooks/context_budget.py
+# R-out 이벤트의 명령 모양 계산(계획 2026-10-01-out-shape-agent-fields): 표준 모듈만 — 훅이 모든 Bash 호출에서 불러온다.
+tier: 0  assets/hooks/out_shape.py
 tier: 1  scripts/hermes-cleanup.py
 tier: 0  scripts/hermes-correlate.py
 tier: 0  scripts/hermes-increment.py scripts/hermes-manager.py scripts/hermes-message.py
@@ -132,7 +134,7 @@ optional: assets/hooks/check-privacy.py -> hermes_privacy_staged
 optional: assets/hooks/check-privacy.py -> hermes_privacy_pending
 tier: 2  assets/hooks/check-privacy.py
 # 커밋 게이트 훅(표준 모듈만, 다른 scripts 를 import 하지 않는다) — 2026-09-20 자기 계약 검사가 미등록으로 잡음
-tier: 0  scripts/hooks/complexity.py scripts/hooks/coverage_probe.py scripts/hooks/depcheck.py scripts/hooks/design_cover.py scripts/hooks/doc_counts.py scripts/hooks/gate_event.py scripts/hooks/gate_report.py scripts/hooks/out_report.py
+tier: 0  scripts/hooks/complexity.py scripts/hooks/coverage_probe.py scripts/hooks/depcheck.py scripts/hooks/design_cover.py scripts/hooks/doc_counts.py scripts/hooks/gate_event.py scripts/hooks/gate_report.py scripts/hooks/out_report.py scripts/hooks/out_shape.py
 # 대시보드(계획 2026-09-18-hermes-dashboard): html 은 표준 모듈만, data 는 handoff_queue·owner_memory(2)·skill_layers(1)·skill_yield(0)·hooks/gate_report(0) 를 쓴다
 tier: 0  scripts/hermes_dashboard_html.py
 tier: 3  scripts/hermes_dashboard_data.py
