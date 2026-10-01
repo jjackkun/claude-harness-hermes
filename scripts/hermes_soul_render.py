@@ -87,10 +87,11 @@ _LAYER_NOTE = ("(공통 기억 — CLAUDE.md·프로젝트 기억 — 이 바탕
 
 def _recall_hint(agent: dict) -> str:
     """기억 찾기 안내 — 실린 것은 최근 것뿐이고 옛 대화·다른 방의 일은 recall 로 찾는다(계획 2026-10-01-agent-recall 목표 6).
-    호출명(slug)은 선택 항목이라 없으면 id 를 박는다 — recall 은 호출명·이름·id 를 다 받는다."""
+    호출명(slug)은 선택 항목이라 없으면 id 를 박는다 — recall 은 호출명·이름·id 를 다 받는다.
+    낱말은 한 번에 여러 개 — 실측에서 낱말마다 호출을 따로 해 한 질문에 약 4,100 토큰을 썼다(recall 은 맞는 낱말 수로 순위를 매긴다)."""
     who = agent.get("slug") or agent["agent_id"]
     return ("\n--- 기억 찾기 ---\n(여기 실린 것은 최근 것뿐이다. 옛 대화·다른 방에서 한 일은 지어내지 말고 먼저 찾는다: "
-            f'python3 scripts/hermes-agent.py recall {who} "<낱말>")\n')    # 끝 줄바꿈 — 다른 구획과 같다(훅이 감싼 본문과 글자가 같아야 한다)
+            f'python3 scripts/hermes-agent.py recall {who} "<낱말을 한 번에 여러 개>")\n')    # 끝 줄바꿈 — 다른 구획과 같다(훅이 감싼 본문과 글자가 같아야 한다)
 
 
 def render_soul(project: str, agent_id: str, soul_cap: int = 4096, memory_cap: int = 4096,

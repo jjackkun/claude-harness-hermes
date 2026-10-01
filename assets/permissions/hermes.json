@@ -1,0 +1,9 @@
+{
+  "_comment": "헤르메스 프리셋이 미리 허용하는 읽기 전용 명령. base.json(모든 프리셋)에 넣지 않는 이유: 헤르메스가 없는 프로젝트에는 이 스크립트가 없다.",
+  "_scope": "recall 하나만 연다 — 에이전트가 자기 기억(대화 요약·기억)을 찾는 읽기 전용 명령(mode=ro, 출력 4,096B 상한). 쓰기 하위 명령(teach·note·pin·retire·approve-soul 등)은 승인 질문이 안전장치라 열지 않는다. 근거: docs/exec-plans/completed/2026-10-01-recall-permission.md",
+  "permissions": {
+    "allow": [
+      "Bash(python3 scripts/hermes-agent.py recall:*)"
+    ]
+  }
+}

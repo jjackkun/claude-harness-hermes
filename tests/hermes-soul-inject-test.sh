@@ -60,11 +60,11 @@ assert "  CLAUDE.md 의 규칙·금지는 덮지 못한다" "1" "$(printf '%s' "
 assert "  머리말은 MEMORY 구획 안(머리 바로 다음 줄)" "1" "$(printf '%s' "$OUT" | awk '/^--- MEMORY.md ---$/{getline n; print (n ~ /^\(공통 기억/)?1:0}')"
 assert "stderr 무출력" "" "$ERR"
 # 목표 6 (계획 agent-recall): 실린 것은 최근 것뿐 — 옛 대화·다른 방의 일은 지어내지 말고 recall 로 찾는다는 안내 한 줄
-assert "기억 찾기 안내: 호출명이 없으면 id 로 recall" "1" "$(printf '%s' "$OUT" | grep -c "recall $ID_ACTIVE \"<낱말>\"")"
+assert "기억 찾기 안내: 호출명이 없으면 id 로 recall" "1" "$(printf '%s' "$OUT" | grep -c "recall $ID_ACTIVE \"<낱말을 한 번에 여러 개>\"")"
 assert "  지어내지 말고 먼저 찾는다" "1" "$(printf '%s' "$OUT" | grep -c '지어내지 말고 먼저 찾는다')"
 assert "  안내 구획(머리 + 한 줄)은 300 B 이하" "1" "$(printf '%s' "$OUT" | awk '/^--- 기억 찾기 ---$/{f=1} f' | wc -c | awk '{print ($1>0 && $1<=300)?1:0}')"
 run "$ID_SLUG"
-assert "  호출명이 있으면 호출명으로 recall" "1" "$(printf '%s' "$OUT" | grep -c 'recall slug-qa "<낱말>"')"
+assert "  호출명이 있으면 호출명으로 recall" "1" "$(printf '%s' "$OUT" | grep -c 'recall slug-qa "<낱말을 한 번에 여러 개>"')"
 run "$ID_ACTIVE"
 
 echo "[2] 목표 2 — 넣지 않는 경우"
