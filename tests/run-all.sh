@@ -238,6 +238,7 @@ REGISTERED_TESTS=(
   r5-detection-test.sh
   coverage-probe-test.sh
   mutation-probe-test.sh
+  hermes-soul-render-test.sh
   mutation-trigger-test.sh
   doc-gardening-drift-test.sh
   claude-md-skill-index-test.sh

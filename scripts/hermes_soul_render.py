@@ -69,6 +69,8 @@ def _selected_memory(project: str, agent: dict, task_hint: str, scripts_dir: str
         from hermes_memory_select import select_memories, render_selection
         con = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
         try:
+            if not con.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='memory_events'").fetchone():
+                return None                   # 기억이 아직 한 건도 없다(갓 설치) — 실패가 아니라 조용히 파일로
             sel = select_memories(con, agent["agent_id"], task_hint)
         finally:
             con.close()
