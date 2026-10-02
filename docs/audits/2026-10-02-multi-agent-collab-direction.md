@@ -131,8 +131,56 @@
 - MIRIX 의 Active Retrieval(매 단계 자동 검색): 우리가 잰 `recall` 1회가 +765~+2,100 토큰이라 매 턴이면 부담이 크다. **필요할 때만 부르는 지금 방식 유지**를 권한다. 논문 쪽 비용은 읽은 범위에서 확인하지 못했다.
 - 한계: 두 논문의 본문 전체가 아니라 핵심 대목을 찾아 읽었다. MIRIX 의 충돌 처리·검색 세부는 확인하지 못했다.
 
+## 7. cumora — 에이전트끼리 대화의 토큰을 어떻게 막았나 (2026-10-02 추가)
+
+cumora 는 사람과 영속 에이전트가 함께 쓰는 팀 채팅이고, GitHub 에 공개돼 있으며 내 PC 의 Claude Code·Codex 등을 직접 연결(BYOA)할 수 있다. 소스 문서 `docs/COORDINATION.md` 를 직접 읽어 확인했다. 우리 저장소의 `docs/hermes-universe` 도 cumora 에서 여러 교훈(K-1~K-9)을 가져온 바 있다.
+
+**토큰을 줄이는 한 가지 비법은 없고, 큰 모델을 깨우는 횟수를 줄이는 문지기들이었다.**
+
+| 장치 | 하는 일 | 효과 |
+| --- | --- | --- |
+| 작은 모델 문지기(triage gate) | 값싼 모델(haiku급)이 "큰 모델이 답할 일이 있나"를 먼저 판정. 근거는 **메시지 문장이 아니라 DB 사실**(작업 기록의 담당, 사람의 관심 신호, 연속 대화 바닥선). 사람이 관련되었거나 기다리면 항상 실행, 열린 일 없는 에이전트끼리 잡담은 억제 | 잡담에 큰 모델을 깨우지 않음 |
+| seen-cursor 신선도 문지기 | 답을 올리기 직전에 새 메시지가 있으면 답을 보류하고 새 메시지를 보여 다시 판단하게 함. 보류 후 기준선을 앞으로 옮겨 무한 반복 방지 | 낡은 맥락의 답이 연쇄를 만드는 것을 막음 |
+| 원자적 일 선점 + 동일 문장 롤백 | 일은 한 명만 잡고, 직전 상대 메시지와 같은 초안은 서버가 롤백. `--send-anyway` 우회 불가 | 중복 작업·되풀이 방지 |
+| 동시 실행 상한·속도 조절 | 큰 모델 동시 6개(조이려면 2~4), 작은 모델 8개, 실행 간격 500ms, 제한에 걸리면 간격 2배(최대 8초), 정체 알림 3번 거절 시 침묵, 에이전트별 60초 쿨다운 | 구독 한도 충돌 방지 |
+| 비용 장부 | 모든 모델 호출을 `llm_calls` 한 곳에 기록 | 새는 곳이 보임 |
+
+**확인하지 못한 것**: "속삭임(whisper) 방"의 구현(검색 요약은 "에이전트끼리 DM 을 바깥에서 읽는 방"이라고만 함), 에이전트별 컨텍스트 크기·요약 전략·방별 토큰 예산, 실제 절감량 수치. 소개 글 저자도 이 통제들이 "지연·비용·신뢰해야 할 정책을 더한다"고 하며, 에이전트 팀이 단일 에이전트보다 낫다는 독립 증거는 없다고 말한다.
+
+**우리에게**: §2 에서 처음부터 설계해야 한다고 한 "누가 답할지·연속 응답 상한·예산" 중 *누가 답할지*를 cumora 는 싼 모델이 *작업 기록 같은 기계적 사실*로 판정하게 풀었다. 우리 기존 결정("요청 문장을 모델로 판별하지 않는다")과 정신이 같고(문장이 아니라 사실), 모델 호출을 아예 없애는 쪽(규칙 매핑)과 싼 모델 문지기 쪽 중 무엇을 택할지는 미정이다.
+
+
+## 8. Gemini 방식 (2026-10-02 추가)
+
+"Gemini 가 그렇게 한다"는 말이 무엇을 가리키는지(cumora 식 문지기인지, 토큰 절감인지, 에이전트 협업인지) 불분명해 세 갈래를 모두 조사했다. **cumora 식의 "작은 모델이 큰 모델 깨울지 판정" 장치를 Gemini 가 쓴다는 근거는 찾지 못했다.** 아래는 대부분 2차 자료(블로그·정리 글)이며, 1차로 직접 읽은 것은 A2A 발표 글과 Interactions API 소개 글 두 건이다.
+
+| 갈래 | 내용 | 확인 수준 |
+| --- | --- | --- |
+| 토큰 절감: 컨텍스트 캐싱 | 고정된 긴 컨텍스트의 처리 결과를 저장해 두고 뒤 요청은 새로 붙는 부분만 처리. 캐시된 입력 토큰이 약 90% 싸다는 설명(Gemini 3.1 Pro 100만 토큰당 2.00달러 → 0.20달러) | 2차 블로그 |
+| 토큰 절감: Interactions API | 대화 내용을 서버가 저장하고 ID 로 참조해 새 메시지만 보낸다. "암묵적 캐싱"으로 토큰·지연이 준다고 주장하나 **수치 없음**, 실험 기능 | 1차에 가까운 소개 글, 효과는 저자 주장 |
+| 협업: ADK 서브에이전트 | 일꾼마다 컨텍스트를 좁혀 주고 작업 난이도로 라우팅. 파이프라인의 에이전트들이 `session.state` 를 공유. 순차·반복 실행용 오케스트레이터 에이전트 | 2차 |
+| 협업: Gemini CLI 서브에이전트 | 병렬로 여러 개를 띄워 각자 컨텍스트에서 일하고 결과를 합침. "서브에이전트는 토큰·지연을 더 쓰고 대신 컨텍스트가 깨끗하고 신뢰성이 높다. 잘게 쪼개지 말고 굵게 몇 개" | 2차 |
+| 프로토콜: A2A(Agent2Agent) | 에이전트끼리 말하는 열린 표준(HTTP·SSE·JSON-RPC). **Agent Card**(능력·엔드포인트·인증을 적은 JSON), **Task**(고유 ID 와 생애주기를 가진 일 단위), **Message**(Part 로 내용 전달), 산출물. 장기 작업은 상태를 서로 맞춘다 | 1차(발표 글) |
+| 제품: Gemini Enterprise | 팀이 에이전트를 만들고 공유하고, 에이전트가 서로 일을 위임. Memory Bank 로 세션 간 장기 기억 | 2차 |
+
+**A2A 가 정하지 않은 것(발표 글에 없음)**: 에이전트 간 토큰 비용 분담, 순환 의존 같은 **루프 방지**, 에이전트 간 **공유 기억**, 사용량 제한, 실패 시 대체 동작. 즉 가장 큰 협업 표준도 우리가 걱정하는 비용·루프 문제를 구현자에게 맡겼다.
+
+**우리와의 관계**
+- Gemini 의 절감은 **공급사가 제공하는 캐싱**이다. 협업 로직으로 줄이는 cumora 와 층이 다르다. Claude 에도 캐시가 있고, 이번 측정에서 첫 호출 입력 중 캐시 읽기가 이미 큰 비중이었다(예: 70,530 중 약 27,000 읽기·약 43,000 생성). 우리가 쓰는 구독 CLI 에서 이를 따로 조절할 수단이 있는지는 확인하지 못했다.
+- A2A 의 **Agent Card 는 우리 명부 항목(이름·분야·직급·SOUL)과, Task 생애주기는 우리 인계 봉투(`goal`·`done_when`·되돌아오는 네 방식)와 모양이 비슷**하다. 새 표준을 따를 필요는 없지만, 나중에 다른 제품의 에이전트와 말해야 할 때의 참고 형식이다.
+- 검색에 "공유 에이전트 메모리는 최고의 조율 수단이자 최대의 공격 표면"이라는 제목의 글들이 보였다(본문은 읽지 않았다). 공유 작업 기록을 설계할 때 한 에이전트가 쓴 내용을 다른 에이전트가 그대로 믿는 위험을 따로 보아야 한다는 신호로만 적어 둔다.
+
 ## 출처
 
+- [cumora README (GitHub)](https://github.com/MaskedKM/cumora)
+- [cumora docs/COORDINATION.md](https://raw.githubusercontent.com/MaskedKM/cumora/my-custom/docs/COORDINATION.md)
+- [DEV — Cumora Makes Agent Coordination the Product](https://dev.to/dd8888/cumora-makes-agent-coordination-the-product-not-a-chat-feature-5h8d)
+- [Script by AI — Cumora: Team Chat for Humans and Persistent AI Agents](https://www.scriptbyai.com/cumora-team-chat/)
+- [Google Developers Blog — Announcing the Agent2Agent Protocol (A2A)](https://developers.googleblog.com/en/a2a-a-new-era-of-agent-interoperability/)
+- [Agno — Cut multi-turn token costs with Gemini's Interactions API](https://www.agno.com/articles/cut-multi-turn-token-costs-with-geminis-interactions-api)
+- [Redlinesoft — Context Caching for Gemini 3 Multi-Agent Clusters](https://blog.redlinesoft.net/posts/context-caching-revolution-gemini-3/)
+- [InfoQ — Subagents in Gemini CLI](https://www.infoq.com/news/2026/04/subagents-gemini-cli/)
+- [Google Cloud — The new Gemini Enterprise](https://cloud.google.com/blog/products/ai-machine-learning/the-new-gemini-enterprise-one-platform-for-agent-development)
 - [Stark Insider — Meta Muse: Our AI Agent Told Meta's AI About Me](https://www.starkinsider.com/2026/09/meta-muse-multi-agent-household-trust.html)
 - [Tom's Hardware — Meta Muse runs agents on AMD EPYC Turin hosts](https://www.tomshardware.com/pc-components/cpus/meta-muse-runs-agents-on-amd-epyc-turin-hosts-with-two-cores-and-8gb-of-memory-ai-agent-can-pass-terminal-commands-to-ubuntu-host-system)
 - [MemGPT: Towards LLMs as Operating Systems](https://arxiv.org/pdf/2310.08560)
