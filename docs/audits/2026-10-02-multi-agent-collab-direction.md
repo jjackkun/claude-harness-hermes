@@ -204,6 +204,37 @@ cumora 는 사람과 영속 에이전트가 함께 쓰는 팀 채팅이고, GitH
 - 웹 메신저 화면은 같은 소켓에 쓰는 방식이 가능해 보이나(문서가 "스크립트나 훅이 세션에 글을 올리는 경우"를 다룸) 외부 프로그램의 메시지는 수신 통제에 걸리며 실제로 되는지는 시험하지 않았다.
 - 한계: 1회 시험이다. 에이전트끼리 연속 대화 시 루프 억제와 지연은 재지 않았다.
 
+
+## 10. 구독으로 쓸 수 있나 — 약관 기준과 `jjackkun_bot` 선례 (2026-10-02 추가)
+
+### 사용자 결정
+- 에이전트 메신저(웹 UI)는 **terminal-shipping 에 만든다.** (2026-10-02, 사용자 결정)
+- 모델은 지금의 GPT API 대신 **사용자 본인의 Claude Code 구독**으로 부르고 싶다.
+- 이 메신저는 **현재 사용자 혼자 쓴다.** (2026-10-02, 사용자 확인) 방향 문서 §2 의 미정 질문 "화면을 혼자 보는가"의 답이다.
+
+### 약관 기준 (code.claude.com/docs/en/legal-and-compliance 원문 확인, 법률 자문 아님)
+| 원문 요지 | 뜻 |
+| --- | --- |
+| OAuth(구독 로그인)는 구독 구매자가 Claude Code 와 Anthropic 자사 앱을 "평범하게" 쓰기 위한 것. 광고된 한도는 "평범한 개인 사용"을 전제 | 개인 사용용 |
+| 제품·서비스를 만드는 개발자는 API 키(Claude Console 또는 클라우드 공급사)를 써야 한다 | 서비스용은 API 키 |
+| Free/Pro/Max 자격으로 **사용자들을 대신해** 요청을 라우팅하는 것, Claude 계정 로그인 정보·세션 토큰을 모으거나 저장하거나 중간에서 다루는 것은 허용되지 않는다 | 고객 대신 호출 금지 |
+| 사용자가 **수정하지 않은 Claude Code 에 자기 구독으로 직접 로그인**하는 것은 허용(플랫폼이 호스팅하는 경우 포함) | 본인 PC 에서 본인 구독 |
+| 사전 통지 없이 집행할 수 있다. 애매하면 영업팀에 문의 | 해석 불확실성이 남는다 |
+
+적용: **사용자 혼자 쓰는 도구**이고 본인 PC 의 수정 안 된 `claude` 를 본인 구독으로 부르는 구조는 위 허용 범위 안으로 읽힌다. **고객(운송사)이 쓰는 기능에 같은 방식을 쓰면 안 된다** — 그 경우는 API 키.
+
+### 선례: `jjackkun_bot` (읽기 전용 확인, 비밀 파일은 열지 않음)
+- 텔레그램 허용 사용자 목록(`TELEGRAM_ALLOWED_USERS`)의 메시지만 받는다 — 지시할 수 있는 사람이 본인뿐.
+- cron 이 30초마다 `mybot_autoexecutor.sh` 를 실행. 먼저 `quick_check.py` 가 새 메시지가 있는지만 파이썬으로 확인하고, **없으면 `claude` 를 띄우지 않는다**(cumora 의 문지기와 같은 발상).
+- 새 메시지가 있으면 본인 PC 의 `claude -p -c --dangerously-skip-permissions --append-system-prompt-file CLAUDE.md "<프롬프트>"` 를 실행(`-c` 로 최근 세션 이어받기, 실패하면 새 세션). 작업 잠금·PID 파일로 동시 실행을 막고 활동 시각으로 멈춘 작업을 감지.
+- 사용자 말: 이 방식으로 **약 2년 운영**했다. 이는 안정적으로 돌아간다는 근거이지 약관상 허용을 확정해 주지는 않는다(집행은 사전 통지 없이 가능하다고 문서가 적었다).
+- 짚을 점: `--dangerously-skip-permissions` 로 모든 권한 질문을 건너뛰므로 텔레그램 계정·봇 토큰이 뚫리면 PC 에서 임의 작업이 가능하다. 허용 목록과 토큰 보호가 사실상 유일한 방어선이다.
+
+### 터미널쉬핑 메신저에 주는 뜻
+- 같은 모양을 쓴다: 웹 메신저는 **얇은 창**, 일은 사용자 PC 의 `claude`, **새 입력이 있을 때만 깨운다.**
+- 다만 `jjackkun_bot` 은 매번 `claude -p` 로 한 번씩 부르는 방식이다. 에이전트가 방에서 이어서 일하려면 §9 의 `claude --agent <호출명> --name <방>` 상주 세션에 메시지를 넣는 방식이 맞다. 두 방식의 비용 비교는 아직 재지 않았다.
+- 터미널쉬핑은 모델 호출을 `credential/brain` 한 곳에서 공급사 API 로 하고 공급사·모델·키를 DB 행으로 관리한다(전체 확인은 못 함). 그래서 **로컬 `claude` 를 새 공급사로 꽂는** 구조가 자연스럽다. 고객용 기능이 생기면 그것은 API 키 공급사로 분리한다.
+
 ## 출처
 
 - [cumora README (GitHub)](https://github.com/MaskedKM/cumora)
@@ -216,6 +247,7 @@ cumora 는 사람과 영속 에이전트가 함께 쓰는 팀 채팅이고, GitH
 - [InfoQ — Subagents in Gemini CLI](https://www.infoq.com/news/2026/04/subagents-gemini-cli/)
 - [Google Cloud — The new Gemini Enterprise](https://cloud.google.com/blog/products/ai-machine-learning/the-new-gemini-enterprise-one-platform-for-agent-development)
 - [Claude Code Docs — Message your other Claude Code sessions](https://code.claude.com/docs/en/cross-session-messaging)
+- [Claude Code Docs — Legal and compliance](https://code.claude.com/docs/en/legal-and-compliance)
 - [Stark Insider — Meta Muse: Our AI Agent Told Meta's AI About Me](https://www.starkinsider.com/2026/09/meta-muse-multi-agent-household-trust.html)
 - [Tom's Hardware — Meta Muse runs agents on AMD EPYC Turin hosts](https://www.tomshardware.com/pc-components/cpus/meta-muse-runs-agents-on-amd-epyc-turin-hosts-with-two-cores-and-8gb-of-memory-ai-agent-can-pass-terminal-commands-to-ubuntu-host-system)
 - [MemGPT: Towards LLMs as Operating Systems](https://arxiv.org/pdf/2310.08560)
