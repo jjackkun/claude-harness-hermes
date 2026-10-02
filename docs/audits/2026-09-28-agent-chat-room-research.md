@@ -21,7 +21,8 @@
 | 서브에이전트 `memory` 필드 | 참고 | `memory: project` → `.claude/agent-memory/<name>/MEMORY.md` 앞 200줄 자동 주입. 헤르메스 MEMORY.md 와 겹친다 |
 | Agent Teams | ❌ | 실험 기능(`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`), "/resume and /rewind do not restore in-process teammates" |
 | Agent View / `--bg --name` | 부분 | 이름 있는 배경 세션을 다시 붙일 수 있음. `--bg` 와 `--agent` 조합 예시는 문서에 없음(미확인) |
-| 서브에이전트 재개 · 세션 간 메시지 | ❌ | 부모 세션 안에서만 / "A message is a piece of text … never the sender's conversation history" |
+| 서브에이전트 재개 | ❌ | 부모 세션 안에서만 |
+| 세션 간 메시지(cross-session messaging) | ✅ **(2026-10-02 정정)** | 처음엔 ❌ 로 적었으나 오류였다. 인용문 "A message is a piece of text … never the sender's conversation history" 가 바로 이 기능의 문서(code.claude.com/docs/en/cross-session-messaging)에서 온 것이다. `ListAgents` · `SendMessage` 로 같은 PC 의 다른 세션에 텍스트를 보내고, 받는 세션이 쉬고 있으면 새 턴이 시작된다. 실측은 `docs/audits/2026-10-02-multi-agent-collab-direction.md` §9 |
 
 ## 2. 커뮤니티 구현 (README 기준, 소스 미검증, 2026-09-28)
 

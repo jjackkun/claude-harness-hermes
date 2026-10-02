@@ -170,6 +170,40 @@ cumora 는 사람과 영속 에이전트가 함께 쓰는 팀 채팅이고, GitH
 - A2A 의 **Agent Card 는 우리 명부 항목(이름·분야·직급·SOUL)과, Task 생애주기는 우리 인계 봉투(`goal`·`done_when`·되돌아오는 네 방식)와 모양이 비슷**하다. 새 표준을 따를 필요는 없지만, 나중에 다른 제품의 에이전트와 말해야 할 때의 참고 형식이다.
 - 검색에 "공유 에이전트 메모리는 최고의 조율 수단이자 최대의 공격 표면"이라는 제목의 글들이 보였다(본문은 읽지 않았다). 공유 작업 기록을 설계할 때 한 에이전트가 쓴 내용을 다른 에이전트가 그대로 믿는 위험을 따로 보아야 한다는 신호로만 적어 둔다.
 
+
+## 9. 세션 간 메시지(Cross-Session Messaging) — 공식 기능과 실측 (2026-10-02 추가)
+
+### 정정
+이 문서 앞쪽과 대화에서 "Claude Code 세션끼리는 서로 말을 걸 수 없어 중계자를 만들어야 한다"고 한 것은 **틀렸다.** 공식 기능이 있다. 2026-09-28 조사 문서도 같은 오류(❌)를 적고 있어 함께 고쳤다.
+
+### 공식 문서 요약 (code.claude.com/docs/en/cross-session-messaging 원문 확인)
+| 항목 | 내용 |
+| --- | --- |
+| 방식 | `ListAgents` 로 도달 가능한 세션을 찾고 `SendMessage` 로 이름을 지정해 텍스트를 보낸다. 사용자는 `@이름` 으로 대상을 지정할 수도 있다. 세션 이름은 `--name` 또는 `/rename` |
+| 전달 | 같은 PC 는 세션마다 소켓으로 직접 전달하며 Anthropic 서버를 거치지 않는다. 다른 PC·클라우드 세션은 Remote Control 경유 |
+| 받는 쪽 | 일하는 중이면 도구 호출 사이에 읽고, **쉬는 중이면 메시지로 새 턴을 시작**한다. 입력한 프롬프트처럼 사용량에 잡힌다 |
+| 안전 | 메시지는 승인으로 치지 않고, 설정·`CLAUDE.md` 를 바꾸지 못하며, 명령(`/compact` 등)은 실행되지 않고, 받는 세션의 권한 질문은 그대로 뜬다 |
+| 수신 통제 | `crossSessionInbound`: `accept` / `hold`(승인 대기) / `refuse`. 값이 없으면 받는 쪽이 권한을 묻는 세션일 때 전달, 권한을 건너뛰는 세션이면 보류 |
+| 한계 | 텍스트만, 약 100만 자 상한, 짧은 시간 연발은 보내는 쪽에서 거부. 받는 쪽은 발신자별 반복 메시지를 제한하고 같은 내용 반복을 버리며 대기열 50개 상한이라 **두 세션 사이 메시지 루프는 저절로 멈춘다**고 문서가 적었다 |
+| 알림 | `notify_when_idle`: 상대가 쉬게 되면 토큰 소비 없이 알림 구독(12시간 후 만료) |
+| 무인 작업자 | `claude -p` 도 받을 수 있다(`crossSessionInbound: accept` 를 `--settings` 로). 맨 몸(bare) 모드는 받을 수 없다 |
+| 버전 | v2.1.224 이상(윈도우 네이티브 v2.1.234). 시험 환경은 v2.1.287 |
+
+### 실측 (1회, 일회용 프로젝트, 입력 = 신규 + 캐시생성 + 캐시읽기)
+- 방 A(`backlog-manager` 에이전트 방)가 방 B(쉬는 중인 일반 세션)에 질문을 보냈고, **B 가 메시지로 새 턴을 스스로 시작해 답했으며 A 가 그 답을 받아 보고했다.** 중계 프로그램 없음.
+- 토큰: 받는 B — 메시지 전 입력 70,601 → 메시지로 시작한 턴 72,242 (**+1,641**, 앞부분 70,599 는 캐시 읽기). 보내는 A — `ListAgents` 결과 **+2,600**, `SendMessage` +510, B 의 답 도착 +1,486 (A 총 입력 71,714 → 76,701).
+- 메시지 하나의 증가분은 1.6K~2.6K 이고 가장 비싼 것은 **세션 목록 조회(+2,600)** 였다(살아 있는 세션 여섯). 세션이 늘면 커진다. 이름을 지정하면 목록 조회를 건너뛸 수 있다고 문서가 적었다. 캐시 읽기가 구독 사용량에서 어떻게 세어지는지는 확인하지 못했다.
+
+### 실측에서 알게 된 것
+1. **이 PC 의 모든 실제 세션이 목록에 보인다.** terminal-shipping 세션 셋, zeroday-frontend, 지금 대화 중인 공장 세션까지 보였다. 이번 시험에서는 시험용 B 에만 전달됐지만, 한 세션이 다른 프로젝트의 진행 중 세션에 메시지를 보낼 수 있다는 뜻이다. 방 설계에서 **에이전트가 보낼 수 있는 대상을 제한하는 규칙**이 필요하다.
+2. **`--name roomA`·`roomB` 가 적용되지 않았다.** 세 세션이 모두 같은 이름("hermes-chat documentation review")이었다. 원인은 확인하지 못했다(대화 중인 세션 안에서 시험 세션을 띄우며 이름이 물려받아졌을 가능성은 추정일 뿐이다). A 는 이름 대신 작업 폴더와 짧은 ID 로 B 를 구별했다. 터미널에서 직접 열면 이름이 맞는지는 아직 모른다.
+
+### 설계에 주는 뜻
+- **방이 곧 주소다.** `claude --agent <호출명> --name <방이름>` 으로 연 방은 이름으로 닿는 세션이다. 전달 수단을 새로 만들 필요가 없다.
+- 루프 방지의 일부(반복 억제·대기열 상한)는 내장이다. 그러나 **누가 답할지 정하는 규칙, 방별 토큰 예산, 공유 작업 기록은 여전히 비어 있다** — 문서에 없고 메시지 하나가 받는 세션의 전체 컨텍스트 읽기(기본 입력 약 7만)를 일으키므로 비용 문제도 그대로다.
+- 웹 메신저 화면은 같은 소켓에 쓰는 방식이 가능해 보이나(문서가 "스크립트나 훅이 세션에 글을 올리는 경우"를 다룸) 외부 프로그램의 메시지는 수신 통제에 걸리며 실제로 되는지는 시험하지 않았다.
+- 한계: 1회 시험이다. 에이전트끼리 연속 대화 시 루프 억제와 지연은 재지 않았다.
+
 ## 출처
 
 - [cumora README (GitHub)](https://github.com/MaskedKM/cumora)
@@ -181,6 +215,7 @@ cumora 는 사람과 영속 에이전트가 함께 쓰는 팀 채팅이고, GitH
 - [Redlinesoft — Context Caching for Gemini 3 Multi-Agent Clusters](https://blog.redlinesoft.net/posts/context-caching-revolution-gemini-3/)
 - [InfoQ — Subagents in Gemini CLI](https://www.infoq.com/news/2026/04/subagents-gemini-cli/)
 - [Google Cloud — The new Gemini Enterprise](https://cloud.google.com/blog/products/ai-machine-learning/the-new-gemini-enterprise-one-platform-for-agent-development)
+- [Claude Code Docs — Message your other Claude Code sessions](https://code.claude.com/docs/en/cross-session-messaging)
 - [Stark Insider — Meta Muse: Our AI Agent Told Meta's AI About Me](https://www.starkinsider.com/2026/09/meta-muse-multi-agent-household-trust.html)
 - [Tom's Hardware — Meta Muse runs agents on AMD EPYC Turin hosts](https://www.tomshardware.com/pc-components/cpus/meta-muse-runs-agents-on-amd-epyc-turin-hosts-with-two-cores-and-8gb-of-memory-ai-agent-can-pass-terminal-commands-to-ubuntu-host-system)
 - [MemGPT: Towards LLMs as Operating Systems](https://arxiv.org/pdf/2310.08560)
