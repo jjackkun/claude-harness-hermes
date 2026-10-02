@@ -91,8 +91,52 @@
 3. 방 vs 소환 토큰을 같은 일로 나란히 재서 소환이 정말 필요한지 정한다.
 4. xAI 1차 글 확인이 필요하면 별도로 한다.
 
+## 6. Meta Muse 와 논문 비교 (2026-10-02 추가)
+
+### 용어
+하나로 부르는 말은 없고 층마다 다르다(이 용어 목록은 기억에 의한 것이며 웹으로 확인하지 않았다): 공유 기억 = shared memory·블랙보드, 층을 나눈 기억 = 계층형 메모리, 컨텍스트 안/밖 분리 = MemGPT 방식, 기억 종류 = 단기·일화·의미·절차, 위에서 일을 나눔 = 오케스트레이터-워커·슈퍼바이저, 무엇을 컨텍스트에 넣을지 설계 = 컨텍스트 엔지니어링.
+
+### Meta Muse (Meta 의 에이전트)
+- 확인된 것(블로그형 기사 1건): 에이전트가 자기 컨테이너에서 돌고 기억·문서를 저장하며, 그룹 채팅(텔레그램 시험)에 넣으면 대화가 앱의 에이전트에도 이어진다. 사용자가 기억을 보고 지우고 더할 수 있다. 계층 없이 동료처럼 보였다고 한다. 샌드박스는 코어 2개·8GB.
+- **확인되지 않은 것**: 기억이 에이전트별인지 공유인지, 계층형인지, 중앙 저장소인지. 기사 저자도 "블랙박스"라 했다.
+- 검색에 섞여 나온 "Spark" 공유 메모리 서비스와 MUSE-Autoskill 논문은 이름만 비슷한 별개 프로젝트로 보이며, Meta Muse 의 구조가 아니다. Muse Spark 의 "멀티 에이전트"는 한 질문을 병렬로 추론하는 방식으로 기억 구조와 다른 이야기다.
+
+### 논문 (원문 PDF 를 직접 열어 확인. 읽기 도구의 요약은 MIRIX 기억 종류를 3개로 잘못 말해 원문으로 고쳤다)
+
+| | MemGPT (arXiv 2310.08560) | MIRIX (arXiv 2507.07957) |
+| --- | --- | --- |
+| 핵심 | 컨텍스트를 램, 바깥 저장소를 디스크처럼 다룬다 | 기억 6종류 + 종류별 관리 에이전트 6개 + 작업을 나눠 주는 Meta Memory Manager |
+| 구조 | 메인 컨텍스트(시스템 지시·작업 기억·최근 대화 큐) + 외부 저장소(대화 기록 검색, 임의 텍스트 읽기/쓰기 DB) | Core · Episodic · Semantic · Procedural · Resource · Knowledge Vault |
+| 기억을 누가 관리 | LLM 이 함수 호출로 스스로 | 관리 에이전트들이 쓰고 대화 에이전트가 읽는다 |
+| 넘칠 때 | "memory pressure" 경고 → 가득 차면 오래된 메시지 일부를 내보내고 재귀 요약으로 대체 | 의미 기억을 트리로 정리, 큰 자료는 클라우드로 |
+| 꺼내기 | 모델이 검색 함수 호출 | Active Retrieval: 답하기 전에 모델이 주제를 만들고 찾은 것을 시스템 프롬프트에 넣음 |
+| 보고된 성능 | 10만 토큰 이상 대화에서 품질 유지 | ScreenshotVQA 에서 RAG 보다 정확도 35%↑·저장 99.9%↓, LOCOMO 85.4% |
+
+### 우리 구조와의 대응
+| 논문 개념 | 우리 | 차이 |
+| --- | --- | --- |
+| 메인 컨텍스트 | 세션 시작 주입(SOUL·기억·요약 각 4,096B 상한) | 고정 상한. 넘침 경고·자동 내보내기 없음 |
+| 외부 저장소 검색 | `recall` (낱말 점수, 읽기 전용) | 모델이 필요할 때 부른다 |
+| Episodic / Semantic / Procedural / Core | 대화 요약 / `memory.jsonl` / 결정화 스킬 / SOUL | 대응 |
+| Resource | git 파일 | 별도 기억 종류 없음 |
+| Knowledge Vault | 저장하지 않음(비밀·개인 문장은 쓰기 전에 걸러냄) | 의도적으로 다름 |
+| 기억을 누가 쓰나 | 훅·CLI 가 쓰고 에이전트는 `note` 로 가끔 | MemGPT 와 반대 |
+
+### 알게 된 것
+1. **MIRIX 의 "multi-agent" 는 한 사용자의 기억을 여럿이 나눠 관리하는 구조**이지, 디자인·개발·실측 같은 작업 에이전트가 기억을 공유하며 협업하는 구조가 아니다. 두 논문 모두 **작업 에이전트 간 공유 작업 기록**은 다루지 않아(읽은 범위), §2 의 "공유 작업 기록 + 봉투 릴레이"는 우리가 설계해야 한다.
+2. "중앙 기억 + 작업 분배"에 가장 가까운 것은 MIRIX 의 Meta Memory Manager(라우터)이고, 우리 쪽 대응은 백로그 `auto-owner-summon.md` 의 "작업 → 담당 자동 연결"이다.
+
+### 가져올지 판단(제안)
+- MemGPT 의 압력 경고·자동 요약: 밀린 것은 `recall` 로 찾으므로 당장 불필요.
+- MIRIX 의 Active Retrieval(매 단계 자동 검색): 우리가 잰 `recall` 1회가 +765~+2,100 토큰이라 매 턴이면 부담이 크다. **필요할 때만 부르는 지금 방식 유지**를 권한다. 논문 쪽 비용은 읽은 범위에서 확인하지 못했다.
+- 한계: 두 논문의 본문 전체가 아니라 핵심 대목을 찾아 읽었다. MIRIX 의 충돌 처리·검색 세부는 확인하지 못했다.
+
 ## 출처
 
+- [Stark Insider — Meta Muse: Our AI Agent Told Meta's AI About Me](https://www.starkinsider.com/2026/09/meta-muse-multi-agent-household-trust.html)
+- [Tom's Hardware — Meta Muse runs agents on AMD EPYC Turin hosts](https://www.tomshardware.com/pc-components/cpus/meta-muse-runs-agents-on-amd-epyc-turin-hosts-with-two-cores-and-8gb-of-memory-ai-agent-can-pass-terminal-commands-to-ubuntu-host-system)
+- [MemGPT: Towards LLMs as Operating Systems](https://arxiv.org/pdf/2310.08560)
+- [MIRIX: Multi-Agent Memory System for LLM-Based Agents](https://arxiv.org/pdf/2507.07957)
 - [ZenML — Designing Persistent, Multi-Agent Workflows for Grok Bot](https://www.zenml.io/llmops-database/designing-persistent-multi-agent-workflows-for-grok-bot)
 - [Flocker — Grok Bot Workspaces and Specs](https://flocker.md/blog/grok-bot-roles-workspace-and-specs/)
 - [mem0 — Grok Bot Guide](https://mem0.ai/blog/grok-bot-guide)
