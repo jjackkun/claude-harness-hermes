@@ -95,9 +95,16 @@ run_step() { # run_step <이름> <명령...>
 # N>1 이면 각 시험을 자식으로 띄우고, 출력·판정을 **등록 순서대로** 모아 낸다.
 # 순서를 유지하는 이유: 사람이 읽는 로그가 실행마다 뒤바뀌면 diff 를 못 뜬다.
 # 기본은 **병렬** — 돌릴 때마다 그 컴퓨터의 코어 수를 읽어 **절반**을 쓴다(상한 없음).
-# 설치 시험이 CPU 를 많이 써서 코어를 전부 쓰면 서로 다툰다. 22코어면 11, 4코어 CI 면 2.
+# 설치 시험이 CPU 를 많이 써서 코어를 전부 쓰면 서로 다툰다. 22코어면 11.
+# 단 **4코어 이하는 코어 수만큼** — 절반이면 큰 시험 몇 개가 줄을 서서 한도(600초)에 붙는다.
+#   2026-10-03 실측(같은 기계, taskset 4코어, 130/130 통과): 병렬 2 → 570초 · CPU 169% / 병렬 4 → 336초 · CPU 358%.
+#   CI(4코어)는 부하에 흔들린 이력이 있어 ci.yml 이 HARNESS_TEST_JOBS=2 로 예전 값을 고정한다.
 # 순차로 돌리려면 HARNESS_TEST_JOBS=1.
-_default_jobs() { local n; n=$(( $(nproc 2>/dev/null || echo 2) / 2 )); (( n < 1 )) && n=1; echo "$n"; }
+_default_jobs() {
+  local cores n; cores=$(nproc 2>/dev/null || echo 2)
+  if (( cores <= 4 )); then n=$cores; else n=$(( cores / 2 )); fi
+  (( n < 1 )) && n=1; echo "$n"
+}
 JOBS="${HARNESS_TEST_JOBS:-$(_default_jobs)}"
 
 # ── 샤드 — CI 가 서버 여러 대에 나눠 돌릴 때 이 서버의 몫만 돈다. HARNESS_TEST_SHARD="몇번째/몇대"(예 2/4).

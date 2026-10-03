@@ -29,4 +29,6 @@ jobs:
         env:
           SKIP_INTERACTIVE: "1"
           HARNESS_TEST_SHARD: "${{ matrix.shard }}/4"
+          # 4코어 러너 — run-all 기본(4코어 이하 = 코어 수)보다 낮춰 예전 병렬 2 를 지킨다(부하 흔들림 이력, harness-eval-test-flaky)
+          HARNESS_TEST_JOBS: "2"
         run: bash tests/run-all.sh
