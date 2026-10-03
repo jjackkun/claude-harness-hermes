@@ -45,8 +45,9 @@ def _memory_line(e: dict, rule_hits: dict, conflict_ids: set, singles: set) -> s
     if e["about"] in singles:
         tags.append("단일 사례")
     tag = f"  _[{' · '.join(tags)}]_" if tags else ""
-    about = f"**{e['about']}**: " if e["about"] else ""
-    return f"- {about}{e['body'] or '(본문 없음)'}{tag}"
+    # 줄바꿈·연속 공백은 한 칸으로 — 이 파일은 출근 본문의 폴백이라 저장된 글이 가짜 제목·항목 줄을 만들면 안 된다
+    about = f"**{' '.join(e['about'].split())}**: " if e["about"] else ""
+    return f"- {about}{' '.join((e['body'] or '').split()) or '(본문 없음)'}{tag}"
 
 
 def _conflict_line(c: dict) -> str:

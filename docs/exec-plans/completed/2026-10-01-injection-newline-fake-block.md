@@ -17,3 +17,5 @@
 세션 주입은 모든 세션의 시작이라 바뀌면 `hermes-soul-inject-test` · `hermes-agent-summary-test` 의 본문 대조가 모두 영향받는다 — 계획서를 쓰고 한다.
 
 근거: `docs/exec-plans/completed/2026-10-01-agent-recall.md` §7 (구현 리뷰 N4).
+
+> 회고: 착수·완료 계획 `docs/exec-plans/completed/2026-10-03-injection-newline-fold.md` §8.

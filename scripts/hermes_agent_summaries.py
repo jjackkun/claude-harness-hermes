@@ -66,7 +66,8 @@ def _block(session_id: str, raw: str, updated_at: str) -> str:
     where = "@ 호출" if str(session_id).startswith("sub:") else "방"
     lines = [f"■ {str(updated_at or '')[:10]} · {where}"]
     for key, label in _LABELS:
-        items = [str(x) for x in (slots.get(key) or []) if str(x).strip()]
+        # 항목 안 줄바꿈·연속 공백은 한 칸으로 — 저장된 글이 `■ …` 줄을 만들어 가짜 블록이 되지 않게
+        items = [" ".join(str(x).split()) for x in (slots.get(key) or []) if str(x).strip()]
         if items:
             lines.append(f"  {label}: " + " / ".join(items))
     return "\n".join(lines) if len(lines) > 1 else ""

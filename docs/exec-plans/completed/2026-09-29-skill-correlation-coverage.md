@@ -22,3 +22,7 @@
 
 - 판정 규칙: 겹침을 흔한 낱말 제외 + 스킬 길이 대비 비율로(`backlog/crystallize-stability-score.md` 후보 1 과 같은 일).
 - 판정 범위: Stop 훅 밖(세션 압축 시점 · 다음 세션 시작 시 이전 세션 몫)에서도 상관을 돈다.
+
+## 회고
+
+이 문서는 기록이다 — 회고는 `docs/exec-plans/completed/2026-09-29-skill-yield-integrity.md` §8.

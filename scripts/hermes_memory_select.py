@@ -61,6 +61,11 @@ def select_memories(con, agent_id: str, hint: str = "", top_related: int = TOP_R
     return {"pinned": pinned, "related": related, "recent": recent, "total": len(memories)}
 
 
+def _one_line(text) -> str:
+    """줄바꿈·연속 공백을 한 칸으로 — 저장된 본문이 `## 핀` 같은 제목 줄을 만들어 가짜 구획이 되지 않게."""
+    return " ".join(str(text or "").split())
+
+
 def render_selection(sel: dict, agent_name: str) -> str:
     """주입용 본문. 전체 수와 고른 수를 머리에 적어 '더 있다' 를 보이게 한다."""
     shown = len(sel["pinned"]) + len(sel["related"]) + len(sel["recent"])
@@ -70,9 +75,9 @@ def render_selection(sel: dict, agent_name: str) -> str:
             continue
         lines.append(f"\n## {label}")
         for m in items:
-            about = f"**{m['about']}**: " if m.get("about") else ""
+            about = f"**{_one_line(m['about'])}**: " if m.get("about") else ""
             tag = "  _[전에 철회됨]_" if m.get("previously_retracted") else ""
-            lines.append(f"- {about}{m.get('body') or '(본문 없음)'}{tag}")
+            lines.append(f"- {about}{_one_line(m.get('body')) or '(본문 없음)'}{tag}")
     if shown == 0:
         lines.append("(아직 기억 없음)")
     return "\n".join(lines) + "\n"
