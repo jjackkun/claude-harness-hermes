@@ -7,6 +7,7 @@
 # 막는 것: Edit·Write·MultiEdit 의 file_path 가 프로젝트 안의 두 대상일 때 / Bash 의 쓰기 연산(> >> tee sed -i cp mv rm truncate)이 두 대상을 향할 때.
 # 안 막는 것: SOUL.md(사람 승인 편집이 정상 경로) · organization.yaml · 읽기(cat grep jq) · 정식 CLI(hermes-agent.py …) ·
 #            프로젝트 밖 경로(realpath 로 판정 — /tmp 여부와 무관)와 변수 경로($T/… — 테스트 픽스처). 단 $CLAUDE_PROJECT_DIR·$PWD 는 프로젝트로 본다.
+#            Bash 의 상대 경로는 그 앞 마지막 `cd <경로>` 기준으로 푼다(`cd $VAR` 는 판정 불가 → 프로젝트 기준, 보수적).
 # SOUL.md(계획 2026-09-20-soul-self-approval-gap): 편집은 막지 않되 **초안 표시 줄을 없애는 것**(= 승인)은 사람의 승인 말이 있는 턴에만.
 #   Edit·MultiEdit·Write 가 표시 줄을 없애거나, 초안 상태인 SOUL.md 에 Bash 쓰기 연산을 하거나, `hermes-agent.py approve-soul` 을 부르면
 #   (a) HERMES_AGENT_ID 가 있으면(소환된 에이전트) 항상 차단, (b) .hermes/.soul-approval-intent 가 approve=true 이고 60분 안이 아니면 차단.
@@ -90,12 +91,30 @@ cmd = re.sub(r"(<<-?\s*[\x27\"]?(\w+)[\x27\"]?[^\n]*)\n.*?\n\s*\2\b", r"\1", cmd
 bare = re.sub(r"\"(?:\\.|[^\"\\])*\"|\x27[^\x27]*\x27", " ", cmd)
 if re.search(r"(^|[;&|(]|\n)\s*(?:\w+=\S+\s+)*(?:python3?\s+)?[^\s;&|]*hermes-agent\.py\b[^;&|\n]*\bapprove-soul\b", bare):
     soul_verdict("Bash approve-soul", "hermes-agent.py approve-soul")
+# 상대 경로의 기준 — 그 경로 앞에 나온 마지막 `cd <글자 그대로의 경로>`. 없거나 `cd $VAR`(판정 불가)면 프로젝트(보수적).
+# 2026-09-22 실측: `cd <다른 저장소> && rm .hermes/agents.json` 이 공장 명부로 오인돼 정본 받기가 막혔다.
+CD = re.compile(r"(?:^|[;&|(\n])\s*cd\s+([\x27\"]?)([^\s;&|\x27\"]+)\1")
+
+def base_at(pos):
+    base = project
+    for m in CD.finditer(cmd, 0, pos):
+        arg = os.path.expanduser(m.group(2))
+        if "$" in arg or arg == "-":
+            base = project
+        else:
+            base = os.path.realpath(arg if os.path.isabs(arg) else os.path.join(base, arg))
+    return base
+
+def resolve(tok, pos):
+    tok = os.path.expanduser(tok)
+    return os.path.realpath(tok if os.path.isabs(tok) else os.path.join(base_at(pos), tok))
+
 SOUL_ARG = r"[\x27\"]?([^\s\x27\";|&<>]*\.hermes/agents/[^/\s\x27\";|&<>]+/SOUL\.md)[\x27\"]?"
 for rx in (r">>?\s*" + SOUL_ARG, r"\btee\b[^|;&]*?\s" + SOUL_ARG, r"\bsed\b[^|;&]*\s-i\b[^|;&]*?\s" + SOUL_ARG,
            r"\b(?:cp|mv)\b[^|;&]*\s" + SOUL_ARG + r"\s*(?:$|[;&|])", r"\b(?:rm|truncate)\b[^|;&]*?\s" + SOUL_ARG):
     m = re.search(rx, cmd)
     if m and "$" not in m.group(1):
-        real = os.path.realpath(m.group(1) if os.path.isabs(m.group(1)) else os.path.join(project, m.group(1)))
+        real = resolve(m.group(1), m.start(1))
         if inside(real) and is_draft(real):
             soul_verdict("Bash 쓰기(초안 상태의 SOUL.md)", os.path.relpath(real, project))
 TARGET_ARG = r"[\x27\"]?([^\s\x27\";|&<>]*\.hermes/(?:agents\.json|agents/[^/\s\x27\";|&<>]+/MEMORY\.md))[\x27\"]?"
@@ -118,8 +137,8 @@ for rx, op in WRITES:
     else:
         # 글자 그대로의 경로는 "프로젝트 안인가" 로 판정한다 — /tmp 로 시작한다고 픽스처가 아니다
         # (2026-09-20 실측: 프로젝트가 /tmp 아래인 평가 픽스처에서 `cat >> /tmp/…/MEMORY.md` 로 우회됐다).
-        real = os.path.realpath(os.path.expanduser(tok) if os.path.isabs(os.path.expanduser(tok)) else os.path.join(project, tok))
-        if not (real == project or real.startswith(project + os.sep)):
+        real = resolve(tok, m.start(1))
+        if not inside(real):
             continue
     print(f"Bash {op}\t{tok}\t{label(tok)}")
     sys.exit(0)

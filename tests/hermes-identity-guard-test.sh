@@ -86,6 +86,15 @@ assert "변수 경로 픽스처 통과(\$T)" 0 "$(run Bash command 'cat > "$T/pr
 {}
 EOF')"
 assert "무관한 리다이렉트 통과" 0 "$(run Bash command "echo x > notes.md")"
+# cd 로 옮긴 폴더 기준으로 상대 경로를 푼다 (백로그 identity-guard-blocks-cross-machine-sync 목표 1·2)
+assert "cd 다른 저장소 && rm 상대 경로 → 통과(공장 명부로 오인하지 않는다)" 0 "$(run Bash command "cd $T/outside && rm -f .hermes/agents.json")"
+assert "같은 대상 절대 경로 → 통과(두 표기 같은 판정)" 0 "$(run Bash command "rm -f $T/outside/.hermes/agents.json")"
+assert "cd 프로젝트 && rm 상대 경로 → 차단" 2 "$(run Bash command "cd $P && rm -f .hermes/agents.json")"
+assert "프로젝트 절대 경로 rm → 차단(두 표기 같은 판정)" 2 "$(run Bash command "rm -f $P/.hermes/agents.json")"
+assert "cd 다른 곳 뒤 다시 cd 프로젝트 → 차단(마지막 cd 기준)" 2 "$(run Bash command "cd $T/outside; cd $P && rm .hermes/agents.json")"
+assert "cd 가 쓰기 뒤에 오면 영향 없음 → 차단" 2 "$(run Bash command "rm .hermes/agents.json && cd $T/outside")"
+assert "cd \$변수(판정 불가) → 프로젝트 기준 그대로 차단" 2 "$(run Bash command 'cd "$OTHER" && rm -f .hermes/agents.json')"
+assert "cd 다른 저장소 && sed -i MEMORY.md → 통과" 0 "$(run Bash command "cd $T/outside && sed -i 's/a/b/' .hermes/agents/$ID/MEMORY.md")"
 
 echo "== 3절 배선·관측"
 CONF="$REPO_ROOT/presets/workflow/hermes.conf"
