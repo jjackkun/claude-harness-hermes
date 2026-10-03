@@ -48,7 +48,7 @@
 - 현재(15종): `high` 9 · `medium` 4 · `low` 2. 리뷰어 대부분(python·typescript·database·silent-failure·tdd)이 `sonnet` + `high`.
 - 글 근거: 최신 모델은 낮은 effort 에서도 이전 세대 high 를 따라잡는 경우가 있다(Fable 5.1 low ≈ Fable 5 high, 비용 1/3).
 - 할 일: `backlog/agent-model-routing-blindspot.md`(어느 에이전트가 어느 모델로 불렸는지 기록이 없다)와 **합쳐서** 진행한다. 관측 없이 effort 를 내리면 같은 문제를 반복한다.
-- 검증: `backlog/agent-eval-regression.md` 의 평가 세트가 생긴 뒤, 리뷰어 1종을 `high`/`medium` 으로 돌려 놓친 결함 수를 비교한다.
+- 검증: 평가 세트(`completed/2026-09-20-agent-eval-regression.md`)로, 리뷰어 1종을 `high`/`medium` 으로 돌려 놓친 결함 수를 비교한다.
 
 #### C4. 규칙·스킬 문구 안티패턴 감사
 
@@ -70,15 +70,15 @@
 ## 진행 (2026-09-18)
 
 C1·C5·C4 는 `completed/2026-09-18-cost-levers-c1-c4-c5.md` 로 완료(C1 haiku 고정 · C5 cron 래퍼 플래그 · C4 감사 문서
-`docs/audits/2026-09-18-prompt-antipattern-audit.md`). **남은 것은 C2·C3** — 평가 세트(`agent-eval-regression`, 착수 조건
-미충족)와 관측(`agent-model-routing-blindspot`, 09-29 판단) 이후. 이 항목은 그 둘을 기다린다.
+`docs/audits/2026-09-18-prompt-antipattern-audit.md`). **남은 것은 C2·C3** — 평가 세트(`agent-eval-regression`)는 2026-09-20 완료(`completed/2026-09-20-agent-eval-regression.md`),
+관측(`agent-model-routing-blindspot`)은 미충족 — 2026-10-03 기준 R-out 이벤트에 에이전트는 남지만 모델은 아직 안 남는다. 이 항목은 관측을 기다린다.
 
 ## 우선순위 제안
 
 1. **C1** — 한 줄 수정, 훅 경로(세션 시작마다)에서 기본 모델이 도는 것을 막는다.
 2. **C4** — 측정 없이도 문구 감사 기록은 남길 수 있다.
 3. **C5** — 플래그 판단은 싸다. 효과 측정 수단 확인이 선행.
-4. **C2 · C3** — 평가 세트(`agent-eval-regression`)와 관측(`agent-model-routing-blindspot`) 이후.
+4. **C2 · C3** — 관측(`agent-model-routing-blindspot`) 이후(평가 세트는 09-20 완료).
 
 ## 착수 시
 
