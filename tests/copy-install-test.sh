@@ -161,14 +161,15 @@ echo ""
 echo "== 7-b. 임시 경로 설치는 실 레지스트리에 등록되지 않는다 (2026-09-16 오염 사고) =="
 # 실 저장소의 project-claude.sh 로 /tmp 프로젝트를 설치해도 실 .installed-projects 가 바뀌면 안 된다.
 REAL_REG="$REPO_ROOT/.installed-projects"
-REG_BEFORE="$(cat "$REAL_REG" 2>/dev/null | md5sum)"
 T2="$TMP/tmpproj"; mkdir -p "$T2"; git -C "$T2" init -q
 UNTRACKED_BEFORE="$(git -C "$REPO_ROOT" status --short --untracked-files=all | grep -c '^??')"
 bash "$REPO_ROOT/project-claude.sh" "$T2" hermes >"$TMP/tmpproj.log" 2>&1
 assert "임시 경로 설치 종료 코드 0" "0" "$?"
 assert "등록 생략 로그" "1" "$(grep -c '레지스트리 등록 생략' "$TMP/tmpproj.log")"
-assert "실 .installed-projects 불변" "$REG_BEFORE" "$(cat "$REAL_REG" 2>/dev/null | md5sum)"
-assert "실 레지스트리에 /tmp 경로 없음" "0" "$(grep -c '^/tmp/' "$REAL_REG" 2>/dev/null)"
+# 파일 전체 md5 가 아니라 "이 설치 경로가 안 들어갔나" 를 본다 — 병렬 묶음에서는 다른 시험이 같은 실 파일에
+# 자기 항목을 넣고 빼므로 전체 비교는 남의 흔적에 빨개진다(CI 10-03 run 37088273514: 끝에 빈 파일).
+assert "실 .installed-projects 에 이 임시 설치가 없다" "0" "$(cat "$REAL_REG" 2>/dev/null | grep -cxF "$T2")"
+assert "실 레지스트리에 /tmp 경로 없음" "0" "$(cat "$REAL_REG" 2>/dev/null | grep -c '^/tmp/')"
 # TMPDIR 이 다른 곳(백그라운드 잡의 tmp 등)을 가리켜도 /tmp 사본은 등록되지 않아야 한다
 # (2026-09-17 리허설이 이 조합으로 실 레지스트리를 두 번 오염 — backlog installer-registers-rehearsal-paths).
 T3="$(mktemp -d /tmp/harness-guard.XXXXXX)"; git -C "$T3" init -q; OTHER_TMP="$(mktemp -d)"
