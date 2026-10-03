@@ -14,6 +14,7 @@ import re
 import sys
 
 _DESC = re.compile(r"^description:\s*(.+)$", re.MULTILINE)
+_BLOCK = re.compile(r"[|>][+-]?\d?[+-]?")    # 블록 표지만 있는 값 — `>3 steps` 같은 일반 글은 아니다
 
 
 def _log(msg: str) -> None:
@@ -31,8 +32,8 @@ def skill_headline(skill_path: str):
     if not m:
         return None
     desc = m.group(1).strip()
-    if desc[:1] in "|>":                      # YAML 블록 스칼라 — 들여 쓴 다음 줄들이 본문이다
-        desc = _block_body(head[m.end():])
+    if _BLOCK.fullmatch(desc):                # YAML 블록 스칼라(| > |- >+ |2 …) — 들여 쓴 다음 줄들이 본문, 따옴표도 본문이다
+        return _block_body(head[m.end():]) or None
     desc = desc.strip("\"'").strip()
     return desc or None
 

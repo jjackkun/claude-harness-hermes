@@ -40,6 +40,12 @@ assert "펼친 한 줄" "[헤르메스 규칙 — fold] 접힌 첫 줄 접힌 �
 echo "3b 따옴표 한 줄 · |- 와 빈 줄"
 assert "따옴표 벗김(회귀)" "[헤르메스 규칙 — quoted] 따옴표 설명" "$(inject SKILL.md "$T/quoted/SKILL.md")"
 assert "|- 빈 줄 건너 이어 붙임" "[헤르메스 규칙 — strip] 네 칸 들여쓴 줄 빈 줄 뒤 줄" "$(inject SKILL.md "$T/strip/SKILL.md")"
+echo "3c 블록처럼 보이는 일반 글 · 블록 본문의 따옴표 (리뷰 LOW)"
+mkdir -p "$T/gt" "$T/bq"
+printf -- '---\ndescription: >3 steps\n---\n' > "$T/gt/SKILL.md"
+printf -- '---\ndescription: |\n  "인용" 으로 시작해 끝\x27\n---\n' > "$T/bq/SKILL.md"
+assert "'>' 뒤에 글이 붙으면 일반 글" "[헤르메스 규칙 — gt] >3 steps" "$(inject SKILL.md "$T/gt/SKILL.md")"
+assert "블록 본문의 따옴표는 그대로" "[헤르메스 규칙 — bq] \"인용\" 으로 시작해 끝'" "$(inject SKILL.md "$T/bq/SKILL.md")"
 echo "4 이름표"
 assert "SKILL.md 아닌 파일은 이름 그대로" "[헤르메스 규칙 — plain-rule.md] 평범한 파일 스킬." "$(inject plain-rule.md "$T/plain-rule.md")"
 

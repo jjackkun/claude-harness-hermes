@@ -18,4 +18,6 @@
 
 근거: `docs/exec-plans/completed/2026-10-01-agent-recall.md` §7 (구현 리뷰 N4).
 
-> 회고: 착수·완료 계획 `docs/exec-plans/completed/2026-10-03-injection-newline-fold.md` §8.
+## 회고
+
+착수·완료 계획 `docs/exec-plans/completed/2026-10-03-injection-newline-fold.md` §8.
