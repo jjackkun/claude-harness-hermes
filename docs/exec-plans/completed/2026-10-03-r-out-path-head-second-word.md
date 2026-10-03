@@ -26,3 +26,24 @@
 - 위 1·2 는 `out_report` 의 머리별 분포를 바꾸므로, 바꾸기 전 `--by head` 표를 저장해 전후를 대조한다.
 
 근거: `docs/exec-plans/completed/2026-10-01-out-shape-agent-fields.md` §7 (구현 리뷰).
+
+## 결과 (2026-10-03)
+
+- [x] 후보 1+2 를 합쳤다 — 훅의 `head_of` 는 `cd X &&`·`VAR=값` 걷기는 그대로 두고, 둘째 단어 판정만 `out_shape.second_word`(알려진 부명령 · 스크립트 파일 이름) 하나로 쓴다. 모듈을 못 불러오면 첫 단어만(EXTRA 는 지금처럼 `shape=err`).
+- [x] `out_shape._second` → 공개 `second_word`. git 부명령에 `check-ignore`·`reflog` 추가(재생 대조에서 잃던 머리). 둘째 단어 끝 `;` 는 떼고 판정.
+
+### 착수 조건 — 바꾸기 전 `--by head` 표 (30일, 1,143건, 상위)
+
+`(머리 없음)` 341 · `sed` 83 · `grep` 112 · `for` 31 · `{` 29 · `git show` 8 · `echo` 67 · `cat` 42 · `python3` 123 · … · `timeout 540` 4 · `-d);` 16
+
+옛 레코드의 `path` 는 다시 쓰지 않는다 — 이날 이후 `timeout <수>`·`sudo <x>`·토큰 모양 둘째 단어 행이 사라진다(분포 비교 때 2026-10-03 경계 표시).
+
+### 실측
+
+- 재생 대조: 이 프로젝트 대화 기록의 Bash 명령 1,097건을 옛·새 `head_of` 에 넣음 → 바뀐 것 25건(전부 `timeout <수>` → `timeout` 23 · `bash x.sh;` → `bash x.sh` 2) · 머리 종류 102 → 93. 쓸모 있는 머리 손실 0.
+- 시험: `output-budget-test` 32/32(새 5건, 수정 전 4 빨강) · `out-shape-test` 65/65.
+
+## 회고
+
+- 잘된 것: 실제 명령 재생으로 "잃는 머리" 3개(`git check-ignore`·`git reflog`·`;` 꼬리)를 커밋 전에 찾았다 — 시험 픽스처로는 안 보였다.
+- 다음 룰 후보: 없음.

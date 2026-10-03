@@ -136,6 +136,16 @@ payload_cmd 'ls -la /tmp' | run >/dev/null
 [[ "$(last_path)" == "cmd:ls" ]] && ok "일반 명령은 첫 토큰만" || bad "머리가 '$(last_path)'"
 payload_cmd '' | run >/dev/null
 [[ "$(last_path)" == "cmd:-" ]] && ok "빈 명령은 '-'" || bad "빈 명령 머리가 '$(last_path)'"
+# 둘째 단어는 알려진 부명령·스크립트 이름만 (백로그 r-out-path-head-second-word) — 토큰 모양 인자가 path 에 남지 않게
+payload_cmd 'python3 sk-live-ABCDEF0123456789' | run >/dev/null
+[[ "$(last_path)" == "cmd:python3" ]] && ok "인터프리터 뒤 토큰 모양 단어는 붙이지 않는다" || bad "머리가 '$(last_path)' (기대 cmd:python3)"
+payload_cmd 'git ghp_TOKENLIKE0123 status' | run >/dev/null
+[[ "$(last_path)" == "cmd:git" ]] && ok "모르는 git 둘째 단어는 붙이지 않는다" || bad "머리가 '$(last_path)' (기대 cmd:git)"
+payload_cmd 'git status --short' | run >/dev/null
+[[ "$(last_path)" == "cmd:git status" ]] && ok "알려진 부명령은 붙인다" || bad "머리가 '$(last_path)' (기대 cmd:git status)"
+payload_cmd 'timeout 540 bash x.sh' | run >/dev/null
+[[ "$(last_path)" == "cmd:timeout" ]] && ok "timeout·sudo 뒤 단어는 붙이지 않는다" || bad "머리가 '$(last_path)' (기대 cmd:timeout)"
+grep -q 'sk-live\|ghp_TOKEN' "$EVENTS" && bad "토큰 모양 단어가 기록에 새었다" || ok "토큰 모양 단어는 기록에 없다"
 # 명령별 분포 보고 — 2026-09-20 이전 형식(path 빈 칸)도 한 줄 심어 옛 기록 처리를 본다
 printf '{"ts": 1789477479, "rule": "R-out", "verdict": "pass", "stage": "posttooluse", "path": null, "detail": "141B 97ms"}\n' >> "$EVENTS"
 REPORT="$REPO_ROOT/assets/hooks/out_report.py"

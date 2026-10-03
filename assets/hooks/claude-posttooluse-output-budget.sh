@@ -54,11 +54,16 @@ import json, os, sys
 
 THRESHOLD = int(os.environ.get("R_OUT_THRESHOLD", "8192"))
 
-_INTERP = ("python3", "python", "bash", "sh", "node", "npm", "npx", "pnpm", "yarn", "git", "make",
-           "go", "cargo", "docker", "uv", "poetry", "timeout", "nohup", "sudo")
+if os.environ.get("R_OUT_HOOK_DIR"):                # 비면 넣지 않는다 — 프로젝트 루트의 같은 이름 모듈을 불러오지 않게
+    sys.path.insert(0, os.environ["R_OUT_HOOK_DIR"])
+try:
+    import out_shape
+except Exception:
+    out_shape = None                                   # 아래 EXTRA 가 "shape=err" 로 드러낸다
 def head_of(cmd):
     """명령 머리 — 어떤 종류의 명령이 큰 출력을 내는지 셀 수 있는 최소 식별자(계획 목표 5 '명령별 분포').
-    `cd X &&`·`VAR=값` 을 걷어내고 첫 토큰(+인터프리터면 둘째 토큰의 basename). 값·옵션은 남기지 않는다(비밀값 방지)."""
+    `cd X &&`·`VAR=값` 을 걷어내고 첫 토큰(+알려진 부명령·스크립트 파일 이름이면 둘째 토큰의 basename).
+    둘째 단어 규칙은 out_shape.second_word 하나 — 토큰 모양 인자가 path 에 남지 않게. 모듈이 없으면 첫 토큰만."""
     text = str(cmd or "").strip()
     while text.startswith("cd ") and ("&&" in text or ";" in text):
         text = text.split("&&", 1)[1] if "&&" in text else text.split(";", 1)[1]
@@ -69,9 +74,8 @@ def head_of(cmd):
     if not toks:
         return "-"
     head = toks[0].rsplit("/", 1)[-1]
-    if head in _INTERP and len(toks) > 1 and not toks[1].startswith("-") and "=" not in toks[1] and toks[1] != "|":
-        head += " " + toks[1].rsplit("/", 1)[-1]
-    return head[:48]
+    second = out_shape.second_word(head, toks[1].rstrip(";")) if out_shape and len(toks) > 1 else ""
+    return (head + (" " + second if second else ""))[:48]
 HEAD = "-"
 EXTRA = ""
 def emit(verdict, nbytes, dur, payload=None):
@@ -99,9 +103,8 @@ dur = d.get("duration_ms") or 0
 HEAD = head_of((d.get("tool_input") or {}).get("command")) if isinstance(d.get("tool_input"), dict) else "-"
 try:
     # 모양·에이전트 — 값·인자는 out_shape 가 돌려주지 않는다. 못 불러오면 조용히 넘기지 않고 표식을 남긴다.
-    if os.environ.get("R_OUT_HOOK_DIR"):            # 비면 넣지 않는다 — 프로젝트 루트의 같은 이름 모듈을 불러오지 않게
-        sys.path.insert(0, os.environ["R_OUT_HOOK_DIR"])
-    import out_shape
+    if out_shape is None:
+        raise ImportError("out_shape")
     _ti = d.get("tool_input")
     EXTRA = out_shape.fields_text(out_shape.shape_of(_ti.get("command") if isinstance(_ti, dict) else None),
                                   agent=d.get("agent_type"), sub=bool(d.get("agent_id")))

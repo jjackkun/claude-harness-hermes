@@ -13,7 +13,7 @@ R-out 의 `cmd:<머리>` 는 `cd X &&` 를 걷어낸 첫 단어라, 한 호출�
 
 계획: docs/exec-plans/completed/2026-10-01-out-shape-agent-fields.md 목표 1 · 2 · 3
 
-공개: shape_of · fields_text
+공개: shape_of · fields_text · second_word(R-out `cmd:<머리>` 도 같은 규칙으로 — 백로그 r-out-path-head-second-word)
 """
 
 import re
@@ -29,7 +29,8 @@ _SCRIPT_EXT = (".py", ".sh", ".js", ".mjs", ".ts")
 _SUBCOMMANDS = {
     "git": ("status", "diff", "log", "show", "add", "commit", "push", "pull", "checkout", "branch", "merge", "rebase",
             "fetch", "clone", "stash", "reset", "tag", "remote", "rev-parse", "ls-files", "ls-remote", "update-ref",
-            "fsck", "worktree", "config", "apply", "cherry-pick", "restore", "switch", "grep", "mv", "rm", "init"),
+            "fsck", "worktree", "config", "apply", "cherry-pick", "restore", "switch", "grep", "mv", "rm", "init",
+            "check-ignore", "reflog"),
     "npm": ("run", "test", "install", "ci", "build", "start", "exec", "lint"),
     "pnpm": ("run", "test", "install", "build", "start", "exec", "dlx", "add", "lint", "dev"),
     "yarn": ("run", "test", "install", "build", "start", "add", "lint", "dev"),
@@ -109,7 +110,7 @@ def _tokens(stage: str) -> list:
         return stage.split()
 
 
-def _second(head: str, token: str) -> str:
+def second_word(head: str, token: str) -> str:
     """둘째 단어 — 알려진 부명령이거나 스크립트 파일 이름일 때만. 그 밖에는 빈 글자(붙이지 않는다)."""
     if head in _SUBCOMMANDS:
         return token if token in _SUBCOMMANDS[head] else ""
@@ -126,7 +127,7 @@ def _head(stage: str):
     if not toks:
         return None
     head = _word(toks[0])
-    second = _second(head, toks[1]) if len(toks) > 1 else ""
+    second = second_word(head, toks[1]) if len(toks) > 1 else ""
     return head + (" " + second if second else "")
 
 
