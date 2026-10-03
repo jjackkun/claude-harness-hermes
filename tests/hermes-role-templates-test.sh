@@ -146,7 +146,7 @@ assert "초안 표시 줄 유지" 1 "$(grep -c '^> 초안 — 기계가 조직 �
 assert "역할: 조직 문장이 템플릿 문단보다 앞" 1 "$(sed -n '/^## 역할/,/^## 책임 경계/p' "$SOUL" | grep -n '공통 조직에서 디자인\|날카로운 취향' | head -2 | awk -F: 'NR==1{a=$0} NR==2{print (a ~ /공통 조직에서/) ? 1 : 0}')"
 assert "책임 경계: 조직 줄 + 템플릿 줄" "1 1" "$(sed -n '/^## 책임 경계/,/^## 원칙/p' "$SOUL" | grep -c '^- 한다: 공통 의 디자인 일') $(sed -n '/^## 책임 경계/,/^## 원칙/p' "$SOUL" | grep -c '시각 위계·타이포')"
 assert "원칙: 틀 원칙 유지 + 말투 줄" "1 1" "$(sed -n '/^## 원칙/,/^## 금지/p' "$SOUL" | grep -c '주장(claimed)과 검증(verified)') $(sed -n '/^## 원칙/,/^## 금지/p' "$SOUL" | grep -c '^- 말투:')"
-assert "도구: 템플릿 도구 줄" 1 "$(sed -n '/^## 도구/,$p' "$SOUL" | grep -c '프론트엔드 스킬(R6)')"
+assert "도구: 템플릿 도구 줄" 1 "$(sed -n '/^## 도구/,$p' "$SOUL" | grep -c '프론트엔드 스킬(규칙 ui-skill-first)')"
 assert "금지 절은 그대로(템플릿 절 아님)" 1 "$(sed -n '/^## 금지/,/^## 도구/p' "$SOUL" | grep -c '열쇠·비밀값을 다루지 않는다')"
 N_BEFORE="$(python3 -c "import json;print(len(json.load(open('$PJ/.hermes/agents.json'))['agents']))")"
 A hire 엉뚱 --org 디자인,담당,공통 --template no-such-template > "$T/hire2.out" 2>&1; RC=$?

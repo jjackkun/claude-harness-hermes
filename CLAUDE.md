@@ -70,7 +70,7 @@ PDF 4~5쪽: "AGENTS.md 를 백과사전이 아닌 *목차* 로 취급한다."
 <!--===DS:COUNTS:BEGIN===-->
 - 세션 중 실행 훅 **16종** + 훅이 공유하는 판정 모듈 **15개**
 - git pre-commit 게이트 **21종** — 차단 12 / 경고 9
-- 스킬 **6종** · 에이전트 **12종** · 테스트 **125개**
+- harness 프리셋이 까는 스킬 **6종** · 에이전트 **12종** · 공장 테스트 **126개**
 <!--===DS:COUNTS:END===-->
 
 **세션 중**: 매 턴 규율 리마인더 · 커밋 전 리뷰 리마인드 + `--no-verify` 탐지 · 에이전트 dispatch 차단 ·
@@ -134,7 +134,7 @@ PDF 11쪽: "이 리포지터리의 특정 구조와 툴링에 따라 크게 달�
 **자율 에이전트 (선택):**
 
 - cron + `scripts/hermes-cron-run.sh` 로 매니저 에이전트 자동 실행 가능
-- 설정 방법: `docs/hermes-cron-guide.md` 참고
+- 설정 방법: 공장 저장소(github.com/jjackkun/claude-harness-hermes)의 `docs/hermes-cron-guide.md` 참고
 - 테스트: `python3 scripts/hermes-manager.py --db .hermes/state.db --action start --projects <프로젝트명>`
 
 **목표 기반 자율 루프:**
@@ -143,14 +143,14 @@ PDF 11쪽: "이 리포지터리의 특정 구조와 툴링에 따라 크게 달�
 - 대화형: `/hermes-loop <목표>` — 현재 세션에서 반복 (파괴적 작업은 승인 게이트)
 - 상태/중단: `python3 scripts/hermes-loop.py status` / `... stop <loop-id>`
 - 재개: `scripts/hermes-loop-run.sh <프로젝트> --resume <loop-id>`
-- 가이드: `docs/hermes-loop-guide.md`
+- 가이드: 공장 저장소(github.com/jjackkun/claude-harness-hermes)의 `docs/hermes-loop-guide.md`
 
 **에이전트 지식이 컴퓨터를 따라간다 (A-11 · C-30~C-32 · T-22 · T-23):**
 
 - git 파일: 에이전트 기억(`agents/<id>/memory.jsonl`) · 나와 나눈 대화 요약(`agents/<id>/conversations/<사람>/`) · 작업 이력(`.hermes/journal.jsonl`). 세션 끝에 쓰이고 평소처럼 커밋한다.
 - 운반(`refs/hermes/sync`, 공개·비공개 무관하게 켜짐): 패턴 수 · 공통 대화 요약. 대화 원문은 **저장하지 않는다.**
 - 올리기 전 묻기: 개인적·업무 무관 문장은 파일에 안 쓰고 대기 — `python3 scripts/hermes-privacy-review.py`. 커밋 게이트 R-privacy 가 막는다.
-- 상태: `cat .hermes/sync.json` · `python3 scripts/hermes-sync.py status` · 가이드: `docs/hermes-sync-guide.md`
+- 상태: `cat .hermes/sync.json` · `python3 scripts/hermes-sync.py status` · 가이드: 공장 저장소(github.com/jjackkun/claude-harness-hermes)의 `docs/hermes-sync-guide.md`
 
 **원칙:**
 

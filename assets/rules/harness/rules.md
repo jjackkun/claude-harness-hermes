@@ -30,7 +30,7 @@
 위반 코드 발견 → 즉시 중단 → 사용자 보고 → 근본 수정.
 우회(eslint-disable, --no-verify, # noqa) 금지.
 
-## R6. UI 작업 전 스킬 호출 필수
+## ui-skill-first. UI 작업 전 스킬 호출 필수
 
 `.svelte` · `.tsx` · `src/` UI 파일 수정 전
 반드시 `Skill("impeccable")` 호출.

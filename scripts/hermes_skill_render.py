@@ -9,6 +9,7 @@
 공개 함수 3개: skill_headline · read_skill_snippet · inject_text
 """
 
+import os
 import re
 import sys
 
@@ -29,8 +30,22 @@ def skill_headline(skill_path: str):
     m = _DESC.search(head)
     if not m:
         return None
-    desc = m.group(1).strip().strip("\"'").strip()
+    desc = m.group(1).strip()
+    if desc[:1] in "|>":                      # YAML 블록 스칼라 — 들여 쓴 다음 줄들이 본문이다
+        desc = _block_body(head[m.end():])
+    desc = desc.strip("\"'").strip()
     return desc or None
+
+
+def _block_body(rest: str) -> str:
+    """블록 스칼라 본문 — 들여 쓴 줄을 한 줄로 이어 붙인다(주입은 한 줄이라 | 와 > 를 가르지 않는다)."""
+    lines = []
+    for line in rest.splitlines()[1:]:
+        if line.strip() and not line[:1].isspace():
+            break                             # 들여쓰기가 끝나면 다음 키
+        if line.strip():
+            lines.append(line.strip())
+    return " ".join(lines)
 
 
 def read_skill_snippet(skill_path: str, max_lines: int = 10) -> str:
@@ -54,6 +69,8 @@ def read_skill_snippet(skill_path: str, max_lines: int = 10) -> str:
 
 def inject_text(name: str, path: str, prefix: str = "헤르메스 규칙"):
     """주입 한 조각. description 있으면 `[prefix — 이름] 설명` 한 줄, 없으면 스니펫. 둘 다 없으면 None."""
+    if name == "SKILL.md":                    # 폴더형 스킬 — 파일 이름은 모두 같으니 폴더 이름이 이름표
+        name = os.path.basename(os.path.dirname(path)) or name
     desc = skill_headline(path)
     if desc:
         return f"[{prefix} — {name}] {desc}"

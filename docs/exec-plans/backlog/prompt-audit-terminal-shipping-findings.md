@@ -21,6 +21,12 @@
 | 7 | `assets/hooks/claude-userpromptsubmit-reminders.sh` (+ `hermes-search.py` 주입) | 매 요청 `[Active Plans]` 16개(기한 지난 2026-08-29 항목 포함) · `[Backlog]` 38개 · `[Hermes 관련 규칙]` 3개(요청과 무관한 것 포함 — 모델 질문에 유니패스·입사 규칙) · `[Harness Reminders]` 가 반복된다. prompt-audit Group 1d "매 턴 재주입": 현재 모델은 한 번 말한 지시를 유지하고, 무관한 규칙은 행동 신호로 읽힌다 | 계획·백로그 목록은 세션 시작 1회로. 헤르메스 규칙은 관련도 문턱을 두고 문턱 밑이면 0개. 리마인더는 세션 시작 1회 |
 | 8 | `assets/rules/web/design-quality.md` "Use `/impeccable` as the default skill for all frontend design work" · "Do not skip `/impeccable teach`" | 소우주는 화면을 `layout-ui-doc-first`(무엇을 정하나) → `shadcn-first`(무엇으로 만드나) 순으로 정했다 — 프론트 작업의 첫 스킬이 두 답 | 어느 쪽이 먼저인지 **사람이 정한다.** 정한 뒤 공장 규칙에 "프로젝트 스킬이 있으면 그것이 먼저" 한 줄 |
 
+## 진행 (2026-10-03)
+
+- **1~6 완료** — `docs/exec-plans/completed/2026-10-03-prompt-audit-fixes.md`. 1 은 `ui-skill-first` 로 개명(R1~R5·R7 도 같은 잠재 충돌이 있으나 보고된 실충돌이 없어 남김).
+- 남은 것: **7**(terminal-shipping `model-discipline-test` 전후 측정이 먼저) · **8**(사람 결정).
+- 소우주에 닿으려면 update-all 전파가 필요하다.
+
 ## 착수 조건
 
 - 7(매 턴 주입 줄이기)은 **행동 가설**이다. terminal-shipping 의 `model-discipline-test` 로 주입 전후를 재고 판단한다 — 줄여서 규율이 무너지면 되돌린다.

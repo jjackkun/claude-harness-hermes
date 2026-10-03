@@ -11,7 +11,7 @@ paths:
 
 Configure in `~/.claude/settings.json`:
 
-- **black/ruff**: Auto-format `.py` files after edit
+- **ruff**: `ruff check --fix` + `ruff format` on `.py` files after edit
 - **mypy/pyright**: Run type checking after editing `.py` files
 
 ## Warnings

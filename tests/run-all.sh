@@ -239,6 +239,7 @@ REGISTERED_TESTS=(
   coverage-probe-test.sh
   mutation-probe-test.sh
   hermes-soul-render-test.sh
+  hermes-skill-render-test.sh
   mutation-trigger-test.sh
   doc-gardening-drift-test.sh
   claude-md-skill-index-test.sh

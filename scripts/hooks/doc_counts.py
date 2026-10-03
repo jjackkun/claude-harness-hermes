@@ -167,7 +167,7 @@ def render():
     return "\n".join([
         f"- 세션 중 실행 훅 **{c['hooks']}종** + 훅이 공유하는 판정 모듈 **{c['modules']}개**",
         f"- git pre-commit 게이트 **{c['gates']}종** — 차단 {c['gates_block']} / 경고 {c['gates_warn']}",
-        f"- 스킬 **{c['skills']}종** · 에이전트 **{c['agents']}종** · 테스트 **{c['tests']}개**{orphan}",
+        f"- harness 프리셋이 까는 스킬 **{c['skills']}종** · 에이전트 **{c['agents']}종** · 공장 테스트 **{c['tests']}개**{orphan}",
     ])
 
 

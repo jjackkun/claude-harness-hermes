@@ -29,4 +29,4 @@ discipline_hint: 디자인
 
 ## 도구
 - tools: bash
-- UI 파일을 만지기 전에 프로젝트의 프론트엔드 스킬(R6)을 부른다.
+- UI 파일을 만지기 전에 프로젝트의 프론트엔드 스킬(규칙 ui-skill-first)을 부른다.

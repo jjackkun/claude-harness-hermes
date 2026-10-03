@@ -6,6 +6,9 @@
 
 ### Component Structure Rules (기계 강제 — pre-commit + ESLint)
 
+> **적용 범위: `.vue` 파일만.** 게이트(`check-component-structure.mjs`)는 `.vue` 컴포넌트만 검사한다.
+> Svelte·React 등 다른 프레임워크 프로젝트에는 이 절이 적용되지 않는다 — 그 프로젝트의 구조 규칙을 따른다.
+
 Vue 컴포넌트는 아래 구조를 **반드시** 따른다. 위반 시 pre-commit hook 이 커밋을 차단한다.
 
 ```text
