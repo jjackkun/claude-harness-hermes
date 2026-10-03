@@ -42,3 +42,14 @@ CI 서버는 코어 4 · 병렬 2 다. 무거운 설치 시험과 겹쳐 부하�
 ## 관련
 
 - 계획 `docs/exec-plans/completed/2026-09-23-test-suite-parallel.md` — 병렬화로 이 시험이 다른 시험과 겹치기 시작했다
+
+## 진단 (2026-10-03) — 기다리던 `── 진단:` 이 CI 에 4회 찍혔다
+
+run 36797020095 · 36696396390 · 36568535449 · 36532892184 모두 같은 모양:
+`scripts/harness-eval.py` `_prepare` → `shutil.copytree(tpl, dest)` 가
+`[Errno 2] No such file or directory: '/tmp/harness-eval.*/template/.git/objects/42'` — 복사 도중 원본 템플릿의 loose object 폴더가 사라졌다.
+
+- 확인: 로컬 템플릿 loose object 378개(gc.auto 6700 한참 아래) · 템플릿 git 훅에 백그라운드/gc 없음 · 남는 프로세스 없음.
+- 가설(미확인): CI git 2.55.0 의 커밋 뒤 자동 maintenance/gc 가 백그라운드로 떨어져 copytree 와 겹친다. 로컬 git 2.25.1 이라 재현 불가.
+- 조치(2026-10-03): 템플릿에 `gc.auto 0` · `maintenance.auto false`. 로컬 `harness-eval-test` 37/37.
+- 닫는 조건: 이 조치 뒤 CI 10회 이상에서 같은 진단이 0회면 completed/ 로.

@@ -94,6 +94,13 @@ assert "통과 판정 자체는 유지(차단 아님)" 1 "$(has "$(last_detail)"
 OUT="$(FAKE_SUMMARY='5 passed, 1 skipped in 0.20s' run_gate)"
 assert "건너뜀이 적으면 경고 없음" 0 "$(has "$OUT" "대부분 건너뜀")"
 
+echo "== 5. pytest 가 어디에도 없으면 건너뛰고 커밋을 막지 않는다 (CI 09-30~10-02 실측: 훅이 rc 1 로 조용히 죽었다)"
+rm -rf backend/.venv backend/venv
+OUT="$(PATH=/usr/bin:/bin run_gate)"; RC=$?
+assert "pytest 없음 → pre-commit 종료코드 0" 0 "$RC"
+assert "건너뜀을 말한다(조용한 건너뜀 금지)" 1 "$(has "$OUT" "R-test")"
+assert "게이트 기록에 skipped" 1 "$(grep -c '"rule": "R-test".*"verdict": "skipped"\|"verdict": "skipped".*"rule": "R-test"' .harness/gate-events.jsonl 2>/dev/null | awk '{print ($1>0)?1:0}')"
+
 echo
 echo "결과: PASS=$PASS FAIL=$FAIL"
 [[ $FAIL -eq 0 ]]

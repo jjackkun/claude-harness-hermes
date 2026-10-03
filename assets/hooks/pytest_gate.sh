@@ -13,6 +13,7 @@ pytest_pick_bin() {
     [[ -x "$dir/bin/pytest" ]] && { echo "$dir/bin/pytest"; return 0; }
   done
   command -v pytest >/dev/null 2>&1 && echo "pytest"
+  return 0   # 없으면 빈 글자 — pre-commit 은 set -e 아래 `X=$(pytest_pick_bin)` 이라 rc 1 이면 "건너뜀" 안내 전에 죽는다(CI 09-30~10-02)
 }
 
 pytest_unused_venv() {   # 가상환경 폴더가 있는데 pytest 가 없으면 그 폴더 이름, 아니면 빈 문자열

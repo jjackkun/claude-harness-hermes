@@ -52,6 +52,10 @@ def _build_template(work):
     subprocess.run(["git", "-C", tpl, "init", "-q"], check=True)
     subprocess.run(["git", "-C", tpl, "config", "user.email", "eval@local"], check=True)
     subprocess.run(["git", "-C", tpl, "config", "user.name", "eval"], check=True)
+    # 템플릿은 곧바로 copytree 된다 — 커밋 뒤 백그라운드 gc·maintenance 가 loose object 폴더를 지우면 복사가 깨진다
+    # (CI git 2.55 에서 `.git/objects/42` 가 복사 도중 사라짐 4회, 백로그 harness-eval-test-flaky). 로컬 2.25 에선 재현 안 됨.
+    for key, val in (("gc.auto", "0"), ("maintenance.auto", "false")):
+        subprocess.run(["git", "-C", tpl, "config", key, val], check=True)
     env = dict(os.environ, **_QUIET_ENV, HOME=os.path.join(work, "home"))
     os.makedirs(env["HOME"], exist_ok=True)
     done = subprocess.run(["bash", os.path.join(_FACTORY, "project-claude.sh"), tpl, "harness", "hermes"],

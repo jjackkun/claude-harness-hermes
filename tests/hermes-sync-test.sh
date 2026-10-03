@@ -211,6 +211,7 @@ assert "거부 서버: '이식 불가 — 사람 판단'" 1 "$(grep -c '이식 �
 echo ""
 echo "== 10. 옛 판이 남긴 history/·memory/·journal/ 는 받지 않는다 =="
 OLD="$TMP/oldpieces"; git clone -q "$BARE" "$OLD" 2>/dev/null
+git -C "$OLD" config user.name t; git -C "$OLD" config user.email t@t   # 전역 git 사용자 없는 CI 에서 commit-tree 가 조용히 실패했다(09-28~10-02)
 git -C "$OLD" fetch -q origin "+refs/hermes/sync:refs/hermes/sync" 2>/dev/null
 ( cd "$OLD" && git read-tree refs/hermes/sync \
   && printf 'x' | git hash-object -w --stdin >/dev/null \
