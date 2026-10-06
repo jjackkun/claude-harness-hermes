@@ -10,8 +10,9 @@
 | 대상 기능 | Claude Code 의 모드(mods): TypeScript 훅 모듈로 패널·띠·상태줄·명령을 더하는 플러그인 |
 | 만든 때의 엔진 | Claude Code 2.1.290 (시험을 마지막으로 돌린 때는 2.1.291) |
 | 만든 것 | 패널 모드 세 개 — `tool-calls-pane`, `hermes-roster-pane`, `file-explorer` |
-| 위치 | `~/.claude/skills/<모드 이름>/` — **이 저장소 밖**이다. 이 컴퓨터에만 있고 다른 컴퓨터로 전파되지 않는다 |
-| 상태 | 세 모드 모두 실제 화면에서 동작 확인(`file-explorer` 의 탭과 git 탭 포함). 시험: `file-explorer` 77건, 나머지 각 6건 통과 |
+| 위치 | 원본은 이 저장소의 `assets/skills/<모드 이름>/`. 전역 선택 프리셋 `mods` 를 켠 컴퓨터의 `~/.claude/skills/<모드 이름>/` 에 깔린다 |
+| 설치 | 켜기 `public-claude.sh --skills-only --set-global "mods"` · 끄기 `--set-global ""`. 한 번 켜면 `update-all.sh` 를 돌려도 유지된다. 설치 마법사(`setup.sh`)에서는 켤 수만 있고 끌 수 없다 |
+| 상태 | 세 모드 모두 실제 화면에서 동작 확인(`file-explorer` 의 탭과 git 탭 포함). 모드 시험: `file-explorer` 77건, `hermes-roster-pane` 8건, `tool-calls-pane` 6건 통과. 설치 시험(`tests/mods-install-test.sh`) 21개 항목 통과 |
 | 주의 | 엔진 타입 파일 머리말에 "EARLY ACCESS: 예고 없이 바뀔 수 있다"고 적혀 있다. 아래 규칙은 2.1.290 기준이다 |
 
 이 문서의 "엔진 규칙"은 두 종류다. **확인**은 시험이나 실제 화면으로 본 것이고, **문서**는 엔진 타입 파일
@@ -46,12 +47,17 @@
 
 같은 이름의 모드를 두 곳에 두면 둘 다 로드될 수 있다. 세션 전용 폴더에 남은 옛 사본은 지웠다.
 
+**공장의 설치기와 맞물리는 점(확인).** 설치기는 `assets/skills/<이름>/` 을 통째로 복사하고 `SKILL.md` 를 요구하지 않으므로, 모드는 스킬과 같은 경로로 깔린다.
+같은 이름의 손으로 넣은 폴더가 있으면 설치기는 그것을 `skills/` 안에 `<이름>.backup-<날짜시각>` 으로 옮기는데, 모드는 그 폴더에 있기만 하면 로드되므로
+백업이 두 번째 모드가 될 수 있다. 손으로 넣은 사본은 설치 전에 `skills/` 밖으로 옮긴다.
+엔진은 설치된 모드 폴더에 파일을 써 넣지 않았다(2.1.291 에서 관찰). 그래서 설치 목록의 해시가 그대로 유지된다.
+
 ## 만든 모드 세 개
 
 | 모드 | 여는 방법 | 하는 일 |
 |------|-----------|---------|
 | `tool-calls-pane` | `/tool-calls`, 띠의 `[ 도구 호출 ]` | 이번 세션의 도구 호출을 `실행`/`완료` 줄로 쌓는다 |
-| `hermes-roster-pane` | `/roster`, 띠의 `[ 에이전트 명부 ]` | `scripts/hermes-agent.py --project . roster` 의 출력을 그대로 보인다. 에이전트를 부른 직후 다시 읽는다 |
+| `hermes-roster-pane` | `/roster`, 띠의 `[ 에이전트 명부 ]` | `scripts/hermes-agent.py --project . roster` 의 출력을 그대로 보인다. 에이전트를 부른 직후 다시 읽는다. 띠의 버튼은 세션 시작 때 명부가 읽힌 프로젝트에서만 그린다(전역에 깔리므로 헤르메스가 없는 프로젝트에서도 로드된다) |
 | `file-explorer` | `/files [경로]`, 띠의 `[ 파일 ]` | `editor` 탭: 폴더 트리, 문법 색이 들어간 읽기 화면, 편집·저장, 휠 스크롤과 스크롤 막대. `git` 탭: 바뀐 파일 목록과 변경 내용(읽기 전용) |
 
 세 모드 공통:
@@ -187,13 +193,19 @@
 
 ## 고치거나 다시 만들 때
 
+원본은 저장소에서 고친다. `~/.claude/skills/` 의 설치본을 직접 고치면 다음 설치 때 "로컬에서 수정됨"으로 백업되고 덮인다.
+
 ```bash
-# 검사와 시험
-claude plugin validate ~/.claude/skills/file-explorer
-claude plugin test ~/.claude/skills/file-explorer
+# 검사와 시험 (저장소에서)
+claude plugin validate assets/skills/file-explorer
+claude plugin test assets/skills/file-explorer
+bash tests/mods-install-test.sh
+
+# 고친 것을 이 컴퓨터에 반영
+./public-claude.sh --skills-only
 
 # Prism 묶음을 다시 만든다(언어를 늘리면 스크립트의 LANGUAGES 와 hooks/languages.ts 를 함께 고친다)
-~/.claude/skills/file-explorer/tools/build-prism.sh <prismjs 패키지 폴더>
+assets/skills/file-explorer/tools/build-prism.sh <prismjs 패키지 폴더>
 ```
 
 - 엔진 타입 파일은 `plugin-authoring` 스킬을 부르면 임시 폴더에 쓰인다. 약 2만 줄이라 이름으로 찾아 읽는다.
