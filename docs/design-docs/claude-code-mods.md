@@ -10,8 +10,8 @@
 | 대상 기능 | Claude Code 의 모드(mods): TypeScript 훅 모듈로 패널·띠·상태줄·명령을 더하는 플러그인 |
 | 만든 때의 엔진 | Claude Code 2.1.290 (시험을 마지막으로 돌린 때는 2.1.291) |
 | 만든 것 | 패널 모드 세 개 — `tool-calls-pane`, `hermes-roster-pane`, `file-explorer` |
-| 위치 | 원본은 이 저장소의 `assets/skills/<모드 이름>/`. 전역 선택 프리셋 `mods` 를 켠 컴퓨터의 `~/.claude/skills/<모드 이름>/` 에 깔린다 |
-| 설치 | 켜기 `public-claude.sh --skills-only --set-global "mods"` · 끄기 `--set-global ""`. 한 번 켜면 `update-all.sh` 를 돌려도 유지된다. 설치 마법사(`setup.sh`)에서는 켤 수만 있고 끌 수 없다 |
+| 위치 | 원본은 이 저장소의 `assets/skills/<모드 이름>/`. 전역 기본 설치(`presets/_common.conf`)에 들어 있어 모든 컴퓨터의 `~/.claude/skills/<모드 이름>/` 에 깔린다 |
+| 설치 | 따로 켤 것이 없다. `setup.sh` 로 새로 설치하거나 `update-all.sh` 로 갱신하면 함께 깔린다. Claude Code 2.1.290 이상에서 로드된다 |
 | 상태 | 세 모드 모두 실제 화면에서 동작 확인(`file-explorer` 의 탭과 git 탭 포함). 모드 시험: `file-explorer` 77건, `hermes-roster-pane` 8건, `tool-calls-pane` 6건 통과. 설치 시험(`tests/mods-install-test.sh`) 21개 항목 통과 |
 | 주의 | 엔진 타입 파일 머리말에 "EARLY ACCESS: 예고 없이 바뀔 수 있다"고 적혀 있다. 아래 규칙은 2.1.290 기준이다 |
 
