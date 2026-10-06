@@ -1,0 +1,6 @@
+{
+  "name": "hermes-roster-pane",
+  "version": "0.1.0",
+  "description": "헤르메스 에이전트 명부를 옆 패널에 보인다",
+  "types": "./types/index.d.ts"
+}

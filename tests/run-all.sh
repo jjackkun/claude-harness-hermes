@@ -349,6 +349,7 @@ REGISTERED_TESTS=(
   hermes-mesh-gate-test.sh
   run-all-orphan-guard-test.sh
   run-all-parallel-test.sh
+  mods-install-test.sh
 )
 
 # ── 1. 정적 검사 ──────────────────────────────────────────────────────────────

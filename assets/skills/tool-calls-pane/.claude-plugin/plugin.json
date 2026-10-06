@@ -1,0 +1,6 @@
+{
+  "name": "tool-calls-pane",
+  "version": "0.1.0",
+  "description": "이번 세션의 도구 호출을 옆 패널에 실시간으로 보인다",
+  "types": "./types/index.d.ts"
+}

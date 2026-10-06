@@ -1,0 +1,6 @@
+{
+  "name": "file-explorer",
+  "version": "0.1.0",
+  "description": "프로젝트 폴더 트리와 파일 보기를 옆 패널에 띄운다",
+  "types": "./types/index.d.ts"
+}
