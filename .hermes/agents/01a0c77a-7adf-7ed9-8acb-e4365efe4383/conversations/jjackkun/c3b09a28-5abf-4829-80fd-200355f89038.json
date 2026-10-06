@@ -1,0 +1,16 @@
+{
+ "agent_id": "01a0c77a-7adf-7ed9-8acb-e4365efe4383",
+ "person": "jjackkun",
+ "session_id": "c3b09a28-5abf-4829-80fd-200355f89038",
+ "slots": {
+  "decisions": [],
+  "facts": [],
+  "next": [],
+  "open": [],
+  "prefs": [
+   "파일은 건드리지 마"
+  ]
+ },
+ "turn_count": 1,
+ "updated_at": "2026-10-05 23:57:21"
+}

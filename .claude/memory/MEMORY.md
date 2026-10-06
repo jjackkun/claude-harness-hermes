@@ -10,3 +10,5 @@
 - [zeroday 는 프라이빗 — 다시 가리기 제안 금지](project-zeroday-private-no-rescrub.md) — 스킬 18개 scrub files 안 함, 커밋이 게이트에 막힐 때만 안내
 - [원문 보관소는 공장에 안 넣는다](project-raw-vault-out-of-scope.md) — 서랍식 암호화 원문 보관은 개인·비공개 팀 도구로, 공장 기능 제안 금지
 - [소우주 DB 죽은 표 정리는 보류](project-microcosm-db-prune-deferred.md) — hermes-db-prune --apply 를 먼저 제안하지 않는다(공장만 정리됨)
+- [푸시는 현재 저장소만](feedback-push-current-repo-only.md) — "전체 푸시해" 를 모든 프로젝트로 넓히지 않는다; terminal-shipping 등은 이름으로 말할 때만
+- [teulankkae 제외](project-teulankkae-excluded.md) — 2026-10-06 전파 대상에서 뺌(git 저장소 아님), 설치·커밋 제안 금지
