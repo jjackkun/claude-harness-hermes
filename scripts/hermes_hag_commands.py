@@ -7,7 +7,7 @@ stderr 로 옮겨 프롬프트를 막는다(모델 답 없음, Step 1 실측). �
       `@hag-rm`(맨몸=열린 방 안내 · 목록에서 고른 `hag-rm:<id>`). 백틱 안은 말하는 것이라 무시.
 명령은 **메시지 맨 앞**에 있을 때만 — 문장 속 언급("그냥 @hag-on 치면 켜져요?")은 논의다(코드 리뷰 HIGH, 2026-09-28).
 뒤에 붙는 말: on/off/rm 은 없어야, add 는 이름 한 단어까지. 그보다 길면 논의로 보고 통과시킨다.
-계획: docs/exec-plans/active/2026-09-28-hag-rooms-ui.md 목표 2 · 3 · 5
+계획: docs/exec-plans/completed/2026-09-28-hag-rooms-ui.md 목표 2 · 3 · 5
 
 공개: handle · main
 """
@@ -19,7 +19,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from hermes_hag_rooms import RoomsError, list_rooms, open_room, refresh_cache, stop_room  # noqa: E402
-from hermes_hag_state import StateError, set_on  # noqa: E402
+from hermes_hag_state import set_on  # noqa: E402
 from hermes_roster_pick import match, pickable, room_name  # noqa: E402
 
 _CMD = re.compile(r"(?:@\"[^\"]*|(?<![\w.])@)hag-(on|off|add|rm)(?::([A-Za-z0-9-]{1,40}))?(?![\w-])", re.I)
@@ -77,24 +77,22 @@ def _parse(prompt: str):
     return cmd, picked, " ".join(words)
 
 
-def _run(project: str, session: str, cmd: str, picked: str, rest: str) -> str:
+def _run(project: str, cmd: str, picked: str, rest: str) -> str:
     if cmd in ("on", "off"):
-        set_on(project, session, cmd == "on")
+        set_on(project, cmd == "on")
         return "[hag] 켰습니다 — 상태줄에 방 줄이 보입니다" if cmd == "on" else "[hag] 껐습니다"
     return _add(project, picked, rest) if cmd == "add" else _rm(project, picked)
 
 
-def handle(project: str, session: str, prompt: str):
+def handle(project: str, prompt: str):
     """명령이면 안내 한 줄, 아니면 None."""
     parsed = _parse(prompt)
     if parsed is None:
         return None
     try:
-        return _run(project, session, *parsed)
+        return _run(project, *parsed)
     except RoomsError as exc:
         return f"[hag] 방 목록을 못 읽었습니다: {exc} — claude agents 를 직접 확인하십시오"
-    except StateError as exc:
-        return f"[hag] 이 세션 상태를 못 적었습니다: {exc}"
 
 
 def main() -> int:
@@ -103,7 +101,7 @@ def main() -> int:
     except ValueError:
         return 0
     project = os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd()
-    message = handle(project, str(data.get("session_id") or ""), str(data.get("prompt") or ""))
+    message = handle(project, str(data.get("prompt") or ""))
     if message is None:
         return 0
     print(message)

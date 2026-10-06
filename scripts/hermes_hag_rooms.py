@@ -5,7 +5,7 @@
 `match=owner`, room-owner 훅)이 있는 세션. 에이전트는 이름이 아니라 sessionId → 주인 기록의 slug 로 안다.
 여는 자식에는 환경변수 허용목록만 넘긴다 — 부모의 HERMES_AGENT_ID 가 새면 새 방이 부모 정체성으로 출근한다.
 `claude` 위치는 HERMES_CLAUDE_BIN(시험용), 없으면 PATH 의 claude.
-계획: docs/exec-plans/active/2026-09-28-hag-rooms-ui.md 목표 3 · 4 · 5
+계획: docs/exec-plans/completed/2026-09-28-hag-rooms-ui.md 목표 3 · 4 · 5
 
 공개: CLI_TIMEOUT · RoomsError · list_rooms · open_room · stop_room · refresh_cache · read_cache · refreshing_path
 """

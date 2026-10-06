@@ -150,7 +150,7 @@ def cmd_room(args) -> int:
         print("세션 id 가 필요합니다 — 슬래시 명령 /hermes-room 이 현재 방을 넘깁니다 (직접: room --session <id>)")
         return 0
     room = collect_room(args.project, load_roster(args.project), args.session)
-    print(render_room_line(room) + hag_line(args.project, args.session) if args.line else render_room(room, args.session))
+    print(render_room_line(room) + hag_line(args.project) if args.line else render_room(room, args.session))
     return 0
 
 

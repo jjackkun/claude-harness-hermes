@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""상태줄의 방 줄만 담당한다 — 켜진 세션이면 `방: 게이트QA 대기 · 백로그 관리자 일하는 중 · ← 로 이동`.
+"""상태줄의 방 줄만 담당한다 — 켜진 프로젝트면 `방: 게이트QA 대기 · 백로그 관리자 일하는 중 · ← 로 이동`.
 
 상태줄은 `claude` 를 직접 부르지 않는다(기존 `timeout 1` 예산에 CLI 기동이 얹히면 넘친다, 계획 리뷰).
 캐시(hermes_hag_rooms.refresh_cache)만 읽고, 캐시가 상태줄 갱신 간격보다 오래됐으면 백그라운드 갱신을 던진 뒤 옛 값을 그린다.
 갱신 간격 = hermes_statusline_setup.REFRESH_SECONDS(4초, 실측 2.6·4.0초 간격) — 새 숫자를 만들지 않는다.
-계획: docs/exec-plans/active/2026-09-28-hag-rooms-ui.md 목표 4
+계획: docs/exec-plans/completed/2026-09-28-hag-rooms-ui.md 목표 4
 
 공개: hag_line
 """
@@ -40,9 +40,9 @@ def _refresh_in_background(project: str) -> None:
         pass                          # 갱신을 못 던져도 상태줄은 옛 값으로 그린다
 
 
-def hag_line(project: str, session: str) -> str:
-    """앞에 줄바꿈을 붙인 방 줄. 꺼진 세션이면 빈 문자열."""
-    if not is_on(project, session):
+def hag_line(project: str) -> str:
+    """앞에 줄바꿈을 붙인 방 줄. 꺼진 프로젝트면 빈 문자열."""
+    if not is_on(project):
         return ""
     cache, age = read_cache(project)
     if cache is None or age > REFRESH_SECONDS:

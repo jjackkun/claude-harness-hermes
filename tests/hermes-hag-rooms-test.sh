@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# `@hag` 방 UI 검증 (계획 docs/exec-plans/active/2026-09-28-hag-rooms-ui.md 목표 1~6).
+# `@hag` 방 UI 검증 (계획 docs/exec-plans/completed/2026-09-28-hag-rooms-ui.md 목표 1~6).
 #
-#   - 상태: 세션별 켜짐/꺼짐 · 세션 id 꼴이 아니면 거부(경로 탈출 방지)
+#   - 상태: 프로젝트별 켜짐/꺼짐 — 세션 id 를 열쇠로 쓰지 않는다(방에 갔다 오면 id 가 바뀐다, 2026-10-06 실측)
 #   - 방 목록: `claude agents --json` 중 이 프로젝트(루트와 같거나 아래) + 방 주인 기록이 있는 세션만 · 형제 폴더·메인 세션 제외
 #   - 명령(훅이 막음 = exit 2): @hag-on/off · @hag-add(고른 줄·이름·맨몸) · @hag-rm(고른 줄·맨몸)
 #       · 방 열기 인자(--bg --agent <slug> --name <이름>방) · cwd=프로젝트 루트 · 자식에 HERMES_*·CLAUDE_ENV_FILE 없음
@@ -68,11 +68,10 @@ export HERMES_CLAUDE_BIN="$FAKE/claude"
 echo "== 1. 상태"
 st() { local fn="$1"; shift; PYTHONPATH="$S" python3 -c "import sys; from hermes_hag_state import $fn; print($fn(*sys.argv[1:]))" "$@" 2>&1 | tail -1; }
 SES="11111111-aaaa-bbbb-cccc-000000000001"
-assert "처음엔 꺼짐" False "$(st is_on "$P" "$SES")"
-PYTHONPATH="$S" python3 -c "from hermes_hag_state import set_on; set_on('$P','$SES',True)"
-assert "켜면 켜짐" True "$(st is_on "$P" "$SES")"
-assert "다른 세션은 꺼짐" False "$(st is_on "$P" "22222222-aaaa-bbbb-cccc-000000000002")"
-assert "세션 id 꼴 아니면 거부" 1 "$(PYTHONPATH="$S" python3 -c "from hermes_hag_state import set_on; set_on('$P','../x',True)" >/dev/null 2>&1 && echo 0 || echo 1)"
+assert "처음엔 꺼짐" False "$(st is_on "$P")"
+PYTHONPATH="$S" python3 -c "from hermes_hag_state import set_on; set_on('$P',True)"
+assert "켜면 켜짐" True "$(st is_on "$P")"
+assert "다른 프로젝트는 꺼짐" False "$(st is_on "$P-other")"
 
 echo "== 2. 방 목록"
 R="$(PYTHONPATH="$S" python3 -c "
@@ -85,8 +84,8 @@ send() {  # send <prompt> → OUT(stderr) RC
   local js; js="$(python3 -c "import json,sys; print(json.dumps({'session_id':'$SES','prompt':sys.argv[1]}))" "$1")"
   OUT="$(printf '%s' "$js" | CLAUDE_PROJECT_DIR="$P" HERMES_AGENT_ID="01a0ad8a-e5ff-7026-bedf-0bbf3df3d334" HERMES_SUMMON_NONCE="n-1" CLAUDE_ENV_FILE="$T/envfile" bash "$HOOK" 2>&1 >/dev/null)"; RC=$?
 }
-send '@hag-off'; assert "@hag-off → 막음(2)" 2 "$RC"; assert "  꺼짐" False "$(st is_on "$P" "$SES")"
-send '@hag-on';  assert "@hag-on → 막음(2)" 2 "$RC"; assert "  켜짐" True "$(st is_on "$P" "$SES")"
+send '@hag-off'; assert "@hag-off → 막음(2)" 2 "$RC"; assert "  꺼짐" False "$(st is_on "$P")"
+send '@hag-on';  assert "@hag-on → 막음(2)" 2 "$RC"; assert "  켜짐" True "$(st is_on "$P")"
 assert "  안내 한 줄" 1 "$(grep -c . <<<"$OUT")"
 : > "$FAKE/log"
 send '@"백로그 관리자 · 기획/리드/공통 · hag-add:backlog-manager"'
@@ -110,7 +109,7 @@ assert "맨몸 @hag-rm → 열린 방 안내" 1 "$(has "$OUT" '게이트QA')"
 send '평범한 말'; assert "평범한 말 → 통과(0)" 0 "$RC"
 # 리뷰 HIGH — 문장 속 언급은 명령이 아니다(맨 앞에 있을 때만)
 send '그냥 @hag-off 치면 꺼지는 거 맞죠? 물어보는 겁니다'
-assert "문장 속 @hag-off → 통과(0)" 0 "$RC"; assert "  상태 그대로(켜짐)" True "$(st is_on "$P" "$SES")"
+assert "문장 속 @hag-off → 통과(0)" 0 "$RC"; assert "  상태 그대로(켜짐)" True "$(st is_on "$P")"
 : > "$FAKE/log"
 send '이렇게 @hag-add 백로그 하면 돼?'
 assert "문장 속 @hag-add → 통과" 0 "$RC"; assert "  방 안 연다" 0 "$(grep -c '^ARGS --bg' "$FAKE/log")"
@@ -118,7 +117,7 @@ send '@hag-add 백로그 좀 불러줘'
 assert "@hag-add + 여러 단어 → 통과(논의로 봄)" 0 "$RC"; assert "  방 안 연다" 0 "$(grep -c '^ARGS --bg' "$FAKE/log")"
 send '@hag-on 켜 줘'
 assert "@hag-on + 말 → 통과" 0 "$RC"
-send '`@hag-on` 은 뭐야'; assert "백틱 안 명령 → 통과" 0 "$RC"; assert "  상태 그대로(켜짐)" True "$(st is_on "$P" "$SES")"
+send '`@hag-on` 은 뭐야'; assert "백틱 안 명령 → 통과" 0 "$RC"; assert "  상태 그대로(켜짐)" True "$(st is_on "$P")"
 
 echo "== 4. 제안 목록"
 sug() { python3 -c "import json,sys; print(json.dumps({'query':sys.argv[1],'cwd':'$P'}))" "$1" | python3 "$S/hermes_file_suggest.py" 2>/dev/null; }
@@ -136,7 +135,10 @@ echo "== 5. 상태줄"
 line() { env -u HERMES_AGENT_ID python3 "$S/hermes-agent.py" --project "$P" room --session "$1" --line 2>/dev/null; }
 PYTHONPATH="$S" python3 -c "from hermes_hag_rooms import refresh_cache; refresh_cache('$P')"
 assert "켜짐 → 방 줄" 1 "$(line "$SES" | grep -c '^방: 게이트QA 대기 · ← 로 이동$')"
-assert "꺼진 세션 → 방 줄 없음" 0 "$(line "22222222-aaaa-bbbb-cccc-000000000002" | grep -c '^방:')"
+assert "켜짐 → 세션 id 가 바뀌어도(방 갔다 온 뒤) 방 줄" 1 "$(line "22222222-aaaa-bbbb-cccc-000000000002" | grep -c '^방: 게이트QA 대기 · ← 로 이동$')"
+PYTHONPATH="$S" python3 -c "from hermes_hag_state import set_on; set_on('$P',False)"
+assert "꺼짐 → 방 줄 없음" 0 "$(line "$SES" | grep -c '^방:')"
+PYTHONPATH="$S" python3 -c "from hermes_hag_state import set_on; set_on('$P',True)"
 touch "$FAKE/fail"; PYTHONPATH="$S" python3 -c "from hermes_hag_rooms import refresh_cache; refresh_cache('$P')" 2>/dev/null; rm -f "$FAKE/fail"
 assert "목록 실패 → 못 읽음 줄" 1 "$(line "$SES" | grep -c '^방: 목록을 못 읽었습니다$')"
 
