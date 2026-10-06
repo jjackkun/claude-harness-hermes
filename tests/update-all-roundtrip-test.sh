@@ -19,8 +19,15 @@ export HARNESS_TOOL_INSTALL=0 HARNESS_SYNC_AUTOENABLE=0   # 설치기의 외부 
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 TMP=$(mktemp -d)
+# 실제 전역 설정 폴더의 설치 목록. 이 시험 앞뒤로 수정 시각이 같아야 한다(끝에서 단언).
+REAL_MANIFEST="$HOME/.claude/.factory-manifest.json"
+real_manifest_mtime() { stat -c %Y "$REAL_MANIFEST" 2>/dev/null || echo none; }
+REAL_MTIME_BEFORE="$(real_manifest_mtime)"
 export HOME="$TMP/fakehome"          # ~/.claude 오염 방지
 mkdir -p "$HOME"
+# HOME 만 바꿔서는 막히지 않는다 — public-claude.sh 는 홈을 getent passwd 에서 찾는다.
+# 전역 설치 대상은 CLAUDE_CONFIG_DIR 로 옮긴다(2026-10-06: 시험이 실제 ~/.claude 에 설치를 돌리던 누수).
+export CLAUDE_CONFIG_DIR="$HOME/.claude"
 # 설치기는 $TMPDIR 아래 프로젝트를 레지스트리에 등록하지 않는다(project-claude.sh, 2026-09-16
 # /tmp 오염 사고). update-all.sh 는 그 레지스트리를 읽어 도니, 등록이 생략되면 이 테스트의
 # 모든 갱신 단언이 "아무 프로젝트도 안 돎" 으로 조용히 실패한다. TMPDIR 을 옮겨 둔다.
@@ -270,6 +277,8 @@ import json,sys
 a=json.load(open('$PL')).get('permissions',{}).get('allow',[])
 sys.exit(0 if 'mcp__plugin_serena_serena__find_symbol' in a else 1)"; _rc=$?
 assert "settings.local.json 의 승인은 건드리지 않음" "0" "$_rc"
+
+assert "실제 ~/.claude 의 설치 목록을 건드리지 않음" "$REAL_MTIME_BEFORE" "$(real_manifest_mtime)"
 
 echo ""
 echo "== 결과 =="
