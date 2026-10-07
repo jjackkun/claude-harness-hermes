@@ -1,0 +1,901 @@
+WEBVTT
+Kind: captions
+Language: en
+
+00:00:00.001 --> 00:00:00.140
+Hey, folks.
+
+00:00:00.540 --> 00:00:01.100
+My name is Sydney.
+
+00:00:01.420 --> 00:00:04.560
+I'm the product manager for the open source team at LangChain.
+
+00:00:04.840 --> 00:00:06.620
+And today, I'm super excited to share with you
+
+00:00:07.040 --> 00:00:09.660
+how you can build a model router in the harness
+
+00:00:09.880 --> 00:00:12.460
+to reduce cost without sacrificing quality.
+
+00:00:13.480 --> 00:00:13.940
+Let's jump in.
+
+00:00:14.780 --> 00:00:17.200
+So the motivating problem for building a model router
+
+00:00:17.380 --> 00:00:20.340
+is that frontier intelligence is really expensive.
+
+00:00:20.640 --> 00:00:23.180
+And so if you're building agents that work at scale,
+
+00:00:23.760 --> 00:00:25.720
+this cost can be prohibitive.
+
+00:00:26.240 --> 00:00:29.100
+And so model routing can help to reduce cost,
+
+00:00:29.640 --> 00:00:32.660
+theoretically without sacrificing quality if it's done well.
+
+00:00:33.920 --> 00:00:36.560
+I have a quote here showing that model providers like
+
+00:00:36.800 --> 00:00:40.200
+Anthropic even recommend starting with smaller models,
+
+00:00:40.420 --> 00:00:44.120
+in this case like Claude Haiku, before graduating to a more
+
+00:00:44.180 --> 00:00:47.300
+intelligent model like Opus, because a lot of tasks can be
+
+00:00:47.340 --> 00:00:48.480
+done with these cheaper models.
+
+00:00:49.120 --> 00:00:53.440
+So I'm basically assuming here that we often don't need the
+
+00:00:53.520 --> 00:00:57.100
+best model for a lot of tasks that we ask our agent to do.
+
+00:00:57.520 --> 00:00:59.700
+Past a certain point, you kind of hit diminishing returns
+
+00:00:59.920 --> 00:01:01.840
+where your cost and latency are increasing,
+
+00:01:02.040 --> 00:01:04.440
+but the quality of the outputs are not significantly better.
+
+00:01:05.420 --> 00:01:09.080
+And ideally, an agent has good model-harness-task fit.
+
+00:01:10.380 --> 00:01:11.020
+And what does that mean?
+
+00:01:11.520 --> 00:01:14.060
+It means you have the right model for the job
+
+00:01:14.620 --> 00:01:17.320
+on the intelligence and cost curve here.
+
+00:01:18.060 --> 00:01:19.760
+And then your harness does a good job
+
+00:01:19.860 --> 00:01:21.940
+of getting the right context to the model
+
+00:01:22.120 --> 00:01:23.300
+for the given task at hand.
+
+00:01:24.240 --> 00:01:25.840
+So what does a model router actually do?
+
+00:01:26.360 --> 00:01:28.120
+It picks the right model for each task.
+
+00:01:28.940 --> 00:01:32.340
+And so a task request comes in, and a router
+
+00:01:32.580 --> 00:01:35.560
+has a classifier model, and then a prompt
+
+00:01:35.840 --> 00:01:38.840
+with some criteria that help it decide what model would
+
+00:01:38.940 --> 00:01:40.540
+be most appropriate for a given task.
+
+00:01:41.060 --> 00:01:43.740
+So would that be a fast and cheap model, maybe something
+
+00:01:43.880 --> 00:01:46.120
+balanced, or a performance-focused model
+
+00:01:46.360 --> 00:01:48.380
+that's going to be slower and more expensive?
+
+00:01:49.300 --> 00:01:51.260
+And then it selects the given model for the task,
+
+00:01:51.960 --> 00:01:54.800
+and then that model is used to power the agent that
+
+00:01:54.800 --> 00:01:55.500
+completes the task.
+
+00:01:56.290 --> 00:01:58.800
+And so our test bed here was Open SWE, our open source
+
+00:01:59.020 --> 00:01:59.340
+coding agent.
+
+00:02:00.140 --> 00:02:03.080
+And to kind of spoil the results of the experiment here,
+
+00:02:03.500 --> 00:02:07.200
+we were able to see a 64% reduction in median cost
+
+00:02:07.520 --> 00:02:10.060
+per thread with no measurable change in quality.
+
+00:02:10.420 --> 00:02:13.120
+There's four steps for building a model router,
+
+00:02:13.570 --> 00:02:16.380
+and I'll explain them through the lens of this Open SWE
+
+00:02:16.400 --> 00:02:17.280
+experiment that we ran.
+
+00:02:18.080 --> 00:02:19.060
+But a little sneak peek here.
+
+00:02:19.560 --> 00:02:21.440
+First, you need to understand the tasks
+
+00:02:21.640 --> 00:02:22.720
+that your agent works on.
+
+00:02:23.480 --> 00:02:26.000
+You need to understand the models available for these tasks.
+
+00:02:27.060 --> 00:02:29.420
+Then with one and two done, you can build the router
+
+00:02:29.680 --> 00:02:30.760
+in your agent's harness.
+
+00:02:31.440 --> 00:02:33.960
+And it's very important to track task outcomes
+
+00:02:34.400 --> 00:02:36.920
+so that you can understand if your router is working well.
+
+00:02:37.300 --> 00:02:39.580
+That is reducing cost without sacrificing quality.
+
+00:02:40.460 --> 00:02:43.000
+OK, so let's talk about step one, understanding the tasks.
+
+00:02:43.840 --> 00:02:45.540
+The first thing that we did was try
+
+00:02:45.540 --> 00:02:48.400
+to understand what our coding agent Open SWE is being
+
+00:02:48.480 --> 00:02:49.000
+tasked with.
+
+00:02:49.560 --> 00:02:51.240
+This was all done using LangSmith.
+
+00:02:51.880 --> 00:02:54.240
+So every time our coding agent runs,
+
+00:02:54.900 --> 00:02:56.700
+it sends a trace to LangSmith that
+
+00:02:56.740 --> 00:02:59.780
+has a record of every step that that agent took.
+
+00:03:00.380 --> 00:03:02.260
+And so we were able to use all of those traces
+
+00:03:02.720 --> 00:03:04.620
+and do aggregate analysis over them
+
+00:03:05.060 --> 00:03:08.460
+to determine what types of tasks our agent was doing.
+
+00:03:09.360 --> 00:03:11.580
+So you can see here, unsurprisingly, for a coding
+
+00:03:11.680 --> 00:03:15.120
+agent that code changes dominated things like feature requests,
+
+00:03:15.420 --> 00:03:17.120
+bug fixes, and tests.
+
+00:03:17.840 --> 00:03:20.500
+But there were also some things like design questions
+
+00:03:20.500 --> 00:03:22.280
+and general purpose questions.
+
+00:03:28.080 --> 00:03:29.000
+Out of all of the steps,
+
+00:03:29.240 --> 00:03:31.360
+I would actually say that this one is the most important.
+
+00:03:31.880 --> 00:03:33.780
+This is what you use as the foundation
+
+00:03:34.080 --> 00:03:35.940
+for building your criteria for the router.
+
+00:03:36.420 --> 00:03:38.160
+You know, deciding what types of tasks
+
+00:03:38.840 --> 00:03:40.320
+should be assigned which model.
+
+00:03:40.760 --> 00:03:42.640
+And so if you don't have a clear understanding
+
+00:03:42.760 --> 00:03:43.600
+of this task space,
+
+00:03:44.160 --> 00:03:46.640
+it's going to be very hard to develop an effective router.
+
+00:03:47.360 --> 00:03:50.480
+And LangSmith, as I mentioned, was very instrumental
+
+00:03:50.480 --> 00:03:51.700
+in helping understand this space.
+
+00:03:52.680 --> 00:03:55.340
+I actually built a custom app on top of LangSmith
+
+00:03:55.560 --> 00:03:58.100
+to help me better understand this trace data.
+
+00:03:58.430 --> 00:04:00.300
+So you can see kind of the categories here
+
+00:04:01.030 --> 00:04:04.500
+and then active agent time and observed LLM cost
+
+00:04:04.940 --> 00:04:07.720
+filtered by different types of requests.
+
+00:04:08.900 --> 00:04:10.440
+Overall, this was super helpful
+
+00:04:10.640 --> 00:04:14.000
+for basically exploratory data analysis over my traces.
+
+00:04:14.960 --> 00:04:16.000
+Also as part of step one,
+
+00:04:16.190 --> 00:04:17.560
+I wanted to better understand
+
+00:04:17.560 --> 00:04:20.040
+how complexity varied by task type,
+
+00:04:20.700 --> 00:04:23.080
+knowing that we probably want a more intelligent model
+
+00:04:23.240 --> 00:04:24.780
+for more complex tasks.
+
+00:04:25.430 --> 00:04:28.560
+So you can see here, we measured median invocations.
+
+00:04:28.630 --> 00:04:31.260
+So that's the number of times Open SWE was called.
+
+00:04:31.780 --> 00:04:34.100
+And then also the median LLM cost
+
+00:04:34.660 --> 00:04:36.880
+for these different buckets of tasks.
+
+00:04:38.260 --> 00:04:41.200
+And then we generally rated a task as more complex
+
+00:04:41.520 --> 00:04:43.400
+if the number of invocations were higher
+
+00:04:43.980 --> 00:04:45.580
+or the LLM cost was higher.
+
+00:04:46.280 --> 00:04:48.060
+And you can see kind of unsurprisingly here
+
+00:04:48.140 --> 00:04:50.700
+that like feature work was generally more complex
+
+00:04:51.340 --> 00:04:52.700
+than say testing work.
+
+00:04:53.640 --> 00:04:56.000
+All right, so this part is actually quite fun.
+
+00:04:56.240 --> 00:04:58.460
+Step two is understanding the models available
+
+00:04:58.660 --> 00:05:00.120
+for your tasks.
+
+00:05:00.680 --> 00:05:02.460
+So this data is pulled from the
+
+00:05:02.560 --> 00:05:04.460
+Artificial Analysis Intelligence Index
+
+00:05:05.160 --> 00:05:06.800
+as of September 9th, 2026,
+
+00:05:07.040 --> 00:05:08.360
+which is when we began this experiment.
+
+00:05:09.320 --> 00:05:10.460
+And you can see on the X-axis,
+
+00:05:10.530 --> 00:05:12.900
+we have the cost per intelligence task.
+
+00:05:13.360 --> 00:05:14.480
+And then on the Y-axis,
+
+00:05:14.640 --> 00:05:17.780
+we have the Artificial Analysis Intelligence Index.
+
+00:05:18.840 --> 00:05:21.940
+This is what we call the Pareto frontier for LLMs.
+
+00:05:22.380 --> 00:05:24.820
+It's this set of optimal models that have a good trade-off
+
+00:05:25.360 --> 00:05:28.380
+between like benchmark accuracy and evals
+
+00:05:28.780 --> 00:05:30.980
+compared to cost and latency.
+
+00:05:31.720 --> 00:05:35.680
+And so generally we want to select models along this frontier.
+
+00:05:36.480 --> 00:05:38.400
+And then given that we were designing a model router,
+
+00:05:38.700 --> 00:05:41.240
+we wanted to choose a small set of models here
+
+00:05:41.820 --> 00:05:44.620
+that had some trade-offs between their speed
+
+00:05:44.620 --> 00:05:45.700
+and intelligence index.
+
+00:05:47.040 --> 00:05:48.280
+The models that we ended up choosing
+
+00:05:48.800 --> 00:05:53.880
+were GLM-5.3-Flash for our fast model, GPT-5.6
+
+00:05:53.940 --> 00:05:57.380
+Sol for our balanced model, and then GPT-6 Astra
+
+00:05:57.640 --> 00:05:58.640
+for our performance tier.
+
+00:05:59.540 --> 00:06:01.380
+Step three is building the router in the harness.
+
+00:06:02.440 --> 00:06:06.560
+So we used two sources of data to decide on the criteria
+
+00:06:06.800 --> 00:06:08.580
+for our initial version of the router.
+
+00:06:09.010 --> 00:06:11.380
+The first was the understanding of those tasks
+
+00:06:11.620 --> 00:06:12.620
+that we saw in step one.
+
+00:06:13.380 --> 00:06:15.640
+And the second was the official provider guides
+
+00:06:16.220 --> 00:06:19.320
+from OpenAI, for example, on which models
+
+00:06:19.460 --> 00:06:20.480
+to use for which tasks.
+
+00:06:21.600 --> 00:06:23.640
+And so you can see a couple of the descriptors
+
+00:06:23.700 --> 00:06:27.040
+that we used for each of the criteria for a given model.
+
+00:06:27.840 --> 00:06:29.700
+Also important to note for our router here,
+
+00:06:30.540 --> 00:06:33.660
+the router just runs once on the thread's first message
+
+00:06:34.020 --> 00:06:36.480
+and then selects the model for the remainder of the task.
+
+00:06:37.080 --> 00:06:38.640
+This is different from some routers which
+
+00:06:38.740 --> 00:06:40.600
+do this mid-flight routing.
+
+00:06:41.160 --> 00:06:43.360
+We decided to just do a simple version
+
+00:06:43.360 --> 00:06:48.600
+first, but when I talk about upcoming improvements or further work, mid-thread routing is covered.
+
+00:06:49.130 --> 00:06:54.840
+So when we initially built this router in early September, we used a small LLM, specifically
+
+00:06:55.180 --> 00:07:02.460
+GLM-5.3-Flash, to do the routing decision with structured output. But after the experiment,
+
+00:07:02.820 --> 00:07:09.199
+Jev, a popular decision model, came out and had claims of being significantly faster and cheaper
+
+00:07:09.200 --> 00:07:12.420
+than LLMs with more constrained decision-making powers.
+
+00:07:13.050 --> 00:07:17.000
+And so we are now powering our Open SWE router with Jev,
+
+00:07:17.090 --> 00:07:17.780
+the decision model.
+
+00:07:18.680 --> 00:07:21.700
+And it's much faster and much cheaper as Jev advertised.
+
+00:07:23.150 --> 00:07:24.760
+The last thing I'll call out on this slide
+
+00:07:24.760 --> 00:07:28.240
+is that GLM-5.3-Flash is actually an open model.
+
+00:07:28.720 --> 00:07:30.660
+At LangChain a while ago, we wrote a blog
+
+00:07:30.760 --> 00:07:32.800
+about open models crossing a threshold.
+
+00:07:33.580 --> 00:07:34.660
+We definitely think that's true.
+
+00:07:35.100 --> 00:07:37.160
+We use open models a lot internally.
+
+00:07:37.640 --> 00:07:39.440
+And a model router is a great opportunity
+
+00:07:39.680 --> 00:07:43.020
+to experiment with using cheaper and faster open models
+
+00:07:43.730 --> 00:07:45.620
+for tasks that they're more than equipped to handle.
+
+00:07:46.160 --> 00:07:46.300
+OK.
+
+00:07:46.520 --> 00:07:48.620
+And then for step four, you need to decide
+
+00:07:48.720 --> 00:07:50.560
+how you're going to track your task outcomes.
+
+00:07:51.320 --> 00:07:52.920
+There's two main ways you can do this.
+
+00:07:53.500 --> 00:07:55.200
+The first is through offline evals.
+
+00:07:55.700 --> 00:07:56.900
+So this is very safe.
+
+00:07:57.200 --> 00:07:59.380
+You have repeatable comparisons and experiments
+
+00:07:59.560 --> 00:08:00.040
+that you can run.
+
+00:08:00.560 --> 00:08:03.460
+But the catch is that it can be a little bit hard and expensive
+
+00:08:03.660 --> 00:08:05.340
+to develop a representative data set.
+
+00:08:06.280 --> 00:08:09.420
+And so the faster approach here is to do an A/B test,
+
+00:08:09.980 --> 00:08:12.160
+where you know that your live traffic is representative.
+
+00:08:12.590 --> 00:08:15.580
+But the catch here is that we're running this experiment
+
+00:08:15.760 --> 00:08:18.520
+for our live users, and so they may experience
+
+00:08:18.520 --> 00:08:20.780
+a non-optimal router, which is the risk.
+
+00:08:21.700 --> 00:08:24.560
+And so the two outcomes that we were tracking with our A/B
+
+00:08:24.600 --> 00:08:27.340
+test were the merged PR rate.
+
+00:08:27.920 --> 00:08:30.960
+And then also, we enabled users to provide feedback
+
+00:08:31.200 --> 00:08:34.000
+on Open SWE runs so they could either give a thumbs up
+
+00:08:34.360 --> 00:08:34.979
+or a thumbs down.
+
+00:08:35.800 --> 00:08:38.020
+And so you can imagine we want to make
+
+00:08:38.140 --> 00:08:40.960
+sure that for the 50% of threads that
+
+00:08:41.080 --> 00:08:44.159
+run through this new router, the merged PR rate
+
+00:08:44.320 --> 00:08:46.820
+doesn't go down significantly, and the feedback
+
+00:08:47.180 --> 00:08:49.080
+is not significantly different either.
+
+00:08:49.920 --> 00:08:52.400
+All right, so experiment number one, what were our results?
+
+00:08:53.100 --> 00:08:54.240
+We had almost 500 threads.
+
+00:08:55.020 --> 00:08:57.540
+And you can see that the median cost per thread
+
+00:08:57.900 --> 00:09:01.540
+for the router was much lower, 64% lower.
+
+00:09:02.320 --> 00:09:05.780
+The mean cost was also lower, and then the P90 cost per thread
+
+00:09:05.780 --> 00:09:08.080
+was lower by 37%.
+
+00:09:08.690 --> 00:09:11.380
+We see actually for this case more threads
+
+00:09:11.520 --> 00:09:14.060
+from the routed version ending in a merged PR,
+
+00:09:14.640 --> 00:09:17.160
+although the difference was not statistically significant.
+
+00:09:17.860 --> 00:09:19.760
+And then we also see that the PR open rate
+
+00:09:19.840 --> 00:09:22.080
+was pretty comparable across our A and B branches.
+
+00:09:23.220 --> 00:09:26.340
+You can see on this breakdown kind of the proportion of tasks
+
+00:09:26.560 --> 00:09:28.060
+that were sent to each of the model tiers.
+
+00:09:28.620 --> 00:09:33.540
+So we had 34% sent to the fast tier, 56% sent to the balanced
+
+00:09:33.540 --> 00:09:36.160
+tier and only 10% sent to performance.
+
+00:09:37.070 --> 00:09:39.540
+You can see on the far left, kind of the different distribution
+
+00:09:39.800 --> 00:09:44.540
+of costs for the always performance model versus the routed.
+
+00:09:44.830 --> 00:09:47.060
+And then you can see on the right side,
+
+00:09:47.560 --> 00:09:51.200
+for the routed threads, we had much cheaper fast runs
+
+00:09:51.940 --> 00:09:53.420
+and then the performance runs.
+
+00:09:54.440 --> 00:09:56.780
+And then on the right, you can see in aggregate,
+
+00:09:56.940 --> 00:09:59.600
+the fast runs were much cheaper and then balanced
+
+00:09:59.780 --> 00:10:02.220
+and performance more expensive accordingly.
+
+00:10:03.100 --> 00:10:04.980
+One interesting note, we definitely
+
+00:10:05.040 --> 00:10:07.660
+did see a couple of very long threads contributing
+
+00:10:07.860 --> 00:10:09.360
+disproportionately to cost.
+
+00:10:10.120 --> 00:10:13.080
+And this was true for both the routed and non-routed arms
+
+00:10:13.080 --> 00:10:13.640
+of the experiment.
+
+00:10:14.540 --> 00:10:17.000
+I will note, we actually started a second experiment,
+
+00:10:17.280 --> 00:10:20.480
+which was router versus a controlled fast model.
+
+00:10:20.620 --> 00:10:22.020
+So in the first experiment, it was
+
+00:10:22.280 --> 00:10:23.920
+a control of the performance model.
+
+00:10:24.860 --> 00:10:26.340
+We did end this test within a day
+
+00:10:26.380 --> 00:10:28.320
+because we got so many complaints from users
+
+00:10:28.480 --> 00:10:30.160
+who were stuck on the fast arm.
+
+00:10:30.480 --> 00:10:32.000
+And so we got enough complaints.
+
+00:10:32.220 --> 00:10:34.600
+we didn't want to significantly degrade user experience.
+
+00:10:34.740 --> 00:10:36.940
+And so we decided to stop this experiment.
+
+00:10:37.100 --> 00:10:37.980
+But it was pretty telling.
+
+00:10:38.480 --> 00:10:41.860
+We certainly couldn't switch over to GLM-5.3-Flash
+
+00:10:42.120 --> 00:10:44.140
+for all of the tasks that Open SWE needs to manage.
+
+00:10:45.060 --> 00:10:46.100
+So what's next here?
+
+00:10:46.480 --> 00:10:49.140
+There is definitely a lot that we could do to further explore
+
+00:10:49.760 --> 00:10:50.840
+model routing optimizations.
+
+00:10:51.700 --> 00:10:53.660
+I think the first thing would be benchmarking the router
+
+00:10:53.920 --> 00:10:56.600
+on other eval sets like Deep SWE,
+
+00:10:57.080 --> 00:10:58.600
+rather than just doing the A/B testing,
+
+00:10:59.580 --> 00:11:02.080
+or even perhaps other benchmarks that are more review focused,
+
+00:11:02.480 --> 00:11:05.260
+because generally the task for Open SWE
+
+00:11:05.260 --> 00:11:07.540
+is to generate good, reviewable PRs.
+
+00:11:08.380 --> 00:11:09.640
+The second thing that we didn't touch
+
+00:11:09.940 --> 00:11:11.740
+is model selection for subagents.
+
+00:11:12.340 --> 00:11:14.500
+So there's definitely more cost optimizations to be made
+
+00:11:14.800 --> 00:11:17.340
+if we also select appropriately sized models
+
+00:11:17.520 --> 00:11:20.800
+for the subagents that the main agent orchestrates
+
+00:11:21.060 --> 00:11:21.980
+with the Deep Agents harness.
+
+00:11:22.920 --> 00:11:24.540
+A third thing that I mentioned earlier
+
+00:11:24.680 --> 00:11:27.340
+we could certainly explore is rerouting mid-thread.
+
+00:11:27.940 --> 00:11:32.220
+So you can imagine if for Open SWE, a user asks a question
+
+00:11:32.420 --> 00:11:35.640
+and then discovers that maybe a pretty complex bug fix is
+
+00:11:35.740 --> 00:11:39.360
+in order or wants to design a new feature mid-thread,
+
+00:11:39.840 --> 00:11:42.120
+you might want to upgrade to a more capable model.
+
+00:11:43.400 --> 00:11:44.940
+And rerouting mid-thread could help
+
+00:11:44.970 --> 00:11:46.540
+to ensure that the right model is
+
+00:11:46.600 --> 00:11:49.500
+chosen for the task at any point in the given thread.
+
+00:11:50.680 --> 00:11:53.440
+One trade-off here is that if you do switch a model,
+
+00:11:53.800 --> 00:11:56.260
+you experience a cache miss, which can be costly.
+
+00:11:56.860 --> 00:11:58.640
+But for async agents like Open SWE,
+
+00:11:59.160 --> 00:12:01.040
+there's actually a lot of cache misses anyways,
+
+00:12:01.300 --> 00:12:04.420
+just because there's more than a five minute idle time
+
+00:12:04.560 --> 00:12:06.240
+between when an agent responds
+
+00:12:06.560 --> 00:12:09.220
+and a developer has time to respond back in Slack.
+
+00:12:09.640 --> 00:12:12.180
+So this cache miss might actually not
+
+00:12:13.080 --> 00:12:14.380
+be a super significant concern.
+
+00:12:15.240 --> 00:12:16.380
+And then the fourth thing would be
+
+00:12:16.960 --> 00:12:18.720
+digging for richer routing signals.
+
+00:12:19.260 --> 00:12:22.260
+So we didn't get a ton of feedback on traces.
+
+00:12:22.800 --> 00:12:24.520
+We did get, you know, the PR merge rate
+
+00:12:24.520 --> 00:12:25.680
+was a very reliable metric,
+
+00:12:26.100 --> 00:12:28.640
+but trying to get more active feedback
+
+00:12:28.720 --> 00:12:29.580
+would be helpful as well.
+
+00:12:30.360 --> 00:12:31.560
+All right, so if you want to get started
+
+00:12:31.720 --> 00:12:32.420
+building your own router,
+
+00:12:33.320 --> 00:12:35.020
+I would recommend following the four steps
+
+00:12:35.020 --> 00:12:36.220
+that we did in this experiment.
+
+00:12:36.460 --> 00:12:39.440
+So one, understand your agent's task space.
+
+00:12:40.180 --> 00:12:43.460
+Two, pick models along the Pareto frontier,
+
+00:12:44.040 --> 00:12:45.120
+the cost intelligence curve.
+
+00:12:46.520 --> 00:12:48.500
+Third, treat routing as context engineering
+
+00:12:49.100 --> 00:12:50.860
+and build your router into the harness
+
+00:12:51.340 --> 00:12:52.780
+where the appropriate context is
+
+00:12:52.960 --> 00:12:54.580
+for the given tasks at hand.
+
+00:12:55.500 --> 00:12:58.160
+And fourth, make sure you have the power to measure success
+
+00:12:58.420 --> 00:12:59.880
+before you begin live routing.
+
+00:13:00.640 --> 00:13:02.680
+You can easily add routing to your own agent
+
+00:13:02.820 --> 00:13:04.220
+with our model routing middleware.
+
+00:13:05.080 --> 00:13:07.400
+And at LangChain, we've always prided ourselves
+
+00:13:07.580 --> 00:13:09.200
+on offering open source software
+
+00:13:09.300 --> 00:13:11.440
+that's model provider agnostic.
+
+00:13:11.960 --> 00:13:13.580
+And so changing models in your router
+
+00:13:13.740 --> 00:13:16.120
+should just be a one line of code change.
+
+00:13:16.980 --> 00:13:21.240
+You can also check out Open SWE at langchain-ai/open-swe
+
+00:13:21.240 --> 00:13:21.600
+on GitHub.
+
+00:13:22.680 --> 00:13:25.320
+You can learn more about building a harness with Jev,
+
+00:13:25.500 --> 00:13:27.700
+which is a decision model that's incredibly powerful
+
+00:13:28.020 --> 00:13:30.460
+for the model routing step at the blog linked below.
+
+00:13:31.100 --> 00:13:32.760
+And we always love hearing from you.
+
+00:13:33.060 --> 00:13:35.020
+Feel free to tag us @LangChain on X.
+
+00:13:35.860 --> 00:13:37.680
+Thanks for watching and see you in the next one.
+

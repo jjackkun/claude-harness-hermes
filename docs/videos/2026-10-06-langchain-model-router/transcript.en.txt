@@ -1,0 +1,299 @@
+[00:00] Hey, folks.
+[00:00] My name is Sydney.
+[00:01] I'm the product manager for the open source team at LangChain.
+[00:04] And today, I'm super excited to share with you
+[00:07] how you can build a model router in the harness
+[00:09] to reduce cost without sacrificing quality.
+[00:13] Let's jump in.
+[00:14] So the motivating problem for building a model router
+[00:17] is that frontier intelligence is really expensive.
+[00:20] And so if you're building agents that work at scale,
+[00:23] this cost can be prohibitive.
+[00:26] And so model routing can help to reduce cost,
+[00:29] theoretically without sacrificing quality if it's done well.
+[00:33] I have a quote here showing that model providers like
+[00:36] Anthropic even recommend starting with smaller models,
+[00:40] in this case like Claude Haiku, before graduating to a more
+[00:44] intelligent model like Opus, because a lot of tasks can be
+[00:47] done with these cheaper models.
+[00:49] So I'm basically assuming here that we often don't need the
+[00:53] best model for a lot of tasks that we ask our agent to do.
+[00:57] Past a certain point, you kind of hit diminishing returns
+[00:59] where your cost and latency are increasing,
+[01:02] but the quality of the outputs are not significantly better.
+[01:05] And ideally, an agent has good model-harness-task fit.
+[01:10] And what does that mean?
+[01:11] It means you have the right model for the job
+[01:14] on the intelligence and cost curve here.
+[01:18] And then your harness does a good job
+[01:19] of getting the right context to the model
+[01:22] for the given task at hand.
+[01:24] So what does a model router actually do?
+[01:26] It picks the right model for each task.
+[01:28] And so a task request comes in, and a router
+[01:32] has a classifier model, and then a prompt
+[01:35] with some criteria that help it decide what model would
+[01:38] be most appropriate for a given task.
+[01:41] So would that be a fast and cheap model, maybe something
+[01:43] balanced, or a performance-focused model
+[01:46] that's going to be slower and more expensive?
+[01:49] And then it selects the given model for the task,
+[01:51] and then that model is used to power the agent that
+[01:54] completes the task.
+[01:56] And so our test bed here was Open SWE, our open source
+[01:59] coding agent.
+[02:00] And to kind of spoil the results of the experiment here,
+[02:03] we were able to see a 64% reduction in median cost
+[02:07] per thread with no measurable change in quality.
+[02:10] There's four steps for building a model router,
+[02:13] and I'll explain them through the lens of this Open SWE
+[02:16] experiment that we ran.
+[02:18] But a little sneak peek here.
+[02:19] First, you need to understand the tasks
+[02:21] that your agent works on.
+[02:23] You need to understand the models available for these tasks.
+[02:27] Then with one and two done, you can build the router
+[02:29] in your agent's harness.
+[02:31] And it's very important to track task outcomes
+[02:34] so that you can understand if your router is working well.
+[02:37] That is reducing cost without sacrificing quality.
+[02:40] OK, so let's talk about step one, understanding the tasks.
+[02:43] The first thing that we did was try
+[02:45] to understand what our coding agent Open SWE is being
+[02:48] tasked with.
+[02:49] This was all done using LangSmith.
+[02:51] So every time our coding agent runs,
+[02:54] it sends a trace to LangSmith that
+[02:56] has a record of every step that that agent took.
+[03:00] And so we were able to use all of those traces
+[03:02] and do aggregate analysis over them
+[03:05] to determine what types of tasks our agent was doing.
+[03:09] So you can see here, unsurprisingly, for a coding
+[03:11] agent that code changes dominated things like feature requests,
+[03:15] bug fixes, and tests.
+[03:17] But there were also some things like design questions
+[03:20] and general purpose questions.
+[03:28] Out of all of the steps,
+[03:29] I would actually say that this one is the most important.
+[03:31] This is what you use as the foundation
+[03:34] for building your criteria for the router.
+[03:36] You know, deciding what types of tasks
+[03:38] should be assigned which model.
+[03:40] And so if you don't have a clear understanding
+[03:42] of this task space,
+[03:44] it's going to be very hard to develop an effective router.
+[03:47] And LangSmith, as I mentioned, was very instrumental
+[03:50] in helping understand this space.
+[03:52] I actually built a custom app on top of LangSmith
+[03:55] to help me better understand this trace data.
+[03:58] So you can see kind of the categories here
+[04:01] and then active agent time and observed LLM cost
+[04:04] filtered by different types of requests.
+[04:08] Overall, this was super helpful
+[04:10] for basically exploratory data analysis over my traces.
+[04:14] Also as part of step one,
+[04:16] I wanted to better understand
+[04:17] how complexity varied by task type,
+[04:20] knowing that we probably want a more intelligent model
+[04:23] for more complex tasks.
+[04:25] So you can see here, we measured median invocations.
+[04:28] So that's the number of times Open SWE was called.
+[04:31] And then also the median LLM cost
+[04:34] for these different buckets of tasks.
+[04:38] And then we generally rated a task as more complex
+[04:41] if the number of invocations were higher
+[04:43] or the LLM cost was higher.
+[04:46] And you can see kind of unsurprisingly here
+[04:48] that like feature work was generally more complex
+[04:51] than say testing work.
+[04:53] All right, so this part is actually quite fun.
+[04:56] Step two is understanding the models available
+[04:58] for your tasks.
+[05:00] So this data is pulled from the
+[05:02] Artificial Analysis Intelligence Index
+[05:05] as of September 9th, 2026,
+[05:07] which is when we began this experiment.
+[05:09] And you can see on the X-axis,
+[05:10] we have the cost per intelligence task.
+[05:13] And then on the Y-axis,
+[05:14] we have the Artificial Analysis Intelligence Index.
+[05:18] This is what we call the Pareto frontier for LLMs.
+[05:22] It's this set of optimal models that have a good trade-off
+[05:25] between like benchmark accuracy and evals
+[05:28] compared to cost and latency.
+[05:31] And so generally we want to select models along this frontier.
+[05:36] And then given that we were designing a model router,
+[05:38] we wanted to choose a small set of models here
+[05:41] that had some trade-offs between their speed
+[05:44] and intelligence index.
+[05:47] The models that we ended up choosing
+[05:48] were GLM-5.3-Flash for our fast model, GPT-5.6
+[05:53] Sol for our balanced model, and then GPT-6 Astra
+[05:57] for our performance tier.
+[05:59] Step three is building the router in the harness.
+[06:02] So we used two sources of data to decide on the criteria
+[06:06] for our initial version of the router.
+[06:09] The first was the understanding of those tasks
+[06:11] that we saw in step one.
+[06:13] And the second was the official provider guides
+[06:16] from OpenAI, for example, on which models
+[06:19] to use for which tasks.
+[06:21] And so you can see a couple of the descriptors
+[06:23] that we used for each of the criteria for a given model.
+[06:27] Also important to note for our router here,
+[06:30] the router just runs once on the thread's first message
+[06:34] and then selects the model for the remainder of the task.
+[06:37] This is different from some routers which
+[06:38] do this mid-flight routing.
+[06:41] We decided to just do a simple version
+[06:43] first, but when I talk about upcoming improvements or further work, mid-thread routing is covered.
+[06:49] So when we initially built this router in early September, we used a small LLM, specifically
+[06:55] GLM-5.3-Flash, to do the routing decision with structured output. But after the experiment,
+[07:02] Jev, a popular decision model, came out and had claims of being significantly faster and cheaper
+[07:09] than LLMs with more constrained decision-making powers.
+[07:13] And so we are now powering our Open SWE router with Jev,
+[07:17] the decision model.
+[07:18] And it's much faster and much cheaper as Jev advertised.
+[07:23] The last thing I'll call out on this slide
+[07:24] is that GLM-5.3-Flash is actually an open model.
+[07:28] At LangChain a while ago, we wrote a blog
+[07:30] about open models crossing a threshold.
+[07:33] We definitely think that's true.
+[07:35] We use open models a lot internally.
+[07:37] And a model router is a great opportunity
+[07:39] to experiment with using cheaper and faster open models
+[07:43] for tasks that they're more than equipped to handle.
+[07:46] OK.
+[07:46] And then for step four, you need to decide
+[07:48] how you're going to track your task outcomes.
+[07:51] There's two main ways you can do this.
+[07:53] The first is through offline evals.
+[07:55] So this is very safe.
+[07:57] You have repeatable comparisons and experiments
+[07:59] that you can run.
+[08:00] But the catch is that it can be a little bit hard and expensive
+[08:03] to develop a representative data set.
+[08:06] And so the faster approach here is to do an A/B test,
+[08:09] where you know that your live traffic is representative.
+[08:12] But the catch here is that we're running this experiment
+[08:15] for our live users, and so they may experience
+[08:18] a non-optimal router, which is the risk.
+[08:21] And so the two outcomes that we were tracking with our A/B
+[08:24] test were the merged PR rate.
+[08:27] And then also, we enabled users to provide feedback
+[08:31] on Open SWE runs so they could either give a thumbs up
+[08:34] or a thumbs down.
+[08:35] And so you can imagine we want to make
+[08:38] sure that for the 50% of threads that
+[08:41] run through this new router, the merged PR rate
+[08:44] doesn't go down significantly, and the feedback
+[08:47] is not significantly different either.
+[08:49] All right, so experiment number one, what were our results?
+[08:53] We had almost 500 threads.
+[08:55] And you can see that the median cost per thread
+[08:57] for the router was much lower, 64% lower.
+[09:02] The mean cost was also lower, and then the P90 cost per thread
+[09:05] was lower by 37%.
+[09:08] We see actually for this case more threads
+[09:11] from the routed version ending in a merged PR,
+[09:14] although the difference was not statistically significant.
+[09:17] And then we also see that the PR open rate
+[09:19] was pretty comparable across our A and B branches.
+[09:23] You can see on this breakdown kind of the proportion of tasks
+[09:26] that were sent to each of the model tiers.
+[09:28] So we had 34% sent to the fast tier, 56% sent to the balanced
+[09:33] tier and only 10% sent to performance.
+[09:37] You can see on the far left, kind of the different distribution
+[09:39] of costs for the always performance model versus the routed.
+[09:44] And then you can see on the right side,
+[09:47] for the routed threads, we had much cheaper fast runs
+[09:51] and then the performance runs.
+[09:54] And then on the right, you can see in aggregate,
+[09:56] the fast runs were much cheaper and then balanced
+[09:59] and performance more expensive accordingly.
+[10:03] One interesting note, we definitely
+[10:05] did see a couple of very long threads contributing
+[10:07] disproportionately to cost.
+[10:10] And this was true for both the routed and non-routed arms
+[10:13] of the experiment.
+[10:14] I will note, we actually started a second experiment,
+[10:17] which was router versus a controlled fast model.
+[10:20] So in the first experiment, it was
+[10:22] a control of the performance model.
+[10:24] We did end this test within a day
+[10:26] because we got so many complaints from users
+[10:28] who were stuck on the fast arm.
+[10:30] And so we got enough complaints.
+[10:32] we didn't want to significantly degrade user experience.
+[10:34] And so we decided to stop this experiment.
+[10:37] But it was pretty telling.
+[10:38] We certainly couldn't switch over to GLM-5.3-Flash
+[10:42] for all of the tasks that Open SWE needs to manage.
+[10:45] So what's next here?
+[10:46] There is definitely a lot that we could do to further explore
+[10:49] model routing optimizations.
+[10:51] I think the first thing would be benchmarking the router
+[10:53] on other eval sets like Deep SWE,
+[10:57] rather than just doing the A/B testing,
+[10:59] or even perhaps other benchmarks that are more review focused,
+[11:02] because generally the task for Open SWE
+[11:05] is to generate good, reviewable PRs.
+[11:08] The second thing that we didn't touch
+[11:09] is model selection for subagents.
+[11:12] So there's definitely more cost optimizations to be made
+[11:14] if we also select appropriately sized models
+[11:17] for the subagents that the main agent orchestrates
+[11:21] with the Deep Agents harness.
+[11:22] A third thing that I mentioned earlier
+[11:24] we could certainly explore is rerouting mid-thread.
+[11:27] So you can imagine if for Open SWE, a user asks a question
+[11:32] and then discovers that maybe a pretty complex bug fix is
+[11:35] in order or wants to design a new feature mid-thread,
+[11:39] you might want to upgrade to a more capable model.
+[11:43] And rerouting mid-thread could help
+[11:44] to ensure that the right model is
+[11:46] chosen for the task at any point in the given thread.
+[11:50] One trade-off here is that if you do switch a model,
+[11:53] you experience a cache miss, which can be costly.
+[11:56] But for async agents like Open SWE,
+[11:59] there's actually a lot of cache misses anyways,
+[12:01] just because there's more than a five minute idle time
+[12:04] between when an agent responds
+[12:06] and a developer has time to respond back in Slack.
+[12:09] So this cache miss might actually not
+[12:13] be a super significant concern.
+[12:15] And then the fourth thing would be
+[12:16] digging for richer routing signals.
+[12:19] So we didn't get a ton of feedback on traces.
+[12:22] We did get, you know, the PR merge rate
+[12:24] was a very reliable metric,
+[12:26] but trying to get more active feedback
+[12:28] would be helpful as well.
+[12:30] All right, so if you want to get started
+[12:31] building your own router,
+[12:33] I would recommend following the four steps
+[12:35] that we did in this experiment.
+[12:36] So one, understand your agent's task space.
+[12:40] Two, pick models along the Pareto frontier,
+[12:44] the cost intelligence curve.
+[12:46] Third, treat routing as context engineering
+[12:49] and build your router into the harness
+[12:51] where the appropriate context is
+[12:52] for the given tasks at hand.
+[12:55] And fourth, make sure you have the power to measure success
+[12:58] before you begin live routing.
+[13:00] You can easily add routing to your own agent
+[13:02] with our model routing middleware.
+[13:05] And at LangChain, we've always prided ourselves
+[13:07] on offering open source software
+[13:09] that's model provider agnostic.
+[13:11] And so changing models in your router
+[13:13] should just be a one line of code change.
+[13:16] You can also check out Open SWE at langchain-ai/open-swe
+[13:21] on GitHub.
+[13:22] You can learn more about building a harness with Jev,
+[13:25] which is a decision model that's incredibly powerful
+[13:28] for the model routing step at the blog linked below.
+[13:31] And we always love hearing from you.
+[13:33] Feel free to tag us @LangChain on X.
+[13:35] Thanks for watching and see you in the next one.
