@@ -225,6 +225,7 @@ _annotate_failure() { # _annotate_failure <이름> <출력 파일>
 # 있어야 한다 — 없으면 아래 orphan_test_check 가 러너를 빨강으로 만든다.
 REGISTERED_TESTS=(
   windows-helpers-test.sh
+  newline-key-test.sh
   plan-state-test.sh
   iface-gate-test.sh
   plan-declare-gate-test.sh

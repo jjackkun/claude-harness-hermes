@@ -146,6 +146,10 @@ if [[ ! -f "$GLOBAL_CLAUDE_MD" ]]; then
   fi
 fi
 
+# ---- shift+enter 개행 (컴퓨터별 설정 — 새 컴퓨터에는 안 따라온다) ----
+# keybindings.json 과 Windows Terminal 설정에 없을 때만 더한다. 이미 정해 둔 값은 안 건드린다.
+install_newline_key "$CLAUDE_DIR"
+
 # ---- Fix ownership if we ran as root for another user ----
 if [[ $EUID -eq 0 && "$TARGET_USER" != "root" ]]; then
   chown -R "$TARGET_USER:$TARGET_USER" "$CLAUDE_DIR"

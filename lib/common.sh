@@ -65,3 +65,5 @@ source "$_DS_LIB/settings_gen.sh"
 source "$_DS_LIB/claude_md_gen.sh"
 # shellcheck source=lib/hermes_memory.sh
 source "$_DS_LIB/hermes_memory.sh"
+# shellcheck source=lib/newline_key.sh
+source "$_DS_LIB/newline_key.sh"          # shift+enter 개행 — keybindings.json + Windows Terminal (컴퓨터별 설정)
