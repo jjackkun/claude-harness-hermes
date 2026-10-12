@@ -12,7 +12,7 @@
 | 만든 것 | 패널 모드 세 개 — `tool-calls-pane`, `hermes-roster-pane`, `file-explorer` |
 | 위치 | 원본은 이 저장소의 `assets/skills/<모드 이름>/`. 전역 기본 설치(`presets/_common.conf`)에 들어 있어 모든 컴퓨터의 `~/.claude/skills/<모드 이름>/` 에 깔린다 |
 | 설치 | 따로 켤 것이 없다. `setup.sh` 로 새로 설치하거나 `update-all.sh` 로 갱신하면 함께 깔린다. Claude Code 2.1.290 이상에서 로드된다 |
-| 상태 | 세 모드 모두 실제 화면에서 동작 확인(`file-explorer` 의 탭과 git 탭 포함). 모드 시험: `file-explorer` 77건, `hermes-roster-pane` 8건, `tool-calls-pane` 6건 통과. 설치 시험(`tests/mods-install-test.sh`) 21개 항목 통과 |
+| 상태 | 세 모드 모두 실제 화면에서 동작 확인(`file-explorer` 의 탭과 git 탭 포함). 모드 시험: `file-explorer` 77건, `hermes-roster-pane` 9건, `tool-calls-pane` 7건 통과. 설치 시험(`tests/mods-install-test.sh`) 21개 항목 통과 |
 | 주의 | 엔진 타입 파일 머리말에 "EARLY ACCESS: 예고 없이 바뀔 수 있다"고 적혀 있다. 아래 규칙은 2.1.290 기준이다 |
 
 이 문서의 "엔진 규칙"은 두 종류다. **확인**은 시험이나 실제 화면으로 본 것이고, **문서**는 엔진 타입 파일
@@ -62,6 +62,7 @@
 
 세 모드 공통:
 
+- 세션이 열릴 때 패널을 혼자 열지 않는다. 명령이나 띠의 버튼으로 사람이 열 때만 연다(시험으로 확인).
 - 프롬프트 위 띠에 여는 버튼을 하나씩 둔다. 띠는 하나뿐이라, 각 모드가 `next(e)` 로 아래 모드가 그린 것을
   받아 그 옆에 자기 버튼을 붙인다. 통째로 그리면 다른 모드의 버튼이 가려진다(확인).
 - 패널 첫 줄의 오른쪽 끝에 `[ 닫기 ] [ 전체 닫기 ]` 를 둔다. `[ 전체 닫기 ]` 는 세 패널 이름을 차례로 닫는다.

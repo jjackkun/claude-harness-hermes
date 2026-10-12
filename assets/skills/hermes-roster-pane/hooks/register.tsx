@@ -27,12 +27,8 @@ export const register: Register = on => {
       name: COMMAND,
       description: '헤르메스 에이전트 명부를 패널로 보인다',
     })
-    const loaded = await refresh($)
-
-    // 명부가 읽히는 프로젝트에서만 혼자 연다.
-    if (loaded.isOk) {
-      void open($, loaded)
-    }
+    // 띠 버튼을 그릴지 정하려고 읽기만 한다. 패널은 사람이 열 때만 연다.
+    await refresh($)
 
     return next(e)
   })

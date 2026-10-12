@@ -31,6 +31,24 @@ test('띠의 버튼을 누르면 도구 호출 패널을 연다', async ($, on) 
   await ui.unmount()
 })
 
+test('세션이 열릴 때 패널을 혼자 열지 않는다', async ($, on) => {
+  // Arrange
+  const opened: string[] = []
+  on('ui.open', async (_$, e) => {
+    opened.push(e.id)
+
+    return { value: { isPlaced: true } }
+  })
+  on('command.register', async () => ({ value: null }))
+  on('session.start', async (_$, e) => ({ cwd: e.cwd }))
+
+  // Act
+  await $.session.start({ cwd: '/home/someone/project', source: 'startup' })
+
+  // Assert
+  expect(opened).toEqual([])
+})
+
 test('설문이 떠 있으면 띠를 그리지 않는다', async ($, on) => {
   // Arrange · Act
   on('ui.render', async ($$, e) => {

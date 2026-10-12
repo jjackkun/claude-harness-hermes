@@ -22,7 +22,6 @@ export const register: Register = on => {
       name: COMMAND,
       description: '이번 세션의 도구 호출을 패널로 보인다',
     })
-    void $.ui.open({ id: PANE, title: TITLE })
 
     return next(e)
   })

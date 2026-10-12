@@ -57,6 +57,20 @@ test('명부가 읽히는 프로젝트: 띠 버튼이 아래 모드의 버튼 �
   await ui.unmount()
 })
 
+test('명부가 읽히는 프로젝트에서도 세션이 열릴 때 패널을 혼자 열지 않는다', async ($, on) => {
+  // Arrange
+  const seen = standIn(on, 0)
+
+  // Act
+  await startSession($)
+  const ui = await $.ui.mount(BAND)
+
+  // Assert — 명부는 읽되(띠 버튼용) 패널은 사람이 열 때까지 닫혀 있다
+  expect(seen.runs).toBe(1)
+  expect(seen.opened).toEqual([])
+  await ui.unmount()
+})
+
 test('명부가 읽히지 않는 프로젝트(헤르메스 없음): 띠에 명부 버튼을 그리지 않고 아래 모드의 버튼만 둔다', async ($, on) => {
   // Arrange — 명부 명령이 종료 코드 2
   const seen = standIn(on, 2)
