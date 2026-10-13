@@ -144,7 +144,7 @@ def _heredoc_tags(line: str) -> list:
 
 
 def _continues(line: str) -> bool:
-    """줄이 홀수 개의 `\` 로 끝나면 다음 줄로 이어진다(짝수 개는 `\\` 이스케이프)."""
+    r"""줄이 홀수 개의 `\` 로 끝나면 다음 줄로 이어진다(짝수 개는 `\\` 이스케이프)."""
     return (len(line) - len(line.rstrip("\\"))) % 2 == 1
 
 
