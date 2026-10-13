@@ -1,5 +1,5 @@
 - [handoff 용어는 "봉투" 유지](term-handoff-jisiseo.md) — 지시서 개명 검토 뒤 철회, 첫 언급 때 "업무 지시 한 장" 으로 풀어 줌
-- [폼 질문 연발 금지](feedback-no-template-forms.md) — 선택지 폼을 연달아 띄우면 "의미 없는 질문"; 값이 자유라면 더 묻지 않고 진행
+- [폼 질문 연발 금지](feedback-no-template-forms.md) — 값이 자유인 것을 폼으로 연달아 묻지 않는다; 단 훅 `[ASK]` 처럼 닫힌 선택지는 내용 조회 후 폼으로 묻는다(평문 금지)
 - [끝난 작업은 묻지 말고 커밋](feedback-commit-without-asking.md) — 커밋 묶음·분할은 내가 정한다; 묻는 것 자체가 "어이없다"
 - [git add 는 내 세션 파일만](feedback-git-add-own-files.md) — `-A` 금지, 경로 나열; 내 작업이 낳은 헤르메스·설치 산출물은 포함
 - [전파 = 소우주 커밋·푸시까지](feedback-propagate-means-commit-push.md) — update-all 설치 뒤 12곳 각각 영수증 경로만 커밋·푸시
