@@ -12,3 +12,4 @@
 - [소우주 DB 죽은 표 정리는 보류](project-microcosm-db-prune-deferred.md) — hermes-db-prune --apply 를 먼저 제안하지 않는다(공장만 정리됨)
 - [푸시는 현재 저장소만](feedback-push-current-repo-only.md) — "전체 푸시해" 를 모든 프로젝트로 넓히지 않는다; terminal-shipping 등은 이름으로 말할 때만
 - [teulankkae 제외](project-teulankkae-excluded.md) — 2026-10-06 전파 대상에서 뺌(git 저장소 아님), 설치·커밋 제안 금지
+- [wonil 제외](project-wonil-excluded.md) — 2026-10-14 전파 대상에서 뺌(git 저장소 아님), 설치·커밋 제안 금지
