@@ -52,6 +52,11 @@ CASES = [
  (HIT, "src/keys.py", 'ADMIN_PASSWORD = "admin_password"', "비밀 접미 이름은 키 이름 상수로 면제하지 않는다"),
  (HIT, "src/keys.py", 'API_KEY = "api_key" + "sk-live-9f8e7d6c5b4a39281706"', "이름 뒤에 진짜가 붙은 줄"),
  (HIT, "src/app.py", 'api_key = "sk-live-9f8e7d6c5b4a39281706"', "키 모양(SHAPE)"),
+ # ── 2026-10-14 (소우주 jj-agent-room 오탐) ─────────────────────────────────────
+ (MISS, "src/AuthScreen.tsx", '// A failure fragment looks like `#token=&companyId=&error=...`', "빈 쿼리 값 뒤의 다음 인자"),
+ (MISS, "server/src/env.ts", "const DEV_AGENT_RUNTIME_SECRET = 'dev-agent-runtime-secret-do-not-use-in-prod'", "운영 금지를 밝힌 공개 개발용 기본값"),
+ (HIT, "src/app.ts", 'token=ab&9f8e7d6c5b4a39281706', "& 가 값 중간에 있으면 계속 걸린다"),
+ (HIT, "server/src/env.ts", "const DEV_AGENT_RUNTIME_SECRET = 'dev-agent-runtime-secret-9f8e7d6c'", "운영 금지 표시 없는 같은 모양은 계속 걸린다"),
 ]
 bad = []
 for expect, path, line, why in CASES:
@@ -65,7 +70,18 @@ PYEOF
 echo "== 면제 표 (ENV · KV · 감도)"
 OUT="$(table "$CS")"; N="$(sed -n 1p <<<"$OUT")"; BAD="$(sed -n '2,$p' <<<"$OUT" | sed '/^$/d')"
 [[ "${N:-0}" -ge 24 ]] && ok "사례 ${N}개를 검사했다" || nope "사례 수가 모자란다: ${N:-0}"
-if [[ -z "$BAD" ]]; then ok "표 전체 일치(통과해야 할 12 · 걸려야 할 13)"; else nope "표 불일치"; sed 's/^/     /' <<<"$BAD"; fi
+if [[ -z "$BAD" ]]; then ok "표 전체 일치(통과해야 할 14 · 걸려야 할 15)"; else nope "표 불일치"; sed 's/^/     /' <<<"$BAD"; fi
+
+echo "== 경로 면제 — __tests__/ 는 fixture 구역, 일반 소스는 검사 (2026-10-14)"
+PATHS="$(python3 - "$CS" <<'PYEOF2'
+import importlib.util, sys
+s = importlib.util.spec_from_file_location("cs", sys.argv[1]); m = importlib.util.module_from_spec(s); s.loader.exec_module(m)
+for p in ["server/src/__tests__/engine.test.ts", "src/__tests__/a.test.tsx", "server/src/env.ts", "src/tests_util.ts"]:
+    print(p, bool(m.EXCLUDE_RE.search(p)))
+PYEOF2
+)"
+grep -q "server/src/__tests__/engine.test.ts True" <<<"$PATHS" && grep -q "src/__tests__/a.test.tsx True" <<<"$PATHS" && ok "__tests__/ 는 면제" || nope "__tests__/ 면제 안 됨: $PATHS"
+grep -q "server/src/env.ts False" <<<"$PATHS" && grep -q "src/tests_util.ts False" <<<"$PATHS" && ok "일반 소스는 계속 검사" || nope "일반 소스가 면제됨: $PATHS"
 
 echo "== 자기 검사 — 면제를 '항상 면제' 로 바꾸면 감도 줄이 빨개진다"
 T="$(mktemp -d)"; trap 'rm -rf "$T"' EXIT

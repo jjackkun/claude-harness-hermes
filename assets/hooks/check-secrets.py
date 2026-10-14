@@ -52,6 +52,7 @@ EXCLUDE_RE = re.compile(
     # 그 어휘가 모든 파일에서 통하게 되어 탐지기 자체가 무뎌진다. 경로 면제는 어디가
     # 면제됐는지 목록으로 남고, 소비 프로젝트에 없는 경로는 그냥 no-op 이다.
     r"|^tests/"                        # 테스트 fixture (비밀 형태를 일부러 만든다)
+    r"|(^|/)__tests__/"                # JS/TS 관례 시험 폴더(소스 옆). tests/ 와 같은 근거 — docs/audits/2026-10-14-check-secrets-fork-false-positives.md
     r"|^assets/(rules|skills)/"        # 교육용 예제 문서 ("이렇게 하지 마라")
     r"|^\.claude/(rules|skills|agents)/"  # 위 문서의 소우주 복사본(2026-09-16 복사 설치). 원본은 공장이 검사한다
     r"|^docs/superpowers/specs/"       # 설계 문서 (관측된 유출 형태를 그대로 인용)
@@ -133,7 +134,9 @@ PLACEHOLDER_RE = re.compile(
     r"REDACTED|\*{3,}|x{4,}|XXXX|<[^>]{1,40}>|\$\{[^}]+\}|"
     # `your-api-key-here` 처럼 중간에 낱말이 끼는 자리표시자도 받는다.
     r"your[-_](?:[a-z]+[-_])*(?:token|key|password|secret)|"
-    r"example|dummy|placeholder|changeme",
+    r"example|dummy|placeholder|changeme|"
+    # 값 자체가 "운영에서 쓰지 말 것" 이라고 밝힌 공개 개발용 기본값 (2026-10-14 오탐).
+    r"do-not-use-in-prod(?:uction)?",
     re.IGNORECASE,
 )
 
@@ -224,6 +227,9 @@ def _kv_exempt(path: str, line: str, m: "re.Match[str]") -> bool:
     ② 키 이름 상수 ③ 따옴표 값 뒤에 비ASCII 가 바로 붙는 시험 더미(`"access-값"`)."""
     value = m.group(3)
     start = m.start(3)
+    # 빈 쿼리 값: `#token=&companyId=&` 의 `&…` 는 다음 인자다 (2026-10-14 오탐).
+    if value.startswith("&"):
+        return True
     quoted = start > 0 and line[start - 1] in ("'", '"')
     if not quoted and path.endswith(CODE_SUFFIXES) and _is_ident_ref(value):
         return True
