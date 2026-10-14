@@ -22,6 +22,11 @@ frontend/DB/TS 작업은 `fullstack-developer`, `database-reviewer`, `typescript
 아니라 "왜 여기까지 왔지?" 부터 묻는다. 500 초과 파일은 거의 항상 책임 2개 이상이
 섞여 있고, 제대로 분리하면 500 한도는 자연히 지켜진다.
 
+**포크 프로젝트**: `.harnessrc` 에 `UPSTREAM_REF=upstream/main` 처럼 원본 ref 를 적으면,
+그 ref 에 이미 있는 파일(원본 소유)은 hard 500 에서 뺀다 — 포크가 원본 파일을 쪼개면
+병합마다 충돌한다. 빠진 판정은 `[R-size:upstream]` 줄로 남고, ref 가 없으면(받아오지 않은
+클론) 판정할 수 없으니 그대로 막고 `git fetch` 를 안내한다. 포크가 새로 만든 파일은 그대로 500.
+
 정말 한 책임인데 500 을 넘으면 (큰 스키마 직렬화, 완전 열거 상태 머신 등) waiver 근거를
 파일 상단 주석 + `docs/audits/` 에 기록 후 `.harnessrc` 의 `MAX_LINES_HARD` 상향.
 

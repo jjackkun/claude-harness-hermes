@@ -236,6 +236,7 @@ REGISTERED_TESTS=(
   gate-declaration-coverage-test.sh
   struct-barrel-test.sh
   complexity-gate-test.sh
+  r-size-upstream-owned-test.sh
   cx-baseline-distribution-test.sh
   dep-contract-test.sh
   pipe-gate-test.sh

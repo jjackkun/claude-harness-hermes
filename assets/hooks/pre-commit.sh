@@ -143,15 +143,32 @@ fi
 
 # 1. R-size
 # GATE: R-size block
+# 포크 프로젝트: .harnessrc 의 UPSTREAM_REF(예: upstream/main)에 이미 있는 파일은
+# 원본 소유라 R-size 를 걸지 않는다 — 포크가 원본 파일을 쪼개면 병합마다 충돌한다.
+# ref 가 없으면(받아오지 않은 클론) 판정할 수 없으니 지금처럼 막고 fetch 를 안내한다.
+# 계획: docs/exec-plans/active/2026-10-15-r-size-upstream-owned.md
+UPSTREAM_REF_OK=0
+if [[ -n "${UPSTREAM_REF:-}" ]] && git rev-parse --verify --quiet "$UPSTREAM_REF" >/dev/null; then
+  UPSTREAM_REF_OK=1
+fi
 if [[ -n "$CHECKABLE" ]]; then
   while IFS= read -r f; do
     [[ -f "$f" ]] || continue
     LC=$(wc -l < "$f")
     if (( LC > MAX_LINES_HARD )); then
+      if (( UPSTREAM_REF_OK )) && git cat-file -e "$UPSTREAM_REF:$f" 2>/dev/null; then
+        echo "[R-size:upstream] $f ($LC 줄) — $UPSTREAM_REF 에 있는 원본 파일이라 한도 제외 (.harnessrc UPSTREAM_REF)"
+        continue
+      fi
+      UPSTREAM_HINT=""
+      if [[ -n "${UPSTREAM_REF:-}" ]] && (( ! UPSTREAM_REF_OK )); then
+        UPSTREAM_HINT="
+  → .harnessrc 의 UPSTREAM_REF=$UPSTREAM_REF 가 없어 원본 파일인지 판정 못 함. git fetch ${UPSTREAM_REF%%/*} 후 재시도."
+      fi
       VIOLATIONS+=("$(cat <<EOF
 
 [R-size] $f ($LC 줄 > $MAX_LINES_HARD)
-  → 단일 책임 분리 / 헬퍼 추출 후 재시도. 한도 조정은 docs/audits/ 근거 후 .harnessrc.
+  → 단일 책임 분리 / 헬퍼 추출 후 재시도. 한도 조정은 docs/audits/ 근거 후 .harnessrc.${UPSTREAM_HINT}
   근거: docs/design-docs/core-beliefs.md#r-size
 EOF
 )")
