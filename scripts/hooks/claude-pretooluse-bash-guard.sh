@@ -26,14 +26,107 @@ fi
 declare -F gate_emit >/dev/null 2>&1 || gate_emit() { :; }
 
 INPUT=$(cat 2>/dev/null || true)
-CMD=$(printf '%s' "$INPUT" | python3 -c "
-import sys, json
+# 파싱과 판정을 python3 한 번에 끝낸다 — 이 훅은 모든 Bash 호출에 걸린다(gate_emit.sh 실측: 기동 1회 21ms).
+#   1행: "<SUDO 0|1> <FG 0|1>"   2행부터: 명령 원문
+#
+# SUDO — 명령 위치의 sudo 가 -n/--non-interactive 없이 쓰였는가 (R-sudo, 계획 2026-10-14 G4).
+#   에이전트 Bash 는 비밀번호를 줄 수 없어 sudo 는 Password: 에서 타임아웃까지 멈춘다.
+#   shlex 의 punctuation_chars 로 따옴표·주석·`;&|()`·줄바꿈을 존중해 자른다 — `echo "a; sudo x"`·
+#   `grep "sudo apt"`·`# sudo` 를 잡으면 R5 의 20/20 오탐을 되풀이한다.
+#   -S 는 막는다: 비밀번호를 stdin 으로 흘리는 길은 비밀값이 명령·로그에 남는다.
+#   알려진 한계: `bash -c "sudo …"`·`xargs sudo` 는 못 잡는다(따옴표 안·인자 위치).
+# FG — timeout ≥ 300000ms 를 주고 배경이 아니다 (R-fg, G5). 명령 패턴이 아니라 에이전트가 준 타임아웃을 본다.
+#   300초는 pytest_gate.sh 의 "앞에서 기다리기 위험해지는 선"(한도 600초의 절반)과 같은 값.
+PARSED=$(printf '%s' "$INPUT" | python3 -c "
+import sys, json, shlex, re
+FG_TIMEOUT_MS = 300000
+# 뒤의 단어를 명령 위치로 두는 것 — 감싸는 명령 + 셸 예약어(if·then·do … ! {).
+WRAPPERS = {'env', 'time', 'nohup', 'exec', 'command', 'builtin',
+            'if', 'then', 'elif', 'else', 'while', 'until', 'do', '!', '{'}
+SEP_CHARS = set(';&|()\n')     # shlex 는 붙은 구분자(예: ');' ';' 와 줄바꿈)를 한 토큰으로 묶는다 — 글자 집합으로 본다
+NO_PROMPT = {'-K', '-V', '--help', '--version'}   # 비밀번호를 묻지 않는 sudo
+HEREDOC = re.compile(r'<<(?!<)-?\s*([\'\"]?)(\w+)\1')
+def drop_heredoc_bodies(cmd):
+    # 히어독 본문은 명령이 아니라 데이터다 — 설치 스크립트를 cat <<EOF 로 쓰는 중에 sudo 줄이 있어도 막지 않는다.
+    out, ends = [], []
+    for line in cmd.split('\n'):
+        if ends:
+            if line.strip() == ends[0]:
+                ends.pop(0)
+            continue
+        out.append(line)
+        ends = [m.group(2) for m in HEREDOC.finditer(line)]
+    return '\n'.join(out)
+def sudo_waits(cmd):
+    lex = shlex.shlex(drop_heredoc_bodies(cmd), posix=True, punctuation_chars=';&|()\n')
+    lex.whitespace = ' \t\r'
+    lex.commenters = '#'
+    try:
+        toks = list(lex)
+    except ValueError:
+        return False                      # 따옴표가 안 닫혔다 — 판정 불가는 막지 않는다
+    at_start, i = True, 0
+    while i < len(toks):
+        t = toks[i]
+        if set(t) <= SEP_CHARS:
+            at_start = True; i += 1; continue
+        if not at_start:
+            i += 1; continue
+        if '=' in t and not t.startswith('-') or t in WRAPPERS:
+            i += 1; continue              # VAR=값 · env · time … 은 명령 위치를 뒤로 민다
+        at_start = False
+        if t.rsplit('/', 1)[-1] != 'sudo':
+            i += 1; continue
+        j, kill_cache = i + 1, False
+        while j < len(toks) and toks[j].startswith('-') and not set(toks[j]) <= SEP_CHARS:
+            o = toks[j]
+            if o in NO_PROMPT or o == '--non-interactive' or (not o.startswith('--') and 'n' in o[1:]):
+                break
+            kill_cache = kill_cache or o == '-k'
+            j += 1
+            if o in ('-u', '-g', '-h', '-p', '-C', '-D', '-r', '-t', '-U', '-T'):
+                j += 1                    # 값을 받는 옵션 — 다음 토큰은 값이다
+        else:
+            if kill_cache and (j >= len(toks) or set(toks[j]) <= SEP_CHARS):
+                i = j; continue           # 명령 없는 sudo -k 는 자격만 지운다 — 묻지 않는다
+            return True
+        i = j
+    return False
 try:
     d = json.load(sys.stdin)
-    print(d.get('tool_input', {}).get('command', ''))
+    ti = d.get('tool_input', {}) if isinstance(d, dict) else {}
+    ti = ti if isinstance(ti, dict) else {}
+    cmd = str(ti.get('command', '') or '')
+    try:
+        timeout = int(ti.get('timeout') or 0)
+    except (TypeError, ValueError):
+        timeout = 0
+    fg = timeout >= FG_TIMEOUT_MS and ti.get('run_in_background') is not True
 except Exception:
-    print('')
+    cmd, fg = '', False
+# 새 판정이 깨져도 명령 원문은 반드시 내보낸다 — CMD 가 비면 아래 R5·커밋 안내가 조용히 꺼진다(code-reviewer 지적).
+try:
+    sudo = sudo_waits(cmd)
+except Exception:
+    sudo = False
+print(f'{int(sudo)} {int(fg)}', flush=True)
+sys.stdout.buffer.write(cmd.encode('utf-8', 'replace') + b'\n')
 " 2>/dev/null || true)
+read -r SUDO_TRIP FG_TRIP <<< "${PARSED%%$'\n'*}"
+CMD=""
+[[ "$PARSED" == *$'\n'* ]] && CMD="${PARSED#*$'\n'}"
+
+# R-sudo — 차단. 판정이 명확하고(명령 위치 + -n 없음) 멈춤이 확정적이다(계획 §6).
+if [[ "${SUDO_TRIP:-0}" == "1" ]]; then
+  gate_emit R-sudo block pretooluse "" "비대화형 아닌 sudo"
+  cat >&2 <<'EOF'
+[R-sudo BLOCK] sudo 는 비밀번호(Password:)를 기다리며 멈춘다 — 에이전트 Bash 는 입력을 줄 수 없어 타임아웃까지 아무 말 없이 막힌다.
+사용자에게 이 명령을 `! <명령>` 으로 직접 돌려 달라고 넘기고, 끝난 뒤 이어서 진행하십시오.
+비밀번호 없이 되는지만 볼 때는 `sudo -n <명령>` (안 되면 바로 실패한다).
+근거: docs/design-docs/core-beliefs.md#r-sudo
+EOF
+  exit 2
+fi
 
 # --no-verify 우회 시도 탐지 — 단순 grep 으로 100% 차단은 불가능하나
 # 강한 경고로 에이전트가 자기 검열하도록 유도.
@@ -143,6 +236,28 @@ out = {
       "[HARNESS] git commit 감지. 큰 변경이나 공유 경계 변경이면 "
       "code-reviewer 사용을 고려하세요. 코드·훅·설정 동작을 바꿨다면 "
       "pre-commit-measure 스킬로 주장마다 가장 작은 실행을 돌려 메시지에 실측: 을 남기세요."
+    )
+  }
+}
+print(json.dumps(out, ensure_ascii=False))
+PY
+  exit 0   # 커밋은 위 안내 하나만 — 주입 JSON 은 호출당 하나여야 한다
+fi
+
+# R-fg — 경고만. 이 안내는 도구 결과와 함께 닿으므로 **이번 호출은 그대로 앞에서 막힌다** —
+# 다음 호출을 바꾸는 근거다(R-out 과 같은 성격, 계획 §6). pass 는 세지 않는다(R5 와 같은 이유).
+if [[ "${FG_TRIP:-0}" == "1" ]]; then
+  gate_emit R-fg warn pretooluse "" "timeout ≥ 300000ms 앞 실행"
+  python3 <<'PY'
+import json
+out = {
+  "hookSpecificOutput": {
+    "hookEventName": "PreToolUse",
+    "additionalContext": (
+      "[R-fg] 5분 이상 걸릴 수 있는 명령을 앞에서 돌렸습니다. 끝날 때까지 진행·멈춤·입력 대기를 "
+      "사용자에게 알릴 수 없습니다. 다음부터는 출력을 파일로 받아 run_in_background 로 돌리고, "
+      "Monitor 로 진행·실패·입력 대기(Password·[y/N]) 줄을 걸러 지켜보며 중간 보고하십시오. "
+      "결과는 같은 턴에서 읽습니다. 자세히: run-to-the-end 스킬 · docs/design-docs/core-beliefs.md#r-fg"
     )
   }
 }

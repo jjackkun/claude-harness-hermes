@@ -244,6 +244,7 @@ REGISTERED_TESTS=(
   gate-instrumentation-test.sh
   gate-precommit-instrumentation-test.sh
   r5-detection-test.sh
+  bash-guard-interactive-test.sh
   coverage-probe-test.sh
   mutation-probe-test.sh
   hermes-soul-render-test.sh

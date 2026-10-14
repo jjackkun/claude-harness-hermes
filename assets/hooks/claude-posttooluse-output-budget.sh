@@ -135,8 +135,10 @@ emit("warn", n, dur, {
         "hookEventName": "PostToolUse",
         "additionalContext": (
             f"[R-out] 방금 명령이 컨텍스트에 {n:,}B 를 넣었습니다 (임계 {THRESHOLD:,}B). "
-            "같은 명령을 다시 부를 때는 출력을 파일로 받고 필요한 부분만 읽으십시오 — "
-            "`<명령> > .harness/out/run.log 2>&1; tail -40 .harness/out/run.log`. "
+            "같은 명령을 다시 부를 때는 출력을 파일로 받고 필요한 부분만 읽으십시오. "
+            "짧은 명령은 `<명령> > .harness/out/run.log 2>&1; tail -40 .harness/out/run.log`. "
+            "길 수 있는 명령은 같은 파일로 받되 run_in_background 로 돌리고 Monitor 로 "
+            "진행·실패·입력 대기 줄만 걸러 지켜보며 중간 보고하십시오. "
             "실패를 찾을 때는 grep 으로 파고드십시오. 이번 호출은 되돌릴 수 없습니다."
         )
     }

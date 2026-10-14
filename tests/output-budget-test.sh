@@ -58,6 +58,12 @@ if echo "$OUT" | grep -q "R-out"; then
                                   || bad "무엇이 문제인지 수치를 안 준다"
   echo "$OUT" | python3 -c "import json,sys; json.load(sys.stdin)" 2>/dev/null \
     && ok "주입 출력이 유효한 JSON 이다" || bad "JSON 이 깨졌다"
+  # 계획 2026-10-14-long-command-visibility 목표 G3 — "파일로 보내고 끝난 뒤 tail" 만 말하면
+  # 긴 명령이 앞에서 막혀 아무것도 안 보인다. 짧은 명령과 길 수 있는 명령을 갈라 안내한다.
+  echo "$OUT" | grep -q "짧은 명령.*tail -40" && ok "짧은 명령은 파일 + tail 로 안내한다" \
+                                            || bad "짧은 명령 안내(tail)가 없다"
+  echo "$OUT" | grep -q "길 수 있는 명령.*run_in_background.*Monitor" && ok "길 수 있는 명령은 배경 + Monitor 로 안내한다" \
+                                            || bad "길 수 있는 명령 안내(배경 + Monitor)가 없다"
 else
   bad "임계를 넘겼는데 침묵했다 — 게이트가 꺼져 있다"
 fi

@@ -42,5 +42,15 @@ OUT="$(run_hook "$P")"
 assert "Active Plans 구획 유지" 1 "$(printf '%s\n' "$OUT" | grep -c '\[Active Plans\]')"
 assert "Harness Reminders 구획 유지" 1 "$(printf '%s\n' "$OUT" | grep -c '\[Harness Reminders\]')"
 
+# 계획 docs/exec-plans/active/2026-10-14-long-command-visibility.md 목표 G1 —
+# "앞에서 기다린다" 가 sudo 비밀번호 대기를 10분 동안 아무 말 없이 막히게 했다.
+echo "5. 리마인더 1번 — 길 수 있는 명령은 배경 + Monitor, 입력 대기는 사람에게"
+REM="$(printf '%s\n' "$OUT" | sed -n '/^--- \[Harness Reminders\] ---$/,/^근거:/p')"
+assert "'앞에서 기다린다' 가 없다" 0 "$(printf '%s\n' "$REM" | grep -c '앞에서 기다린다')"
+assert "배경 실행을 말한다" 1 "$(printf '%s\n' "$REM" | grep -c 'run_in_background')"
+assert "Monitor 로 지켜보며 중간 보고" 1 "$(printf '%s\n' "$REM" | grep -c 'Monitor.*중간 보고')"
+assert "입력 대기는 ! <명령> 으로 넘긴다" 1 "$(printf '%s\n' "$REM" | grep -c '! <명령>')"
+assert "결과까지 읽고 턴을 끝낸다" 1 "$(printf '%s\n' "$REM" | grep -c '결과까지 읽고')"
+
 echo "통과 $PASS · 실패 $FAIL"
 [[ $FAIL -eq 0 ]]
