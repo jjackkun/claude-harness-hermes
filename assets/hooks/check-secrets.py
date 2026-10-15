@@ -292,10 +292,13 @@ def scan(path: str, text: str, secret_values: dict) -> list[tuple[int, str, str]
                 hits.append((lineno, kind, excerpt))
 
         # 값 기반 — `.env` 실재 값. 딱지가 없어도, 형태가 낯설어도 잡힌다.
+        # 🔴 **여기만 `record` 를 안 쓴다 — 자리표시자 면제를 안 받는다.** 값 자신이
+        #    `changeme…` 처럼 자리표시자 낱말을 품으면 자기 구간과 겹쳐 대조가 스스로
+        #    무너진다(스캐폴딩 기본값을 안 바꾸고 쓰는 흔한 사고). 하류 terminal-shipping
+        #    2026-09-08 리뷰 HIGH 에서 되돌려 받음. 시험: tests/check-secrets-answerkey-test.sh ④
         for key, value in secret_values.items():
-            idx = line.find(value)
-            if idx >= 0:
-                record("ENV_VALUE", (idx, idx + len(value)), f"{key}=<일치>")
+            if value in line:
+                hits.append((lineno, "ENV_VALUE", f"{key}=<일치>"))
 
         for kind, pattern in SHAPE_RULES:
             m = pattern.search(line)

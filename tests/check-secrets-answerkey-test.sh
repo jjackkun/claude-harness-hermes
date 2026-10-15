@@ -32,6 +32,8 @@ bad()  { echo "  ❌ $1"; FAIL=1; }
 #    진짜를 닮지 않으면 규칙을 검사할 수 없다.
 FAKE_ID="testuser42"
 FAKE_PW='Zq7!kePw31x'
+# 스캐폴딩 기본값을 안 바꾸고 쓴 비밀번호 — 값 자신이 자리표시자 낱말(changeme)을 품는다.
+FAKE_DEFAULT_PW='changeme-Qx9v41'
 
 cd "$TMP" || exit 1
 git init -q .
@@ -49,6 +51,7 @@ mkdir -p scripts; cp "$VALUES_MOD" scripts/
 cat > .env <<EOF
 SOME_ID=$FAKE_ID
 SOME_PASSWORD=$FAKE_PW
+SCAFFOLD_PASSWORD=$FAKE_DEFAULT_PW
 EOF
 
 # ① 아이디만 있는 파일 — 놓아줘야 한다
@@ -57,17 +60,20 @@ printf '경로 /home/%s/PROJECT 에서 작업한다\n' "$FAKE_ID" > id_only.md
 printf '로그인 비번 %s 입니다\n' "$FAKE_PW" > pw.md
 # ③ 같은 줄에 자리표시자와 평문이 함께 — 잡아야 한다 (구간 면제 회귀 방지)
 printf 'example 참고 · 실제 비번 %s\n' "$FAKE_PW" > mixed.md
+# ④ 정답지 값이 자리표시자 낱말을 품어도 — 잡아야 한다 (값이 자기 구간을 면제시키던 회귀 방지, terminal-shipping 2026-09-08 리뷰 HIGH)
+printf '기본 비번은 %s 그대로 둔다\n' "$FAKE_DEFAULT_PW" > default_pw.md
 
-git add id_only.md pw.md mixed.md
+git add id_only.md pw.md mixed.md default_pw.md
 OUT=$(python3 "$CHECKER" 2>&1); CODE=$?
 
 echo "check-secrets 정답지 선별"
 [[ $CODE -ne 0 ]] && ok "위반을 차단했다 (exit $CODE)" || bad "위반을 통과시켰다"
 grep -q 'pw.md'    <<<"$OUT" && ok "라벨 없는 평문을 잡았다"        || bad "라벨 없는 평문을 놓쳤다"
 grep -q 'mixed.md' <<<"$OUT" && ok "자리표시자 옆 평문을 잡았다"     || bad "자리표시자가 줄 전체를 면제시켰다"
+grep -q 'default_pw.md' <<<"$OUT" && ok "자리표시자 낱말을 품은 정답지 값을 잡았다" || bad "정답지 값이 자기 자리표시자 낱말로 스스로 면제됐다"
 grep -q 'id_only'  <<<"$OUT" && bad "아이디를 오탐으로 잡았다"       || ok "아이디는 놓아줬다"
 
-# ④ 정답지가 없어도 (모듈 미탐색) 차단기는 계속 돌아야 한다
+# ⑤ 정답지가 없어도 (모듈 미탐색) 차단기는 계속 돌아야 한다
 rm -f scripts/hermes_secret_values.py .env
 python3 "$CHECKER" >/dev/null 2>&1
 [[ $? -le 2 ]] && ok "정답지가 없어도 죽지 않는다" || bad "정답지가 없을 때 죽었다"
