@@ -25,7 +25,7 @@
 - [ ] G3. 기존 Vue 동작이 그대로다 — 검증: 기존 `tests/struct-barrel-test.sh` 전부 통과(시험 파일 수정 없이)
 - [ ] G4. 설치된 소우주에서 기존 코드가 갑자기 막히지 않는다 — 검증: `.installed-projects` 의 프로젝트 전부에 보고 모드 실행 → 프로젝트별 위반 수를 §7 에 기록. drh-cloth-shop 에서 기준선 생성 → 새 위반 하나 심어 차단 → 지우면 통과. 기준선에 있는 파일을 `git mv` 해도 새 위반으로 잡히지 않음
 - [ ] G5. 규칙 문서가 강제 범위와 일치한다 — 검증: `web/coding-style.md` 의 언어별 강제 범위표와 `structure-langs.json` 의 (언어, 규칙) 목록을 시험 스크립트가 비교해 일치
-- [ ] G6. R-iface(공개 심볼 수)가 Tier A·B 언어에서 동작한다 — 검증: 언어별 공개 심볼 8개 파일 쓰기 차단 / 7개 통과
+- [ ] G6. R-iface(공개 심볼 수)가 Tier A·B 언어에서 동작한다 — 검증: `bash tests/iface-guard-lang-test.sh` — 언어별 공개 심볼 8개 파일 쓰기 차단 / 7개 통과
 - [ ] G7. 검사기 고장이 커밋을 막지 않는다 — 검증: 설치본에서 엔진 파일 하나를 지우거나 JSON 을 깨면 차단이 아니라 `R-struct skipped` 가 `gate-events.jsonl` 에 남는다
 
 ## 2-bis. 착수 전 확인한 사실 (2026-10-16)
@@ -64,6 +64,7 @@
   - `assets/hooks/structure-rule-reexport.mjs` — 배럴의 전량 재노출만 판정한다
   - `assets/hooks/structure-baseline.mjs` — `.structbaseline` 읽기·쓰기와 "새 위반만 남기기"만 한다
   - `tests/structure-gate-test.sh` — 언어×규칙 fixture 를 돌려 판정과 커버리지를 단언만 한다
+  - `tests/iface-guard-lang-test.sh` — 언어별 공개 심볼 수 판정(차단 8 / 통과 7)만 단언한다
   - `tests/structure-install-test.sh` — 임시 저장소 설치·부분 설치·신구 혼합 조합의 동작만 단언한다
   - `tests/fixtures/structure/<언어>/<규칙>/{bad,good}/…` — 언어·규칙별 위반·준수 예시 소스
 - 바뀌는 파일: `check-component-structure.mjs` 는 Vue 규칙(R-struct-1~3)을 엔진의 `vue` 설정으로 옮긴 뒤 **삭제하지 않고** `check-structure.mjs` 를 부르는 얇은 호환 래퍼로 둔다(설치된 소우주의 옛 pre-commit 이 이 이름을 부르므로)
