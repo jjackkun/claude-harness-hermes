@@ -171,14 +171,21 @@ def read_text(path: str) -> str | None:
         return None
 
 
+# dotenvx 가 공개 키로 봉인한 값 — 암호문이지 비밀이 아니다 (2026-10-16 하류 jj-agent-room `.env.secrets` 오탐).
+# 좁게 잡는다: `encrypted:` + 'B'(ECIES 임시 공개키 0x04 의 base64 첫 글자) + base64 120자 이상.
+# 실측 최소 132자(값 1~2바이트). `PASSWORD=encrypted:hunter2` 처럼 딱지만 붙인 짧은 평문은 계속 잡는다.
+# 시험: tests/check-secrets-ciphertext-test.sh
+CIPHERTEXT_RE = re.compile(r"encrypted:B[A-Za-z0-9+/]{120,}={0,2}")
+
+
 def _exempt_spans(line: str) -> list[tuple[int, int]]:
-    """자리표시자가 차지한 구간 목록.
+    """자리표시자·dotenvx 암호문이 차지한 구간 목록.
 
     ★면제 규칙은 탐지 단위와 같은 폭이어야 한다. 예전에는 자리표시자가 한 번이라도
     보이면 **줄 전체**를 건너뛰었다. 한 줄이 1.6만 자인 jsonl 에서는 `example` 한 번에
     그 줄의 진짜 비밀이 통째로 면제된다 — 실제로 이 구멍으로 평문 자격증명이 통과했다.
     """
-    return [m.span() for m in PLACEHOLDER_RE.finditer(line)]
+    return [m.span() for r in (PLACEHOLDER_RE, CIPHERTEXT_RE) for m in r.finditer(line)]
 
 
 def _is_exempt(span: tuple[int, int], exempt: list[tuple[int, int]]) -> bool:

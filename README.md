@@ -323,7 +323,7 @@ Claude 전용 `CLAUDE.md`, `.claude/settings.json` / `.claude/settings.local.jso
 <!--===DS:COUNTS:BEGIN===-->
 - 세션 중 실행 훅 **16종** + 훅이 공유하는 판정 모듈 **15개**
 - git pre-commit 게이트 **21종** — 차단 12 / 경고 9
-- harness 프리셋이 까는 스킬 **6종** · 에이전트 **12종** · 공장 테스트 **134개**
+- harness 프리셋이 까는 스킬 **6종** · 에이전트 **12종** · 공장 테스트 **135개**
 <!--===DS:COUNTS:END===-->
 
 > 위 수치는 `assets/hooks/doc_counts.py` 가 소스에서 산출합니다. 손으로 고치지 마십시오 —
@@ -737,7 +737,7 @@ SKIP_TESTS=windows-smoke.sh,hermes-loop-test.sh bash tests/run-all.sh
 | 게이트 (R 룰) | `iface-gate-test.sh`, `plan-declare-gate-test.sh`, `complexity-gate-test.sh`, `cx-baseline-distribution-test.sh`, `dep-contract-test.sh`, `pipe-gate-test.sh`, `struct-barrel-test.sh`, `coverage-probe-test.sh`, `plan-state-test.sh`, `r5-detection-test.sh` |
 | 변이 점검 (R-mut) | `mutation-probe-test.sh`, `mutation-trigger-test.sh` |
 | 게이트 텔레메트리 | `gate-event-test.sh`, `gate-report-test.sh`, `gate-instrumentation-test.sh`, `gate-precommit-instrumentation-test.sh` |
-| 보안·마스킹 | `hermes-redact-test.sh`, `hermes-redact-boundary-test.sh`, `hermes-redact-llm-input-test.sh`, `hermes-secret-masking-test.sh`, `check-secrets-answerkey-test.sh`, `check-secrets-code-expr-test.sh` |
+| 보안·마스킹 | `hermes-redact-test.sh`, `hermes-redact-boundary-test.sh`, `hermes-redact-llm-input-test.sh`, `hermes-secret-masking-test.sh`, `check-secrets-answerkey-test.sh`, `check-secrets-ciphertext-test.sh`, `check-secrets-code-expr-test.sh` |
 | 헤르메스 러닝 루프 | `hermes-pipeline-test.sh`, `hermes-loop-test.sh`, `hermes-dream-test.sh`, `hermes-crystallize-naming-test.sh`, `hermes-cleanup-lock-test.sh`, `hermes-recall-measurement-test.sh`, `hermes-recall-history-search-test.sh`, `hermes-mesh-consume-test.sh`, `hermes-mesh-gate-test.sh` |
 | 문서 가드닝 | `doc-gardening-drift-test.sh` |
 | 훅 동작 | `harness-hooks-smoke.sh` |

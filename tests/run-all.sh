@@ -300,6 +300,7 @@ REGISTERED_TESTS=(
   hermes-redact-llm-input-test.sh
   hermes-secret-masking-test.sh
   check-secrets-answerkey-test.sh
+  check-secrets-ciphertext-test.sh
   check-secrets-code-expr-test.sh
   check-secrets-label-exempt-test.sh
   hermes-crystallize-naming-test.sh
