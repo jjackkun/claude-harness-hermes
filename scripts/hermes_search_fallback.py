@@ -18,6 +18,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from hermes_skills import iter_skill_files  # noqa: E402  (스킬 파일 순회 공유 헬퍼)
+from hermes_redact import redact  # noqa: E402  (질의를 LLM 에 보내기 전 마스킹)
 
 
 def _log(msg: str) -> None:
@@ -105,7 +106,7 @@ def haiku_fallback(query: str, skills_dirs: list, max_results: int) -> list:
 
     skill_list = "\n".join([f"- {s['name']}: {s['description']}" for s in skills])
     text = _ask_claude(
-        f'사용자 메시지: "{query}"\n\n'
+        f'사용자 메시지: "{redact(query)}"\n\n'
         f"아래 스킬 목록에서 이 메시지와 관련된 스킬 이름만 골라줘.\n"
         f"관련 없으면 아무것도 반환하지 마. 있으면 쉼표로 구분해서 이름만 반환해.\n\n"
         f"{skill_list}"

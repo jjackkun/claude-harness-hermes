@@ -47,7 +47,7 @@ Claude Code / Codex 의 스킬·에이전트·룰·훅·프로젝트 지침 파�
 - **스킬 결정화·진화** — 반복 패턴을 스킬로 굳히고, 사용자 정정을 반영해 기존 스킬을 진화
 - **회상 주입(recall)** — 직전 세션 요약과 관련 스킬을 새 세션 시작에 자동으로 되살림
 - **객관적 신호 학습** — 사용자 지적뿐 아니라 **테스트·빌드 실패·git 되돌림** 같은 객관 신호로 학습
-- **민감정보 마스킹(redaction)** — 저장·요약 경계에서 비밀(토큰·비밀번호)을 비가역 치환
+- **민감정보 마스킹(redaction)** — 저장·요약·LLM 전송 경계에서 비밀(토큰·비밀번호)을 비가역 치환
 
 공통 프리셋과 자산은 공유하되, Claude 산출물과 Codex 산출물은 target별로 분리합니다.
 자산은 git 리포지토리로 버전 관리되고, 새 기기에서는 `git clone` 한 번이면 환경을 복원할 수 있습니다.
@@ -323,7 +323,7 @@ Claude 전용 `CLAUDE.md`, `.claude/settings.json` / `.claude/settings.local.jso
 <!--===DS:COUNTS:BEGIN===-->
 - 세션 중 실행 훅 **16종** + 훅이 공유하는 판정 모듈 **15개**
 - git pre-commit 게이트 **21종** — 차단 12 / 경고 9
-- harness 프리셋이 까는 스킬 **6종** · 에이전트 **12종** · 공장 테스트 **133개**
+- harness 프리셋이 까는 스킬 **6종** · 에이전트 **12종** · 공장 테스트 **134개**
 <!--===DS:COUNTS:END===-->
 
 > 위 수치는 `assets/hooks/doc_counts.py` 가 소스에서 산출합니다. 손으로 고치지 마십시오 —
@@ -466,7 +466,7 @@ R-iface  1   0   0   1   0   0    100.0%
 | Stop Hook | `claude-stop-retrospective.sh` — 세션 종료 시 러닝 루프 실행 (save → summarize → crystallize → correlate → prune) |
 | SessionStart Hook | `claude-sessionstart-dream.sh` — startup/resume 세션 시작 시 하루 1회(throttle 20h) 드리밍 백그라운드 구동 (cron 대체). 끄기 `HERMES_DREAM_ON_SESSION_START=0` |
 | UserPromptSubmit Hook | 관련 스킬 FTS5 검색 주입 + 직전 세션 요약 회상 주입(`hermes-recall --inject`) |
-| 민감정보 마스킹 | `hermes_redact.py` — 저장·요약 경계에서 비밀을 `[REDACTED:TYPE]`로 비가역 치환 (원본 미보관) |
+| 민감정보 마스킹 | `hermes_redact.py` — 저장·요약·LLM 전송 경계(검색·evolve·summon·cron·loop·mesh 포함)에서 비밀을 `[REDACTED:TYPE]`로 비가역 치환 (원본 미보관) |
 | 스킬 | `hermes-status`, `hermes-crystallize`, `hermes-recall`, `hermes-dream`, `hermes-loop`, `hermes-agent`, `hermes-dashboard`, `hermes-roster`, `hermes-room` |
 | 에이전트 명부 | `hermes-agent` — 분야·직급·조직으로 에이전트를 입사·소환·인계·은퇴시킨다. 에이전트는 다른 방에서 한 일을 `hermes-agent.py recall <에이전트> <낱말>` 로 스스로 찾는다(모델 호출 없음) |
 | CLAUDE.md 섹션 | 헤르메스 동작 안내 자동 삽입 |
@@ -737,7 +737,7 @@ SKIP_TESTS=windows-smoke.sh,hermes-loop-test.sh bash tests/run-all.sh
 | 게이트 (R 룰) | `iface-gate-test.sh`, `plan-declare-gate-test.sh`, `complexity-gate-test.sh`, `cx-baseline-distribution-test.sh`, `dep-contract-test.sh`, `pipe-gate-test.sh`, `struct-barrel-test.sh`, `coverage-probe-test.sh`, `plan-state-test.sh`, `r5-detection-test.sh` |
 | 변이 점검 (R-mut) | `mutation-probe-test.sh`, `mutation-trigger-test.sh` |
 | 게이트 텔레메트리 | `gate-event-test.sh`, `gate-report-test.sh`, `gate-instrumentation-test.sh`, `gate-precommit-instrumentation-test.sh` |
-| 보안·마스킹 | `hermes-redact-test.sh`, `hermes-redact-boundary-test.sh`, `hermes-secret-masking-test.sh`, `check-secrets-answerkey-test.sh`, `check-secrets-code-expr-test.sh` |
+| 보안·마스킹 | `hermes-redact-test.sh`, `hermes-redact-boundary-test.sh`, `hermes-redact-llm-input-test.sh`, `hermes-secret-masking-test.sh`, `check-secrets-answerkey-test.sh`, `check-secrets-code-expr-test.sh` |
 | 헤르메스 러닝 루프 | `hermes-pipeline-test.sh`, `hermes-loop-test.sh`, `hermes-dream-test.sh`, `hermes-crystallize-naming-test.sh`, `hermes-cleanup-lock-test.sh`, `hermes-recall-measurement-test.sh`, `hermes-recall-history-search-test.sh`, `hermes-mesh-consume-test.sh`, `hermes-mesh-gate-test.sh` |
 | 문서 가드닝 | `doc-gardening-drift-test.sh` |
 | 훅 동작 | `harness-hooks-smoke.sh` |

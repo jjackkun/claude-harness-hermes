@@ -9,6 +9,7 @@ import re
 
 from hermes_loop import RECENT_LOG_COUNT, VERDICTS
 from hermes_loop_decisions import parse_decision_lines
+from hermes_redact import redact_keep_paths as redact
 
 ITER_TEMPLATE = """\
 # 헤르메스 루프 에이전트 — 반복 {iteration}/{max_iterations}
@@ -76,10 +77,13 @@ def _format_conditions(conditions):
 def build_iteration_prompt(project_dir, goal_md_path, goal, conditions,
                            log_lines, last_signal, iteration, max_iterations,
                            branch_label):
-    recent = "\n".join(log_lines[-RECENT_LOG_COUNT:]) or "(없음)"
+    # goal.md 는 사람이 직접 고칠 수 있어 저장 경계 마스킹을 비켜 간다 — 사람 입력 필드만 가린다.
+    # 경로는 살린다: 그냥 redact 는 OS 사용자명을 가려 /home/<user>/ 가 깨진다(redact_keep_paths).
+    recent = redact("\n".join(log_lines[-RECENT_LOG_COUNT:]), project_dir) or "(없음)"
+    conditions = [(done, redact(text, project_dir)) for done, text in conditions]
     return ITER_TEMPLATE.format(
         iteration=iteration, max_iterations=max_iterations,
-        project_dir=project_dir, goal_md_path=goal_md_path, goal=goal,
+        project_dir=project_dir, goal_md_path=goal_md_path, goal=redact(goal, project_dir),
         conditions=_format_conditions(conditions),
         recent_count=RECENT_LOG_COUNT, recent_log=recent,
         last_signal=last_signal, branch_label=branch_label)

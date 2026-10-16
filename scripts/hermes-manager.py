@@ -30,6 +30,9 @@ import sqlite3
 import sys
 from datetime import datetime
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from hermes_redact import redact  # noqa: E402  (메시지를 cron 프롬프트에 싣기 전 마스킹)
+
 
 def connect_db(db_path: str) -> sqlite3.Connection:
     """공통 SQLite 연결 헬퍼 — busy_timeout + WAL (M1)."""
@@ -235,7 +238,8 @@ def format_unread(rows):
     lines = []
     for row in rows:
         msg_id, from_a, content, created_at = row
-        snippet = content[:120].replace("\n", " ")
+        # messages 는 저장 때 가리지 않는다(hermes-message.py send) — LLM 으로 나가는 여기서 가린다.
+        snippet = redact(content or "")[:120].replace("\n", " ")
         lines.append(f"  #{msg_id} [{from_a}] {created_at[:16]}  {snippet}")
     return "\n".join(lines)
 

@@ -151,3 +151,15 @@ def redact(text, project_dir=None):
         out = pattern.sub(repl, out)
     out = _KV_RE.sub(_mask_kv, out)
     return out
+
+
+def redact_keep_paths(text, project_dir=None):
+    """에이전트가 그대로 쓸 사람 입력(소환 과제·루프 목표)용 — 홈 경로 접두는 살리고 나머지를 가린다.
+
+    redact 는 OS 사용자명을 가려 `/home/<user>/x` 를 존재하지 않는 경로로 만든다.
+    """
+    home = os.path.expanduser("~")
+    if not text or not isinstance(text, str) or len(home) < 2:
+        return redact(text, project_dir)
+    keep = "\x00HOME\x00"                       # 이름·형태·값 규칙 어디에도 걸리지 않는 자리표시자
+    return redact(text.replace(home, keep), project_dir).replace(keep, home)

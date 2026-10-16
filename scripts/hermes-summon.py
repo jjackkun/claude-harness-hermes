@@ -20,6 +20,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from hermes_journal import emit  # noqa: E402
 from hermes_org import match_agents  # noqa: E402
+from hermes_redact import redact_keep_paths  # noqa: E402  (과제 원문을 LLM 에 보내기 전 마스킹 — 경로는 보존)
 from hermes_roster import find_agent, load_roster  # noqa: E402
 from hermes_summons import issue  # noqa: E402
 from hermes_uuid7 import uuid7_str  # noqa: E402
@@ -83,8 +84,18 @@ def cmd_issue(args) -> int:
     return 0
 
 
+def build_task_prompt(agent, task, project_dir=None) -> str:
+    """소환 프롬프트. 과제 원문(task)을 받아 가려서 싣는다 — project_dir 은 .env 값 대조 기준."""
+    return (f"[소환] 당신은 {agent['name']} (agent:{agent['agent_id']}) 입니다.\n\n"
+            f"{redact_keep_paths(task, project_dir)}\n\n"
+            "끝나기 전에 이번 일에서 배운 것 한 줄을 남기십시오(C-21): "
+            "python3 scripts/hermes-agent.py note \"<한 줄>\" --about <domain>/<slug> "
+            "(domain: gate·test·git·debug·workflow·file·sync·agent). 실제 사람 이름·연락처·비밀값은 적지 않습니다.")
+
+
 def cmd_run(args) -> int:
     project = args.project
+    task = redact_keep_paths(args.task, project)       # 환경변수·기록에 싣는 사본 — 프롬프트는 build_task_prompt 가 가린다
     db = os.path.join(project, ".hermes", "state.db")
     agent, basis = _pick(project, args.who, {"discipline": args.discipline, "unit": args.unit, "rank": None})
     requested_by = _human(project)
@@ -94,16 +105,13 @@ def cmd_run(args) -> int:
     task_id = uuid7_str()
     emit(db, project, {"kind": "task.assigned", "task_id": task_id,
                        "actor": requested_by, "requested_by": requested_by,
-                       "intent": args.task[:200], "decision": basis,
+                       "intent": task[:200], "decision": basis,
                        "evidence": {"template": (agent.get("template") or "").split("@")[0] or None}})
 
     env = dict(os.environ, HERMES_AGENT_ID=agent["agent_id"], HERMES_SUMMON_NONCE=nonce,
                HERMES_REQUESTED_BY=requested_by, HERMES_PROJECT_DIR=project,
-               HERMES_TASK_HINT=args.task[:200])               # 세션 시작 훅이 기억 주입을 이 과제에 맞춰 고른다(목표 10)
-    prompt = (f"[소환] 당신은 {agent['name']} (agent:{agent['agent_id']}) 입니다.\n\n{args.task}\n\n"
-              "끝나기 전에 이번 일에서 배운 것 한 줄을 남기십시오(C-21): "
-              "python3 scripts/hermes-agent.py note \"<한 줄>\" --about <domain>/<slug> "
-              "(domain: gate·test·git·debug·workflow·file·sync·agent). 실제 사람 이름·연락처·비밀값은 적지 않습니다.")
+               HERMES_TASK_HINT=task[:200])                    # 세션 시작 훅이 기억 주입을 이 과제에 맞춰 고른다(목표 10)
+    prompt = build_task_prompt(agent, args.task, project)
     cmd = [os.environ.get("HERMES_CLAUDE_BIN", "claude"), "-p", "--output-format", "json"]
     try:
         done = subprocess.run(cmd, input=prompt, capture_output=True, text=True, timeout=args.timeout, env=env, cwd=project)

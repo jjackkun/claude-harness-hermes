@@ -297,6 +297,7 @@ REGISTERED_TESTS=(
   hermes-loop-test.sh
   hermes-redact-test.sh
   hermes-redact-boundary-test.sh
+  hermes-redact-llm-input-test.sh
   hermes-secret-masking-test.sh
   check-secrets-answerkey-test.sh
   check-secrets-code-expr-test.sh

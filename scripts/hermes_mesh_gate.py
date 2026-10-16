@@ -77,7 +77,8 @@ def stage2_is_general(text, *, timeout=120):
         return False
     if not shutil.which("claude"):
         return False
-    prompt = _PROMPT_TMPL.format(body=(text or "")[:_MAX_PROMPT_BODY])
+    # 판정만 하는 단계라도 본문은 LLM 으로 나간다 — 통과 뒤가 아니라 보내기 전에 가린다.
+    prompt = _PROMPT_TMPL.format(body=redact(text or "")[:_MAX_PROMPT_BODY])
     try:
         result = subprocess.run(
             ["claude", "-p", "--model", _GATE_MODEL],

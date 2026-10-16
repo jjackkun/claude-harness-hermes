@@ -19,7 +19,7 @@ from datetime import datetime, timedelta, timezone
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from hermes_keywords import split_keywords  # noqa: E402  (토큰 분해 — 정의를 한 곳에 둔다)
-from hermes_redact import project_dir_for_db  # noqa: E402
+from hermes_redact import project_dir_for_db, redact  # noqa: E402
 from hermes_skill_write import write_skill_file  # noqa: E402  (스킬 파일은 가려서 쓴다)
 
 
@@ -129,8 +129,11 @@ def get_skill_version(content: str) -> int:
 
 
 def generate_evolved_content(skill_path: str, content: str, feedback: str,
-                              old_ver: int, new_ver: int):
-    """claude -p 로 진화된 스킬 내용 생성. HERMES_DISABLED=1 필수 — 재귀 루프 방지."""
+                              old_ver: int, new_ver: int, project_dir=None):
+    """claude -p 로 진화된 스킬 내용 생성. HERMES_DISABLED=1 필수 — 재귀 루프 방지.
+
+    feedback 은 사람이 친 원문이라 LLM 에 보내기 전 가린다(계획 redact-llm-input-gaps).
+    """
     if not shutil.which("claude"):
         _log("claude CLI 없음 — 진화 스킵")
         return None
@@ -139,7 +142,7 @@ def generate_evolved_content(skill_path: str, content: str, feedback: str,
         skill_path=skill_path,
         old_version=old_ver,
         new_version=new_ver,
-        feedback=feedback,
+        feedback=redact(feedback, project_dir),
         skill_content=content[:3000],
     )
 
@@ -223,7 +226,8 @@ def evolve_skill(db_path: str, keyword: str, feedback: str) -> str:
     old_ver = get_skill_version(old_content)
     new_ver = old_ver + 1 if old_ver > 0 else 1
 
-    new_content = generate_evolved_content(skill_path, old_content, feedback, old_ver, new_ver)
+    new_content = generate_evolved_content(skill_path, old_content, feedback, old_ver, new_ver,
+                                           project_dir_for_db(db_path))
     if not new_content:
         # claude 없거나 실패 시 → 버전만 올리는 것은 git 노이즈이므로 스킵
         print(f"[hermes] EVOLVE_SKIPPED:{skill_name} (claude 없음 또는 실패)", file=sys.stderr)
