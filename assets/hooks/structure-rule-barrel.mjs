@@ -62,7 +62,9 @@ export function checkBarrel(ctx, file, lang) {
     if (spec.strategy === 'sfc-folder') { out.push(...sfcFolder(ctx, file, spec)); continue }
     const folder = folderFor(ctx, file, lang, spec)
     if (!folder || hasAny(ctx, folder, spec.names)) continue
-    out.push({ id: spec.id, level: 'block', path: folder, target: folder, msg:
+    // when: 이 파일이 있을 때만 배럴을 요구한다 — 분류 폴더(components/layout/)와 컴포넌트 폴더(Card/Card.svelte)를 가른다
+    if (spec.when && !hasAny(ctx, folder, spec.when)) continue
+    out.push({ id: spec.id, level: spec.level || 'block', path: folder, target: folder, msg:
       `${folder}/ — 배럴 없음 (${spec.names.join(' | ')} 중 하나)\n  → ${spec.hint}` })
   }
   return out

@@ -20,15 +20,16 @@ export function loadConfig(hookDir) {
 }
 
 // spec: "auto" | "" | "vue js ..." ; extra: "go rust ..."
-export function selectLangs(cfg, spec, extra) {
+// 모르는 이름(.harnessrc 오타)은 그 이름만 빼고 onUnknown 으로 알린다 — 오타 하나로 검사 전체가 꺼지지 않게.
+export function selectLangs(cfg, spec, extra, onUnknown = () => {}) {
   const words = (s) => (s || '').split(/[\s,]+/).filter(Boolean)
   const names = spec === 'auto'
     ? Object.keys(cfg.langs).filter((n) => cfg.langs[n].tier === 'A')
     : words(spec)
   for (const n of words(extra)) if (!names.includes(n)) names.push(n)
   const unknown = names.filter((n) => !cfg.langs[n])
-  if (unknown.length) throw new Error(`structure-langs.json 에 없는 언어: ${unknown.join(' ')}`)
-  return names
+  if (unknown.length) onUnknown(unknown)
+  return names.filter((n) => cfg.langs[n])
 }
 
 export function langsForFile(cfg, langNames, file) {

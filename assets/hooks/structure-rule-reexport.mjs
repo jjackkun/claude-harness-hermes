@@ -25,7 +25,7 @@ export function checkReexport(ctx, file, lang) {
       const line = m[0].trim()
       if (allow && allow.test(m[0])) continue
       out.push({ id: spec.id, level: spec.level, path: file, target: line, msg:
-        `${file} — 전량 재노출: '${line}'\n  → ${spec.hint}` })
+        `${file} — ${spec.label || '전량 재노출'}: '${line}'\n  → ${spec.hint}` })
     }
   }
   return out

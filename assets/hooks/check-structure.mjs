@@ -10,7 +10,8 @@
  *   --report [--list]               건수만 표준출력, 종료 0 (설치 소우주 실측용)
  *   --update-baseline               전부 검사해 .structbaseline 을 다시 쓴다 (사람이 실행)
  *   --no-baseline · --no-common · --blocks-only
- * 종료 코드: structure-output.mjs EXIT (0 통과 · 1 차단 · 3 경고만 · 2 내부 오류)
+ * 종료 코드: structure-output.mjs EXIT (0 통과 · 1 차단 · 3 경고만 · 2 내부 오류).
+ * 차단일 때만 stderr 에 [BLOCKED] 가 찍힌다 — 부르는 쪽은 "1 + 표식" 만 차단으로 읽는다(node 자체 고장도 1 이다).
  *
  * 모듈은 동적 import 한다 — 정적 import 는 파일이 하나 빠지면 try 밖에서 죽어 종료 코드 1(차단)이
  * 되고, 그러면 고장이 모든 커밋을 막는다(계획 G7). 언어 지식은 전부 structure-langs.json 에 있다.
@@ -82,12 +83,13 @@ async function main() {
   const o = parseArgs(process.argv.slice(2))
   const root = process.cwd()
   const cfg = m.config.loadConfig(here)
-  const langNames = m.config.selectLangs(cfg, o.langs, o.extra)
+  const langNames = m.config.selectLangs(cfg, o.langs, o.extra, (u) =>
+    process.stderr.write(`[R-struct] 설정표에 없는 언어는 건너뜀: ${u.join(' ')} (.harnessrc 확인)\n`))
   const exempt = m.config.makeExempt(cfg, root, o.exempt)
   const enabledExts = new Set(langNames.flatMap((n) => cfg.langs[n].exts))
   const full = o.flags.has('all') || o.flags.has('update-baseline') || o.flags.has('report')
   const files = full
-    ? execFileSync('git', ['ls-files'], { cwd: root, encoding: 'utf8' }).split('\n').filter(Boolean)
+    ? execFileSync('git', ['-c', 'core.quotePath=false', 'ls-files'], { cwd: root, encoding: 'utf8', maxBuffer: m.baseline.GIT_MAX_BUFFER }).split('\n').filter(Boolean)
     : o.files
   let found = collect(m, makeCtx(cfg, root, exempt, enabledExts), langNames, files, o, exempt)
 

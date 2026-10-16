@@ -4,7 +4,7 @@
  *
  * 왜 남기는가: 설치된 소우주의 옛 pre-commit 이 이 이름을 부르고, 종료 코드가 0 이 아니면
  * 무엇이든 "구조 위반 차단" 으로 읽는다. 그래서 여기서는 옛 범위(Vue 규칙 R-struct-1~4)만 켜고
- *   1(차단) → 1,  0·3(경고만) → 0,  그 밖(엔진 고장) → 0 + skipped 안내
+ *   1 + [BLOCKED] 표식(차단) → 1,  0·3(경고만) → 0,  그 밖(엔진 고장) → 0 + skipped 안내
  * 로 바꿔 돌려준다. 고장이 커밋을 막으면 안 된다(계획 G7).
  *
  * Usage: node check-component-structure.mjs file1 file2 ...
@@ -24,9 +24,11 @@ if (!existsSync(engine)) {
 
 const r = spawnSync(process.execPath,
   [engine, '--langs', 'vue', '--no-common', '--blocks-only', ...process.argv.slice(2)],
-  { stdio: ['ignore', 'inherit', 'inherit'] })
+  { stdio: ['ignore', 'inherit', 'pipe'], encoding: 'utf8' })
+process.stderr.write(r.stderr || '')
 
-if (r.status === 1) process.exit(1)
+// 종료 1 이라도 [BLOCKED] 표식이 없으면 판정이 아니라 고장이다(문법을 모르는 옛 node 등)
+if (r.status === 1 && (r.stderr || '').includes('[BLOCKED]')) process.exit(1)
 if (r.status === 0 || r.status === 3) process.exit(0)
 process.stderr.write(`[R-struct] skipped — 검사기 내부 오류 (종료 ${r.status})\n`)
 process.exit(0)

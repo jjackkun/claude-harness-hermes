@@ -12,6 +12,8 @@ import { existsSync, readFileSync, writeFileSync } from 'fs'
 import { dirname, join } from 'path'
 
 export const BASELINE_FILE = '.structbaseline'
+// git 출력 상한. 기본 1MB 는 큰 저장소의 ls-files·대량 rename 에서 넘친다 — 256MB
+export const GIT_MAX_BUFFER = 1 << 28
 
 export function keyOf(v) {
   return `R-struct-${v.id}|${v.path}|${v.target}`
@@ -25,7 +27,8 @@ export function readBaseline(root) {
 
 export function stagedRenames(root) {
   try {
-    const out = execFileSync('git', ['diff', '--cached', '-M', '--name-status'], { cwd: root, encoding: 'utf8' })
+    const out = execFileSync('git', ['-c', 'core.quotePath=false', 'diff', '--cached', '-M', '--name-status'],
+      { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: GIT_MAX_BUFFER })
     return out.split('\n').filter((l) => /^R\d*\t/.test(l)).map((l) => l.split('\t').slice(1, 3))
   } catch {
     return [] // git 밖(시험용 임시 폴더)이면 이름 바꾸기가 없다
@@ -40,12 +43,14 @@ function remap(part, renames) {
   return part
 }
 
+// 옛 키를 지우지 않고 옮긴 키를 더한다(합집합) — 폴더에서 파일 하나만 옮겨도 남은 파일의
+// 기존 위반이 신규로 보이지 않게 한다. 대가: 옮겨 간 새 폴더도 그 커밋에서는 면제를 받는다.
 export function remapKeys(keys, renames) {
   if (!renames.length) return keys
-  return new Set([...keys].map((k) => {
+  return new Set([...keys, ...[...keys].map((k) => {
     const [rule, path, ...rest] = k.split('|')
     return [rule, remap(path, renames), remap(rest.join('|'), renames)].join('|')
-  }))
+  })])
 }
 
 export function onlyNew(violations, keys) {

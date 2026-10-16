@@ -32,7 +32,7 @@ function run(c, files) {
       mkdirSync(join(dir, dirname(p)), { recursive: true })
       writeFileSync(join(dir, p), body)
     }
-    const args = [ENGINE, '--langs', c.lang, '--no-baseline', ...(c.common ? [] : ['--no-common']), ...Object.keys(files)]
+    const args = [ENGINE, '--langs', c.langs || c.lang, '--no-baseline', ...(c.common ? [] : ['--no-common']), ...Object.keys(files)]
     const r = spawnSync(process.execPath, args, { cwd: dir, encoding: 'utf8' })
     return { code: r.status, out: r.stderr + r.stdout }
   } finally { rmSync(dir, { recursive: true, force: true }) }

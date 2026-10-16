@@ -223,6 +223,12 @@
 - 2026-10-16: fixture 를 `<언어>/<규칙>/{bad,good}/` 실제 소스 파일 대신 `cases.json` 한 장으로 — 위반 예시를 실제 `.py`·`.js` 로 두면 이 저장소 자신의 게이트(ruff F403 → R-lint, 설치된 R-struct-4, prettier R-fmt)가 그 예시 커밋을 막는다. 시험이 임시 폴더에 펼쳐 돌린다 — 사례를 편집기에서 소스로 열어 볼 수 없다
 - 2026-10-16: G1 은 커밋을 나눠 잰다 — ① 엔진 + Tier A 설정·사례 ② Tier B 설정·사례만. 단, 스키마는 Tier B 를 알고 설계했다: Tier B 만 쓰는 필드 3개(`featureRoots` 언어별 덮어쓰기 — ruby, `reexport.allow` — kotlin, module 계열 owner 마지막 마디 비교 — php·csharp)가 ①에 이미 들어 있다. 그래서 0줄은 "스키마 확정 뒤 Tier B 추가에 엔진 수정이 없었다" 는 뜻이지 "Tier B 를 모르고 만든 엔진" 이라는 뜻이 아니다 — 여기 없는 언어를 붙일 때 엔진 수정이 필요할 수 있다
 
+- 2026-10-16: code-reviewer 1회(CRITICAL 0 · HIGH 2 · MEDIUM 5 · LOW 3) 반영 — 위 Java·Kotlin 결정을 뒤집어 **와일드카드 import 는 경고**로 내린다(재노출이 아니라 스타일이고, 신규 파일은 기준선으로도 못 구한다). 같은 이유로 Dart `export`(패키지 배럴 표준 관용)·Python `__init__` 의 `import *`(Django `from .base import *`)·Python `package-child`(`pkg/scripts/` 같은 비패키지 폴더) 도 경고 — 차단이 줄어 이 언어들은 실측 전까지 재노출을 막지 못한다
+- 2026-10-16: 기본 기능 루트를 `features` 하나로 (`modules` `domains` 제외) — NestJS·Angular 의 `src/modules/<x>/` 는 기능 폴더 관례가 아니라 프레임워크 모듈 단위다(리뷰 재현: `src/modules/user/user.service.ts` 차단). 프로젝트가 modules/ 를 기능 루트로 쓰면 못 잡는다
+- 2026-10-16: 차단은 "종료 1 + stderr 의 `[BLOCKED]` 표식" 일 때만 — 문법을 모르는 옛 node 는 진입점 파싱에서 죽어 종료 1 을 낸다(리뷰 HIGH). 표식이 없는 1 은 고장으로 skipped — 표식 문자열을 바꾸면 차단이 꺼진다(시험이 표식을 본다)
+- 2026-10-16: 기준선 rename 은 합집합(옛 키 + 옮긴 키) — 폴더에서 파일 하나만 옮기면 남은 폴더의 기존 위반이 신규로 보였다(리뷰 재현). 그 커밋에서 새 폴더도 면제를 받는다
+- 2026-10-16: Svelte `component-dir` 은 폴더 안에 `{폴더명}.svelte` 가 있을 때만 배럴을 요구한다(`when`) — Step 5 실측에서 svelte 차단 18건 중 16건이 `components/layout`·`components/common` 같은 분류 폴더였다. 분류 폴더에 진입 파일 없이 컴포넌트를 둔 경우는 못 잡는다
+
 ### 설정표 스키마 (Step 1 확정)
 
 `assets/hooks/structure-langs.json` = `{ "version": 1, "featureRoots": [...], "defaultExempt": [...], "langs": { "<언어>": 항목 } }`
@@ -233,11 +239,11 @@
 | `featureRoots` | (선택) 이 언어만 쓰는 기능 루트 폴더 이름. 없으면 최상위 `featureRoots` |
 | `exts` | 이 언어로 볼 확장자 목록 |
 | `exempt` | 이 언어 추가 예외 정규식(경로에 대해) |
-| `barrel` | `{ "id", "strategy", "names", "componentPath"?, "hint" }` — `strategy`: `feature-root`(featureRoots 바로 아래 폴더) · `package-child`(부모가 배럴을 가진 폴더) · `component-dir`(componentPath 아래 컴포넌트 폴더) · `sfc-folder`(Vue R-struct-1/2) · `none`. `names` 는 폴더 기준 상대 경로, `{dir}` 은 폴더 이름 |
+| `barrel` | `{ "id", "level"?(기본 block), "strategy", "names", "when"?, "componentPath"?, "hint" }` — `when` 이 있으면 그 파일이 폴더에 있을 때만 배럴을 요구 — `strategy`: `feature-root`(featureRoots 바로 아래 폴더) · `package-child`(부모가 배럴을 가진 폴더) · `component-dir`(componentPath 아래 컴포넌트 폴더) · `sfc-folder`(Vue R-struct-1/2) · `none`. `names` 는 폴더 기준 상대 경로, `{dir}` 은 폴더 이름 |
 | `imports` | import 문 정규식 목록, 캡처 그룹 `(?<target>…)` 이 대상 |
 | `resolve` | `{ "kind": "path" \| "module", "sep"?, "aliases"? }` — `path` 는 상대 경로를 파일 기준으로 풀고, `module` 은 `sep`(예 `.` `::` `\\`)을 `/` 로 바꾼다. `aliases` 는 `{ "정규식": "치환" }` |
 | `deepImport` | `{ "id", "level", "private": [정규식], "skipInBarrel"?, "hint" }` — 풀린 대상이 `private` 중 하나에 맞으면 위반. 정규식의 `(?<owner>…)` 가 가져가는 파일 경로에 들어 있으면 같은 기능이라 통과 |
-| `reexport` | `{ "id", "level", "patterns": [정규식], "allow"?, "barrelOnly", "barrelNames"?, "hint" }` |
+| `reexport` | `{ "id", "level", "label"?, "patterns": [정규식], "allow"?, "barrelOnly", "barrelNames"?, "hint" }` — `label` 은 메시지 머리(기본 "전량 재노출") |
 
 - 판정 수준 `level`: `block` · `warn`. 규칙 번호: 1~3 Vue(기존) · 4 전량 재노출 · 5 배럴 존재 · 6 깊은 import · 7 언어 무관.
 - 정규식은 전부 `m`(줄 단위) 플래그로 돈다. 줄 머리 고정(`^[ \t]*`)으로 문자열·주석 안의 오탐을 줄인다(기존 R-struct-4 원칙).

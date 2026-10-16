@@ -26,6 +26,7 @@ export function checkDeepImport(ctx, file, lang) {
       const target = m.groups?.target
       if (!target) continue
       const resolved = resolveTarget(file, target, l.resolve)
+      if (resolved === null) continue
       const hit = privates.map((p) => resolved.match(p)).find(Boolean)
       if (!hit) continue
       // owner 그룹이 없는 정규식은 "누가 가져가든 위반"(Vue .vue 직접 import)이다

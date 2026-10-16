@@ -1,8 +1,8 @@
 /**
  * structure-resolve.mjs — import 문자열을 저장소 기준 `/` 경로로 풀고, 같은 기능인지 가른다.
  *
- * 컴파일러 없이 텍스트만 본다(계획 §6). 풀 수 없는 대상(외부 패키지)은 원문 그대로 돌려준다 —
- * 비공개 경로 정규식이 맞지 않으므로 판정에서 저절로 빠진다.
+ * 컴파일러 없이 텍스트만 본다(계획 §6). path 계열에서 상대·별칭으로 풀리지 않는 대상(외부 패키지)은
+ * null 을 돌려준다 — 'some-lib/features/x' 같은 원문이 비공개 경로 정규식에 걸리지 않게 한다.
  */
 
 import { posix } from 'path'
@@ -23,7 +23,7 @@ function resolvePath(file, target, rc) {
   const relative =
     target.startsWith('./') || target.startsWith('../') ||
     (rc.bareIsRelative && !SCHEME_RE.test(target) && !target.startsWith('/'))
-  if (!relative) return target
+  if (!relative) return null // 외부 패키지 — 저장소 안 경로가 아니다
   return posix.normalize(posix.join(posix.dirname(file), target))
 }
 
