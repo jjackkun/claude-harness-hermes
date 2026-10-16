@@ -98,7 +98,7 @@ claude-harness-hermes/               ← 이 디렉터리 (private git repo 권�
 │   ├── build/{jpa,mybatis,maven,gradle}.conf
 │   ├── permissions/{git-write,pm2}.conf  ← 추가 권한 화이트리스트
 │   ├── tools/{prettier,terminal-paste-image}.conf
-│   ├── workflow/{harness,hermes,mcp,skill-dev,adhd}.conf
+│   ├── workflow/{harness,hermes,mcp,skill-dev,adhd,korean}.conf
 │   └── global/                           ← [global] 스텝: ~/.claude 전역 opt-in 스킬 (현재 비어있음)
 ├── scripts/
 │   ├── hermes-init.py                ← 헤르메스 SQLite DB 초기화
@@ -282,7 +282,7 @@ Claude 전용 `CLAUDE.md`, `.claude/settings.json` / `.claude/settings.local.jso
 | build | jpa, mybatis, maven, gradle | **CLAUDE.md 규칙 섹션** 위주. jpa 만 전용 스킬(`jpa-patterns`) 보유 — 나머지 전용 스킬/룰은 TODO |
 | permissions | git-write, pm2 | 추가 권한 화이트리스트 |
 | tools | prettier, terminal-paste-image | prettier 경고 훅(2026-08-04 harness 에서 분리), VSCode 익스텐션 등 부가 도구 |
-| workflow | **harness**, **hermes**, mcp, skill-dev, adhd | 작업 방식·도구 프리셋. adhd = 행동 우선 답변 규칙(첫 줄 할 일·마지막 다음 행동 하나) |
+| workflow | **harness**, **hermes**, mcp, skill-dev, adhd, korean | 작업 방식·도구 프리셋. adhd = 행동 우선 답변 규칙(첫 줄 할 일·마지막 다음 행동 하나). korean = 사용자에게 보이는 답변을 한국어로 강제(규칙 + 매 턴 한 줄 + 영어 위주 답변이면 Stop 훅이 끝내기를 막고 다시 쓰게 함, 끄기 `KOREAN_GUARD_DISABLED=1`) |
 | global | _(현재 없음)_ | **전역 opt-in 스킬 자리.** `[global]` 스텝에서 선택 시 프로젝트가 아닌 `~/.claude/skills/` 에 한 번 설치되어 모든 프로젝트에서 사용. `~/.claude/presets.global.lock` 에 기록되고 `update-all` 이 유지. `resolve_preset` 대상이 아니라 프로젝트 프리셋으로는 설치 불가. `presets/global/<name>.conf` 추가 시 자동 노출 |
 
 ### global 카테고리 (전역 opt-in)
@@ -323,7 +323,7 @@ Claude 전용 `CLAUDE.md`, `.claude/settings.json` / `.claude/settings.local.jso
 <!--===DS:COUNTS:BEGIN===-->
 - 세션 중 실행 훅 **16종** + 훅이 공유하는 판정 모듈 **15개**
 - git pre-commit 게이트 **21종** — 차단 12 / 경고 9
-- harness 프리셋이 까는 스킬 **6종** · 에이전트 **12종** · 공장 테스트 **135개**
+- harness 프리셋이 까는 스킬 **6종** · 에이전트 **12종** · 공장 테스트 **137개**
 <!--===DS:COUNTS:END===-->
 
 > 위 수치는 `assets/hooks/doc_counts.py` 가 소스에서 산출합니다. 손으로 고치지 마십시오 —

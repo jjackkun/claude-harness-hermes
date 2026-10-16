@@ -260,6 +260,8 @@ REGISTERED_TESTS=(
   harness-hooks-smoke.sh
   hook-prune-test.sh
   hook-stdin-dispatch-test.sh
+  korean-reply-guard-test.sh
+  korean-preset-test.sh
   hermes-keywords-test.sh
   hermes-persona-source-test.sh
   hermes-persona-store-test.sh
