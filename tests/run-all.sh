@@ -228,6 +228,7 @@ REGISTERED_TESTS=(
   newline-key-test.sh
   plan-state-test.sh
   iface-gate-test.sh
+  iface-guard-lang-test.sh
   plan-declare-gate-test.sh
   plan-stale-completion-test.sh
   doc-counts-gate-test.sh
@@ -235,6 +236,8 @@ REGISTERED_TESTS=(
   output-budget-test.sh
   gate-declaration-coverage-test.sh
   struct-barrel-test.sh
+  structure-gate-test.sh
+  structure-install-test.sh
   complexity-gate-test.sh
   r-size-upstream-owned-test.sh
   cx-baseline-distribution-test.sh
