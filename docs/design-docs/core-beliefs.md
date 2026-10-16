@@ -91,6 +91,31 @@ frontend/DB/TS 작업은 `fullstack-developer`, `database-reviewer`, `typescript
 **템플릿 플레이스홀더는 선언이 아니다.** `path/to/file.ext` 가 그대로 남아 있으면
 채우지 않은 것이며, 그것을 선언으로 세면 이 검사가 곧 무의미해진다.
 
+## R-struct — 폴더·배럴 구조 {#r-struct}
+
+**원칙**: 기능은 폴더로 묶고, 밖에서는 그 폴더의 배럴(공개 출입구)로만 들어온다.
+언어마다 배럴의 모양이 다를 뿐 규칙은 하나다 — 언어 지식은 설정표(`assets/hooks/structure-langs.json`)에만 두고
+엔진(`check-structure.mjs`)은 언어를 모른다. 언어별 범위표: `assets/rules/web/coding-style.md` 「폴더·배럴 구조 강제 범위」.
+
+| 번호 | 규칙 | 행동 |
+|---|---|---|
+| R-struct-1~3 | Vue 컴포넌트 폴더·배럴·`.vue` 직접 import 금지 | 차단 |
+| R-struct-4 | 배럴의 전량 재노출 (아래 절) | 언어별(범위표) |
+| R-struct-5 | 기능 폴더(`features/<x>/`)·컴포넌트 폴더에 배럴이 있어야 한다 | 차단 (python 패키지 하위는 경고) |
+| R-struct-6 | 다른 기능의 배럴을 건너뛴 내부 경로 import | 경고 |
+| R-struct-7 | 언어 무관: 폴더당 파일 5개 초과 · 포괄 이름(utils 등) · 타입별 폴더만 · 깊이 8 초과 | 경고 |
+
+**왜 깊은 import 는 경고인가**: 정규식으로는 같은 기능 안의 정당한 import 와 가르기 어렵다. 2026-10-16 실측에서
+정규식 오판은 0 이었지만 상위가 FastAPI 인증 의존성 직접 import 같은 관용이라, 차단 승격은 사람이 정한다.
+
+**고장은 막지 않는다**: 종료 1 + `[BLOCKED]` 표식만 차단이다. 엔진 고장(파일 누락·설정표 깨짐·옛 node)은
+skipped 로 `gate-events.jsonl` 에 남는다 — 고장이 모든 커밋을 막으면 우회가 학습된다.
+
+**기존 코드**: `.structbaseline` 의 위반은 막지 않는다. 키는 `규칙|경로|대상`, `git mv` 를 따라간다.
+갱신은 사람만 `--update-baseline` 으로 한다(R-cx 의 `.cxbaseline` 과 같은 원칙).
+
+**검증 상태**: Provisional. 근거: `docs/exec-plans/active/2026-10-16-language-neutral-structure-gate.md`
+
 ## R-struct-4 — 배럴은 골라 내보낸다 {#r-struct-4}
 
 **원칙**: 배럴(`index.js`/`index.ts`)에서 `export *` 금지. 필요한 심볼만 골라 내보낸다.
@@ -100,9 +125,11 @@ frontend/DB/TS 작업은 `fullstack-developer`, `database-reviewer`, `typescript
 `R-iface` 가 "나눠라" 라고 해서 나눈 결과가 이 형태면 폭은 줄지 않는다.
 
 `R-struct-1~3` 과 달리 컴포넌트 경로에 한정하지 않는다. 배럴 폭은 Vue 만의 문제가 아니다.
-파이썬 `__init__.py` 는 pre-commit 이 검사기에 `.py` 를 넘기지 않아 아직 대상이 아니다.
+2026-10-16 부터 언어별로 본다: JS/TS `export *`·Rust `pub use x::*`·Swift `@_exported import` 는 차단,
+Python `__init__.py` 의 `import *`·Dart show 없는 `export`·Java/Kotlin 와일드카드 import 는 경고
+(각 언어의 정당한 관용 — Django `from .base import *`, Dart 패키지 배럴 — 과 텍스트로 가를 수 없다).
 
-**행동**: 차단. "전량 재export 인가" 는 이분 판정이라 `R-iface` 같은 임계 논쟁이 없다.
+**행동**: JS/TS 는 차단. "전량 재export 인가" 는 이분 판정이라 `R-iface` 같은 임계 논쟁이 없다.
 
 **검증 상태**: Provisional.
 

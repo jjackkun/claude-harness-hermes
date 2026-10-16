@@ -4,10 +4,35 @@
 
 ## File Organization
 
-### Component Structure Rules (기계 강제 — pre-commit + ESLint)
+### 폴더·배럴 구조 강제 범위 (R-struct — pre-commit)
 
-> **적용 범위: `.vue` 파일만.** 게이트(`check-component-structure.mjs`)는 `.vue` 컴포넌트만 검사한다.
-> Svelte·React 등 다른 프레임워크 프로젝트에는 이 절이 적용되지 않는다 — 그 프로젝트의 구조 규칙을 따른다.
+게이트 `check-structure.mjs` 가 언어 설정표(`structure-langs.json`)대로 검사한다.
+Tier A 는 그 확장자 파일이 있으면 자동으로, Tier B 는 `.harnessrc` 의 `STRUCT_LANGS_EXTRA="go rust"` 로 켠다.
+끄기: `.harnessrc` 에 `HARNESS_STRUCT_LANGS=` (빈 값). 예외 경로: `STRUCT_EXEMPT="src/gen/"`.
+기존 위반은 기준선(`.structbaseline`)에 넣으면 막지 않는다 — 갱신은 사람이 `node .git/hooks/check-structure.mjs --update-baseline`.
+
+규칙 번호: 1·2·3 Vue 컴포넌트 · 4 전량 재노출 · 5 배럴 존재 · 6 깊은 import · 7 언어 무관(폴더당 파일 5개 초과·포괄 이름·타입별 폴더·깊이 8 초과, 전부 경고).
+기능 루트는 `features/` 이고(Ruby 는 `lib/`), 그 바로 아래 폴더가 기능 폴더다. 이 표는 시험(`tests/structure-gate-test.sh`)이 설정표와 대조한다.
+
+<!-- struct-scope:begin -->
+| 언어 | Tier | 확장자 | 배럴 존재 | 깊은 import | 전량 재노출 |
+|---|---|---|---|---|---|
+| vue | A | .vue .js .jsx .ts .tsx | 1·2 차단 | 3 차단 | 4 차단 |
+| js | A | .js .jsx .ts .tsx .mjs .cjs | 5 차단(feature-root) | 6 경고 | 4 차단 |
+| svelte | A | .svelte | 5 차단(component-dir) · 5 차단(feature-root) | 6 경고 | — |
+| python | A | .py | 5 차단(feature-root) · 5 경고(package-child) | 6 경고 | 4 경고 |
+| java | A | .java | — | 6 경고 | 4 경고 |
+| dart | A | .dart | 5 차단(feature-root) | 6 경고 | 4 경고 |
+| go | B | .go | — | — | — |
+| rust | B | .rs | 5 차단(feature-root) | 6 경고 | 4 차단 |
+| kotlin | B | .kt .kts | — | 6 경고 | 4 경고 |
+| csharp | B | .cs | — | 6 경고 | — |
+| php | B | .php | — | 6 경고 | — |
+| swift | B | .swift | — | — | 4 차단 |
+| ruby | B | .rb | 5 차단(feature-root) | 6 경고 | — |
+<!-- struct-scope:end -->
+
+### Component Structure Rules — Vue (R-struct-1~3, 기계 강제 — pre-commit + ESLint)
 
 Vue 컴포넌트는 아래 구조를 **반드시** 따른다. 위반 시 pre-commit hook 이 커밋을 차단한다.
 
@@ -41,7 +66,7 @@ src/components/SomeFeature/
   근거: assets/rules/web/coding-style.md §File-Organization
 ```
 
-강제 장치: `assets/hooks/check-component-structure.mjs` (pre-commit), `lint-configs/harness-component-structure.config.js` (ESLint)
+강제 장치: `assets/hooks/check-structure.mjs` (pre-commit, 옛 이름 `check-component-structure.mjs` 는 호환 래퍼), `lint-configs/harness-component-structure.config.js` (ESLint)
 
 ---
 

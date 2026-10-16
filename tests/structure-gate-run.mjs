@@ -82,7 +82,30 @@ function checkCoverage() {
   else nope(`커버리지: 사례 없는 언어 [${noCase}]`)
 }
 
+// G5 — 규칙 문서의 언어별 강제 범위표가 설정표와 같은가. 표는 이 함수가 만든 모양 그대로 문서에 둔다.
+const DOC = join(ROOT, 'assets/rules/web/coding-style.md')
+const LEVEL = { block: '차단', warn: '경고' }
+export function scopeTable() {
+  const rows = Object.entries(CFG.langs).map(([lang, l]) => {
+    const barrel = (l.barrel || []).map((b) => b.strategy === 'sfc-folder'
+      ? '1·2 차단' : `${b.id} ${LEVEL[b.level || 'block']}(${b.strategy})`).join(' · ') || '—'
+    const deep = l.deepImport ? `${l.deepImport.id} ${LEVEL[l.deepImport.level]}` : '—'
+    const re = l.reexport ? `${l.reexport.id} ${LEVEL[l.reexport.level]}` : '—'
+    return `| ${lang} | ${l.tier} | ${l.exts.join(' ')} | ${barrel} | ${deep} | ${re} |`
+  })
+  return ['| 언어 | Tier | 확장자 | 배럴 존재 | 깊은 import | 전량 재노출 |', '|---|---|---|---|---|---|', ...rows].join('\n')
+}
+
+function checkDocTable() {
+  const doc = readFileSync(DOC, 'utf8')
+  const m = doc.match(/<!-- struct-scope:begin -->\n([\s\S]*?)\n<!-- struct-scope:end -->/)
+  if (m && m[1].trim() === scopeTable()) ok('문서 범위표 == 설정표 (web/coding-style.md)')
+  else nope(`문서 범위표가 설정표와 다르다 — 아래로 교체:\n${scopeTable()}`)
+}
+
+if (process.argv.includes('--print-scope')) { console.log(scopeTable()); process.exit(0) }
 cases.forEach(checkCase)
 checkCoverage()
+checkDocTable()
 console.log(`\nPASS=${pass} FAIL=${fail}`)
 process.exit(fail ? 1 : 0)

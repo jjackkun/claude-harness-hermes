@@ -67,6 +67,7 @@ Barrel pattern rules:
   - Go: package boundary serves the same role (no extra file needed)
   - Other: follow the standard module re-export pattern (Rust: `mod.rs` with `pub use`, Java: package structure, etc.)
 - The barrel lives at the **feature folder level**, not the project root
+- 강제 장치: R-struct (pre-commit `check-structure.mjs`) — 언어별 범위표는 [web/coding-style.md](../web/coding-style.md) 「폴더·배럴 구조 강제 범위」
 - The 4-step pre-implementation design prevents most line-limit violations. The thresholds below are safety nets for unexpected growth during implementation:
   - Soft limit (400 lines): warn that a split is needed soon
   - Hard limit (500 lines): stop adding code; extract one responsibility into a new file, update the barrel — **never rewrite the file from scratch**
