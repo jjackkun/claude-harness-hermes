@@ -5,7 +5,7 @@
 #
 # 현재 실제 게이트는 18종이다 (위 헤더의 "4단 검사" 는 마커라서 그대로 둔다):
 #   차단 12 — R-size R-fmt R-lint R-test R-doc R-cx R-dep R-struct R-secret R-privacy R-merge R-plan
-#   경고 10 — R-cov R-acc R-design-cover R-plan-missing R-plan-stale R-pipe R-retro R-precheck R-config R-eval
+#   경고 11 — R-cov R-acc R-design-cover R-plan-missing R-plan-stale R-pipe R-retro R-precheck R-config R-eval R-env-secrets
 # (lib/uninstall_helpers.sh `uninstall_pre_commit`, uninstall.sh 미리보기).
 #
 # 메시지 형식 (2026-04-17 Opus 4.7 튜닝):
@@ -899,6 +899,34 @@ $(printf '%s\n' "$CONFIG_NEW" | sed 's/^/    - /')
     fi
   fi
 fi
+
+# 8-quinquies. R-env-secrets — 바뀐 .env 를 같은 열쇠로 다시 암호화해 이 커밋에 넣는다 (경고, 절대 막지 않음)
+# GATE: R-env-secrets warn
+#
+# env-secrets 프리셋을 고른 프로젝트에만 scripts/env-secrets/secrets.sh 가 있다. .env 는 git 밖이라 스테이징 목록과
+# 무관하게 매 커밋 본다. 금고가 잠겨 있어 일상 커밋이 멈추면 안 되므로 결과와 무관하게 FAIL 을 올리지 않는다.
+# 출력이 있으면(다시 암호화함 · 열쇠 없음 · 실패) 사람이 봐야 하므로 warn, 조용히 끝나면 pass.
+# 금고 비밀번호를 묻지 않는다: git 은 훅 stdin 을 /dev/null 로 주고(2.43 실측) 여기서 stderr 도 받으므로
+# secrets.sh 의 터미널 가드(-t 0 · -t 2)가 프롬프트 없이 "잠김 — 터미널에서 다시 실행" 으로 끝낸다.
+# 계획: docs/exec-plans/active/2026-10-16-env-secrets-preset.md (G5)
+ENV_SECRETS_SH="scripts/env-secrets/secrets.sh"
+if [[ -f "$ENV_SECRETS_SH" ]]; then
+  ENV_SECRETS_RC=0
+  ENV_SECRETS_OUT=$(bash "$ENV_SECRETS_SH" sync --stage 2>&1) || ENV_SECRETS_RC=$?
+  if [[ -n "$ENV_SECRETS_OUT" || $ENV_SECRETS_RC -ne 0 ]]; then
+    WARNINGS+=("
+[R-env-secrets] .env.secrets 확인 (종료 코드 $ENV_SECRETS_RC):
+$(printf '%s\n' "$ENV_SECRETS_OUT" | sed 's/^/    /')
+  → 다시 암호화했다면 이미 이 커밋에 들어갔습니다. 열쇠가 없다면 터미널에서 bash $ENV_SECRETS_SH open 후 다시 커밋하십시오.
+  근거: docs/design-docs/core-beliefs.md#r-env-secrets")
+    gate_add R-env-secrets warn precommit "" "출력 있음 · 종료 코드 $ENV_SECRETS_RC"
+  else
+    gate_add R-env-secrets pass precommit "" ".env 와 .env.secrets 가 같음"
+  fi
+else
+  gate_add R-env-secrets skipped precommit "" "env-secrets 프리셋 없음"
+fi
+# /R-env-secrets
 
 # 8-quater. R-eval — 규칙·강제 파일이 바뀌었으면 harness-eval 을 돌릴 때라고 알린다 (경고)
 # GATE: R-eval warn

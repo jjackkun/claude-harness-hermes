@@ -656,6 +656,10 @@ install_harness_gitignore() {
       # 게이트 발화 기록. 개발자 로컬 사건이라 커밋하면 매 커밋 diff 노이즈가 된다.
       # 근거: docs/exec-plans/active/2026-09-03-gate-telemetry.md §6
       ".harness/"
+      # env-secrets 의 개인 열쇠(.env.secrets 를 여는 것). 프리셋이 아니라 여기 둔다 — 프리셋을 lock 에서
+      # 빼고 재설치하면 설치물은 남는데 무시 줄만 사라져 열쇠가 커밋될 수 있었다(2026-10-16 실측).
+      # 근거: docs/exec-plans/active/2026-10-16-env-secrets-preset.md §7
+      ".env.keys"
       # 설치 목록은 커밋돼야 한다(I-02) — 다른 컴퓨터의 clone 도 어느 파일이 공장 것인지 알아야
       # 변조 감지·공존 설치 base 가 동작한다. 단 프로젝트 자체 규칙이 이 블록보다 **뒤**에서
       # `.claude/*` 를 무시하면 이 예외는 덮인다 — 그래서 설치 끝에 실제 추적 여부를 git 에 묻고 경고한다.

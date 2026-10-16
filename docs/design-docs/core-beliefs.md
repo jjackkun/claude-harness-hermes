@@ -606,6 +606,20 @@ R-plan-missing 도 같은 예외를 받는다 — 마지막 active 계획을 옮
 불리지 않았다(2026-09-21 반대 심문에서 반증 조건으로 확인 — 호출처 0곳, 마지막 실행 기록 소실). 발화 빈도는
 최근 30일 커밋의 13%(186 중 25).
 
+## R-env-secrets — 바뀐 .env 를 같은 열쇠로 다시 암호화해 그 커밋에 넣는다 {#r-env-secrets}
+
+env-secrets 프리셋을 고른 프로젝트(`scripts/env-secrets/secrets.sh` 가 있는 곳)에서만 돈다. 매 커밋 `sync --stage` 를 불러
+`.env` 가 `.env.secrets` 와 다르면 같은 열쇠로 다시 암호화하고 그 파일을 스테이징한다. 출력이 있으면(다시 암호화함 ·
+열쇠 없음 · 실패) 경고, 조용하면 통과, 스크립트가 없으면 건너뜀. **절대 막지 않는다.**
+
+- 막지 않는 이유: 열쇠는 Bitwarden 에 있고 금고는 자주 잠겨 있다. 잠김 때문에 일상 커밋이 멈추면 우회가 상시화된다.
+- 비밀번호를 묻지 않는다: git 은 훅 stdin 을 `/dev/null` 로 주고(2.43 실측) 게이트가 stderr 도 받아서, 도구의
+  터미널 가드가 프롬프트 없이 끝낸다. `tests/env-secrets-install-test.sh` 가 pty 에서 이를 회귀로 잰다.
+- 열쇠 파일 `.env.keys` 는 프리셋이 아니라 공통 `.gitignore` 목록에 있다 — 프리셋을 빼고 재설치해도 무시가 남게.
+
+**근거**: 2026-10-15 jj-agent-room 새 PC 에서 `.env` 를 손으로 옮기다 Google 로그인 키가 빠져 로그인이 막혔다.
+계획: `docs/exec-plans/active/2026-10-16-env-secrets-preset.md`.
+
 ## R-precheck — 목표가 기댄 전제를 확인한 기록 {#r-precheck}
 
 `completed/` 로 옮기는 계획서의 「착수 전 확인한 사실」(§2-bis)이 비어 있으면 경고(차단 아님).

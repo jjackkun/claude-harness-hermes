@@ -166,6 +166,10 @@ report_converted_links
 if declare -f _hermes_setup >/dev/null 2>&1; then
   _hermes_setup "$PROJECT_PATH"
 fi
+# env-secrets — 선택 프리셋(tools/env-secrets.conf). 고른 프로젝트에만 scripts/env-secrets/ 를 깐다.
+if declare -f _env_secrets_setup >/dev/null 2>&1; then
+  _env_secrets_setup "$PROJECT_PATH"
+fi
 
 # Harness — PDF 8~9쪽 강제 장치 (preset 이 설정한 플래그·배열에 따라 동작).
 install_harness_hooks         "$PROJECT_PATH"

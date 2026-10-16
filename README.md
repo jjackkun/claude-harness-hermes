@@ -97,7 +97,7 @@ claude-harness-hermes/               ← 이 디렉터리 (private git repo 권�
 │   ├── database/{postgres,mysql,oracle,mongodb,redis}.conf
 │   ├── build/{jpa,mybatis,maven,gradle}.conf
 │   ├── permissions/{git-write,pm2}.conf  ← 추가 권한 화이트리스트
-│   ├── tools/{prettier,terminal-paste-image}.conf
+│   ├── tools/{prettier,terminal-paste-image,env-secrets}.conf
 │   ├── workflow/{harness,hermes,mcp,skill-dev,adhd,korean}.conf
 │   └── global/                           ← [global] 스텝: ~/.claude 전역 opt-in 스킬 (현재 비어있음)
 ├── scripts/
@@ -281,7 +281,7 @@ Claude 전용 `CLAUDE.md`, `.claude/settings.json` / `.claude/settings.local.jso
 | database | postgres, mysql, oracle, mongodb, redis | **CLAUDE.md 가이드 섹션 + 권한** 위주. postgres 만 전용 스킬(`postgres-patterns`) 보유, 일부는 공용 자산(`database-migrations` 스킬, `database-reviewer` 에이전트)만 포함 — 나머지 전용 스킬/룰은 TODO |
 | build | jpa, mybatis, maven, gradle | **CLAUDE.md 규칙 섹션** 위주. jpa 만 전용 스킬(`jpa-patterns`) 보유 — 나머지 전용 스킬/룰은 TODO |
 | permissions | git-write, pm2 | 추가 권한 화이트리스트 |
-| tools | prettier, terminal-paste-image | prettier 경고 훅(2026-08-04 harness 에서 분리), VSCode 익스텐션 등 부가 도구 |
+| tools | prettier, terminal-paste-image, env-secrets | prettier 경고 훅(2026-08-04 harness 에서 분리), VSCode 익스텐션 등 부가 도구. env-secrets = `.env` 를 암호화한 `.env.secrets` 로 git 에 실어 PC 사이로 옮김(열쇠는 Bitwarden). 고른 프로젝트에만 `scripts/env-secrets/` 설치 — `bash scripts/env-secrets/secrets.sh import` (첫 PC) · `open` (다른 PC). node·npm 필요. 근거: `docs/exec-plans/active/2026-10-16-env-secrets-preset.md` |
 | workflow | **harness**, **hermes**, mcp, skill-dev, adhd, korean | 작업 방식·도구 프리셋. adhd = 행동 우선 답변 규칙(첫 줄 할 일·마지막 다음 행동 하나). korean = 사용자에게 보이는 답변을 한국어로 강제(규칙 + 매 턴 한 줄 + 영어 위주 답변이면 Stop 훅이 끝내기를 막고 다시 쓰게 함, 끄기 `KOREAN_GUARD_DISABLED=1`) |
 | global | _(현재 없음)_ | **전역 opt-in 스킬 자리.** `[global]` 스텝에서 선택 시 프로젝트가 아닌 `~/.claude/skills/` 에 한 번 설치되어 모든 프로젝트에서 사용. `~/.claude/presets.global.lock` 에 기록되고 `update-all` 이 유지. `resolve_preset` 대상이 아니라 프로젝트 프리셋으로는 설치 불가. `presets/global/<name>.conf` 추가 시 자동 노출 |
 
@@ -322,7 +322,7 @@ Claude 전용 `CLAUDE.md`, `.claude/settings.json` / `.claude/settings.local.jso
 
 <!--===DS:COUNTS:BEGIN===-->
 - 세션 중 실행 훅 **16종** + 훅이 공유하는 판정 모듈 **15개**
-- git pre-commit 게이트 **21종** — 차단 12 / 경고 9
+- git pre-commit 게이트 **22종** — 차단 12 / 경고 10
 - harness 프리셋이 까는 스킬 **6종** · 에이전트 **12종** · 공장 테스트 **137개**
 <!--===DS:COUNTS:END===-->
 
@@ -411,6 +411,7 @@ Claude 전용 `CLAUDE.md`, `.claude/settings.json` / `.claude/settings.local.jso
 | R-acc | §2 목표에 검증 명령이 있는가 / 미완 목표를 남긴 채 완료 처리하는가 | 위와 같음 |
 | R-plan-missing | 코드를 고치는데 계획서가 있는가 | 스크래치·긴급 수정까지 막으면 우회가 상시화된다 |
 | R-plan-stale | 코드는 바뀌었는데 계획서가 따라왔는가 | 위와 같음 |
+| R-env-secrets | env-secrets 프리셋이 있으면 바뀐 `.env` 를 같은 열쇠로 다시 암호화해 `.env.secrets` 를 그 커밋에 넣는다. 프리셋이 없으면 건너뜀 | 금고가 잠겨 있다고 일상 커밋이 멈추면 안 된다 |
 
 임계 12 의 근거: 저장소 함수 295개의 복잡도 분포가 `11:11개 → 12:4개` 로 급락합니다.
 그 절벽에 임계를 놓았습니다. 임계 8 이면 68개(23%), 6 이면 101개(34%) 가 걸려 과발화합니다.
@@ -619,7 +620,7 @@ rm .git/hooks/check-secrets.py.factory-new                                 # 게
 
 | target | 추가 항목 |
 |--------|-----------|
-| claude | `.claude/settings.local.json` |
+| claude | `.claude/settings.local.json` 등 머신 로컬 파일 · `.env.keys`(env-secrets 열쇠 — 프리셋을 빼도 남도록 공통 목록에 둠) |
 | codex  | `.codex/settings.local.json` |
 
 마커 블록 `# >>> harness-agent-preset >>>` ~ `# <<< harness-agent-preset <<<` 사이에만 기록하므로
