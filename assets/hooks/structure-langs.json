@@ -187,6 +187,108 @@
         "barrelOnly": false,
         "hint": "export 에 show 로 공개할 이름을 적을 것: `export 'src/x.dart' show A, B;`"
       }
+    },
+    "go": {
+      "tier": "B",
+      "exts": [".go"],
+      "barrel": []
+    },
+    "rust": {
+      "tier": "B",
+      "exts": [".rs"],
+      "barrel": [
+        { "id": 5, "strategy": "feature-root", "names": ["mod.rs", "../{dir}.rs"], "hint": "기능 모듈에 mod.rs(또는 <기능>.rs)를 두고 pub use 로 공개할 것만 내보낼 것" }
+      ],
+      "imports": ["^[ \\t]*(?:pub(?:\\([^)]*\\))?[ \\t]+)?use[ \\t]+(?<target>[\\w:]+)"],
+      "resolve": { "kind": "module", "sep": "::", "aliases": { "^crate/": "src/" } },
+      "deepImport": {
+        "id": 6,
+        "level": "warn",
+        "private": ["^(?<owner>src/[^/]+)/(?:internal|imp|private|detail)(?:/|$)"],
+        "hint": "다른 모듈의 internal 경로 대신 그 모듈이 pub use 로 내보낸 이름을 쓸 것"
+      },
+      "reexport": {
+        "id": 4,
+        "level": "block",
+        "patterns": ["^[ \\t]*pub(?:\\([^)]*\\))?[ \\t]+use[ \\t]+[\\w:]+::\\*[ \\t]*;.*$"],
+        "barrelOnly": false,
+        "hint": "pub use 로 공개할 이름만 나열할 것: `pub use x::{A, B};`"
+      }
+    },
+    "kotlin": {
+      "tier": "B",
+      "exts": [".kt", ".kts"],
+      "barrel": [],
+      "imports": ["^[ \\t]*import[ \\t]+(?<target>[\\w.]+)"],
+      "resolve": { "kind": "module", "sep": "." },
+      "deepImport": {
+        "id": 6,
+        "level": "warn",
+        "private": ["^(?<owner>.+)/(?:internal|impl)(?:/|$)"],
+        "hint": "다른 기능의 internal/impl 패키지 대신 공개 패키지의 타입을 쓸 것"
+      },
+      "reexport": {
+        "id": 4,
+        "level": "block",
+        "patterns": ["^[ \\t]*import[ \\t]+[\\w.]+\\.\\*.*$"],
+        "allow": "^[ \\t]*import[ \\t]+(?:java\\.util|kotlinx\\.android\\.synthetic)\\.",
+        "barrelOnly": false,
+        "hint": "와일드카드 import 대신 쓰는 이름을 하나씩 import (ktlint no-wildcard-imports)"
+      }
+    },
+    "csharp": {
+      "tier": "B",
+      "exts": [".cs"],
+      "barrel": [],
+      "imports": ["^[ \\t]*using[ \\t]+(?:static[ \\t]+)?(?<target>[\\w.]+)[ \\t]*;"],
+      "resolve": { "kind": "module", "sep": "." },
+      "deepImport": {
+        "id": 6,
+        "level": "warn",
+        "private": ["^(?<owner>.+)/Internal(?:/|$)"],
+        "hint": "다른 기능의 .Internal 네임스페이스 대신 공개 네임스페이스를 쓸 것"
+      }
+    },
+    "php": {
+      "tier": "B",
+      "exts": [".php"],
+      "barrel": [],
+      "imports": ["^[ \\t]*use[ \\t]+(?<target>[\\w\\\\]+)"],
+      "resolve": { "kind": "module", "sep": "\\" },
+      "deepImport": {
+        "id": 6,
+        "level": "warn",
+        "private": ["^(?<owner>.+)/Internal(?:/|$)"],
+        "hint": "다른 기능의 \\Internal\\ 네임스페이스 대신 공개 네임스페이스를 쓸 것"
+      }
+    },
+    "swift": {
+      "tier": "B",
+      "exts": [".swift"],
+      "barrel": [],
+      "reexport": {
+        "id": 4,
+        "level": "block",
+        "patterns": ["^[ \\t]*@_exported[ \\t]+import\\b.*$"],
+        "barrelOnly": false,
+        "hint": "@_exported import 대신 쓰는 쪽에서 모듈을 직접 import 할 것"
+      }
+    },
+    "ruby": {
+      "tier": "B",
+      "exts": [".rb"],
+      "featureRoots": ["lib"],
+      "barrel": [
+        { "id": 5, "strategy": "feature-root", "names": ["../{dir}.rb"], "hint": "기능 폴더 옆에 <기능>.rb 진입 파일을 둘 것" }
+      ],
+      "imports": ["^[ \\t]*require_relative[ \\t]*\\(?[ \\t]*['\"](?<target>[^'\"]+)['\"]"],
+      "resolve": { "kind": "path", "bareIsRelative": true },
+      "deepImport": {
+        "id": 6,
+        "level": "warn",
+        "private": ["(?:^|/)(?<owner>lib/[^/]+)/.+"],
+        "hint": "다른 기능의 하위 파일 대신 그 기능의 진입 파일을 require 할 것"
+      }
     }
   }
 }
