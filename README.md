@@ -294,6 +294,9 @@ Claude 전용 `CLAUDE.md`, `.claude/settings.json` / `.claude/settings.local.jso
 - `update-all.sh` 는 `public-claude.sh` 를 호출하므로 전역 선택이 자동 유지됨
 - 빠른 적용: `bash public-claude.sh --skills-only --set-global "<이름들>"` (빈 문자열 = 전부 해제)
 
+`_common.conf` 기본 설치에는 패널 모드 3개(`file-explorer` `/files`, `tool-calls-pane` `/tool-calls`, `hermes-roster-pane` `/roster`)가 들어 있어 설치·업데이트하면 바로 쓸 수 있습니다.
+`public-claude.sh` 는 새 컴퓨터에서도 **shift+enter 가 개행**이 되게 `~/.claude/keybindings.json` 과(WSL 이면) Windows Terminal 설정에 키를 더합니다 — 이미 정해 둔 키는 건드리지 않고, 고치기 전에 백업을 뜹니다.
+
 ### 플러그인 프리셋 (PLUGINS)
 
 프리셋 `.conf` 에 `PLUGINS+=(...)` / `PLUGIN_MARKETPLACES+=(...)` 를 넣으면 Claude Code
@@ -313,9 +316,9 @@ Claude 전용 `CLAUDE.md`, `.claude/settings.json` / `.claude/settings.local.jso
 
 `workflow/harness` 를 선택하면 프로젝트에 다음이 설치됩니다:
 
-- **스킬 5종**: `harness-boundary-check`, `harness-reasoning-sandwich`, `harness-promote-rule`, `structured-file-layout`, `run-to-the-end`
+- **스킬**: `harness-boundary-check`, `harness-reasoning-sandwich`, `harness-promote-rule`, `structured-file-layout`, `run-to-the-end`, `pre-commit-measure`
 - **룰**: `harness` (코딩 규칙 전문)
-- **에이전트 11종**: `architect-lite`, `planner-lite`, `architect`, `planner`, `code-reviewer`, `silent-failure-hunter`, `tdd-guide`, `doc-updater`, `docs-lookup`, `performance-optimizer`, `refactor-cleaner`
+- **에이전트**: `architect-lite`, `devil-advocate`, `planner-lite`, `architect`, `planner`, `code-reviewer`, `silent-failure-hunter`, `tdd-guide`, `doc-updater`, `docs-lookup`, `performance-optimizer`, `refactor-cleaner`
 
 <!--===DS:COUNTS:BEGIN===-->
 - 세션 중 실행 훅 **16종** + 훅이 공유하는 판정 모듈 **15개**
@@ -338,9 +341,9 @@ Claude 전용 `CLAUDE.md`, `.claude/settings.json` / `.claude/settings.local.jso
 | 시점 | 훅 | 하는 일 |
 |------|-----|---------|
 | UserPromptSubmit | `claude-userpromptsubmit-reminders.sh` | 매 턴 규율 리마인더 + active 계획서·backlog 표시 |
-| PreToolUse(Bash) | `claude-pretooluse-bash-guard.sh` | 커밋 전 리뷰 검토 리마인드 + `--no-verify` 탐지 |
+| PreToolUse(Bash) | `claude-pretooluse-bash-guard.sh` | 커밋 전 리뷰 검토 리마인드 + `--no-verify` 탐지 · **R-sudo** — `-n` 없는 `sudo` **차단**(비밀번호 입력 대기로 멈추지 않게 사람에게 `! <명령>` 으로 넘김) · **R-fg** — 5분 이상 걸릴 수 있는 명령을 앞에서 돌리면 배경 실행 + Monitor 로 안내 |
 | PreToolUse(Task\|Agent) | `claude-pretooluse-agent-guard.sh` | 잘못된 에이전트 dispatch 차단 |
-| PreToolUse(Write) | `claude-pretooluse-iface-guard.sh` | **R-iface** — 새 파일의 공개 심볼이 8 이상이면 **차단** |
+| PreToolUse(Write) | `claude-pretooluse-iface-guard.sh` | **R-iface** — 새 파일의 공개 심볼이 8 이상이면 **차단** (`.py` JS/TS `.vue` `.svelte` + java kotlin csharp php swift go rust dart, ruby 제외) |
 | PreToolUse(Write) | `claude-pretooluse-plan-declare.sh` | **R-declare** — 새 코드 파일이 계획서 §4 에 선언됐는지 경고 |
 | PostToolUse(Edit) | `claude-posttooluse-size-warn.sh` | 400/500 줄 조기 경고 + 인터페이스 폭 증가 경고 |
 | PostToolUse(Edit) | `claude-posttooluse-review-reminder.sh` | 코드 편집을 리뷰 빚으로 적립 (`.claude/.review-dirty`) |
@@ -348,7 +351,7 @@ Claude 전용 `CLAUDE.md`, `.claude/settings.json` / `.claude/settings.local.jso
 | PostToolUse(Task\|Agent) | `claude-posttooluse-review-record.sh` | **R-pipe** — 리뷰어 dispatch 를 리뷰 빚 청산으로 기록 |
 | SessionStart | `claude-sessionstart-mutation-probe.sh` | **R-mut** — 주 1회 변이 점검(백그라운드), 결과는 다음 세션에 보고 |
 | SessionStart | `claude-sessionstart-doc-gardening.sh` | 주간 문서 편차 점검 (CI 미배선 환경에서도 동작, 7일 스로틀) |
-| PostToolUse(Bash) | `claude-posttooluse-output-budget.sh` | **R-out** — 출력 바이트를 실측해 기록, 임계 초과 시에만 경고 |
+| PostToolUse(Bash) | `claude-posttooluse-output-budget.sh` | **R-out** — 출력 바이트를 실측해 기록, 임계 초과 시에만 경고. 명령 모양(묶음·파이프)과 에이전트도 남겨 `out_report.py --by shape\|agent` 로 어느 명령이 바이트를 냈는지 가른다 |
 
 `iface-guard` 는 이 저장소 최초의 **하드 차단** PreToolUse 훅입니다. 임계 8 은 저장소 운영 코드
 36개의 공개 심볼 분포에서 7이 최빈 고원이고 8부터 상위 사분위라는 실측에서 나왔습니다.
@@ -359,7 +362,7 @@ Claude 전용 `CLAUDE.md`, `.claude/settings.json` / `.claude/settings.local.jso
 
 | 모듈 | 축 | 내용 |
 |------|-----|------|
-| `iface_width.py` | R-iface | 인터페이스 폭의 **단일 정의**. `.py`/`.js`/`.ts`/`.svelte`/`.vue` 의 공개 심볼을 센다 |
+| `iface_width.py` | R-iface | 편집 후 폭 증가 경고(size-warn)가 쓰는 공개 심볼 계수. `.py`/`.js`/`.ts`/`.svelte`/`.vue` 만 센다 — 쓰기 직전 차단 훅은 자체 계수기로 8개 언어를 더 본다(두 정의가 아직 하나로 합쳐지지 않음) |
 | `complexity.py` | R-cx | 순환 복잡도 계산 (`--report` 로 함수별 출력) |
 | `depcheck.py` | R-dep | `.deprc` 계약 기반 tier 역전·순환·금지 경계 검사 |
 | `coverage_probe.py` | R-cov | 표준 라이브러리 `trace` 기반 줄 커버리지 (외부 패키지 의존 0) |
@@ -372,6 +375,8 @@ Claude 전용 `CLAUDE.md`, `.claude/settings.json` / `.claude/settings.local.jso
 `iface_width.py` 를 모듈로 뺀 이유: 폭을 재는 곳이 둘(생성 시점 차단 / 편집 시점 델타 경고)이라
 각자 세다가 어긋났습니다. 후자는 `^export ` grep 이라 **Svelte 에서 한 번도 발화할 수 없었습니다**
 (실측 — Svelte 200개 표본 중 `^export ` 0개, `$props()` 177개). 정의를 하나로 둡니다.
+다만 2026-10-16 현재 생성 시점 차단 훅(`claude-pretooluse-iface-guard.sh`)은 아직 자기 계수기를 갖고 있고,
+그날 넓힌 8개 언어(java kotlin csharp php swift go rust dart)는 차단 훅에만 있습니다 — 합치는 일은 `docs/exec-plans/backlog/iface-width-single-definition.md`.
 
 `coverage_probe.py` 와 `complexity.py` 가 외부 패키지(coverage.py, radon)를 쓰지 않는 이유:
 하네스는 여러 프로젝트에 설치되는 도구이고, 각 프로젝트에 패키지 설치를 요구하면 **설치 실패가
@@ -386,13 +391,13 @@ Claude 전용 `CLAUDE.md`, `.claude/settings.json` / `.claude/settings.local.jso
 
 | 게이트 | 검사 |
 |--------|------|
-| R-size | 파일 줄 수 한도 (`.py .js .ts .svelte .vue` 등, SFC 포함) |
+| R-size | 파일 줄 수 한도 (`.py .js .ts .svelte .vue` + `.java .dart .go .rs .kt .cs .php .swift .rb`). 포크는 `.harnessrc` 에 `UPSTREAM_REF=upstream/main` 을 두면 원본에 이미 있는 파일을 빼고 `[R-size:upstream]` 줄로 남긴다 |
 | R-fmt | `prettier --check` (하네스 생성물은 대상에서 제외) |
 | R-lint | `eslint --max-warnings 0` |
-| R-test | `pytest` (테스트 0개면 통과가 아니라 실패로 본다) |
+| R-test | `pytest` (테스트 0개면 통과가 아니라 실패로 본다). `tests/` 와 `backend/tests/` 가 둘 다 있으면 한 번에 모두 돈다 |
 | R-cx | 순환 복잡도 **임계 12**, `.cxbaseline` **라쳇** — 나빠질 때만 차단 |
 | R-dep | `.deprc` 의존 계약 — tier 역전·순환·금지 경계 |
-| R-struct | 컴포넌트 폴더/배럴 규칙 |
+| R-struct | 폴더·배럴 구조 — 13개 언어(Tier A 자동: vue js/ts svelte python java dart · Tier B `.harnessrc` `STRUCT_LANGS_EXTRA` 로: go rust kotlin csharp php swift ruby). 배럴 없음·전량 재노출은 차단, 깊은 import·언어 무관 규칙은 경고. 기존 위반은 `.structbaseline` 기준선이 막지 않는다. 언어별 범위표: `assets/rules/web/coding-style.md` |
 | R-secret | 자격증명·개인정보 커밋 차단 |
 | R-plan | 완료된 계획서가 `active/` 에 남아 있는지 |
 
@@ -457,12 +462,13 @@ R-iface  1   0   0   1   0   0    100.0%
 |------|------|
 | SQLite DB | `[project]/.hermes/state.db` — 세션 기억 + 롤링 요약 + 스킬 인덱스 (WAL + busy_timeout) |
 | 전역 DB | `~/.hermes/global.db` — 전역 공통 패턴 |
-| 스크립트 18개 (python 17 + cron 러너 1) | `[project]/scripts/hermes-*.py`, `hermes_redact.py`, `hermes_skills.py` + cron 러너 `hermes-cron-run.sh` |
+| 스크립트 | `[project]/scripts/hermes-*.py`, `hermes_*.py` 공용 모듈 + cron 러너 `hermes-cron-run.sh` |
 | Stop Hook | `claude-stop-retrospective.sh` — 세션 종료 시 러닝 루프 실행 (save → summarize → crystallize → correlate → prune) |
 | SessionStart Hook | `claude-sessionstart-dream.sh` — startup/resume 세션 시작 시 하루 1회(throttle 20h) 드리밍 백그라운드 구동 (cron 대체). 끄기 `HERMES_DREAM_ON_SESSION_START=0` |
 | UserPromptSubmit Hook | 관련 스킬 FTS5 검색 주입 + 직전 세션 요약 회상 주입(`hermes-recall --inject`) |
 | 민감정보 마스킹 | `hermes_redact.py` — 저장·요약 경계에서 비밀을 `[REDACTED:TYPE]`로 비가역 치환 (원본 미보관) |
-| 스킬 4종 | `hermes-status`, `hermes-crystallize`, `hermes-recall`, `hermes-dream` |
+| 스킬 | `hermes-status`, `hermes-crystallize`, `hermes-recall`, `hermes-dream`, `hermes-loop`, `hermes-agent`, `hermes-dashboard`, `hermes-roster`, `hermes-room` |
+| 에이전트 명부 | `hermes-agent` — 분야·직급·조직으로 에이전트를 입사·소환·인계·은퇴시킨다. 에이전트는 다른 방에서 한 일을 `hermes-agent.py recall <에이전트> <낱말>` 로 스스로 찾는다(모델 호출 없음) |
 | CLAUDE.md 섹션 | 헤르메스 동작 안내 자동 삽입 |
 
 **동작 흐름:**
@@ -716,7 +722,7 @@ README 의 숫자 블록(`DS:COUNTS`)은 R-doc 이 자동으로 고치지만 설
 ## 테스트
 
 ```bash
-# 전체 실행 (정적 검사 + 무결성 + 통합 테스트 43개)
+# 전체 실행 (정적 검사 + 무결성 + 통합 테스트 — 개수는 위 수치 블록)
 bash tests/run-all.sh
 
 # 특정 테스트만 건너뛰기
