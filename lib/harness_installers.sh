@@ -65,6 +65,9 @@ _install_git_hook() {
   install_factory_file "$src" "$dest" githook ".git/hooks/$base" "$project_path/.claude" "$mode"
 }
 
+# shellcheck source=lib/struct_files.sh
+source "$(dirname "${BASH_SOURCE[0]}")/struct_files.sh"
+
 # install_harness_pre_commit <project_path>
 # assets/hooks/pre-commit.sh 를 .git/hooks/pre-commit 으로 복사 (심볼릭 X — WSL 호환).
 install_harness_pre_commit() {
@@ -79,12 +82,15 @@ install_harness_pre_commit() {
   _install_git_hook "$project_path" "$src" pre-commit 755
   log_info "  hook    → .git/hooks/pre-commit (게이트 13종 — 차단 9 / 경고 4)"
 
-  # check-component-structure.mjs — pre-commit 이 $(dirname $0) 에서 참조
-  local struct_src="$ASSETS_DIR/hooks/check-component-structure.mjs"
-  if [[ -f "$struct_src" ]]; then
-    _install_git_hook "$project_path" "$struct_src" check-component-structure.mjs 755
-    log_info "  hook    → .git/hooks/check-component-structure.mjs"
-  fi
+  # R-struct 구조 검사기 — pre-commit 이 $(dirname $0) 에서 참조. 목록은 이 배열 하나다:
+  # 흩어 두면 일부만 복사된 설치(부분 설치)가 생기고, 엔진은 그때 skipped 로 넘어간다.
+  # check-component-structure.mjs 는 옛 pre-commit 이 부르는 호환 래퍼다.
+  local struct_file
+  for struct_file in "${HARNESS_STRUCT_FILES[@]}"; do
+    [[ -f "$ASSETS_DIR/hooks/$struct_file" ]] || { log_warn "  hook    → $struct_file 원본 없음 (R-struct 부분 설치)"; continue; }
+    _install_git_hook "$project_path" "$ASSETS_DIR/hooks/$struct_file" "$struct_file" 755
+  done
+  log_info "  hook    → .git/hooks/ R-struct 구조 검사기 ${#HARNESS_STRUCT_FILES[@]}개"
 
   # check-secrets.py (R-secret) — pre-commit 이 $(dirname $0) 에서 참조.
   local secrets_src="$ASSETS_DIR/hooks/check-secrets.py"

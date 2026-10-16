@@ -43,7 +43,8 @@ filter_files() {
 # 새 정책이 아니라 누락 보정이다: 이 저장소의 review-reminder·prettier-warn·dead-file-warn·
 # codex size-warn 은 이미 .vue 를 검사하고, R-size 두 훅만 빠져 있었다.
 # .vue 가 없는 프로젝트에선 no-op 이라 부작용이 없다.
-CHECKABLE=$(filter_files '\.(py|js|jsx|ts|tsx|svelte|vue)$')
+# java·dart·go·rs·kt·cs·php·swift·rb 추가(2026-10-16) — R-struct 가 이 언어들로 넓어지며 같은 누락을 보정했다.
+CHECKABLE=$(filter_files '\.(py|js|jsx|ts|tsx|svelte|vue|java|dart|go|rs|kt|kts|cs|php|swift|rb)$')
 JS_TS=$(filter_files '\.(js|jsx|ts|tsx|svelte)$')
 PY_FILES=$(filter_files '\.py$')
 
@@ -535,31 +536,46 @@ $DEP_OUT")
   fi
 fi
 
-# 5. R-struct — 컴포넌트 폴더/배럴 규칙 (Vue 프로젝트)
+# 5. R-struct — 폴더·배럴 구조 (언어 설정표 structure-langs.json)
 # GATE: R-struct block
-CHECK_STRUCT="$(dirname "$0")/check-component-structure.mjs"
-VUE_AND_CODE=$(filter_files '\.(vue|js|jsx|ts|tsx)$')
-if [[ -n "$VUE_AND_CODE" ]] && { [[ ! -f "$CHECK_STRUCT" ]] || ! command -v node >/dev/null 2>&1; }; then
-  gate_add R-struct skipped precommit "" "check-component-structure.mjs 또는 node 없음"
-fi
-if [[ -n "$VUE_AND_CODE" ]] && [[ -f "$CHECK_STRUCT" ]] && command -v node >/dev/null 2>&1; then
-  STRUCT_OUT=$(echo "$VUE_AND_CODE" | xargs node "$CHECK_STRUCT" 2>&1) || {
-    VIOLATIONS+=("$(cat <<EOF
-
-[R-struct] 컴포넌트 구조 위반.
-
-$STRUCT_OUT
-  → 위반 메시지의 지침을 따라 폴더·배럴·import 를 수정 후 재시도.
-  근거: assets/rules/web/coding-style.md §File-Organization
-EOF
-)")
-    FAIL=1
-    STRUCT_HIT=1
-  }
-  if [[ "${STRUCT_HIT:-0}" == "1" ]]; then
-    gate_add R-struct block precommit "" "구조 위반"
+#
+# 확장자 필터는 설정표 전 언어의 합이다 — 어느 언어를 켤지는 엔진이 정한다
+# (Tier A 는 자동, Tier B 는 .harnessrc STRUCT_LANGS_EXTRA, HARNESS_STRUCT_LANGS= 빈 값이면 끔).
+# xargs 를 쓰지 않는다: xargs 는 자식의 종료 1~125 를 전부 123 으로 바꿔 차단(1)·경고(3)·고장(2)을 가를 수 없다.
+# 차단은 "종료 1 + [BLOCKED] 표식" 일 때만이다. 그 밖은 고장이라 skipped — 고장이 모든 커밋을 막으면 안 된다.
+# 계획: docs/exec-plans/active/2026-10-16-language-neutral-structure-gate.md
+CHECK_STRUCT="$(dirname "$0")/check-structure.mjs"
+STRUCT_FILES=$(filter_files '\.(vue|js|jsx|ts|tsx|mjs|cjs|svelte|py|java|dart|go|rs|kt|kts|cs|php|swift|rb)$')
+if [[ -n "$STRUCT_FILES" ]]; then
+  if [[ ! -f "$CHECK_STRUCT" ]] || ! command -v node >/dev/null 2>&1; then
+    gate_add R-struct skipped precommit "" "check-structure.mjs 또는 node 없음"
   else
-    gate_add R-struct pass precommit "" "구조 준수"
+    mapfile -t _STRUCT_ARGS <<< "$STRUCT_FILES"
+    STRUCT_RC=0
+    STRUCT_OUT=$(node "$CHECK_STRUCT" --langs "${HARNESS_STRUCT_LANGS-auto}" \
+      --extra "${STRUCT_LANGS_EXTRA:-}" --exempt "${STRUCT_EXEMPT:-}" "${_STRUCT_ARGS[@]}" 2>&1) || STRUCT_RC=$?
+    STRUCT_RULES=$(printf '%s' "$STRUCT_OUT" | grep -oE 'R-struct-[0-9]+' | sort -u | tr '\n' ' ' || true)
+    if (( STRUCT_RC == 1 )) && [[ "$STRUCT_OUT" == *"[BLOCKED]"* ]]; then
+      VIOLATIONS+=("
+[R-struct] 폴더·배럴 구조 위반.
+$STRUCT_OUT
+  → 위반 메시지의 지침대로 폴더·배럴·import 를 고친 뒤 재시도. 기존 코드라면 사람이 기준선 갱신:
+    node .git/hooks/check-structure.mjs --update-baseline (늘어난 줄의 사유를 커밋 메시지에)
+  근거: docs/design-docs/core-beliefs.md#r-struct")
+      FAIL=1
+      gate_add R-struct block precommit "" "rules=${STRUCT_RULES% }"
+    elif (( STRUCT_RC == 0 )); then
+      gate_add R-struct pass precommit "" "구조 준수"
+    elif (( STRUCT_RC == 3 )); then
+      WARNINGS+=("
+$STRUCT_OUT")
+      gate_add R-struct warn precommit "" "rules=${STRUCT_RULES% }"
+    else
+      WARNINGS+=("
+[R-struct] skipped — 구조 검사기 고장(종료 $STRUCT_RC). 이번 커밋은 구조 검사 없이 진행된다. 재설치 필요.
+$STRUCT_OUT")
+      gate_add R-struct skipped precommit "" "검사기 내부 오류 rc=$STRUCT_RC"
+    fi
   fi
 fi
 

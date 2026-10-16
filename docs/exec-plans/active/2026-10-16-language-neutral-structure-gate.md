@@ -277,3 +277,9 @@
 - 잘된 것:
 - 잘못된 것:
 - 다음 룰 후보:
+
+### Step 6 연결 (2026-10-16)
+
+- `tests/structure-install-test.sh` PASS=12 — 설치 목록·차단·통과·부분 설치 2종·신구 혼합 2종·기준선.
+- **알려진 한계(전파 전 구간)**: 옛 pre-commit(`ff815bc` 이전 판)은 `.vue/.js/.ts` 만 래퍼에 넘기므로, 새 파일이 깔려도 svelte·python 등은 검사되지 않는다. update-all 로 pre-commit 이 함께 갱신되면 풀린다.
+- 판정 기록 상세 칸은 `rules=R-struct-N …` 만 남긴다(계획의 `lang=` 은 빠짐) — 메시지에 언어를 넣으면 기존 `[R-struct-N]` 형식이 바뀐다. 언어별 건수는 `--report` 로 본다.

@@ -185,7 +185,10 @@ uninstall_asset_symlinks() {
   return 0
 }
 
-# ── .git/hooks/pre-commit + check-component-structure.mjs ───────────────────
+# shellcheck source=lib/struct_files.sh
+source "$(dirname "${BASH_SOURCE[0]}")/struct_files.sh"
+
+# ── .git/hooks/pre-commit + R-struct 구조 검사기 ────────────────────────────
 # 하네스가 설치한 것인지 내용 마커("4단 검사")로 확인 후 제거. 사용자 훅 보존.
 uninstall_pre_commit() {
   local project_path="$1"
@@ -197,7 +200,10 @@ uninstall_pre_commit() {
       echo -e "  ${YELLOW}⚠${RESET}  .git/hooks/pre-commit 은 하네스 마커가 없어 보존합니다"
     fi
   fi
-  _rm_path file "$project_path/.git/hooks/check-component-structure.mjs" ".git/hooks/check-component-structure.mjs"
+  local struct_file
+  for struct_file in "${HARNESS_STRUCT_FILES[@]}"; do
+    _rm_path file "$project_path/.git/hooks/$struct_file" ".git/hooks/$struct_file"
+  done
   _rm_path file "$project_path/.git/hooks/check-secrets.py" ".git/hooks/check-secrets.py"
   _rm_path file "$project_path/.git/hooks/check-privacy.py" ".git/hooks/check-privacy.py"
   _rm_path file "$project_path/.git/hooks/hermes_secret_values.py" ".git/hooks/hermes_secret_values.py"
