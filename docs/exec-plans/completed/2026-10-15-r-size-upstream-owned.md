@@ -19,7 +19,7 @@
 - [x] G4 — `UPSTREAM_REF` 가 없는 프로젝트는 동작이 바뀌지 않는다. — 검증: 같은 시험 + 기존 공장 시험 전체
 - [x] G5 — 빠진 판정은 게이트 이벤트에 남는다 (몰래 통과 금지). — 검증: 같은 시험이 출력에서 원본 소유 안내 줄을 확인
 
-- [ ] G6 — jj-agent-room 에 재설치한 뒤, 그 저장소에서 막혔던 Step 1 커밋(원본 파일 `router.ts`·`daemon.ts`·`registry.ts` 수정 포함)이 R-size 에 막히지 않고 게이트를 통과한다. — 검증: 그 저장소 `git commit` 출력에 `[R-size:upstream]` 3줄, `[R-size]` 차단 0
+- [x] G6 — jj-agent-room 에 재설치한 뒤, 그 저장소에서 막혔던 Step 1 커밋(원본 파일 `router.ts`·`daemon.ts`·`registry.ts` 수정 포함)이 R-size 에 막히지 않고 게이트를 통과한다. — 검증: 그 저장소 `git commit` 출력에 `[R-size:upstream]` 3줄, `[R-size]` 차단 0
 
 ## 2-bis. 착수 전 확인한 사실 (2026-10-15)
 
@@ -76,8 +76,10 @@
   doc-counts 는 시험 수 129→130 으로 문서 수치가 낡은 것 → `scripts/sync-doc-counts.sh` 로 맞춤.
   나머지 둘은 혼자 돌리면 통과 — 병렬 실행 때의 흔들림으로 이번 변경(R-size 판정)과 무관. 별도 확인 대상
 
+- 2026-10-15 G6 확인: jj-agent-room 을 update-all(그 저장소 하나로 한정)로 재설치(`99d480c`) 뒤 Step 1 커밋 `99b0aa8` 이 통과. 출력에 `[R-size:upstream]` 3줄(daemon.ts 4728·registry.ts 1350·router.ts 7358), `[R-size]` 차단 0
+
 ## 8. 회고 (완료 시 작성)
 
-- 잘된 것:
-- 잘못된 것:
-- 다음 룰 후보:
+- 잘된 것: 시험을 먼저 써서 RED(3개)를 보고 고쳤다. "ref 가 없으면 막는다" 를 목표로 박아, 받아오지 않은 클론에서 포크 파일까지 통과하는 구멍을 막았다. 재설치를 그 저장소 하나로 한정해 다른 프로젝트를 건드리지 않았다.
+- 잘못된 것: 처음 막혔을 때 게이트 코드를 읽지 않고 "upstream 을 안 받아와서" 라고 단정해 한 바퀴 돌았다. 진짜 원인(게이트에 기능 자체가 없음)은 코드를 열자 바로 보였다.
+- 다음 룰 후보: 프로젝트 `.harnessrc` 가 게이트가 읽지 않는 변수를 쓰면 경고 (설정과 구현의 어긋남을 설치 때 잡기). run-all 병렬 흔들림(update-all-roundtrip·precompact-summary)은 별도 확인.
