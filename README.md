@@ -702,6 +702,17 @@ git rm presets/<category>/<name>.conf
 
 > 2026-08-21 `serena` 제거가 이 순서를 어겨 11개 프로젝트 중 6곳의 업데이트가 막히고 죽은 권한 184건이 고립됐습니다. 경위는 `docs/superpowers/specs/2026-08-21-preset-retirement-ownership-design.md` 에 있습니다.
 
+## 공장 전용 스킬
+
+이 저장소에서만 쓰는 스킬입니다. 어느 프리셋에도 넣지 않으므로 소우주에는 배포되지 않고, 공장의 `.claude/skills/` 에 상대 링크로만 걸립니다.
+
+| 스킬 | 언제 | 하는 일 |
+|------|------|---------|
+| `harness-eval` | 훅·규칙·스킬 문구를 바꾼 직후 | 훅이 실제 행동을 막는지 `claude -p`(haiku) 로 재서 pass@k·pass^k·"발화 후 위반" 을 낸다 (로컬·수동 전용) |
+| `readme-sync-before-commit` | 커밋 직전 | 이번 변경이 README 에 적혀야 하는지 판정하고, 그렇다면 해당 절을 고쳐 같은 커밋에 넣는다. 커밋 본문에 `README: …` 판정 한 줄을 남긴다 |
+
+README 의 숫자 블록(`DS:COUNTS`)은 R-doc 이 자동으로 고치지만 설명은 고치지 않습니다 — `readme-sync-before-commit` 이 그 빈칸을 맡습니다.
+
 ## 테스트
 
 ```bash
