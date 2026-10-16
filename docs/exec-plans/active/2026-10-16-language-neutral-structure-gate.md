@@ -305,3 +305,9 @@
 - 리뷰 반영 전에는 svelte 차단 후보가 18건이었고 16건이 분류 폴더 오판, jj-agent-room java 1건이 Android 생성 시험 오판이었다(§6 결정).
 - **깊은 import(R-struct-6) 거짓양성률**: 표본(terminal-shipping 198건 상위 대상 12종, zeroday·kis 무작위 6건)에서 정규식 오판(규칙 정의와 다르게 잡힌 것)은 0건. 다만 상위는 `app.features.auth.auth_deps`(33)·`token_service`(25) 처럼 다른 기능이 인증 의존성을 직접 가져오는 FastAPI 관용이라, "사람이 정당하다고 볼 비율" 은 사람 판단이 필요하다 → 차단 승격 보류(경고 유지).
 - G4 기준선 실측(복제본, 실제 저장소 무수정): drh-cloth-shop 기준선 0건 → `features/zz/Zz.svelte` 심기 1(차단) → 지우면 0. terminal-shipping 기준선 244건 → 같은 심기 1 → 0. kis-trading 기준선 68건 → 기준선의 `src/lib/api/index.js`(R-struct-4) 폴더째 `git mv` 후 0, 같은 파일을 `--no-baseline` 으로 1.
+
+### Step 7 R-iface (2026-10-16)
+
+- 추가 언어: java·csharp(`public`) · swift(`public`/`open`) · kotlin·php(숨김 수식어 없는 선언, kotlin 은 중괄호 깊이로 함수 몸체 제외) · go(대문자) · rust(`pub`, `pub use`·`pub mod`·`pub(crate)` 제외) · dart(최상위 `_` 없는 이름, `library/part/import/export` 제외).
+- **ruby 제외** — 공개 여부가 `private` 블록 위치로 정해져 줄 단위로 가를 수 없다.
+- 실제 코드 대조(jj-agent-room go 8 · swift 7 · java 3 = 18개를 새 파일로 쓴다고 가정): 차단 2(`agent-fuse/main.go` 636줄, `main_test.go` 515줄 — 둘 다 R-size 한도 위), 나머지 16 통과.
