@@ -20,13 +20,13 @@
 
 ## 2. 목표 (What — 검증 가능한 형태)
 
-- [ ] G1. 검사기가 **언어 무관 엔진 + 언어 설정표** 구조다 — 검증: Step 1 에서 확정한 설정표 스키마로 Tier B 언어를 추가할 때 엔진 diff 를 Step 4 커밋 범위에서 `git diff --stat <Step3 끝 커밋>..HEAD -- assets/hooks/*.mjs` 로 잰다. 0줄이 목표, 스키마 개정이 필요하면 개정 이유를 §6 에 남기고 개정 후 남은 Tier B 언어로 다시 0줄을 잰다
-- [ ] G2. 설정표 항목마다 **규칙 수만큼** 위반 fixture 가 있고 각각 기대대로 판정된다 — 검증: `tests/structure-gate-test.sh` 가 (a) 언어×규칙 bad → 기대 판정(차단/경고), good → 통과, bad 를 고치면 통과로 바뀜, (b) "설정표의 (언어, 규칙) 쌍 수 == fixture 가 덮는 쌍 수" 를 단언
-- [ ] G3. 기존 Vue 동작이 그대로다 — 검증: 기존 `tests/struct-barrel-test.sh` 전부 통과(시험 파일 수정 없이)
-- [ ] G4. 설치된 소우주에서 기존 코드가 갑자기 막히지 않는다 — 검증: `.installed-projects` 의 프로젝트 전부에 보고 모드 실행 → 프로젝트별 위반 수를 §7 에 기록. drh-cloth-shop 에서 기준선 생성 → 새 위반 하나 심어 차단 → 지우면 통과. 기준선에 있는 파일을 `git mv` 해도 새 위반으로 잡히지 않음
-- [ ] G5. 규칙 문서가 강제 범위와 일치한다 — 검증: `web/coding-style.md` 의 언어별 강제 범위표와 `structure-langs.json` 의 (언어, 규칙) 목록을 시험 스크립트가 비교해 일치
-- [ ] G6. R-iface(공개 심볼 수)가 Tier A·B 언어에서 동작한다 — 검증: `bash tests/iface-guard-lang-test.sh` — 언어별 공개 심볼 8개 파일 쓰기 차단 / 7개 통과
-- [ ] G7. 검사기 고장이 커밋을 막지 않는다 — 검증: 설치본에서 엔진 파일 하나를 지우거나 JSON 을 깨면 차단이 아니라 `R-struct skipped` 가 `gate-events.jsonl` 에 남는다
+- [x] G1. 검사기가 **언어 무관 엔진 + 언어 설정표** 구조다 — 검증: Step 1 에서 확정한 설정표 스키마로 Tier B 언어를 추가할 때 엔진 diff 를 Step 4 커밋 범위에서 `git diff --stat <Step3 끝 커밋>..HEAD -- assets/hooks/*.mjs` 로 잰다. 0줄이 목표, 스키마 개정이 필요하면 개정 이유를 §6 에 남기고 개정 후 남은 Tier B 언어로 다시 0줄을 잰다
+- [x] G2. 설정표 항목마다 **규칙 수만큼** 위반 fixture 가 있고 각각 기대대로 판정된다 — 검증: `tests/structure-gate-test.sh` 가 (a) 언어×규칙 bad → 기대 판정(차단/경고), good → 통과, bad 를 고치면 통과로 바뀜, (b) "설정표의 (언어, 규칙) 쌍 수 == fixture 가 덮는 쌍 수" 를 단언
+- [x] G3. 기존 Vue 동작이 그대로다 — 검증: 기존 `tests/struct-barrel-test.sh` 전부 통과(시험 파일 수정 없이)
+- [x] G4. 설치된 소우주에서 기존 코드가 갑자기 막히지 않는다 — 검증: `.installed-projects` 의 프로젝트 전부에 보고 모드 실행 → 프로젝트별 위반 수를 §7 에 기록. drh-cloth-shop 에서 기준선 생성 → 새 위반 하나 심어 차단 → 지우면 통과. 기준선에 있는 파일을 `git mv` 해도 새 위반으로 잡히지 않음
+- [x] G5. 규칙 문서가 강제 범위와 일치한다 — 검증: `web/coding-style.md` 의 언어별 강제 범위표와 `structure-langs.json` 의 (언어, 규칙) 목록을 시험 스크립트가 비교해 일치
+- [x] G6. R-iface(공개 심볼 수)가 Tier A·B 언어에서 동작한다 — 검증: `bash tests/iface-guard-lang-test.sh` — 언어별 공개 심볼 8개 파일 쓰기 차단 / 7개 통과
+- [x] G7. 검사기 고장이 커밋을 막지 않는다 — 검증: 설치본에서 엔진 파일 하나를 지우거나 JSON 을 깨면 차단이 아니라 `R-struct skipped` 가 `gate-events.jsonl` 에 남는다
 
 ## 2-bis. 착수 전 확인한 사실 (2026-10-16)
 
@@ -272,11 +272,26 @@
 - 11줄 전부 경로 있음. 영수증 제외 전에는 소우주 9곳이 `scripts/` 한 폴더에 파일 131개로 잡혔다 → 위 결정(공장 파일 제외)의 근거.
 - 이 PC 의 소우주에 dart·rust·kotlin·csharp·php·ruby 소스는 0개다 → Tier B 와 dart 는 fixture 로만 검증된다.
 
+### 목표 검증 결과 (2026-10-16)
+
+| 목표 | 결과 | 근거 |
+|---|---|---|
+| G1 | 엔진 diff 0줄 | `git diff --stat 3dfd678 -- 'assets/hooks/*.mjs'` (Tier B 커밋 c6a626d 범위) — 스키마는 Tier B 를 알고 설계(§6) |
+| G2 | PASS=84 | `tests/structure-gate-test.sh` — 설정표 쌍 29 == 사례 쌍 29, 언어 13개, 언어 무관 4종 |
+| G3 | PASS=10 | `tests/struct-barrel-test.sh` 무수정 + zeroday-frontend 1,830개 옛/새 대조 동일 |
+| G4 | 충족 | §7 Step 5 — 11곳 보고 모드, drh 기준선·차단·삭제, kis `git mv` |
+| G5 | 충족 | `structure-gate-run.mjs` 의 문서 범위표 대조, 어긋나면 FAIL 확인 |
+| G6 | PASS=18 | `tests/iface-guard-lang-test.sh` (고치기 전 8 FAIL) |
+| G7 | 충족 | `tests/structure-install-test.sh` 부분 설치 2종·엔진 없음 → skipped |
+| 전체 | 137 중 136 → 수치 갱신 후 실패 0 | `tests/run-all.sh` 1회, 실패는 doc-counts(시험 3개 등록으로 문서 수치 낡음) 하나 |
+
+**Step 9(전파)는 이 계획에서 하지 않았다** — 사람 승인 필요. 남은 판단: 전파 때 각 소우주에 `.structbaseline` 을 함께 만들지(새 차단 R-struct-5 11건 — §7).
+
 ## 8. 회고 (완료 시 작성)
 
-- 잘된 것:
-- 잘못된 것:
-- 다음 룰 후보:
+- 잘된 것: G1 을 커밋 분할(엔진+Tier A → Tier B)로 정직하게 쟀다. 옛/새 검사기를 실제 Vue 저장소 전 파일로 대조해 owner 없는 정규식 버그(R-struct-3 2건 누락)를 커밋 전에 잡았다. 설치 소우주 보고 모드 실측이 리뷰보다 먼저 svelte 분류 폴더 오판(18건 중 16건)을 드러냈다.
+- 잘못된 것: 처음 설정표에서 Java 와일드카드·Dart export·Python `import *` 를 차단으로 잡았다 — 각 언어의 정당한 관용을 실측 없이 막을 뻔했고 리뷰(HIGH)가 뒤집었다. 새 언어의 차단 규칙은 "실측 전 경고" 가 기본이어야 했다. 감시 필터에 일반 낱말("요약")을 넣어 잡음이 쏟아졌다.
+- 다음 룰 후보: "새 차단 규칙은 설치 소우주 보고 모드 실측(거짓양성 표본) 없이 차단으로 켜지 않는다" — R-struct-6 승격 판단과 함께 harness-promote-rule 후보.
 
 ### Step 6 연결 (2026-10-16)
 
