@@ -283,3 +283,25 @@
 - `tests/structure-install-test.sh` PASS=12 — 설치 목록·차단·통과·부분 설치 2종·신구 혼합 2종·기준선.
 - **알려진 한계(전파 전 구간)**: 옛 pre-commit(`ff815bc` 이전 판)은 `.vue/.js/.ts` 만 래퍼에 넘기므로, 새 파일이 깔려도 svelte·python 등은 검사되지 않는다. update-all 로 pre-commit 이 함께 갱신되면 풀린다.
 - 판정 기록 상세 칸은 `rules=R-struct-N …` 만 남긴다(계획의 `lang=` 은 빠짐) — 메시지에 언어를 넣으면 기존 `[R-struct-N]` 형식이 바뀐다. 언어별 건수는 `--report` 로 본다.
+
+### Step 5 설치 소우주 실측 (2026-10-16, 리뷰 반영 뒤 엔진, `--report --no-baseline`, 기본 auto)
+
+| 프로젝트 | 차단 | 경고 | 내역 (규칙/언어 건수) |
+|---|---|---|---|
+| zeroday-frontend | 14 | 127 | 1/vue 1 · 3/vue 2 · 4/vue 2 · 5/js 9 · 6/js 45 · 7 82 |
+| novel-ab | 0 | 0 | |
+| novel-bc | 0 | 0 | |
+| rim-kanban | 2 | 6 | 4/vue 1 · 5/svelte 1 · 6/svelte 1 · 7 5 |
+| jjackkun_bot | 0 | 5 | 6/python 3 · 7 2 |
+| upbit-ai-trading | 7 | 17 | 4/vue 7 · 6/python 1 · 7 16 |
+| terminal-shipping | 0 | 244 | 6/python 198 · 7 46 |
+| kis-trading | 23 | 45 | 4/vue 22 · 5/js 1 · 6/js 2 · 6/svelte 14 · 7 29 |
+| claude-harness-hermes | 0 | 6 | 7 6 |
+| jj-agent-room | 0 | 19 | 7 19 |
+| drh-cloth-shop | 0 | 0 | |
+
+- `4/vue` 는 `index.js` 의 `export *` 다(중복 제거에서 vue 가 먼저 잡힘). 옛 검사기도 스테이지될 때 막던 것이라 새 차단이 아니다.
+- **새로 생기는 차단 종류는 R-struct-5 11건**(zeroday `src/features/<x>/` 9 · rim·kis `src/lib/features/<x>/` 각 1) — 그 폴더 파일을 스테이지하는 순간 막힌다. 전파 때 기준선을 함께 만들지 않으면 그 폴더를 건드리는 첫 커밋이 막힌다 → Step 9 판단 거리.
+- 리뷰 반영 전에는 svelte 차단 후보가 18건이었고 16건이 분류 폴더 오판, jj-agent-room java 1건이 Android 생성 시험 오판이었다(§6 결정).
+- **깊은 import(R-struct-6) 거짓양성률**: 표본(terminal-shipping 198건 상위 대상 12종, zeroday·kis 무작위 6건)에서 정규식 오판(규칙 정의와 다르게 잡힌 것)은 0건. 다만 상위는 `app.features.auth.auth_deps`(33)·`token_service`(25) 처럼 다른 기능이 인증 의존성을 직접 가져오는 FastAPI 관용이라, "사람이 정당하다고 볼 비율" 은 사람 판단이 필요하다 → 차단 승격 보류(경고 유지).
+- G4 기준선 실측(복제본, 실제 저장소 무수정): drh-cloth-shop 기준선 0건 → `features/zz/Zz.svelte` 심기 1(차단) → 지우면 0. terminal-shipping 기준선 244건 → 같은 심기 1 → 0. kis-trading 기준선 68건 → 기준선의 `src/lib/api/index.js`(R-struct-4) 폴더째 `git mv` 후 0, 같은 파일을 `--no-baseline` 으로 1.
