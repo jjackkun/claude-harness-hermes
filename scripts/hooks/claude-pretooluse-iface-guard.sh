@@ -102,6 +102,51 @@ def public_symbols_sfc(src):
     return names
 
 
+# 그 밖 언어(2026-10-16, R-struct 언어 확장과 같은 범위) — 컴파일러 없이 줄 단위로 센다.
+# 언어마다 (공개 선언 정규식, 제외 정규식). 재노출(pub use, pub mod)은 축 C(R-struct-4) 관할이라 세지 않는다.
+# Kotlin·PHP 는 기본이 공개라 "숨김 수식어가 없는 선언" 을 센다. Kotlin 은 함수 몸체의 지역 val/var 를
+# 빼려고 중괄호 깊이를 따라 최상위와 class/object/interface 바로 안만 본다(scoped).
+# ruby 는 공개 여부가 `private` 블록 위치로 정해져 줄 단위로 가를 수 없어 제외한다.
+# 계획: docs/exec-plans/active/2026-10-16-language-neutral-structure-gate.md Step 7
+HIDDEN = r"\b(?:private|protected|internal|fileprivate)\b"
+DART_DIRECTIVE = r"^(?:library|part|import|export)\b"
+LINE_COUNTERS = {
+    (".java", ".cs"): (r"^\s*public\s", None, False),
+    (".swift",): (r"^\s*(?:public|open)\s", None, False),
+    (".kt", ".kts"): (r"^\s*(?:[a-z]+\s+)*(?:fun|class|interface|object|val|var)\s", HIDDEN, True),
+    (".php",): (r"^\s*(?:[a-z]+\s+)*(?:function|class|interface|trait|enum)\s+\w", HIDDEN, False),
+    (".go",): (r"^(?:func\s+(?:\([^)]*\)\s*)?|type\s+|var\s+|const\s+)[A-Z]", None, False),
+    (".rs",): (r"^\s*pub\s+(?:(?:async|unsafe|const|extern)\s+)*(?:fn|struct|enum|trait|type|const|static|union)\b", None, False),
+    (".dart",): (r"^(?:(?:abstract|sealed|final|base|interface|mixin|const|late|var)\s+)*"
+                 r"(?:(?:class|mixin|enum|extension|typedef)\s+|[A-Za-z][\w<>?,]*\s+)[A-Za-z]\w*", DART_DIRECTIVE, False),
+}
+TYPE_OPENER = re.compile(r"\b(?:class|object|interface)\b")
+
+
+def scoped_lines(src):
+    """최상위와 타입 몸체 바로 안의 줄만 돌려준다 — 함수 몸체 안은 지역 선언이다."""
+    stack, out = [], []
+    for ln in src.split("\n"):
+        if not stack or stack == ["type"]:
+            out.append(ln)
+        for ch in ln:
+            if ch == "{":
+                stack.append("type" if TYPE_OPENER.search(ln) and len(stack) == 0 else "body")
+            elif ch == "}" and stack:
+                stack.pop()
+    return out
+
+
+def line_counter(ext):
+    for exts, (pat, hidden, scoped) in LINE_COUNTERS.items():
+        if ext in exts:
+            pub, hid = re.compile(pat), re.compile(hidden) if hidden else None
+            split = scoped_lines if scoped else (lambda src: src.split("\n"))
+            return lambda src: [ln.strip() for ln in split(src)
+                                if pub.search(ln) and not (hid and hid.search(ln))]
+    return None
+
+
 def main():
     try:
         payload = json.load(sys.stdin)
@@ -125,7 +170,9 @@ def main():
     elif ext in (".vue", ".svelte"):
         counter = public_symbols_sfc
     else:
-        return None
+        counter = line_counter(ext)
+        if counter is None:
+            return None
 
     # waiver 는 파일 상단에서만 인정한다 — 아래쪽에 묻어두면 리뷰에서 안 보인다.
     head = "\n".join(content.split("\n")[:20])
