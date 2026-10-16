@@ -58,15 +58,19 @@
 - **신규 파일 목록 (파일별 책임 1줄)**:
   - `assets/hooks/check-structure.mjs` — 스테이지된 파일을 받아 설정·규칙 모듈을 불러 돌리고, 결과를 종료 코드(0 통과 · 1 차단 위반 · 3 경고만 · 2 내부 오류)로 돌려주는 진입점만 한다
   - `assets/hooks/structure-langs.json` — 언어별 확장자·배럴 파일 이름·import 패턴·전량 재노출 패턴·기본 예외만 담는다
+  - `assets/hooks/structure-config.mjs` — 설정표 읽기, 켤 언어 고르기, 예외 경로(기본·`.harnessrc`·공장 영수증) 판정만 한다
+  - `assets/hooks/structure-resolve.mjs` — import 문자열을 저장소 기준 경로로 풀고 같은 기능인지 가르기만 한다
+  - `assets/hooks/structure-output.mjs` — 판정 결과를 글과 종료 코드로 바꾸기만 한다
   - `assets/hooks/structure-rules-common.mjs` — 언어 무관 규칙(폴더당 파일 수·금지 이름·타입별 폴더·깊이)만 판정한다
   - `assets/hooks/structure-rule-barrel.mjs` — 기능 폴더에 설정표의 배럴 파일이 있는지만 판정한다
   - `assets/hooks/structure-rule-deep-import.mjs` — 다른 기능의 배럴을 건너뛴 import 만 판정한다
   - `assets/hooks/structure-rule-reexport.mjs` — 배럴의 전량 재노출만 판정한다
   - `assets/hooks/structure-baseline.mjs` — `.structbaseline` 읽기·쓰기와 "새 위반만 남기기"만 한다
-  - `tests/structure-gate-test.sh` — 언어×규칙 fixture 를 돌려 판정과 커버리지를 단언만 한다
+  - `tests/structure-gate-test.sh` — 언어×규칙 사례 시험의 셸 진입점만 한다
+  - `tests/structure-gate-run.mjs` — 사례를 임시 폴더에 펼쳐 판정과 커버리지를 단언만 한다
   - `tests/iface-guard-lang-test.sh` — 언어별 공개 심볼 수 판정(차단 8 / 통과 7)만 단언한다
   - `tests/structure-install-test.sh` — 임시 저장소 설치·부분 설치·신구 혼합 조합의 동작만 단언한다
-  - `tests/fixtures/structure/<언어>/<규칙>/{bad,good}/…` — 언어·규칙별 위반·준수 예시 소스
+  - `tests/fixtures/structure/cases.json` — 언어·규칙별 위반(bad)·수정(good) 사례만 담는다
 - 바뀌는 파일: `check-component-structure.mjs` 는 Vue 규칙(R-struct-1~3)을 엔진의 `vue` 설정으로 옮긴 뒤 **삭제하지 않고** `check-structure.mjs` 를 부르는 얇은 호환 래퍼로 둔다(설치된 소우주의 옛 pre-commit 이 이 이름을 부르므로)
 - 설치기: 구조 검사기 파일 목록을 `lib/harness_installers.sh` 안 **한 배열**로 관리해 하나씩 복사한다(목록이 흩어지면 부분 설치가 생긴다)
 - 스위치 (옛 → 새):
@@ -209,9 +213,58 @@
 - 2026-10-16: 엔진 내부 오류(종료 코드 2)는 차단이 아니라 skipped — 지금 구조는 고장과 위반을 구분 못 해 고장 시 모든 커밋이 막힌다(planner-lite CRITICAL 2) — 고장이 조용히 미검사로 넘어갈 수 있어, skipped 를 `gate-events.jsonl` 과 커밋 출력에 반드시 남긴다
 - 2026-10-16: planner-lite 리뷰 반영 — CRITICAL 1(필터·신구 혼합) → Step 6 / CRITICAL 2(고장 구분) → 종료 코드 규약·G7 / HIGH 3(기준선 키) → Step 5 / HIGH 4(순서) → Step 0 신설 / HIGH 5(범위·거짓양성) → 판정 수준 / HIGH 6(G1 측정) → 스키마 Step 1 확정·커밋 범위 명시 / MEDIUM 7~11 → G6·스위치 표·G2 커버리지 단언·결정 3칸·롤백 절 / LOW 12~14 → 태그 링크·rule-lang 3분할·G5 스크립트 비교 / 누락 4건(메시지·텔레메트리·성능·경로) → Step 1
 
+- 2026-10-16: 언어를 켜는 스위치를 "프리셋 conf 가 덧붙임" 에서 **Tier A 는 확장자로 자동, Tier B 는 `.harnessrc` `STRUCT_LANGS_EXTRA`** 로 바꾼다 — 프리셋 conf 변수는 설치 시점에만 읽히고 pre-commit 은 `.harnessrc` 만 `source` 한다(`pre-commit.sh:21`). 런타임에 넘길 통로를 새로 만드는 것보다, 그 확장자 파일이 저장소에 있다는 것 자체가 그 언어를 쓴다는 뜻이다 — vue 프로젝트의 보조 파이썬 스크립트도 파이썬 검사를 받는다(배럴 차단은 기능 폴더·패키지 하위에서만 걸리고, 기존 위반은 기준선이 덮는다)
+- 2026-10-16: 공장이 깐 파일(`.claude/.factory-manifest.json` 의 항목, `.claude/` · `scripts/hooks/` · `scripts/codex-hooks/`)은 구조 검사에서 뺀다 — Step 0 실측에서 소우주마다 `scripts/` 에 영수증 파일 131개가 한 폴더에 있었다. 이를 넣으면 모든 소우주가 같은 경고를 받고, 원본은 공장 저장소가 검사한다 — 영수증이 없는 옛 설치본에서는 `scripts/` 영수증 파일이 경고로 보인다
+- 2026-10-16: 폴더 깊이 경고 임계 = 8 (경로의 `/` 수 > 8) — Step 0 에서 11개 프로젝트의 p90 최대가 7, 최댓값 9(zeroday-frontend 1곳). p90 위로 한 칸 — 깊은 폴더 몇 곳은 경고를 받지 않는다(경고라 손해가 작다)
+- 2026-10-16: 언어 무관 규칙은 경고라도 기준선에 넣는다 — 폴더당 파일 5개 초과가 프로젝트마다 흔해(terminal-shipping 51/150 폴더) 기준선 없이 켜면 커밋마다 같은 경고가 나와 무시가 학습된다 — 기준선 파일 줄 수가 늘어난다
+- 2026-10-16: Java·Kotlin 의 `import a.b.*` 는 대상과 무관하게 전부 R-struct-4(차단) — 계획 표는 "다른 기능 대상" 이었지만 텍스트만으로 "다른 기능" 을 가를 수 없다. java 프리셋이 지정한 google-java-format 의 Google Java Style 이 와일드카드 import 를 전면 금지하고, ktlint 표준 규칙 `no-wildcard-imports` 도 같다(`java.util.*` 등 허용 목록은 설정표 `allow`) — 와일드카드를 쓰던 프로젝트는 기준선 등록 전까지 막힌다
+- 2026-10-16: Svelte 배럴 규칙은 "컴포넌트 폴더를 만들었으면 `index.svelte` 가 있어야 한다" 로 한정한다(낱개 `.svelte` 파일은 허용) — 전역 CLAUDE.md §6 이 폴더 구조를 "3개 이상 기능 또는 100줄 이상" 일 때만 요구한다. Vue 처럼 낱개 파일을 막으면 그 규칙과 어긋난다 — 큰 컴포넌트를 낱개 파일로 두는 경우는 못 잡는다(R-size 가 줄 수로 일부 잡음)
+
+- 2026-10-16: fixture 를 `<언어>/<규칙>/{bad,good}/` 실제 소스 파일 대신 `cases.json` 한 장으로 — 위반 예시를 실제 `.py`·`.js` 로 두면 이 저장소 자신의 게이트(ruff F403 → R-lint, 설치된 R-struct-4, prettier R-fmt)가 그 예시 커밋을 막는다. 시험이 임시 폴더에 펼쳐 돌린다 — 사례를 편집기에서 소스로 열어 볼 수 없다
+- 2026-10-16: G1 은 커밋을 나눠 잰다 — ① 엔진 + Tier A 설정·사례 ② Tier B 설정·사례만. 단, 스키마는 Tier B 를 알고 설계했다: Tier B 만 쓰는 필드 3개(`featureRoots` 언어별 덮어쓰기 — ruby, `reexport.allow` — kotlin, module 계열 owner 마지막 마디 비교 — php·csharp)가 ①에 이미 들어 있다. 그래서 0줄은 "스키마 확정 뒤 Tier B 추가에 엔진 수정이 없었다" 는 뜻이지 "Tier B 를 모르고 만든 엔진" 이라는 뜻이 아니다 — 여기 없는 언어를 붙일 때 엔진 수정이 필요할 수 있다
+
+### 설정표 스키마 (Step 1 확정)
+
+`assets/hooks/structure-langs.json` = `{ "version": 1, "featureRoots": [...], "defaultExempt": [...], "langs": { "<언어>": 항목 } }`
+
+| 필드 | 뜻 |
+|---|---|
+| `tier` | `"A"` 자동(확장자로 켬) · `"B"` `.harnessrc` `STRUCT_LANGS_EXTRA` 로 켬 |
+| `featureRoots` | (선택) 이 언어만 쓰는 기능 루트 폴더 이름. 없으면 최상위 `featureRoots` |
+| `exts` | 이 언어로 볼 확장자 목록 |
+| `exempt` | 이 언어 추가 예외 정규식(경로에 대해) |
+| `barrel` | `{ "id", "strategy", "names", "componentPath"?, "hint" }` — `strategy`: `feature-root`(featureRoots 바로 아래 폴더) · `package-child`(부모가 배럴을 가진 폴더) · `component-dir`(componentPath 아래 컴포넌트 폴더) · `sfc-folder`(Vue R-struct-1/2) · `none`. `names` 는 폴더 기준 상대 경로, `{dir}` 은 폴더 이름 |
+| `imports` | import 문 정규식 목록, 캡처 그룹 `(?<target>…)` 이 대상 |
+| `resolve` | `{ "kind": "path" \| "module", "sep"?, "aliases"? }` — `path` 는 상대 경로를 파일 기준으로 풀고, `module` 은 `sep`(예 `.` `::` `\\`)을 `/` 로 바꾼다. `aliases` 는 `{ "정규식": "치환" }` |
+| `deepImport` | `{ "id", "level", "private": [정규식], "skipInBarrel"?, "hint" }` — 풀린 대상이 `private` 중 하나에 맞으면 위반. 정규식의 `(?<owner>…)` 가 가져가는 파일 경로에 들어 있으면 같은 기능이라 통과 |
+| `reexport` | `{ "id", "level", "patterns": [정규식], "allow"?, "barrelOnly", "barrelNames"?, "hint" }` |
+
+- 판정 수준 `level`: `block` · `warn`. 규칙 번호: 1~3 Vue(기존) · 4 전량 재노출 · 5 배럴 존재 · 6 깊은 import · 7 언어 무관.
+- 정규식은 전부 `m`(줄 단위) 플래그로 돈다. 줄 머리 고정(`^[ \t]*`)으로 문자열·주석 안의 오탐을 줄인다(기존 R-struct-4 원칙).
+- 같은 파일이 두 언어에 걸리면(예: `.js` 가 `vue` 와 `js`) 위반 키(`규칙|경로|대상`)로 중복을 지운다.
+
 ## 7. 발견·예외
 
-- (Step 0 분포 표, Step 1 실행 시간, Step 5 프로젝트별 위반 수·거짓양성률, 신구 혼합 구간의 알려진 한계를 여기에 기록)
+### Step 0 분포 (2026-10-16, `git ls-files` 기준, 공장 영수증 파일 제외)
+
+깊이 = 경로의 `/` 수, 폴더당 = 그 폴더의 소스 파일 수. 값은 p50/p90/최댓값.
+
+| 프로젝트 | 언어(파일 수) | 깊이 | 폴더당 | 5개 초과 폴더 / 전체 |
+|---|---|---|---|---|
+| zeroday-frontend | js 1396 · vue 431 · python 10 | 4/7/9 | 2/5/326 | 38/495 |
+| novel-ab | (영수증 외 소스 없음) | - | - | 0/0 |
+| novel-bc | python 1 | 1/1/1 | 1/1/1 | 0/1 |
+| rim-kanban | python 76 · svelte 43 · js 28 | 4/5/8 | 2/7/17 | 7/46 |
+| jjackkun_bot | python 18 | 0/1/1 | 10/10/10 | 2/2 |
+| upbit-ai-trading | python 237 · svelte 142 · js 58 | 4/5/5 | 2/13/57 | 21/74 |
+| terminal-shipping | python 726 · svelte 226 · js 203 | 4/6/7 | 2/15/186 | 51/150 |
+| kis-trading | python 262 · svelte 251 · js 129 | 4/5/7 | 3/12/54 | 32/118 |
+| claude-harness-hermes | python 182 · js 59 | 1/4/5 | 2/15/138 | 6/24 |
+| jj-agent-room | js 642 · go 8 · swift 7 · python 4 · java 3 | 3/3/8 | 4/46/154 | 19/46 |
+| drh-cloth-shop | js 2 | 3/3/3 | 2/2/2 | 0/1 |
+
+- 11줄 전부 경로 있음. 영수증 제외 전에는 소우주 9곳이 `scripts/` 한 폴더에 파일 131개로 잡혔다 → 위 결정(공장 파일 제외)의 근거.
+- 이 PC 의 소우주에 dart·rust·kotlin·csharp·php·ruby 소스는 0개다 → Tier B 와 dart 는 fixture 로만 검증된다.
 
 ## 8. 회고 (완료 시 작성)
 

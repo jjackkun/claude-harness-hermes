@@ -1,127 +1,32 @@
 #!/usr/bin/env node
 /**
- * check-component-structure.mjs
- * Staged 파일에 대해 컴포넌트 폴더·배럴 규칙을 정적 검사한다.
+ * check-component-structure.mjs — 호환 래퍼. 판정은 check-structure.mjs 가 한다.
+ *
+ * 왜 남기는가: 설치된 소우주의 옛 pre-commit 이 이 이름을 부르고, 종료 코드가 0 이 아니면
+ * 무엇이든 "구조 위반 차단" 으로 읽는다. 그래서 여기서는 옛 범위(Vue 규칙 R-struct-1~4)만 켜고
+ *   1(차단) → 1,  0·3(경고만) → 0,  그 밖(엔진 고장) → 0 + skipped 안내
+ * 로 바꿔 돌려준다. 고장이 커밋을 막으면 안 된다(계획 G7).
  *
  * Usage: node check-component-structure.mjs file1 file2 ...
- * Exit 0 = clean, Exit 1 = violations
- *
- * 규칙:
- *   R-struct-1: *.vue 는 동일 이름 폴더 안에 있어야 한다 (0뎁스 직접 배치 금지)
- *   R-struct-2: 컴포넌트 폴더에 index.js 또는 index.ts 배럴이 있어야 한다
- *   R-struct-3: 컴포넌트 소비자는 .vue 직접 경로 import 금지 (폴더명 import 강제)
- *   R-struct-4: 배럴(index.js/ts)에서 전량 재export(`export *`) 금지
- *
- * R-struct-4 의 근거: 배럴은 은닉 장치가 아니라 재노출 장치다. 전부 내보내면
- * 호출자가 알아야 할 심볼 수가 그대로여서 인터페이스가 하나도 좁아지지 않는다.
- * R-iface 가 "나눠라" 라고 해서 나눈 결과가 이 형태면 폭은 줄지 않는다.
- * R-struct-1~3 과 달리 컴포넌트 경로에 한정하지 않는다 — 배럴 폭은 Vue 만의 문제가 아니다.
- * (파이썬 `__init__.py` 는 pre-commit 이 이 검사기에 .py 를 넘기지 않아 아직 대상이 아니다.)
- * 스펙: docs/superpowers/specs/2026-08-24-interface-width-gate-design.md 축 C
- *
- * 예외(allowlist):
- *   - components/ui/ — shadcn 등 자동생성물
- *   - *.stories.*, *.story.*, *.test.*, *.spec.* — 스토리·테스트
+ * 근거: docs/exec-plans/active/2026-10-16-language-neutral-structure-gate.md §4
  */
 
-import { existsSync, readFileSync } from 'fs'
-import { basename, dirname, extname, join } from 'path'
+import { spawnSync } from 'child_process'
+import { existsSync } from 'fs'
+import { dirname, join } from 'path'
+import { fileURLToPath } from 'url'
 
-// 검사 대상 컴포넌트 경로 패턴
-const COMPONENT_PATH_RE =
-  /(?:^|\/)src\/(?:components|features\/[^/]+\/components|lib\/[^/]+\/components)\//
-
-// allowlist — 이 패턴에 매칭되는 파일은 검사 제외
-const ALLOWLIST_RE =
-  /(?:\/ui\/|\.stories\.[jt]sx?$|\.story\.[jt]sx?$|\.test\.[jt]sx?$|\.spec\.[jt]sx?$)/
-
-const CODE_EXTS = new Set(['.vue', '.js', '.jsx', '.ts', '.tsx'])
-const BARREL_RE = /^index\.[jt]sx?$/
-
-const files = process.argv.slice(2)
-const violations = []
-
-for (const file of files) {
-  if (ALLOWLIST_RE.test(file)) continue
-
-  const ext = extname(file)
-  const name = basename(file)
-
-  // ── R-struct-1 & R-struct-2: .vue 파일, 컴포넌트 경로 한정 ──────────────
-  if (ext === '.vue' && COMPONENT_PATH_RE.test(file)) {
-    const stem = basename(file, '.vue')
-    const dir = dirname(file)
-    const parentName = basename(dir)
-
-    if (parentName !== stem) {
-      // R-struct-1: 폴더명 ≠ 파일 stem
-      violations.push(
-        `[R-struct-1] ${file}\n` +
-        `  → ${dir}/${stem}/${stem}.vue 로 이동 후 ${dir}/${stem}/index.js 배럴 추가\n` +
-        `  → import 경로를 './${stem}.vue' 대신 './${stem}' (폴더명) 으로 변경\n` +
-        `  근거: assets/rules/web/coding-style.md §File-Organization`
-      )
-    } else {
-      // R-struct-2: 배럴 존재 확인
-      const hasBarrel =
-        existsSync(join(dir, 'index.js')) ||
-        existsSync(join(dir, 'index.ts'))
-      if (!hasBarrel) {
-        violations.push(
-          `[R-struct-2] ${file} — ${dir}/index.js 배럴 없음\n` +
-          `  → ${dir}/index.js 에 \`export { default } from './${stem}.vue'\` 추가\n` +
-          `  근거: assets/rules/web/coding-style.md §File-Organization`
-        )
-      }
-    }
-  }
-
-  // ── R-struct-4: 배럴의 전량 재export 금지 ──────────────────────────────
-  // 줄 머리에 고정한다 — 문자열 안의 "export *" 나 주석 처리된 `// export *` 를
-  // 위반으로 잡으면 오탐이 나고, 오탐이 나는 차단은 우회를 학습시킨다.
-  if (BARREL_RE.test(name)) {
-    let src
-    try { src = readFileSync(file, 'utf8') } catch { src = null }
-    if (src !== null) {
-      const re = /^[ \t]*export\s*\*.*$/gm
-      let m
-      while ((m = re.exec(src)) !== null) {
-        violations.push(
-          `[R-struct-4] ${file} — 배럴의 전량 재export: '${m[0].trim()}'\n` +
-          `  → 필요한 심볼만 골라 내보낼 것: \`export { a, b } from './x.js'\`\n` +
-          `  → 전부 내보내면 배럴이 인터페이스를 좁히지 못한다 (import 경로만 짧아짐)\n` +
-          `  근거: docs/design-docs/core-beliefs.md#r-iface`
-        )
-      }
-    }
-  }
-
-  // ── R-struct-3: .vue 직접 import 금지 (배럴 파일 제외) ──────────────────
-  if (CODE_EXTS.has(ext) && !BARREL_RE.test(name)) {
-    let src
-    try { src = readFileSync(file, 'utf8') } catch { continue }
-
-    const re = /(?:from|import\s*\()\s*['"]([^'"]+\.vue)['"]/g
-    let m
-    while ((m = re.exec(src)) !== null) {
-      const importPath = m[1]
-      const folderImport = importPath.replace(/\/[^/]+\.vue$/, '')
-      violations.push(
-        `[R-struct-3] ${file} — .vue 직접 import 금지: '${importPath}'\n` +
-        `  → '${folderImport}' (폴더명) 으로 변경\n` +
-        `  근거: assets/rules/web/coding-style.md §File-Organization`
-      )
-    }
-  }
+const engine = join(dirname(fileURLToPath(import.meta.url)), 'check-structure.mjs')
+if (!existsSync(engine)) {
+  process.stderr.write('[R-struct] skipped — check-structure.mjs 없음 (재설치 필요)\n')
+  process.exit(0)
 }
 
-if (violations.length > 0) {
-  process.stderr.write('\n[BLOCKED] 컴포넌트 구조 위반:\n')
-  for (const v of violations) {
-    process.stderr.write('\n  ' + v.split('\n').join('\n  ') + '\n')
-  }
-  process.stderr.write('\n')
-  process.exit(1)
-}
+const r = spawnSync(process.execPath,
+  [engine, '--langs', 'vue', '--no-common', '--blocks-only', ...process.argv.slice(2)],
+  { stdio: ['ignore', 'inherit', 'inherit'] })
 
+if (r.status === 1) process.exit(1)
+if (r.status === 0 || r.status === 3) process.exit(0)
+process.stderr.write(`[R-struct] skipped — 검사기 내부 오류 (종료 ${r.status})\n`)
 process.exit(0)

@@ -1,0 +1,192 @@
+{
+  "version": 1,
+  "featureRoots": ["features", "modules", "domains"],
+  "defaultExempt": [
+    "(^|/)(node_modules|venv|\\.venv|\\.svelte-kit|\\.next|dist|build|docs_legacy|vendor|target|__pycache__|fixtures)/",
+    "^\\.claude/",
+    "(^|/)components/ui/",
+    "^scripts/(hooks|codex-hooks)/",
+    "(^|/)(tests?|__tests__)/",
+    "(^|/)test_[^/]*\\.py$",
+    "\\.(stories|story|test|spec)\\.[^/.]+$"
+  ],
+  "commonRules": {
+    "id": 7,
+    "level": "warn",
+    "maxFilesPerFolder": 5,
+    "maxDepth": 8,
+    "catchAllNames": ["utils", "helpers", "common", "misc"],
+    "typeFolders": ["services", "routers", "schemas", "models", "controllers", "repositories", "handlers"]
+  },
+  "langs": {
+    "vue": {
+      "tier": "A",
+      "exts": [".vue", ".js", ".jsx", ".ts", ".tsx"],
+      "exempt": ["/ui/"],
+      "barrel": [
+        {
+          "id": 1,
+          "strategy": "sfc-folder",
+          "componentPath": "(?:^|/)src/(?:components|features/[^/]+/components|lib/[^/]+/components)/",
+          "hint": "assets/rules/web/coding-style.md §File-Organization"
+        }
+      ],
+      "imports": ["(?:from|import\\s*\\()\\s*['\"](?<target>[^'\"]+)['\"]"],
+      "resolve": { "kind": "raw" },
+      "deepImport": {
+        "id": 3,
+        "level": "block",
+        "private": ["\\.vue$"],
+        "skipInBarrel": true,
+        "barrelNames": ["index.js", "index.ts", "index.jsx", "index.tsx"],
+        "hint": "'.vue' 직접 경로 대신 폴더명으로 import (assets/rules/web/coding-style.md §File-Organization)"
+      },
+      "reexport": {
+        "id": 4,
+        "level": "block",
+        "patterns": ["^[ \\t]*export\\s*\\*.*$"],
+        "barrelOnly": true,
+        "barrelNames": ["index.js", "index.ts", "index.jsx", "index.tsx"],
+        "hint": "필요한 심볼만 골라 내보낼 것: `export { a, b } from './x.js'` (docs/design-docs/core-beliefs.md#r-iface)"
+      }
+    },
+    "js": {
+      "tier": "A",
+      "exts": [".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs"],
+      "barrel": [
+        {
+          "id": 5,
+          "strategy": "feature-root",
+          "names": ["index.js", "index.ts", "index.jsx", "index.tsx", "index.mjs", "index.svelte"],
+          "hint": "기능 폴더에 index.ts(또는 .js) 배럴을 두고 공개할 것만 내보낼 것"
+        }
+      ],
+      "imports": [
+        "\\bfrom\\s*['\"](?<target>[^'\"]+)['\"]",
+        "\\bimport\\s*\\(\\s*['\"](?<target>[^'\"]+)['\"]",
+        "\\brequire\\s*\\(\\s*['\"](?<target>[^'\"]+)['\"]"
+      ],
+      "resolve": { "kind": "path", "aliases": { "^\\$lib/": "src/lib/", "^[@~]/": "src/" } },
+      "deepImport": {
+        "id": 6,
+        "level": "warn",
+        "private": ["(?:^|/)(?<owner>(?:features|modules|domains)/[^/]+)/(?!index(?:\\.[a-z]+)?$).+"],
+        "hint": "다른 기능은 그 기능 폴더(배럴)로 import 할 것"
+      },
+      "reexport": {
+        "id": 4,
+        "level": "block",
+        "patterns": ["^[ \\t]*export\\s*\\*.*$"],
+        "barrelOnly": true,
+        "barrelNames": ["index.js", "index.ts", "index.jsx", "index.tsx", "index.mjs"],
+        "hint": "필요한 심볼만 골라 내보낼 것: `export { a, b } from './x.js'` (docs/design-docs/core-beliefs.md#r-iface)"
+      }
+    },
+    "svelte": {
+      "tier": "A",
+      "exts": [".svelte"],
+      "exempt": ["/ui/"],
+      "barrel": [
+        {
+          "id": 5,
+          "strategy": "component-dir",
+          "names": ["index.svelte"],
+          "componentPath": "(?:^|/)src/(?:lib/)?(?:components|features/[^/]+/components|lib/[^/]+/components)/",
+          "hint": "컴포넌트 폴더의 진입 파일은 index.svelte (전역 CLAUDE.md §6)"
+        },
+        {
+          "id": 5,
+          "strategy": "feature-root",
+          "names": ["index.js", "index.ts", "index.svelte"],
+          "hint": "기능 폴더에 index.ts 또는 index.svelte 를 둘 것"
+        }
+      ],
+      "imports": [
+        "\\bfrom\\s*['\"](?<target>[^'\"]+)['\"]",
+        "\\bimport\\s*\\(\\s*['\"](?<target>[^'\"]+)['\"]"
+      ],
+      "resolve": { "kind": "path", "aliases": { "^\\$lib/": "src/lib/", "^[@~]/": "src/" } },
+      "deepImport": {
+        "id": 6,
+        "level": "warn",
+        "private": [
+          "(?:^|/)(?<owner>(?:features|modules|domains)/[^/]+)/(?!index(?:\\.[a-z]+)?$).+",
+          "(?:^|/)(?<owner>components/[^/]+)/components/"
+        ],
+        "hint": "다른 컴포넌트의 하위 컴포넌트는 그 컴포넌트 폴더(index.svelte)를 거쳐 쓸 것"
+      }
+    },
+    "python": {
+      "tier": "A",
+      "exts": [".py"],
+      "barrel": [
+        { "id": 5, "strategy": "feature-root", "names": ["__init__.py"], "hint": "기능 폴더에 __init__.py 를 두고 공개할 이름만 가져올 것" },
+        { "id": 5, "strategy": "package-child", "names": ["__init__.py"], "hint": "패키지 하위 폴더에도 __init__.py 를 둘 것 (빠지면 네임스페이스 패키지가 되어 import 경로가 갈린다)" }
+      ],
+      "imports": [
+        "^[ \\t]*from[ \\t]+(?<target>\\.*[\\w.]*)[ \\t]+import\\b",
+        "^[ \\t]*import[ \\t]+(?<target>[\\w.]+)"
+      ],
+      "resolve": { "kind": "module", "sep": ".", "relativeDots": true },
+      "deepImport": {
+        "id": 6,
+        "level": "warn",
+        "private": [
+          "(?:^|/)(?<owner>(?:features|modules|domains)/[^/]+)/.+",
+          "^(?<owner>(?:.*/)?[A-Za-z]\\w*)/_[A-Za-z0-9]\\w*(?:/|$)"
+        ],
+        "hint": "다른 기능은 그 패키지(__init__.py)로 import 하고, _ 로 시작하는 비공개 모듈은 밖에서 쓰지 말 것"
+      },
+      "reexport": {
+        "id": 4,
+        "level": "block",
+        "patterns": ["^[ \\t]*from[ \\t]+\\S+[ \\t]+import[ \\t]+\\*.*$"],
+        "barrelOnly": true,
+        "barrelNames": ["__init__.py"],
+        "hint": "__init__.py 에서는 공개할 이름만 골라 가져올 것: `from .x import a, b`"
+      }
+    },
+    "java": {
+      "tier": "A",
+      "exts": [".java"],
+      "barrel": [],
+      "imports": ["^[ \\t]*import[ \\t]+(?:static[ \\t]+)?(?<target>[\\w.]+)"],
+      "resolve": { "kind": "module", "sep": "." },
+      "deepImport": {
+        "id": 6,
+        "level": "warn",
+        "private": ["^(?<owner>.+)/(?:internal|impl)(?:/|$)"],
+        "hint": "다른 기능의 internal/impl 패키지 대신 공개 패키지의 타입을 쓸 것"
+      },
+      "reexport": {
+        "id": 4,
+        "level": "block",
+        "patterns": ["^[ \\t]*import[ \\t]+(?:static[ \\t]+)?[\\w.]+\\.\\*[ \\t]*;.*$"],
+        "barrelOnly": false,
+        "hint": "와일드카드 import 대신 쓰는 타입을 하나씩 import (Google Java Style 3.3.1)"
+      }
+    },
+    "dart": {
+      "tier": "A",
+      "exts": [".dart"],
+      "barrel": [
+        { "id": 5, "strategy": "feature-root", "names": ["{dir}.dart", "../{dir}.dart"], "hint": "기능 폴더에 <기능>.dart 라이브러리 파일을 두고 공개할 것만 export" }
+      ],
+      "imports": ["^[ \\t]*(?:import|export)[ \\t]+['\"](?<target>[^'\"]+)['\"]"],
+      "resolve": { "kind": "path", "bareIsRelative": true, "aliases": { "^package:[^/]+/": "lib/" } },
+      "deepImport": {
+        "id": 6,
+        "level": "warn",
+        "private": ["(?:^|/)(?<owner>[^/]+)/src/"],
+        "hint": "다른 기능의 src/ 는 비공개다 — 그 기능의 라이브러리 파일을 import 할 것"
+      },
+      "reexport": {
+        "id": 4,
+        "level": "block",
+        "patterns": ["^[ \\t]*export[ \\t]+['\"][^'\"]+['\"][ \\t]*;.*$"],
+        "barrelOnly": false,
+        "hint": "export 에 show 로 공개할 이름을 적을 것: `export 'src/x.dart' show A, B;`"
+      }
+    }
+  }
+}
