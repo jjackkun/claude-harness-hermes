@@ -13,3 +13,4 @@
 - [푸시는 현재 저장소만](feedback-push-current-repo-only.md) — "전체 푸시해" 를 모든 프로젝트로 넓히지 않는다; terminal-shipping 등은 이름으로 말할 때만
 - [teulankkae 제외](project-teulankkae-excluded.md) — 2026-10-06 전파 대상에서 뺌(git 저장소 아님), 설치·커밋 제안 금지
 - [wonil 제외](project-wonil-excluded.md) — 2026-10-14 전파 대상에서 뺌(git 저장소 아님), 설치·커밋 제안 금지
+- [terminal-shipping 커밋은 Node 22 로](project-terminal-shipping-node22-gate.md) — 셸 기본 node 12 면 Playwright 시험 3건이 R-test 로 커밋을 막는다; nvm v22 를 PATH 앞에
