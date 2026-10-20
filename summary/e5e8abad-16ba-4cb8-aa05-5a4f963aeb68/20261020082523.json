@@ -1,0 +1,1 @@
+{"last_msg_count": 1018, "person": "jjackkun", "project_id": "claude-harness-hermes", "session_id": "e5e8abad-16ba-4cb8-aa05-5a4f963aeb68", "slots_json": "{\"decisions\": [], \"open\": [\"terminal-shipping 합치기·푸시 지시 대기\"], \"prefs\": [], \"facts\": [\"Monitor (commit retry: blocks and exit) 15분 후 만료됨\"], \"next\": []}", "turn_count": 19, "updated_at": "2026-10-20 08:25:23"}
