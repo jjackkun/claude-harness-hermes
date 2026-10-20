@@ -1,7 +1,7 @@
 # 2026-10-20-ui-prototype-skill — 문서에서 눌러 보는 디자인 시안을 만드는 스킬
 
-> 출처 작업: 하류 Nbbang-Run (2026-10-20). 계획 `docs/exec-plans/active/2026-10-20-wireframe-core-loop.md`,
-> 산출 `docs/wireframes/core-loop/` (9파일) + `docs/wireframes/core-loop.html` (단일 파일), 아티팩트 1건.
+> 출처 작업: 하류 Nbbang-Run (2026-10-20). 계획 `docs/exec-plans/active/2026-10-20-prototype-core-loop.md`,
+> 산출 `docs/prototypes/core-loop/` (9파일) + `docs/prototypes/core-loop.html` (단일 파일), 아티팩트 1건.
 > 사용자 평가 (2026-10-20): "이거 너무 맘에 든다. 이거 스킬로 만들자. 이거 시안 만드는거."
 > 사용자 요구 (2026-10-20): 설계·기획서나 계획서가 있으면(없으면 보강해서) 그 문서에 따라 **왼쪽 메뉴**(화면 목록)와 **오른쪽 화면**(앱·웹 등 틀)을 만들고, 문서에 따른 기능과 단계를 눌러 볼 수 있게.
 
@@ -68,7 +68,7 @@
 | impeccable 등록처 | `presets/framework/svelte.conf` 에만 → react·vue·프론트엔드 없는 프로젝트엔 없음 (§5-6 폴백 필요) |
 | 같은 이름 스킬 | `assets/skills/` 에 `ui-prototype` 없음 |
 | 시험 등록 규약 | `tests/run-all.sh` 는 목록에 적힌 시험만 돌리고, `tests/*-test.sh` 가 목록에 없으면 고아로 실패 (`--check-orphans`) |
-| 하류 원본 | Nbbang-Run `docs/wireframes/core-loop/` — index.html 43줄, tokens.css 120, components.css 205, shell.css 85, registry.js 94, parts.js 100, content.js 43, screens-participant.js 249, screens-runner.js 195 — 합계 1,134줄 (`wc -l`, 커밋 전) |
+| 하류 원본 | Nbbang-Run `docs/prototypes/core-loop/` — index.html 43줄, tokens.css 120, components.css 205, shell.css 85, registry.js 94, parts.js 100, content.js 43, screens-participant.js 249, screens-runner.js 195 — 합계 1,134줄 (`wc -l`, 커밋 전) |
 | 하류 구조의 한계 (리뷰 확인) | `shell.css` 의 `.device` 가 390×844 고정, `registry.js` 는 `#device` 하나에 innerHTML 교체, `register()` 에 틀 칸 없음, `.shell` 최대 폭 1120px → 1280·1440 틀 불가. **옮기기가 아니라 재설계 필요** |
 | 하류 검증 결과 | 장면 16 · 문법 오류 0 · 금지어 0 · 가로 넘침 0(14화면) · 클릭 경로 2개 끝까지 통과 · 1280(라이트·다크)/375(라이트) 시각 확인 |
 | 하류 프리셋 | Nbbang-Run `presets.lock` 에 svelte 있음 |
@@ -129,7 +129,7 @@
 | ① 선행 조건 | (a) `docs/prototypes/<이름>/` 이 이미 있으면 **이어 붙이기 모드** → ⑧로 (b) 디자인 맥락 확인 — 없으면 §5-6 (c) 가진 문서의 수준 판정 (§5-4) — 판정을 한 줄로 보여 줌 | 판정 확인 | `.impeccable.md` 작성 후 시작 |
 | ①-b 시안 명세표 | 문서에서 메뉴·화면·버튼 연결·근거를 `spec.md` 로 만든다. 수준 C면 보강 질문 3개 → 짧은 브리프 먼저. 문서에 없어 정한 것은 가정 번호(P1…)로 모음 | **명세표 확정** | 화면 흐름 문서 → 13화면 16장면 선정 |
 | ② 질문 | 최대 3개, 명세표·문서에 답이 있으면 생략: 범위(핵심 고리부터 / 전체) · 완성도(디자인 입힌 시안 / 흑백 뼈대) · 틀(앱 / 웹 / 태블릿 / 관리자 / 섞임). 추천안을 첫 선택지로 | — | 51화면 → 13화면, 사용자가 추천안 선택 |
-| ③ 브리프 | 실행 계획서에 시안 이름(slug)·화면 범위·시각 방향·글꼴 근거·파일 목록(§4 형식)·검증 명령 | **브리프 확정** | `2026-10-20-wireframe-core-loop.md` §5 |
+| ③ 브리프 | 실행 계획서에 시안 이름(slug)·화면 범위·시각 방향·글꼴 근거·파일 목록(§4 형식)·검증 명령 | **브리프 확정** | `2026-10-20-prototype-core-loop.md` §5 |
 | ④ 만들기 | 시작 틀을 `docs/prototypes/<이름>/` 로 복사 → 토큰을 맥락에서 채움 → 공통 부품 → 역할별 화면 파일. 화면은 명세표 행을 그대로 따른다. 표시 내용은 문서 예시만 | — | 9파일, 화면 파일은 역할별 |
 | ⑤ 기계 검사 | `node --check` · `check_spec.py`(장면 수·끊긴 버튼·요구 누락·번호 글자·로드 태그) · 금지어 grep · 줄 수 · 금지 CSS 패턴 | 전부 통과 | 금지어 검사가 내 문구 "마진" 적발 |
 | ⑥ 시각 점검 | (Playwright 있을 때) 로컬 서버 → 전 장면 페이지 넘침 → 틀별 폭(1280·375)×테마 스크린숏 → 명세표의 고리를 실제 click()으로 끝까지 → 고친 뒤 다시. 없으면 사용자에게 확인 요청 | 고친 뒤 재확인 | 결함 6건 발견·수정 (§7) |
@@ -213,7 +213,7 @@
 ## 6. 단계 (Steps)
 
 ### Step 1. 시작 틀 재설계 [Plan/Impl/Review]
-- 입력: 하류 `docs/wireframes/core-loop/` (구조·부품·함정 해결만 가져오고, 엔빵런 화면·번호표 은유·세 칸 금액·PAY-04 숫자는 제거)
+- 입력: 하류 `docs/prototypes/core-loop/` (구조·부품·함정 해결만 가져오고, 엔빵런 화면·번호표 은유·세 칸 금액·PAY-04 숫자는 제거)
 - 산출: `assets/template/` (index.html, styles 4, scripts 5, spec.md)
 - 바뀌는 구조: `.device[data-frame]` + `frames.css`, `config.js`, `register()` 의 `frame`, 셸 폭 제한 제거, 틀 전환 도구, 모바일 폭 기준을 `config.js` 하나로
 - 검증: 예시 시안을 로컬 서버와 `file://` 로 열어 phone·browser 두 틀의 장면 3개가 뜨는지, 틀 전환 도구로 tablet·desktop 도 뜨는지 눈으로 확인 + Step 4 시험
@@ -250,7 +250,7 @@
 - 검증: `bash tests/preset-integrity-test.sh`, `bash tests/run-all.sh` (배경 실행 + Monitor, 실패 줄만)
 
 ### Step 8. 전파 [사람 승인 후]
-- `update-all.sh` 는 사람이 정한다. Nbbang-Run 은 `docs/wireframes/core-loop/` 를 그대로 두고, 다음 시안부터 `docs/prototypes/` 규약을 쓴다 (옮기기는 별도 결정)
+- `update-all.sh` 는 사람이 정한다. Nbbang-Run 은 2026-10-20 에 시안을 `docs/prototypes/core-loop/` 로 이미 옮겼다 — 이 계획의 출력 규약과 같으므로 설치 후 그대로 이어 쓴다
 
 ## 7. 발견·예외 — 하류에서 실측한 함정 (→ `references/pitfalls.md`)
 
@@ -291,6 +291,8 @@
   - 틀 전환은 세션 덮어쓰기, 좁은 화면의 desktop·tablet 은 가로 스크롤 대신 축소
   - 화면 번호 글자 규칙, 아티팩트 없는 환경은 단일 HTML까지만 필수
   - 리뷰 16번(예시 장면 수 불일치)은 사실과 달라 반영하지 않음 — "3개 = phone 2 + browser 1" 로 일치
+
+- 2026-10-20: 하류 출처 경로를 `docs/prototypes/core-loop/` · 계획서 `2026-10-20-prototype-core-loop.md` 로 갱신 — 근거: 하류가 "와이어프레임"이 아니라 고충실도 프로토타입이라 이름을 바꾸고 이 계획의 출력 규약에 맞춰 옮김
 
 ## 9. 회고 (완료 시 작성)
 
