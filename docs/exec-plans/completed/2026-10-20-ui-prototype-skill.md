@@ -9,7 +9,7 @@
 
 ## 0. 다음 세션 시작점
 
-**진행: 완료 (2026-10-20). 공장 커밋 396d992, 전파 12곳. 남은 사람 몫: zeroday-frontend 커밋 여부, terminal-shipping 원격 합치기·푸시.**
+**진행: 완료 (2026-10-20). 공장 커밋 396d992, 전파 12곳. 남은 사람 몫: zeroday-frontend 커밋 여부.**
 
 | 단계 | 상태 |
 | --- | --- |
@@ -21,7 +21,7 @@
 | Step 5 SKILL.md·참고 문서 | 완료 — SKILL.md 117줄 + references 5 + spec-table 양식 |
 | Step 6 스킬 평가 (skill-creator) | 완료 — 통과율 100% vs 17%, 발동 정확도는 §7 참고 |
 | Step 7 프리셋 등록·문서 수치·전체 시험 | 완료 — harness.conf 등록, 수치 7종·140개, 전체 시험 결과는 §2 G8 |
-| Step 8 전파 | 완료 (2026-10-20 사용자 "커밋하고 전파하자. 그리고 푸시하자") — 설치 12, 커밋·푸시 9, 예외 2 (§2 G9) |
+| Step 8 전파 | 완료 (2026-10-20 사용자 "커밋하고 전파하자. 그리고 푸시하자") — 설치 12, 커밋·푸시 10, 예외 1 (§2 G9) |
 
 ## 1. 동기 (Why)
 
@@ -61,8 +61,8 @@
 - [x] G9 — (Step 8) 전파: 등록 소우주 전부에 `.claude/skills/ui-prototype/` 이 깔리고, 소우주마다 설치 영수증 경로만 커밋·푸시
       `bash update-all.sh` → 성공 12 · 실패 0, 12곳 모두 `check_spec.py` 있음. 커밋·푸시 9곳(Nbbang-Run 46079eb · drh-cloth-shop 34c4931 ·
       jj-agent-room 34128fd · jjackkun_bot e2a226d · kis-trading bb562b9 · novel-ab bb6b267 · novel-bc e1f7421 · rim-kanban 2830cd3 · upbit-ai-trading 1779b1a).
-      예외 둘(사람 몫): **zeroday-frontend** — R-lint 에 막혀 커밋 없음, 사용자 지시로 푸시 안 함(설치만). **terminal-shipping** — 커밋 c90a371b 로컬에만,
-      원격이 앞서 있고 원격 커밋이 바꾼 11개 중 8개가 작업 트리의 미커밋 변경과 겹쳐 합치지 않음
+      예외 둘(사람 몫): **zeroday-frontend** — R-lint 에 막혀 커밋 없음, 사용자 지시로 푸시 안 함(설치만). **terminal-shipping** — 원격(21a81547)이 앞서 있었고 겹친 미커밋 8개가
+      모두 설치기 산출물임을 확인(헤르메스 7개 = 원격과 바이트 동일, check-secrets = 이번 설치가 덮은 공장판) → 되돌리고 다시 얹어 0fb7cbf0 푸시 (사용자 지시)
       `bash tests/run-all.sh --check-orphans && bash tests/run-all.sh`
 
 ## 2-bis. 착수 전 확인한 사실 (2026-10-20)
