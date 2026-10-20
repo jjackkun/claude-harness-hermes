@@ -9,7 +9,7 @@
 
 ## 0. 다음 세션 시작점
 
-**진행: Step 1~7 구현 완료 (2026-10-20, 사용자 "쭉 한번에 진행하자"). 남은 것은 커밋과 Step 8 전파 — 둘 다 사람이 정한다.**
+**진행: 완료 (2026-10-20). 공장 커밋 396d992, 전파 12곳. 남은 사람 몫: zeroday-frontend 커밋 여부, terminal-shipping 원격 합치기·푸시.**
 
 | 단계 | 상태 |
 | --- | --- |
@@ -21,7 +21,7 @@
 | Step 5 SKILL.md·참고 문서 | 완료 — SKILL.md 117줄 + references 5 + spec-table 양식 |
 | Step 6 스킬 평가 (skill-creator) | 완료 — 통과율 100% vs 17%, 발동 정확도는 §7 참고 |
 | Step 7 프리셋 등록·문서 수치·전체 시험 | 완료 — harness.conf 등록, 수치 7종·140개, 전체 시험 결과는 §2 G8 |
-| Step 8 전파 | 사람 승인 후 |
+| Step 8 전파 | 완료 (2026-10-20 사용자 "커밋하고 전파하자. 그리고 푸시하자") — 설치 12, 커밋·푸시 9, 예외 2 (§2 G9) |
 
 ## 1. 동기 (Why)
 
@@ -58,8 +58,11 @@
 - [x] G8 — 공장 전체 시험 통과, 고아 시험 0 (새 시험을 `run-all.sh` 목록에 넣음)
       전체 1회: 등록 140 · 고아 0, 실패 2 → ① `harness-hooks-smoke` 의 생성 CLAUDE.md 101줄(이번 변경 원인 — 아래 §8) 고친 뒤 통과(100줄)
       ② `hermes-keys-test` 체크섬 단언 1건 — 단독 3회 재실행 48/48 통과, 이번 변경과 무관한 흔들림(4비트 체크섬을 우연히 통과하는 오타)
-- [ ] G9 — (Step 8) 전파: 등록 소우주 전부에 `.claude/skills/ui-prototype/` 이 깔리고, 소우주마다 설치 영수증 경로만 커밋·푸시
-      `bash update-all.sh` 뒤 소우주마다 `test -f .claude/skills/ui-prototype/scripts/check_spec.py` + `git status` 깨끗
+- [x] G9 — (Step 8) 전파: 등록 소우주 전부에 `.claude/skills/ui-prototype/` 이 깔리고, 소우주마다 설치 영수증 경로만 커밋·푸시
+      `bash update-all.sh` → 성공 12 · 실패 0, 12곳 모두 `check_spec.py` 있음. 커밋·푸시 9곳(Nbbang-Run 46079eb · drh-cloth-shop 34c4931 ·
+      jj-agent-room 34128fd · jjackkun_bot e2a226d · kis-trading bb562b9 · novel-ab bb6b267 · novel-bc e1f7421 · rim-kanban 2830cd3 · upbit-ai-trading 1779b1a).
+      예외 둘(사람 몫): **zeroday-frontend** — R-lint 에 막혀 커밋 없음, 사용자 지시로 푸시 안 함(설치만). **terminal-shipping** — 커밋 c90a371b 로컬에만,
+      원격이 앞서 있고 원격 커밋이 바꾼 11개 중 8개가 작업 트리의 미커밋 변경과 겹쳐 합치지 않음
       `bash tests/run-all.sh --check-orphans && bash tests/run-all.sh`
 
 ## 2-bis. 착수 전 확인한 사실 (2026-10-20)
@@ -321,6 +324,6 @@
 
 ## 9. 회고 (완료 시 작성)
 
-- 잘된 것:
-- 잘못된 것:
-- 다음 룰 후보:
+- 잘된 것: 시험을 먼저 써서 빨강(36 실패)을 본 뒤 스크립트를 만들어 한 번에 초록. 하류 실제 시안 두 개(59·15장면)로 수집·빌드를 실측해 계획서의 가정이 아니라 데이터로 맞음을 확인. 스킬 평가가 시작 틀의 실제 결함(크기 없는 아이콘)을 찾았고, 같은 측정으로 고친 뒤 0 을 확인. 평가 입력을 실제 기획 문서 사본으로 해 지어낸 입력이 없었다
+- 잘못된 것: 페이지 넘침만 재다가 틀 **안** 넘침을 평가 단계에서야 봄 — 첫 시각 점검부터 안쪽까지 쟀어야 했다. 생성 CLAUDE.md 100줄 한도를 전체 시험에서야 알았다(프리셋 스킬 추가 = 목차 한 줄 증가라는 연결을 설계 때 못 봄). R-plan 이 "모든 §2 체크 = 완료" 로 커밋을 막아 전파 목표를 뒤늦게 G9 로 더했다 — Step 8 을 처음부터 §2 목표로 적었어야 했다
+- 다음 룰 후보: (1) 프리셋에 스킬을 더하는 계획은 §4 에 "생성 CLAUDE.md 줄 수" 를 영향 영역으로 적는다 — 여유 0줄 (2) R-lint 의 사본 제외(backlog `rlint-skip-installed-skill-copies.md`) (3) 설치가 소우주 맞춤 파일을 덮는 문제(backlog `install-overwrites-forked-check-secrets.md`)
