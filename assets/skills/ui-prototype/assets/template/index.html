@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>제품 이름 시안</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<!-- 글꼴: .impeccable.md 에 정한 것을 Google Fonts 로 불러온다 (단일 HTML 빌드가 허용하는 외부 참조는 이것뿐).
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=...&display=swap">
+-->
+<link rel="stylesheet" href="styles/tokens.css">
+<link rel="stylesheet" href="styles/components.css">
+<link rel="stylesheet" href="styles/shell.css">
+<link rel="stylesheet" href="styles/frames.css">
+</head>
+<body>
+<div class="shell">
+  <aside class="navi" id="navi" aria-label="화면 목록">
+    <div class="navi-head">
+      <h1 id="navi-title"></h1>
+      <p>화면을 고르거나, 화면 안 버튼을 눌러 다음 단계로 넘어가 보십시오.</p>
+    </div>
+    <div class="navi-tools">
+      <button class="tool-btn" type="button" id="theme-btn">화면 모드: 시스템</button>
+      <select class="tool-btn" id="frame-pick" aria-label="틀 바꾸기"></select>
+      <button class="tool-btn" type="button" id="rotate-btn" hidden>가로·세로</button>
+    </div>
+    <div id="navi-groups"></div>
+    <p class="navi-note" id="navi-note"></p>
+  </aside>
+  <main class="stage">
+    <div class="device-box" id="device-box">
+      <div class="device" id="device" aria-live="polite"></div>
+    </div>
+    <p class="stage-caption" id="stage-caption"></p>
+  </main>
+</div>
+<button class="navi-toggle" type="button" id="navi-toggle">화면 목록</button>
+
+<!-- 로드 순서 고정: config → content → shell/frame → shell/registry → parts → screens-*. 화면 파일을 더하면 여기에도 더한다 -->
+<script src="scripts/config.js"></script>
+<script src="scripts/content.js"></script>
+<script src="scripts/shell/frame.js"></script>
+<script src="scripts/shell/registry.js"></script>
+<script src="scripts/parts.js"></script>
+<script src="scripts/screens-example.js"></script>
+<script>NB.start();</script>
+</body>
+</html>

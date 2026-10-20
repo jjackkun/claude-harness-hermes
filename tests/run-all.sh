@@ -346,6 +346,7 @@ REGISTERED_TESTS=(
   hermes-handoff-test.sh
   hermes-teaching-test.sh
   hermes-dashboard-test.sh
+  ui-prototype-build-test.sh
   hermes-repo-sync-test.sh
   git-ignore-judge-test.sh
   preset-lock-tracked-test.sh

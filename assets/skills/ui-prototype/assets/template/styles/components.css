@@ -1,0 +1,62 @@
+/* 공통 부품 — 앱 뼈대·상단 바·하단 탭·버튼 위계·시트·입력·알약·사진 자리·웹 표.
+   금지: 색 띠 테두리(한쪽만 굵은 색 선), 그라데이션 글자, 카드 안 카드. */
+.app { display: grid; grid-template-rows: auto minmax(0, 1fr) auto auto; background: var(--paper); }
+.screen-body { overflow-y: auto; display: grid; align-content: start; gap: var(--space-md); padding: var(--space-md); min-width: 0; }
+.title { margin: 0; font: 700 var(--text-xl)/1.2 var(--font-display); }
+.subtitle { margin: 0; font: 700 var(--text-lg)/1.3 var(--font-display); }
+.muted { margin: 0; color: var(--ink-2); line-height: 1.55; }
+.small { font-size: var(--text-sm); }
+.stack-xs { display: grid; gap: var(--space-2xs); min-width: 0; }
+.ex-tag { display: inline-block; padding: 0 var(--space-2xs); border: 1px dashed var(--ink-3); border-radius: var(--radius-sm); font-size: var(--text-xs); font-weight: 600; color: var(--ink-3); vertical-align: middle; }
+
+/* 크기 없는 svg 는 부모 폭만큼 커진다 — 아이콘 하나가 화면을 덮는다(하류·스킬 평가에서 두 번 재현).
+   NB.icon() 이 붙이는 .icon 은 기본이 글자 크기라 새 자리에 크기 규칙을 빠뜨려도 안전하다. 부품별 크기는 아래에서 덮는다.
+   flex:none 도 .icon 에만 — 전역에 걸면 큰 그림이 flex 줄 안에서 줄지 못하고 화면 밖으로 나간다 */
+svg { max-width: 100%; }
+.icon { flex: none; width: 1.25em; height: 1.25em; }
+.icon-btn svg, .tab svg { width: 24px; height: 24px; }
+.row-right svg { width: 18px; height: 18px; }
+
+.topbar { display: flex; align-items: center; gap: var(--space-xs); min-height: 56px; padding: 0 var(--space-xs); border-bottom: 1px solid var(--line); background: var(--surface); }
+.topbar-title { padding-inline: var(--space-xs); font-weight: 700; }
+.icon-btn { display: grid; place-items: center; width: var(--touch); height: var(--touch); border: 0; border-radius: var(--radius-sm); background: none; color: var(--ink); cursor: pointer; }
+
+.tabbar { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; border-top: 1px solid var(--line); background: var(--surface); padding-bottom: env(safe-area-inset-bottom, 0px); }
+.tab { display: grid; justify-items: center; gap: 2px; min-height: 56px; padding: var(--space-xs) 0; border: 0; background: none; color: var(--ink-3); font: 600 var(--text-xs) var(--font-body); cursor: pointer; }
+.tab[aria-current="page"] { color: var(--accent); }
+
+.list { display: grid; border-block: 1px solid var(--line); }
+.row-link { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--space-sm); align-items: center; width: 100%; min-height: var(--touch); padding: var(--space-sm) 0; border: 0; border-bottom: 1px solid var(--line); background: none; color: var(--ink); font: inherit; text-align: left; cursor: pointer; }
+.row-link:last-child { border-bottom: 0; }
+.row-right { display: flex; align-items: center; gap: var(--space-2xs); color: var(--ink-2); }
+
+/* 버튼 위계: primary 는 화면마다 하나, quiet 는 보조 */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: var(--space-xs); min-height: var(--touch); padding: 0 var(--space-lg); border: 1px solid transparent; border-radius: var(--radius-md); font: 700 var(--text-base) var(--font-body); cursor: pointer; }
+.btn-primary { background: var(--accent); color: var(--on-accent); }
+.btn-secondary { background: var(--surface); border-color: var(--line); color: var(--ink); }
+.btn-quiet { background: none; color: var(--ink-2); }
+.action-bar { display: grid; padding: var(--space-sm) var(--space-md); border-top: 1px solid var(--line); background: var(--surface); }
+
+/* 시트 — .app 안에서 아래에서 올라오는 확인 단계 */
+.app, .over-sheet { position: relative; }
+.scrim { position: absolute; inset: 0; z-index: 5; background: var(--scrim); }
+.sheet { position: absolute; inset: auto 0 0 0; z-index: 6; display: grid; gap: var(--space-sm); padding: var(--space-lg) var(--space-md) calc(var(--space-lg) + env(safe-area-inset-bottom, 0px)); border-radius: var(--radius-lg) var(--radius-lg) 0 0; background: var(--surface); box-shadow: var(--shadow-sheet); }
+
+/* 입력 — 기본 최소 폭이 좁은 화면에서 가로 스크롤을 만든다 */
+.input { width: 100%; min-width: 0; min-height: var(--touch); padding: 0 var(--space-sm); border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface); color: var(--ink); font: inherit; }
+
+/* 알약 — 그리드 칸 안에서 줄 폭으로 늘어나지 않게 */
+.pill { display: inline-flex; justify-self: start; align-items: center; padding: 2px var(--space-xs); border-radius: 999px; background: var(--accent-soft); color: var(--ink); font-size: var(--text-xs); font-weight: 700; }
+
+.photo { display: grid; place-items: center; aspect-ratio: 4 / 3; border-radius: var(--radius-md); background: repeating-linear-gradient(135deg, var(--sunk) 0 12px, var(--paper) 12px 24px); color: var(--ink-3); font-size: var(--text-sm); font-weight: 600; }
+.photo.is-map { aspect-ratio: 16 / 9; }
+
+/* 웹 화면 뼈대와 표 */
+.web { background: var(--paper); }
+.web-top { display: flex; justify-content: space-between; align-items: center; gap: var(--space-md); padding: var(--space-sm) var(--space-lg); border-bottom: 1px solid var(--line); background: var(--surface); }
+.web-body { display: grid; gap: var(--space-lg); padding: var(--space-lg); min-width: 0; }
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--surface); }
+.table { width: 100%; border-collapse: collapse; font-size: var(--text-sm); }
+.table th, .table td { padding: var(--space-sm) var(--space-md); border-bottom: 1px solid var(--line); text-align: left; }
+.table th { color: var(--ink-2); font-weight: 700; }
+.table tr:last-child td { border-bottom: 0; }

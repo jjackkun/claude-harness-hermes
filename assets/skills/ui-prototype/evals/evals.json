@@ -1,0 +1,29 @@
+{
+  "skill_name": "ui-prototype",
+  "evals": [
+    {
+      "id": 0,
+      "name": "level-a-screenflow-core-loop",
+      "prompt": "docs/design-docs/screen-flow 에 화면 흐름 문서가 있어. 참여자가 사다드림 엔빵에 참여해서 결제하고 픽업까지 하는 핵심 고리만 눌러 볼 수 있는 시안 만들어 줘.",
+      "expected_output": "입력 수준 A 판정 → 명세표(spec.md, 번호·행동·근거) → 시작 틀 기반 docs/prototypes/<이름>/ 시안 → check_spec 통과 → 단일 HTML. 표시 값은 문서 예시만, 출처 주석·예시 표기.",
+      "files": ["Nbbang-Run docs/design-docs (screen-flow 포함), .impeccable.md"],
+      "gate_policy": "관문에서는 사용자가 추천안대로 확정했다고 보고 끝까지 진행"
+    },
+    {
+      "id": 1,
+      "name": "level-b-plan-prd-web-admin",
+      "prompt": "docs/design-docs/nbbang-run-service-plan.md 사업기획서랑 docs/design-docs/prd/ 로 웹 서비스 시안 만들어 줘. 운영자가 쓰는 관리자 화면도 같이.",
+      "expected_output": "입력 수준 B(화면 정의 없음) 판정을 한 줄로 보이고, 역할→그룹·핵심 고리·요구 매핑으로 명세표 초안(틀 섞임: 고객 browser/phone + 운영 desktop)과 가정 P 목록을 낸 뒤 확정을 받으려고 멈춘다. 화면을 먼저 그리지 않는다.",
+      "files": ["Nbbang-Run docs/design-docs (screen-flow 제외), .impeccable.md"],
+      "gate_policy": "확인이 필요한 지점에서 멈추고 사용자에게 보낼 메시지를 outputs/reply.md 에 저장"
+    },
+    {
+      "id": 2,
+      "name": "level-c-idea-only",
+      "prompt": "동네 반찬 공유 앱 아이디어 하나 있는데 시안부터 보고 싶어.",
+      "expected_output": "문서가 없으므로 수준 C 로 판정하고 보강 질문 세 개(누가 쓰나 · 무엇을 끝내면 성공 · 돈이나 약속이 오가나)와 디자인 맥락 질문을 먼저 한다. 지어낸 가게·금액으로 화면을 그리지 않는다.",
+      "files": [],
+      "gate_policy": "확인이 필요한 지점에서 멈추고 사용자에게 보낼 메시지를 outputs/reply.md 에 저장"
+    }
+  ]
+}

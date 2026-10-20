@@ -1,0 +1,22 @@
+[
+  {"query": "docs/design-docs/screen-flow 에 화면 흐름 문서 다 써놨거든. 이제 핵심 고리만이라도 눌러볼 수 있게 시안 하나 만들어줘, 왼쪽에 화면 목록 있고 오른쪽에 폰 화면 나오는 식으로", "should_trigger": true},
+  {"query": "PRD 랑 사업기획서 docs/ 에 있는데 이걸로 와이어프레임 좀 뽑아줄래? 아직 앱 코드는 하나도 없어", "should_trigger": true},
+  {"query": "동네 반찬 공유 앱 아이디어 하나 있는데 개발 들어가기 전에 화면부터 보고 싶어", "should_trigger": true},
+  {"query": "관리자 웹 프로토타입 만들어줘. 운영자가 분쟁 처리하고 정산 보는 화면들, 데스크톱 기준으로. 기획은 docs/design-docs/prd/07-admin.md 참고", "should_trigger": true},
+  {"query": "어제 만든 docs/prototypes/customer-app 시안에 2차 화면들(알림, 마이페이지) 이어 붙여줘. spec.md 2차 행에 있는 것들", "should_trigger": true},
+  {"query": "투자자 미팅 전에 기획서 내용을 클릭되는 목업으로 보여주고 싶어요. 웹 서비스랑 모바일 앱 둘 다 있는 구조예요", "should_trigger": true},
+  {"query": "ui 초안 만들어줘 plan.md 보고. 회원가입부터 첫 주문까지 흐름이 버튼 눌러서 넘어가게", "should_trigger": true},
+  {"query": "시안에서 EB-02 화면 결제 버튼 누르면 바로 완료로 가는데, 중간에 확인 시트 하나 넣어줘. 흐름이 바뀌는 거니까 명세표도 같이", "should_trigger": true},
+  {"query": "키오스크용 태블릿 화면 흐름을 눌러볼 수 있게 만들고 싶은데 기획 문서는 docs/exec-plans/active/2026-10-01-kiosk.md 하나뿐이야", "should_trigger": true},
+  {"query": "화면 설계서는 있는데 개발자한테 넘기기 전에 실제로 클릭해보면서 빠진 화면 없는지 확인하고 싶어. 단일 html 로 공유할 수 있으면 좋겠고", "should_trigger": true},
+  {"query": "이 로그인 버튼 디자인 좀 다듬어줘. src/lib/components/LoginButton.svelte 인데 hover 색이 너무 튀어", "should_trigger": false},
+  {"query": "Svelte로 로그인 화면 구현해줘. 이메일 비번 입력하고 /api/auth/login 으로 POST 하는 거", "should_trigger": false},
+  {"query": "다음주 발표 자료 만들어줘. 우리 서비스 소개 10장짜리 슬라이드", "should_trigger": false},
+  {"query": "localhost:5173 에 떠있는 우리 앱 회원가입 흐름 playwright로 테스트 좀 돌려줘", "should_trigger": false},
+  {"query": "랜딩 페이지 히어로 섹션 하나만 멋있게 만들어줘. 한 화면짜리 html 이면 돼", "should_trigger": false},
+  {"query": "화면 흐름 문서 docs/design-docs/screen-flow/02-participant.md 에 빠진 예외 화면들 찾아서 문서에 추가해줘", "should_trigger": false},
+  {"query": "React 컴포넌트 라이브러리 storybook 세팅해줘. 버튼, 인풋, 모달 스토리부터", "should_trigger": false},
+  {"query": "피그마 파일 링크 줄테니까 거기 있는 프레임들 png 로 다 뽑아줘", "should_trigger": false},
+  {"query": "대시보드 만들어줘. 우리 DB 주문 테이블에서 일별 매출 차트 보이게", "should_trigger": false},
+  {"query": "PRD 문서 리뷰해줘. docs/design-docs/prd/ 에 요구사항 빠진 거나 서로 모순되는 거 있는지", "should_trigger": false}
+]

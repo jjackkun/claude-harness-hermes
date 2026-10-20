@@ -9,19 +9,18 @@
 
 ## 0. 다음 세션 시작점
 
-**진행: 계획 문서만 작성 + 리뷰 1회 반영. 스킬 파일은 아직 하나도 만들지 않았다.**
-공통 스킬은 사람 승인 후 반영한다 (CLAUDE.md 「헤르메스 엔지니어링 · 원칙」). 이 문서를 승인받은 뒤 Step 1부터 시작한다.
+**진행: Step 1~7 구현 완료 (2026-10-20, 사용자 "쭉 한번에 진행하자"). 남은 것은 커밋과 Step 8 전파 — 둘 다 사람이 정한다.**
 
 | 단계 | 상태 |
 | --- | --- |
 | Step 0 계획 문서 | 완료 — planner-lite 리뷰 17건 반영 (§8) |
-| Step 1 시작 틀 **재설계** (틀 4종) | 승인 대기 |
-| Step 2 명세표 규약·검사 스크립트 | 승인 대기 |
-| Step 3 빌드 스크립트 | 승인 대기 |
-| Step 4 시험 (node·python만) | 승인 대기 |
-| Step 5 SKILL.md·참고 문서 | 승인 대기 |
-| Step 6 스킬 평가 (skill-creator) | 승인 대기 |
-| Step 7 프리셋 등록·문서 수치·전체 시험 | 승인 대기 |
+| Step 1 시작 틀 **재설계** (틀 4종) | 완료 — 4폭 × 2테마 × 틀 5 × 장면 3 = 120조합 페이지 넘침 0 |
+| Step 2 명세표 규약·검사 스크립트 | 완료 — `spec_table.py` 분리, 실패 9종 + 알림 2종 |
+| Step 3 빌드 스크립트 | 완료 — `artifact_strip.py` 분리, 하류 실제 시안 2개(59·15장면) 빌드 통과 |
+| Step 4 시험 (node·python만) | 완료 — `ui-prototype-build-test.sh` 40/40, 빨강(36 실패) 먼저 확인 |
+| Step 5 SKILL.md·참고 문서 | 완료 — SKILL.md 117줄 + references 5 + spec-table 양식 |
+| Step 6 스킬 평가 (skill-creator) | 완료 — 통과율 100% vs 17%, 발동 정확도는 §7 참고 |
+| Step 7 프리셋 등록·문서 수치·전체 시험 | 완료 — harness.conf 등록, 수치 7종·140개, 전체 시험 결과는 §2 G8 |
 | Step 8 전파 | 사람 승인 후 |
 
 ## 1. 동기 (Why)
@@ -36,27 +35,31 @@
 
 ## 2. 목표 (What — 검증 가능한 형태)
 
-- [ ] G1 — 스킬이 §5-2의 흐름(① 선행 조건 → ①-b 명세표 → ② 질문 → ③ 브리프 → ④ 만들기 → ⑤ 기계 검사 → ⑥ 시각 점검 → ⑦ 출력 → ⑧ 수정·이어 붙이기)을 순서대로 시키고, 관문(명세표·브리프 확정)마다 멈춘다
-      `grep -cE '^## ' assets/skills/ui-prototype/SKILL.md`
-- [ ] G2 — 시작 틀의 예시 시안을 node로 불러 장면 3개가 등록되고 각 장면의 render()가 오류 없이 HTML을 낸다 (브라우저 없이)
-      `bash tests/ui-prototype-build-test.sh`
-- [ ] G2b — (Playwright 있을 때) 틀 4종이 장면별로 적용되고, 넓은 화면(1280)·좁은 화면(375)에서 **페이지** 가로 넘침 0. `file://` 로 열어도 뜬다
-      `references/verification.md` 의 브라우저 절차 — 공장 시험 묶음에는 넣지 않음 (Playwright 보장 없음)
-- [ ] G3 — `build_single.py` 가 시안 폴더를 단일 HTML(문서 뼈대 포함)과 아티팩트용 파일로 만든다. 로컬 CSS·JS 참조 0, 허용 목록(Google Fonts) 밖 외부 참조 0, 아티팩트용은 첫 글자가 `<title>` 이고 `<html`·`<head`·`<body`·`</body>` 없음
-      `bash tests/ui-prototype-build-test.sh`
-- [ ] G3b — `check_spec.py` 가 망가뜨린 입력 네 가지를 각각 잡는다: (a) 1차 명세표 장면 ≠ 등록 장면 (b) 명세표에 없는 `data-go` 대상 (c) 범위 안 요구 ID 누락 (d) 허용 밖 글자가 든 화면 번호. 그리고 (e) `index.html` 에 로드 태그가 빠진 화면 파일
-      `bash tests/ui-prototype-build-test.sh`
-- [ ] G3c — skill-creator 평가에서 입력 수준 B·C 프롬프트에 스킬이 명세표(가정 번호 포함)를 먼저 내고 확정받은 뒤 그린다
-      skill-creator 평가 결과 (`evals/evals.json` 의 수준 B·C 항목)
-- [ ] G4 — 시작 틀·스크립트 파일마다 400줄 이하, 한 파일 한 책임 (R-size, R-struct)
-      `wc -l assets/skills/ui-prototype/assets/template/*.html assets/skills/ui-prototype/assets/template/*/* assets/skills/ui-prototype/scripts/* | sort -n | tail -3`
-- [ ] G5 — skill-creator 평가: 시험 프롬프트 3개(수준 A·B·C)에서 스킬 있음이 없음보다 낫다
-      `python -m scripts.aggregate_benchmark <workspace>/iteration-1 --skill-name ui-prototype` (skill-creator 폴더에서)
-- [ ] G6 — 발동 정확도: 발동해야 할 질의 10 · 비슷하지만 발동하면 안 될 질의 10, 시험 세트 정답률 기록
-      `python -m scripts.run_loop --eval-set assets/skills/ui-prototype/evals/trigger-evals.json --skill-path assets/skills/ui-prototype --max-iterations 5`
-- [ ] G7 — `harness` 프리셋에 등록, 프리셋 무결성 시험 통과
-      `bash tests/preset-integrity-test.sh`
-- [ ] G8 — 공장 전체 시험 통과, 고아 시험 0 (새 시험을 `run-all.sh` 목록에 넣음)
+- [x] G1 — 스킬이 §5-2의 흐름(① 선행 조건 → ①-b 명세표 → ② 질문 → ③ 브리프 → ④ 만들기 → ⑤ 기계 검사 → ⑥ 시각 점검 → ⑦ 출력 → ⑧ 수정·이어 붙이기)을 순서대로 시키고, 관문(명세표·브리프 확정)마다 멈춘다
+      `grep -cE '^## ' assets/skills/ui-prototype/SKILL.md` → 10 (9단계 모두 절, + 참고 문서). 평가 B·C 가 관문에서 실제로 멈춤
+- [x] G2 — 시작 틀의 예시 시안을 node로 불러 장면 3개가 등록되고 각 장면의 render()가 오류 없이 HTML을 낸다 (브라우저 없이)
+      `bash tests/ui-prototype-build-test.sh` → 40/40
+- [x] G2b — (Playwright 있을 때) 틀 4종이 장면별로 적용되고, 폭 1280·768·375·360 × 라이트·다크에서 **페이지** 가로 넘침 0. `file://` 로 열어도 뜬다
+      시작 틀 120조합(4폭 × 2테마 × 틀 5 × 장면 3) 페이지 넘침 0, 축소 데스크톱 틀 실제 click 이동 확인. **`file://` 직접 열기는 Playwright 가 막아 못 함** — 모듈·fetch 0 검사(시험에 포함)로 갈음
+- [x] G3 — `build_single.py` 가 시안 폴더를 단일 HTML(문서 뼈대 포함)과 아티팩트용 파일로 만든다. 로컬 CSS·JS 참조 0, 허용 목록(Google Fonts) 밖 외부 참조 0, 아티팩트용은 첫 글자가 `<title>` 이고 `<html`·`<head`·`<body`·`</body>` 없음
+      `bash tests/ui-prototype-build-test.sh` → 통과 + 빌드 결과를 브라우저로 열어 장면 3·15 확인
+- [x] G3b — `check_spec.py` 가 망가뜨린 입력 네 가지를 각각 잡는다: (a) 1차 명세표 장면 ≠ 등록 장면 (b) 명세표에 없는 `data-go` 대상 (c) 범위 안 요구 ID 누락 (d) 허용 밖 글자가 든 화면 번호. 그리고 (e) `index.html` 에 로드 태그가 빠진 화면 파일
+      `bash tests/ui-prototype-build-test.sh` → (a)~(e) + (f) 틀 불일치 + (g) 명세 행동이 화면에 없음 + 알림(실패 아님) 모두 통과
+- [x] G3c — skill-creator 평가에서 입력 수준 B·C 프롬프트에 스킬이 명세표(가정 번호 포함)를 먼저 내고 확정받은 뒤 그린다
+      B: 수준 B 판정 + 23장면 명세표 + 가정 P1~P7, 파일 0 으로 멈춤. C: 수준 C 판정 + 보강 질문 3 + 디자인 질문 3, 파일 0
+- [x] G4 — 시작 틀·스크립트 파일마다 400줄 이하, 한 파일 한 책임 (R-size, R-struct)
+      최대 125줄(check_spec.py)·117줄(registry.js). check-structure 경고 0, complexity 0
+- [x] G5 — skill-creator 평가: 시험 프롬프트 3개(수준 A·B·C)에서 스킬 있음이 없음보다 낫다
+      `aggregate_benchmark` → 통과율 100% vs 17% (+83%p), 시간 309.7초 vs 308.5초, 토큰 146,825 vs 132,717
+- [x] G6 — 발동 정확도: 발동해야 할 질의 10 · 비슷하지만 발동하면 안 될 질의 10, 시험 세트 정답률 기록
+      run_loop 5회, 최고 시험 세트 4/8 질의 (1회차 = 원래 description 그대로 유지). 정밀도 100%(엉뚱한 발동 0), 재현율 낮음 — §7
+- [x] G7 — `harness` 프리셋에 등록, 프리셋 무결성 시험 통과
+      `bash tests/preset-integrity-test.sh` → conf 30개 참조 104개 유효
+- [x] G8 — 공장 전체 시험 통과, 고아 시험 0 (새 시험을 `run-all.sh` 목록에 넣음)
+      전체 1회: 등록 140 · 고아 0, 실패 2 → ① `harness-hooks-smoke` 의 생성 CLAUDE.md 101줄(이번 변경 원인 — 아래 §8) 고친 뒤 통과(100줄)
+      ② `hermes-keys-test` 체크섬 단언 1건 — 단독 3회 재실행 48/48 통과, 이번 변경과 무관한 흔들림(4비트 체크섬을 우연히 통과하는 오타)
+- [ ] G9 — (Step 8) 전파: 등록 소우주 전부에 `.claude/skills/ui-prototype/` 이 깔리고, 소우주마다 설치 영수증 경로만 커밋·푸시
+      `bash update-all.sh` 뒤 소우주마다 `test -f .claude/skills/ui-prototype/scripts/check_spec.py` + `git status` 깨끗
       `bash tests/run-all.sh --check-orphans && bash tests/run-all.sh`
 
 ## 2-bis. 착수 전 확인한 사실 (2026-10-20)
@@ -72,6 +75,9 @@
 | 하류 구조의 한계 (리뷰 확인) | `shell.css` 의 `.device` 가 390×844 고정, `registry.js` 는 `#device` 하나에 innerHTML 교체, `register()` 에 틀 칸 없음, `.shell` 최대 폭 1120px → 1280·1440 틀 불가. **옮기기가 아니라 재설계 필요** |
 | 하류 검증 결과 | 장면 16 · 문법 오류 0 · 금지어 0 · 가로 넘침 0(14화면) · 클릭 경로 2개 끝까지 통과 · 1280(라이트·다크)/375(라이트) 시각 확인 |
 | 하류 프리셋 | Nbbang-Run `presets.lock` 에 svelte 있음 |
+| 하류 2·3차 (착수 시 재확인) | `core-loop` → `customer-app`(51화면 59장면) 으로 이름이 바뀌었고 `admin-web`(14화면 15장면)이 생김. 관리자 시안은 고객 앱의 토큰·등록부를 `../customer-app/...` 상대 경로로 재사용하고 `.device.browser` 로 웹 틀을 얹음. `check-links.js`(30줄)가 `collect_scenes.js` 역할을 이미 함 — index.html 의 로드 순서를 읽어 vm 으로 실행 |
+| 하류 2·3차 회고 | ① 들어오는 버튼 없는 장면을 늦게 발견 → 검사 기본 출력에 넣자는 제안 ② 폭 1280/768/375/360 × 라이트·다크로 넘침 0 ③ 화면 목록 묶음 순서가 등록 순서에 묶임 ④ 요소 스크린숏이 장면을 바꾸는 함정 재발 ⑤ 정해지지 않은 숫자는 "N" ⑥ 금지어 검사 목록이 원문과 달라 기계 검사가 놓침 |
+| 설치 범위 | 등록 프로젝트 12곳 전부 `presets.lock` 에 `harness` 있음 → `harness.conf` 등록 = 설치·전파 시 자동 설치 (사용자 요구 "설치하거나 전파하면 자동으로 깔리는 기본기능", 2026-10-20) |
 
 ## 3. 비목표 (Out of Scope)
 
@@ -97,18 +103,20 @@
   - `assets/skills/ui-prototype/assets/template/styles/shell.css` — 셸: 왼쪽 화면 목록 + 오른쪽 무대(폭 제한 없음), 좁은 화면 배치, 틀 전환 도구
   - `assets/skills/ui-prototype/assets/template/styles/frames.css` — 틀 4종(`phone`·`tablet`·`browser`·`desktop`) 크기·테두리·좁은 화면 규칙 (`.device[data-frame]`)
   - `assets/skills/ui-prototype/assets/template/scripts/config.js` — `NB.config`: 시안 이름·기본 틀·모바일 폭 기준 (값 하나로 JS·CSS가 같은 기준을 씀)
-  - `assets/skills/ui-prototype/assets/template/scripts/registry.js` — 화면 등록·이동·화면 목록·테마 전환·장면별 틀 적용·틀 전환 덮어쓰기
+  - `assets/skills/ui-prototype/assets/template/scripts/shell/registry.js` — (공통 장치, 시안마다 손대지 않음) 화면 등록·이동·화면 목록·테마 전환
+  - `assets/skills/ui-prototype/assets/template/scripts/shell/frame.js` — (공통 장치) 장면별 틀 적용·틀 전환 덮어쓰기·태블릿 가로세로·좁은 화면 판정·축소 맞춤 (착수 시 registry.js 에서 분리 — 한 파일 한 책임)
   - `assets/skills/ui-prototype/assets/template/scripts/parts.js` — 공통 부품 HTML 함수 뼈대
   - `assets/skills/ui-prototype/assets/template/scripts/content.js` — 표시 내용 자리 + 필수 키 목록(`note`)
   - `assets/skills/ui-prototype/assets/template/scripts/screens-example.js` — 예시 장면 3개: phone 목록 → phone 상세(시트 1개) → browser 1개 (틀 섞임)
   - `assets/skills/ui-prototype/assets/template/spec.md` — 예시 시안의 명세표 (3장면)
-  - `assets/skills/ui-prototype/scripts/collect_scenes.js` — node로 시안 스크립트를 불러 `NB` 를 모으고 각 장면 render() → `{id, frame, gos[]}` JSON 출력
-  - `assets/skills/ui-prototype/scripts/check_spec.py` — 명세표 읽기 + `collect_scenes.js` 결과 대조 (G3b 다섯 검사)
-  - `assets/skills/ui-prototype/scripts/build_single.py` — 시안 폴더 → 단일 HTML + 아티팩트용 파일 (HTML 파서 기반)
+  - `assets/skills/ui-prototype/scripts/collect_scenes.js` — node로 `index.html` 의 로드 순서(`../` 공유 파일 포함)대로 시안 스크립트를 실행해 각 장면 render() → `{id, frame, group, gos[]}` + 로드 안 된 화면 파일 JSON 출력
+  - `assets/skills/ui-prototype/scripts/spec_table.py` — 명세표(`<!-- ui-prototype:spec v1 -->` 아래 첫 표)와 요구 목록 줄을 읽어 행 목록으로 (착수 시 check_spec.py 에서 분리 — 읽기와 대조는 다른 책임)
+  - `assets/skills/ui-prototype/scripts/check_spec.py` — 명세표 ↔ `collect_scenes.js` 결과 대조 (G3b 다섯 검사 + 틀 불일치·명세 행동이 화면에 없음 = 실패) + 들어오는 버튼 없는 장면·아직 등록 안 된 2차 대상(알림, 실패 아님)
+  - `assets/skills/ui-prototype/scripts/build_single.py` — 시안 폴더 → 단일 HTML + 아티팩트용 파일 (HTML 파서 기반, `../` 공유 파일도 펼침)
+  - `assets/skills/ui-prototype/scripts/artifact_strip.py` — 단일 HTML → 아티팩트용 본문(문서 뼈대 제거·`<title>` 맨 앞, 스크립트·스타일·주석 안은 보호) (착수 시 build_single.py 에서 분리)
   - `assets/skills/ui-prototype/evals/evals.json` — skill-creator 시험 프롬프트 3개 (수준 A·B·C)
   - `assets/skills/ui-prototype/evals/trigger-evals.json` — 발동 정확도 질의 20개
-  - `tests/ui-prototype-build-test.sh` — node·python만: 예시 시안 등록·render, build 출력 규약, check_spec 망가뜨린 입력 다섯 가지
-  - `tests/fixtures/ui-prototype/` — 망가뜨린 명세표·화면 파일 묶음
+  - `tests/ui-prototype-build-test.sh` — node·python만: 예시 시안 등록·render, build 출력 규약, check_spec 망가뜨린 입력 다섯 가지 (망가뜨린 입력은 시작 틀 복사본을 시험 안에서 고쳐 만든다 — 별도 픽스처 폴더를 두면 틀이 바뀔 때 픽스처만 낡는다)
 - 수정: `presets/workflow/harness.conf` (`SKILLS+=(ui-prototype)`), `tests/run-all.sh` (목록에 새 시험), README·CLAUDE.md 수치 블록(스킬 수)
 - 룰: R-size(400), R-struct, R-declare(이 §4 선언), 스킬 개발 규칙(skill-creator 필수)
 - 데이터: 없음
@@ -141,7 +149,7 @@
 ### 5-3. 시안이 지키는 규약 (시작 틀에 박음)
 
 - **위치·이름**: `docs/prototypes/<이름>/`(원본: `index.html`·`spec.md`·`styles/`·`scripts/`) + `docs/prototypes/<이름>.html`(단일 파일). `<이름>` 은 영문 소문자·숫자·`-` (예: `core-loop`, `admin-v1`), ③에서 확정. 한 저장소에 여러 시안이 폴더별로 공존한다. 아티팩트 제목은 `<제품> <이름> 시안`
-- **`file://` 로 열려야 한다** → ES 모듈·fetch 금지, 일반 `<script src>` 만. 로드 순서: config → content → registry → parts → screens-* → `NB.start()`. 화면 파일을 추가하면 `index.html` 로드 태그도 추가 (`check_spec.py` 가 누락 검사)
+- **`file://` 로 열려야 한다** → ES 모듈·fetch 금지, 일반 `<script src>` 만. 로드 순서: config → content → shell/frame → shell/registry → parts → screens-* → `NB.start()`. 화면 파일을 추가하면 `index.html` 로드 태그도 추가 (`check_spec.py` 가 누락 검사)
 - **화면 등록**: `NB.register({ id, group, name, state?, caption?, frame?, render(), mount?(root) })`. 화면 안 이동은 `data-go="ID"`. 상태별 장면은 같은 화면 번호에 접미사(EB-01a·b·c)
 - **화면 번호 글자**: `^[A-Z]{1,4}-[0-9]{2}[a-z]?$` (예: `SD-01`, `EB-01a`). 주소 `#ID` 로 바로 열기 — 아티팩트 해시 허용 글자 안에 든다. 문서 번호가 이 규칙에 안 맞으면(한글·공백) 명세표에서 새 번호를 붙이고 원래 번호는 근거 칸에 남긴다
 - **장면 사이 상태**: 핵심 값은 `NB.state` 로 이어 흐름이 말이 되게 (예: 결제 후 홈에 진행 중 칩)
@@ -269,6 +277,13 @@
 | 금지어 | 설명 문구에 금지어가 섞임 | 프로젝트 금지어를 grep 으로 매번 검사 (하류에서 실제 적발) |
 | 상태 알약이 줄 폭으로 늘어남 | 그리드 셀 안 inline-flex 가 늘어남 | `justify-self:start` |
 | 고정 크기 틀·셸 최대 폭 | 웹·데스크톱 틀이 안 들어감 (리뷰 확인) | `.device[data-frame]` + `frames.css`, 셸 폭 제한 제거 |
+| 요소 스크린숏 (2차에서 재발) | 요소를 찍는 순간 장면이 바뀜 | 창 전체 스크린숏으로 찍는다 |
+| 화면 목록 묶음 순서 (3차) | 묶음 순서가 파일 등록 순서를 따라 엉뚱하게 나옴 | `NB.config.groups` 로 순서를 적는다 (없으면 등록 순서) |
+| 들어오는 버튼 없는 장면 (2차) | 1차부터 비어 있던 버튼을 마지막에야 발견 | `check_spec.py` 가 매번 목록으로 보여 준다. 상태·권한 장면처럼 목록 진입이 맞으면 명세표 근거에 적는다 |
+| 정해지지 않은 숫자 (2차) | 지어낸 숫자가 결정처럼 보임 | "N" 으로 표시하고 미결 목록에 잇는다 |
+| 금지어 목록이 원문과 다름 (3차) | 기계 검사가 "판매" 단독을 놓침 | 금지어는 프로젝트 원문(법무·PRD)에서 낱말 그대로 옮겨 검사한다 |
+| 크기 없는 아이콘 svg (스킬 평가에서 재현) | 평가 A 시안의 카드 안 아이콘이 279px 로 커져 앱 화면 안쪽이 가로로 넘침 (페이지 넘침 검사로는 안 보임) | `NB.icon()` 이 `.icon`(기본 1.25em, flex:none)을 붙임 + 전역 `svg{max-width:100%}`. 검증 절차에 "틀 안 넘침" 측정 추가. 수정 뒤 평가 시안 88조합 넘침 0 |
+| 발동 정확도 측정 (Step 6) | 재현율 학습 6~17%·시험 0~17%, 정밀도 100% | 이 컴퓨터의 전역 superpowers 가 "창작 작업 전 brainstorming 먼저" 를 세션마다 강제해 첫 스킬 호출을 선점한다. run_loop 는 첫 호출만 보므로 실제보다 낮게 잰다. 고친 description 4개가 원본을 넘지 못해 원본 유지. 실제 소우주에서는 헤르메스 세션 시작 훅의 관련 스킬 주입이 보완한다 |
 
 ## 8. 의사결정 로그
 
@@ -293,6 +308,16 @@
   - 리뷰 16번(예시 장면 수 불일치)은 사실과 달라 반영하지 않음 — "3개 = phone 2 + browser 1" 로 일치
 
 - 2026-10-20: 하류 출처 경로를 `docs/prototypes/core-loop/` · 계획서 `2026-10-20-prototype-core-loop.md` 로 갱신 — 근거: 하류가 "와이어프레임"이 아니라 고충실도 프로토타입이라 이름을 바꾸고 이 계획의 출력 규약에 맞춰 옮김
+
+- 2026-10-20 (착수, 사용자 "쭉 한번에 진행하자" — Step 1~7 승인):
+  - 하류 2·3차 회고를 반영한다: 들어오는 버튼 없는 장면은 **알림**으로(실패 아님 — 하류도 상태·권한 장면 7개를 목록 진입으로 두었다), 확인 폭 4개, `NB.config.groups`, `../` 공유 파일 펼침
+  - `collect_scenes.js` 는 고정 순서 대신 `index.html` 의 로드 순서를 읽는다 — 하류 `check-links.js` 와 같은 방식이고, 공유 파일(`../`)이 있는 시안도 그대로 돈다
+  - 등록처는 `harness` 그대로 — 등록 12곳 전부가 harness 를 써서 "전파하면 자동 설치" 요구를 이미 만족한다. 전역(`_common.conf`)에 두면 공장 저장소 밖 머신에도 깔리지만 시험·명세표 규약이 프로젝트 docs 구조를 전제한다
+  - 시작 틀의 공통 장치(`frame.js`·`registry.js`)를 `scripts/shell/` 로 — R-struct 경고(폴더당 5개 초과)를 계기로, 시안마다 손대지 않는 파일과 고치는 파일을 폴더로 가름
+  - 평가는 하류 Nbbang-Run 의 실제 기획 문서 사본으로 — 지어낸 입력 문서를 쓰지 않는다. 하류 `docs/prototypes/` 는 답이 새지 않게 복사하지 않음. 평가 작업 폴더는 스킬 폴더 밖(전파 때 같이 깔리지 않게)
+  - 발동 측정은 빈 `.claude/` 만 있는 격리 폴더에서 — 공장에서 돌리면 `claude -p` 수백 번이 공장의 헤르메스 훅을 깨워 학습 기록을 오염시킨다
+  - description 은 run_loop 결과가 원본을 넘지 못해 바꾸지 않음
+  - 생성 CLAUDE.md 가 101줄이 된 것(프리셋 스킬마다 목차 한 줄)을 한도 상향 대신 harness 안내 절의 이어진 두 문장을 한 줄로 합쳐 100줄로 — 100줄은 "목차" 원칙의 강제 장치. **이제 여유 0줄**: harness 에 스킬을 하나 더 넣으면 다시 넘는다
 
 ## 9. 회고 (완료 시 작성)
 

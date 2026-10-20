@@ -1,0 +1,48 @@
+/* 틀 4종 — frame.js 가 .device 와 .device-box 에 data-frame 을 넣는다.
+   phone 390×844 · tablet 820×1180 · browser 최대 1280×800 · desktop 1440×900 (흔한 기기·창 크기).
+   tablet·desktop 이 무대보다 넓으면 frame.js 가 바깥 상자를 줄이고 안쪽을 scale — 가로 스크롤을 만들지 않는다. */
+.device-box { position: relative; max-width: 100%; }
+.device-box[data-scaled] { overflow: hidden; }
+.device {
+  position: relative;
+  overflow: hidden;
+  background: var(--paper);
+  transform-origin: top left;
+  box-shadow: 0 24px 48px oklch(25% 0.02 255 / 0.16);
+}
+
+.device[data-frame="phone"] { width: 390px; height: 844px; max-width: 100%; border: 10px solid var(--device); border-radius: 48px; }
+
+.device[data-frame="tablet"] { width: 820px; height: 1180px; border: 14px solid var(--device); border-radius: 32px; }
+.device[data-frame="tablet"][data-orient="landscape"] { width: 1180px; height: 820px; }
+
+/* 웹: 무대 폭을 따라 줄어드는 창 — 반응형 웹 화면이 실제로 좁아지는 모습을 본다 */
+.device-box[data-frame="browser"] { width: min(1280px, 100%); padding-top: 36px; }
+.device-box[data-frame="browser"]::before {
+  content: ""; position: absolute; inset: 0 0 auto 0; height: 36px;
+  border-radius: var(--radius-md) var(--radius-md) 0 0; background: var(--device);
+}
+.device-box[data-frame="browser"]::after { /* 주소창 모양 — 글자 없는 자리 */
+  content: ""; position: absolute; top: 9px; left: 72px; right: 25%; height: 18px;
+  border-radius: 999px; background: color-mix(in oklch, var(--device-ink) 16%, transparent);
+}
+.device[data-frame="browser"] { width: 100%; height: 800px; max-height: calc(100dvh - 140px); min-height: 480px; border-radius: 0 0 var(--radius-md) var(--radius-md); }
+
+/* 데스크톱: 업무 도구 창 — 제목 막대만 */
+.device[data-frame="desktop"] { width: 1440px; height: 900px; border: 1px solid var(--line); border-top: 28px solid var(--device); border-radius: var(--radius-md); }
+
+/* 장면 안쪽 뼈대 — 앱(.app)은 위·아래 띠 고정에 가운데만 스크롤, 웹(.web)은 통째로 스크롤 */
+.device > .app, .device > .over-sheet { height: 100%; }
+.device > .web { height: 100%; overflow-y: auto; }
+
+/* 좁은 화면: phone·browser 는 틀 없이 전체 화면, tablet·desktop 은 축소된 틀 그대로 */
+[data-narrow] .device-box { margin: 0 auto; }
+[data-narrow] .device-box[data-frame="phone"],
+[data-narrow] .device-box[data-frame="browser"] { width: 100%; padding-top: 0; }
+[data-narrow] .device-box[data-frame="browser"]::before,
+[data-narrow] .device-box[data-frame="browser"]::after { display: none; }
+[data-narrow] .device[data-frame="phone"],
+[data-narrow] .device[data-frame="browser"] {
+  width: 100%; height: calc(100dvh - 44px - env(safe-area-inset-top, 0px)); max-height: none; min-height: 0;
+  border: 0; border-radius: 0; box-shadow: none;
+}

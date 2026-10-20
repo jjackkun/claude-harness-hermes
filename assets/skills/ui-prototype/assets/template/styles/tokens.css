@@ -1,0 +1,100 @@
+/* 디자인 토큰 — 자리값. 시안을 만들 때 .impeccable.md 의 색·글꼴로 바꾼다 (역할 이름은 그대로 둔다).
+   색 역할: accent = 주 행동 / ok = 확인·완료 / warn = 오류·분쟁. 중립은 순백·순흑 대신 살짝 물든 회색.
+   라이트(:root) · 시스템 다크(@media) · 수동 다크([data-theme="dark"]) 세 블록을 같은 값으로 맞춘다. */
+:root {
+  /* 바탕·글자 */
+  --paper: oklch(97.5% 0.004 250);
+  --surface: oklch(99.2% 0.002 250);
+  --sunk: oklch(93% 0.006 250);
+  --line: oklch(86% 0.008 250);
+  --ink: oklch(25% 0.02 255);
+  --ink-2: oklch(43% 0.018 255);
+  --ink-3: oklch(57% 0.014 255);
+
+  /* 주 행동 — 자리값은 설계 도면의 청색 */
+  --accent: oklch(50% 0.15 258);
+  --accent-soft: oklch(94% 0.03 258);
+  --on-accent: oklch(99% 0.004 250);
+
+  /* 확인·오류 */
+  --ok: oklch(52% 0.11 160);
+  --ok-soft: oklch(94% 0.03 160);
+  --warn: oklch(55% 0.17 30);
+  --warn-soft: oklch(94% 0.03 30);
+
+  /* 시안 틀 — 두 테마 모두 어두운 틀 위 밝은 글자 */
+  --device: oklch(23% 0.015 255);
+  --device-ink: oklch(95% 0.005 250);
+  --scrim: oklch(25% 0.02 255 / 0.45);
+
+  /* 글꼴 — Google Fonts 로 불러온 이름을 앞에 넣는다 */
+  --font-display: system-ui, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --font-body: system-ui, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+
+  /* 글자 크기 5단계 (비율 1.25 이상) */
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.25rem;
+  --text-xl: 1.75rem;
+
+  /* 간격 4pt */
+  --space-2xs: 4px;
+  --space-xs: 8px;
+  --space-sm: 12px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-2xl: 48px;
+
+  /* 모서리·높이 — 손가락으로 누르는 최소 높이 48 (WCAG 2.5.8 의 24 를 넉넉히 넘긴다) */
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --touch: 48px;
+  --shadow-sheet: 0 -8px 24px oklch(25% 0.02 255 / 0.12);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: oklch(19% 0.012 255);
+    --surface: oklch(23% 0.014 255);
+    --sunk: oklch(16% 0.011 255);
+    --line: oklch(33% 0.016 255);
+    --ink: oklch(94% 0.005 250);
+    --ink-2: oklch(77% 0.012 250);
+    --ink-3: oklch(64% 0.014 250);
+    --accent: oklch(72% 0.13 258);
+    --accent-soft: oklch(30% 0.06 258);
+    --on-accent: oklch(17% 0.02 258);
+    --ok: oklch(72% 0.11 160);
+    --ok-soft: oklch(29% 0.04 160);
+    --warn: oklch(72% 0.14 30);
+    --warn-soft: oklch(30% 0.05 30);
+    --device: oklch(10% 0.008 255);
+    --scrim: oklch(8% 0.008 255 / 0.6);
+    --shadow-sheet: 0 -8px 24px oklch(5% 0.008 255 / 0.5);
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --paper: oklch(19% 0.012 255);
+  --surface: oklch(23% 0.014 255);
+  --sunk: oklch(16% 0.011 255);
+  --line: oklch(33% 0.016 255);
+  --ink: oklch(94% 0.005 250);
+  --ink-2: oklch(77% 0.012 250);
+  --ink-3: oklch(64% 0.014 250);
+  --accent: oklch(72% 0.13 258);
+  --accent-soft: oklch(30% 0.06 258);
+  --on-accent: oklch(17% 0.02 258);
+  --ok: oklch(72% 0.11 160);
+  --ok-soft: oklch(29% 0.04 160);
+  --warn: oklch(72% 0.14 30);
+  --warn-soft: oklch(30% 0.05 30);
+  --device: oklch(10% 0.008 255);
+  --scrim: oklch(8% 0.008 255 / 0.6);
+  --shadow-sheet: 0 -8px 24px oklch(5% 0.008 255 / 0.5);
+  color-scheme: dark;
+}

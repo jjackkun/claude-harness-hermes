@@ -316,14 +316,15 @@ Claude 전용 `CLAUDE.md`, `.claude/settings.json` / `.claude/settings.local.jso
 
 `workflow/harness` 를 선택하면 프로젝트에 다음이 설치됩니다:
 
-- **스킬**: `harness-boundary-check`, `harness-reasoning-sandwich`, `harness-promote-rule`, `structured-file-layout`, `run-to-the-end`, `pre-commit-measure`
+- **스킬**: `harness-boundary-check`, `harness-reasoning-sandwich`, `harness-promote-rule`, `structured-file-layout`, `run-to-the-end`, `pre-commit-measure`, `ui-prototype`
+  - `ui-prototype` — 기획서·PRD·화면 흐름 문서에서 눌러 보는 시안을 만듭니다 (왼쪽 화면 목록 + 오른쪽 휴대폰·웹·태블릿·데스크톱 틀). 문서 → 시안 명세표(`spec.md`) 확정 → 시작 틀 복사 → `check_spec.py` 대조 → `build_single.py` 로 단일 HTML. 결과는 `docs/prototypes/<이름>/` 과 `<이름>.html`
 - **룰**: `harness` (코딩 규칙 전문)
 - **에이전트**: `architect-lite`, `devil-advocate`, `planner-lite`, `architect`, `planner`, `code-reviewer`, `silent-failure-hunter`, `tdd-guide`, `doc-updater`, `docs-lookup`, `performance-optimizer`, `refactor-cleaner`
 
 <!--===DS:COUNTS:BEGIN===-->
 - 세션 중 실행 훅 **16종** + 훅이 공유하는 판정 모듈 **15개**
 - git pre-commit 게이트 **22종** — 차단 12 / 경고 10
-- harness 프리셋이 까는 스킬 **6종** · 에이전트 **12종** · 공장 테스트 **139개**
+- harness 프리셋이 까는 스킬 **7종** · 에이전트 **12종** · 공장 테스트 **140개**
 <!--===DS:COUNTS:END===-->
 
 > 위 수치는 `assets/hooks/doc_counts.py` 가 소스에서 산출합니다. 손으로 고치지 마십시오 —
