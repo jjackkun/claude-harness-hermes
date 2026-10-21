@@ -621,7 +621,9 @@ fi
 # 근거: docs/exec-plans/completed/2026-09-28-carry-agent-knowledge.md 목표 8
 CHECK_PRIVACY="$(dirname "$0")/check-privacy.py"
 if [[ -f "$CHECK_PRIVACY" ]] && command -v python3 >/dev/null 2>&1; then
-  PRIVACY_OUT=$(python3 "$CHECK_PRIVACY" 2>&1); PRIVACY_RC=$?
+  # set -e 아래 맨 대입은 rc=1 에서 훅을 죽여 막힌 이유가 안 나온다(2026-10-21 출력 0바이트) — `|| PRIVACY_RC=$?` 로 받는다.
+  PRIVACY_RC=0
+  PRIVACY_OUT=$(python3 "$CHECK_PRIVACY" 2>&1) || PRIVACY_RC=$?
   if (( PRIVACY_RC == 1 )); then
     VIOLATIONS+=("
 $PRIVACY_OUT")

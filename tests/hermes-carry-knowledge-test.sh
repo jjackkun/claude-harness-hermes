@@ -153,6 +153,14 @@ N="$T/nodb"; mkdir -p "$N/.hermes/skills"; git -C "$N" init -q; printf 'x\n' > "
 assert "판정 표 없는 저장소 → 건너뜀(2)" 2 "$(rc_of "$N")"
 M="$T/none"; mkdir -p "$M"; git -C "$M" init -q; printf 'x\n' > "$M/a.txt"; git -C "$M" add a.txt
 assert "지식 파일이 스테이징 안 됐으면 → 통과" 0 "$(rc_of "$M")"
+# pre-commit 배선 — 판정기가 1 을 내면 이유를 찍고 막는다. `set -e` 아래 맨 대입은 rc=1 에서 훅을 죽여
+# 아무 출력 없이 막혔다(2026-10-21 전파 중 실측: 출력 0바이트).
+W="$T/wire"; mkdir -p "$W/hk"; git -C "$W" init -q; cp "$REPO_ROOT/assets/hooks/pre-commit.sh" "$W/hk/pre-commit"
+printf 'import sys\nprint("[R-privacy] 가짜 차단 사유")\nsys.exit(1)\n' > "$W/hk/check-privacy.py"
+printf 'x\n' > "$W/a.txt"; git -C "$W" add a.txt
+OUTW="$(cd "$W" && bash hk/pre-commit 2>&1)"; RCW=$?
+assert "pre-commit 이 R-privacy 로 막는다" 1 "$RCW"
+assert "pre-commit 이 막은 이유를 찍는다" 1 "$(grep -c 'R-privacy\] 가짜 차단 사유' <<<"$OUTW")"
 echo "== 4. git 설정 — .gitignore 예외 · merge=union"
 log_info() { :; }; log_warn() { :; }
 source "$REPO_ROOT/lib/harness_installers.sh" 2>/dev/null
