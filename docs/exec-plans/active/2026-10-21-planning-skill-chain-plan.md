@@ -8,7 +8,7 @@
 
 ## 0. 다음 세션 시작점
 
-**진행: G1~G7·G9·G10 완료 (2026-10-21). 남은 것: G8 사슬 배정 측정(사람이 터미널에서 한 줄) → 커밋 → G11 전파(지시 시).**
+**진행: G1~G10 완료 (G8 은 근거로 닫고 건너뜀, §7). 남은 것: G11 전파(지시 시).**
 
 실측 요약: 사슬 시험 44/44 · ui-prototype 40/40 · 프리셋 무결성 107 참조 · 전체 시험 145 중 143 → 실패 2(문서 수치·생성 CLAUDE.md 103줄, 둘 다 이번 변경) 고친 뒤 해당 시험 재실행 통과 · `update-all-roundtrip` 은 다른 세션과 겹친 흔들림(단독 35/35)
 
@@ -21,7 +21,7 @@
 | Step 4 idea-check | G4 | 완료 — 평가 100% vs 42%, 발동 오발동 0 · 재현 4/10 |
 | Step 5 intended-vs-implemented | G5 | 완료 — 평가 100% vs 70%, 발동 오발동 0 · 재현 5/10 |
 | Step 6 기존 자산 잇기 | G6 · G7 | 완료 — 사슬 평가: 수준 B 판정, 근거·requires 에 FR 16회. ui-prototype 시험 40/40, devil-advocate 62줄 |
-| Step 7 사슬 배정 측정 (사람이 터미널에서) | G8 | 시나리오 12개 작성·dry-run 확인, **실행 대기** |
+| Step 7 사슬 배정 측정 (사람이 터미널에서) | G8 | 건너뜀 (사용자 결정, §7) |
 | Step 8 출처·README·전체 시험 | G9 · G10 | 완료 — README·수치 동기화, 생성 CLAUDE.md 99줄(줄 합치기 + product-specs 목차 한 줄), 전체 시험 1회 |
 | Step 9 전파 (사용자 지시가 있을 때만) | G11 | 대기 |
 
@@ -61,7 +61,7 @@
       - `devil-advocate` 에 레드팀 절차("이러면 무너진다" → 영향×가능성×시험 비용 → 가장 싼 시험·중단 기준)
       - `docs-templates/docs/exec-plans/template.md` §2 에 "PRD 의 FR ID 를 적는다" 한 줄 (규칙 정의는 계약을 가리킴)
       검증: `wc -l assets/agents/devil-advocate.md` ≤ 80 (지금 48줄 + 절차 ≤ 32줄), G1 (e), ui-prototype 기존 시험 `bash tests/ui-prototype-build-test.sh` 40/40 유지
-- [ ] G8 — 사슬 배정 측정 (harness-eval, **사람이 세션 밖 터미널에서**): 자연어 12개를 `tests/agent-evals-chain/` 시나리오로 (`tests/agent-evals/` 는 시험이 7개로 단언하므로 따로 둠)
+- [x] G8 — **건너뜀(2026-10-21 사용자 결정 "G8 건너뛰어")** — 사슬 배정 측정 (harness-eval, **사람이 세션 밖 터미널에서**): 자연어 12개를 `tests/agent-evals-chain/` 시나리오로 (`tests/agent-evals/` 는 시험이 7개로 단언하므로 따로 둠)
       스킬 시나리오 8개(점검·PRD·시안·대조 × 2): `require_tool` = 기대 스킬(세션 안 어디든 — brainstorming 이 먼저 불려도 인정), `forbid_tool` = 다른 사슬 스킬
       오발동 시나리오 4개(계획 2·공격 2): `forbid_tool` = 사슬 스킬 넷 (devil-advocate 는 Agent 도구라 harness-eval 허용 도구 밖 — 호출 여부는 못 잼)
       합격: **오발동 시나리오 4/4 통과**, 스킬 시나리오 pass@3 ≥ 6/8 (원래 9/12 와 같은 75%). brainstorming 이 첫 호출인 비율은 기록만
@@ -256,6 +256,7 @@
 - **G8 1차 실행 (2026-10-21 09:50, 사용자 터미널, `.harness/evals/2026-10-21_095034.json`) — 무효**: 36회 중 22회가 `rc=1` "You've hit your session limit · resets 1:30pm" (구독 사용량 한도). 표의 pass@k 4/12 는 실행 실패를 불통과로 센 값이라 판정에 쓰지 않는다. 한도는 이 계획의 평가(실행 23개 + run_eval 120회)가 크게 썼을 가능성이 높다 — 다음부터 대량 평가 전에 호출 수를 먼저 알린다.
   - 유효 14회: chain-01 idea 2/3 · chain-02 idea 3/3 · chain-03 prd 0/3 · chain-04 prd 3/3 · chain-05 proto 2/2(유효분). **brainstorming 선점 0회 · 사슬 스킬 오발동 0회.**
   - chain-03 0/3 은 시나리오 결함 — 프롬프트가 말한 `docs/product/problem-statement.md` 가 픽스처에 없어 모델이 파일부터 찾았다. 문제를 프롬프트 안에 적도록 고침.
+- **G8 건너뜀 (2026-10-21, 사용자 결정)**: 재측정 36회(haiku)는 cost-guard 가 막으려는 "비싼 평가" 에 해당하고, 걱정한 위험(사슬 스킬 오발동)은 이미 두 측정에서 0 — run_eval 안 함 문장 60회 오발동 0 · G8 1차 유효 14회 오발동 0 · brainstorming 선점 0. 잃는 것: 시안·대조·공격 시나리오(06~12)의 발동 수치 없음 — 실사용에서 안 불리면 그때 description 을 고친다. 더 싼 판(빈칸 7개 × 1회 = 7회)도 제시했으나 건너뛰기로 정함.
   - 남은 측정: 한도 초기화 뒤 `--only chain-03-prd,chain-05-proto,…,chain-12-attack` 로 측정 안 된 것만 다시.
 - R-agent 훅이 평가 실행 dispatch 에 fullstack-developer 를 권했으나 따르지 않음 — 평가 실행은 일부러 성향 없는 general-purpose 여야 한다.
 - `tests/harness-eval-test.sh` 가 `tests/agent-evals/` 를 7개로 단언 → 사슬 시나리오는 `tests/agent-evals-chain/` 에.
