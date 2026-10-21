@@ -5,7 +5,8 @@
 (creation-and-organization.md §1: 개인은 "소환될 때마다 폴더를 읽고 출근". 파일에 굳히면 기억이 낡는다).
   만든다   slug 가 있고 은퇴하지 않은 에이전트
   지운다   은퇴자 · 명부에 없는 slug 의 생성물(고아). 표지(MARKER) 없는 파일은 사람 것이라 건드리지 않는다
-도구·모델은 입사 템플릿(역할 템플릿)에서 물려받되, Claude Code 가 모르는 값이면 칸을 비운다(= 부모 설정 상속).
+도구·모델은 입사 템플릿(역할 템플릿)에서 물려받는다. Claude Code 가 모르는 값이면 도구는 칸을 비우고(= 부모 설정 상속),
+모델은 기본 sonnet 을 쓴다(부모 모델 상속을 cost-guard 가 막기 때문).
 계획: docs/exec-plans/active/2026-09-28-agent-mention-bridge.md 목표 2
 
 공개: MARKER · render_mention_file · sync_mention_files
@@ -22,6 +23,9 @@ _AGENTS_DIR = os.path.join(".claude", "agents")
 _TOOLS = frozenset({"Read", "Write", "Edit", "MultiEdit", "Grep", "Glob", "Bash", "WebFetch", "WebSearch",
                     "NotebookEdit", "TodoWrite", "Agent", "Task"})
 _MODELS = frozenset({"sonnet", "opus", "haiku", "inherit"})
+# 템플릿이 모델을 안 정하면 이 값을 쓴다. 비워 두면 부모 모델(가장 비싼 쪽)을 물려받고,
+# cost-guard(R-cost G2)가 모델 없는 dispatch 를 막는다 — 일반 작업 기본은 sonnet (계획 2026-10-21-cost-guard).
+_DEFAULT_MODEL = "sonnet"
 
 
 def _template_fields(project: str, agent: dict) -> dict:
@@ -50,7 +54,9 @@ def render_mention_file(project: str, agent: dict) -> str:
     # 명부 이름은 자유 글자다 — 그대로 넣으면 줄바꿈으로 frontmatter 에 tools: 같은 키를 끼워 넣을 수 있다.
     # JSON 문자열은 YAML 큰따옴표 스칼라로도 유효하다: 줄바꿈·따옴표가 이스케이프되어 한 값에 갇힌다.
     lines = ["---", f"name: {agent['slug']}", f"description: {json.dumps(desc, ensure_ascii=False)}"]
-    lines += [f"{k}: {v}" for k, v in _template_fields(project, agent).items()]
+    fields = {**_template_fields(project, agent)}
+    fields.setdefault("model", _DEFAULT_MODEL)
+    lines += [f"{k}: {v}" for k, v in fields.items()]
     lines += ["---",
               f"<!-- {MARKER}: 생성물 — 손으로 고치지 말 것. 원본 .hermes/agents.json "
               "(python3 scripts/hermes-agent.py sync-mention-files) -->",
