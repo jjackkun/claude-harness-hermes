@@ -280,6 +280,7 @@ if [[ -n "$PY_OWN_FILES" ]]; then
     # 조용히 건너뛰지 않는다 — 판정 불가를 통과처럼 보이게 하면 "게이트가 돌았다" 고 착각한다(2026-09-20: 이 줄이 없어 스모크 테스트가 09-08 부터 빨갰다).
     WARNINGS+=("
 [R-test] 건너뜀 — pytest 또는 테스트 디렉터리(tests · backend/tests)가 없다. 이번 커밋의 파이썬 변경은 검증되지 않았다.
+  → pytest 가 없어서라면 이 프로젝트 안에만 깐다: python3 -m venv .venv && .venv/bin/python -m pip install pytest. 전역 설치(sudo apt·pip --user) 금지 — 다른 프로젝트에 영향.
   근거: docs/design-docs/core-beliefs.md#r-test")
   fi
   if [[ -n "$PYTEST_DIR" ]] && [[ -n "$PYTEST_BIN" ]]; then
@@ -293,6 +294,7 @@ if [[ -n "$PY_OWN_FILES" ]]; then
       WARNINGS+=("
 [R-test] pytest 실행 불가 — 이번 커밋의 파이썬 변경은 검증되지 않았다.
   \$($PYTEST_BIN --version) 이 실패한다. 설치가 깨졌거나 인터프리터가 바뀌었다.
+  → 이 프로젝트 가상환경에 다시 깐다: <가상환경>/bin/python -m pip install pytest (update-all 재설치도 같은 일을 한다). 전역 설치(sudo apt·pip --user) 금지 — 다른 프로젝트에 영향.
   근거: docs/design-docs/core-beliefs.md#r-test")
       # 화면에는 경고로 뜨지만 성질은 **판정 불가**다. 도구가 못 뜬 것을 통과로도
       # 발화로도 세면 안 된다.

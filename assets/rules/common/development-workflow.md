@@ -42,3 +42,15 @@ The Feature Implementation Workflow describes a lightweight pipeline: research, 
    - Resolve any merge conflicts
    - Ensure branch is up to date with target branch
    - Only request review after these checks pass
+
+## Install Scope — 설치는 그 프로젝트 안에만
+
+Tools and libraries are installed **inside the project**, never globally — a global install silently changes every other project on the machine.
+
+- **Python**: the project's virtualenv (`.venv` / `backend/.venv` / existing `venv`). `<venv>/bin/python -m pip install <pkg>`.
+- **Node**: the lockfile's package manager as a devDependency (`npm i -D` / `pnpm add -D` / `yarn add -D`).
+- **Never propose first**: `sudo apt-get install python3-*`, `pip install --user`, `npm i -g`, `pipx`/system-wide installs.
+- If a global install is truly unavoidable (OS-level tool such as `git`, `python3` itself): first list which projects it would affect, then offer it as one option — do not run it.
+- Do not delete user files left by old global installs (e.g. a broken `~/.local/bin/pytest`) — report the path only.
+
+Enforcement: the harness installer puts R-test's pytest into the project virtualenv only (`lib/tool_install_pytest.sh`, test `tests/tool-installers-test.sh` asserts zero sudo/apt calls).
