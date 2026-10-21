@@ -764,6 +764,7 @@ CI(`.github/workflows/ci.yml`)는 push/PR 마다 `SKIP_INTERACTIVE=1 bash tests/
 - `python3` (`generate_settings.py`, 헤르메스 스크립트 사용)
 - `fzf` — `setup.sh` 실행 시 없으면 자동 설치
 - `jq` — 헤르메스 Stop Hook 에서 transcript JSON 파싱 시 사용
+- `pytest` — R-test 게이트용. harness 프리셋이 선언해 설치·`update-all` 때 **그 프로젝트의 가상환경에만** 자동 설치합니다(전역·sudo 사용 안 함). R-test 와 같은 순서(`backend/.venv → backend/venv → .venv → venv`)로 가상환경을 찾아 그 안에 `pytest==9.1.1` 을 넣고, 없으면 `.venv` 를 만듭니다(`.venv/` 는 무시 목록에 추가). 파이썬 시험이 없는 프로젝트는 건너뜁니다. 실행이 안 되는(깨진) pytest 는 없는 것으로 봅니다
 - 프리셋이 사용하는 외부 도구들(ruff, prettier, mvn, gradlew 등)은 **있으면 사용하고 없으면 조용히 건너뜁니다**
 
 ## 주의

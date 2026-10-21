@@ -7,7 +7,8 @@
 # 계획: docs/exec-plans/active/2026-09-19-agent-memory-roundtrip.md 목표 8
 
 _TOOL_BIN_DIR="${HARNESS_TOOL_BIN_DIR:-$HOME/.local/bin}"
-TOOLS_INSTALLED=(); TOOLS_PRESENT=(); TOOLS_FAILED=()
+TOOLS_INSTALLED=(); TOOLS_PRESENT=(); TOOLS_FAILED=(); TOOLS_SKIPPED=()
+source "$(dirname "${BASH_SOURCE[0]}")/tool_install_pytest.sh"   # pytest — 컴퓨터가 아니라 프로젝트 가상환경에 깐다
 
 # age — https://github.com/FiloSottile/age (FiloSottile 배포 tar.gz, 2026-09-20 실측 sha256)
 _AGE_VERSION="v1.3.2"
@@ -79,6 +80,11 @@ tool_install_required() {
   if [[ "${HARNESS_TOOL_INSTALL:-1}" == "0" ]]; then log_info "Required tools: 설치 생략(HARNESS_TOOL_INSTALL=0) — ${REQUIRED_BINS[*]}"; return 0; fi
   log_info "Checking required tools… (${REQUIRED_BINS[*]})"
   for bin in "${REQUIRED_BINS[@]}"; do
+    if [[ "$bin" == pytest ]]; then
+      _pytest_ensure "$1"
+      case "$_PYTEST_RESULT" in present) TOOLS_PRESENT+=("$bin") ;; installed) TOOLS_INSTALLED+=("$bin") ;; skipped) TOOLS_SKIPPED+=("$bin") ;; *) TOOLS_FAILED+=("$bin") ;; esac
+      continue
+    fi
     if command -v "$bin" >/dev/null 2>&1 || [[ -x "$_TOOL_BIN_DIR/$bin" ]]; then
       TOOLS_PRESENT+=("$bin"); continue
     fi
@@ -97,5 +103,5 @@ tool_install_required() {
 # 요약 한 줄 (설치 로그 끝에)
 tool_status_line() {
   [[ ${#REQUIRED_BINS[@]} -gt 0 ]] || return 0
-  echo "Tools (${#REQUIRED_BINS[@]}): present=${TOOLS_PRESENT[*]:-<none>} installed=${TOOLS_INSTALLED[*]:-<none>} failed=${TOOLS_FAILED[*]:-<none>}"
+  echo "Tools (${#REQUIRED_BINS[@]}): present=${TOOLS_PRESENT[*]:-<none>} installed=${TOOLS_INSTALLED[*]:-<none>} failed=${TOOLS_FAILED[*]:-<none>}${TOOLS_SKIPPED[*]:+ skipped=${TOOLS_SKIPPED[*]}}"
 }
