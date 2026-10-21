@@ -18,8 +18,8 @@
       `bash tests/gitignore-block-test.sh` (기존 시험에 사례 추가 — 이름은 착수 때 확인)
 - [x] G4 — pre-commit R-test 는 지금처럼 프로젝트 가상환경 pytest 를 먼저 쓴다(`pytest_gate.sh` `PYTEST_VENV_DIRS`). 가상환경도 시스템 pytest 도 없을 때의 안내 문구가 전역 설치가 아니라 프로젝트 가상환경 설치를 권한다.
       `grep -n 'venv' assets/hooks/pytest_gate.sh assets/hooks/pre-commit.sh`
-- [ ] G5 — `update-all` 로 전파되어 소우주 `.claude/rules/common/` 에 원칙이 깔린다 (`common` 은 모든 프리셋 공통).
-      `bash update-all.sh --dry-run` 또는 전파 시험 (착수 때 확인)
+- [x] G5 — `update-all` 로 전파되어 원칙이 모든 소우주에 적용된다. **경로 정정(2026-10-21 실측)**: `common` 규칙은 소우주가 아니라 사용자 전역 `~/.claude/rules/common/` 에 하나만 깔린다(`presets/_common.conf:57` `RULES+=(common)` → `public-claude.sh:136` `install_rules "$CLAUDE_DIR"`). 소우주 `.claude/rules/` 에는 프리셋 규칙(harness·python 등)만 있어 원래 문구의 경로는 생기지 않는다.
+      `grep -c 'Install Scope' ~/.claude/rules/common/development-workflow.md && cmp ~/.claude/rules/common/development-workflow.md assets/rules/common/development-workflow.md` → 1 · 같음
 - [ ] G6 — 공장 시험 전부 초록, 공장 README·CLAUDE.md 개수 표기와 맞음.
       `bash tests/run-all.sh` (이름은 착수 때 확인)
 
@@ -69,6 +69,9 @@
 - 2026-10-21: jj-agent-room·Nbbang-Run 은 파이썬 시험이 없어 설치기가 건너뛰므로, 사용자 지시로 각 `.venv` 에 pytest 9.1.1 을 손으로 깔았다(전역 무변화 확인).
 
 ## 7. 발견·예외
+
+- 2026-10-21 G5 확인(cost-guard 전파 update-all 에 4fe90cd 가 함께 실림): 전역 `~/.claude/rules/common/development-workflow.md` 갱신 11:16, `Install Scope` 1회, 원본과 같음. 소우주 12곳 `.claude/rules/common/` 은 없음 — 설치 구조상 정상. 다른 컴퓨터는 그 컴퓨터에서 update-all 을 돌려야 전역이 갱신된다.
+- 2026-10-21 전파 중 `_pytest_venv_of` 결함 발견·수정(4d3c13b) — 가상환경이 없고 파이썬 시험이 있는 소우주(zeroday-frontend)에서 `set -e` 설치기가 조용히 종료. 기록: `docs/exec-plans/completed/2026-10-21-cost-guard-plan.md` §7.
 
 - 2026-10-21: 진행 중 계획 `2026-10-21-pytest-required-bin.md` 의 방향(전역 apt 자동 설치)이 이 원칙과 충돌 — Step 0 에서 사용자 확인 필요. 그 계획의 G5("깨진 pytest 는 지우지 않고 경로만 알림")·실행 성공 판정(G2)은 이 원칙과도 맞아 재사용할 수 있다.
 
