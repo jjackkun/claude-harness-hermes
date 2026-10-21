@@ -7,7 +7,7 @@
 
 ## 0. 다음 세션 시작점
 
-**진행: Step 1~6 완료(G1~G8), 시험 53/53, code-reviewer 지적 반영(§9-bis). 남은 것: G9 전파 — 사용자 지시 시.**
+**완료: G1~G9. 전파 11곳(커밋·푸시 10 + zeroday 설치만). §7·§8.**
 
 | 단계 | 목표 | 상태 |
 | --- | --- | --- |
@@ -18,7 +18,7 @@
 | Step 4 G3 세션 누적 수 | G3 | 완료 |
 | Step 5 규칙·양식 | G4 · G5 · G6 | 완료 |
 | Step 6 수치·전체 시험 1회 | G8 | 완료 (146 중 143 → 실패 3 처리, §7) |
-| Step 7 전파 (지시 시) | G9 | 대기 |
+| Step 7 전파 (지시 시) | G9 | 완료 (2026-10-21) |
 
 ## 1. 동기 (Why)
 
@@ -50,7 +50,7 @@
 - [x] G7 — **앞으로 들어올 에이전트 정의도 모델을 갖는다**: `cost-guard-test.sh` 가 `assets/agents/*.md` 전부에 `^model:` 이 있는지 단언 (지금 16/16 — §2-bis)
 - [x] G8 — 등록·수치·전체 시험: `harness.conf` 설치 목록(75행 근처)에 훅·판정 모듈, `PRE_TOOL_USE_HOOKS`(141·142행 근처)에 `Bash::` · `Task|Agent::` 두 줄. 설치한 임시 프로젝트의 `.claude/settings.json` 에 두 matcher 가 있다. 생성 CLAUDE.md ≤ 100줄(새 안내 문구는 CLAUDE.md 가 아니라 규칙 파일에만, 수치 줄은 값만 바뀜)
       `bash tests/cost-guard-test.sh && bash tests/run-all.sh --check-orphans && bash tests/run-all.sh` · `wc -l <설치본>/CLAUDE.md`
-- [ ] G9 — (사용자 지시가 있을 때만) 전파
+- [x] G9 — (사용자 지시가 있을 때만) 전파 — 2026-10-21 "전파하자"
 
 ## 2-bis. 착수 전 확인한 사실 (2026-10-21)
 
@@ -143,7 +143,16 @@
 - 2026-10-21 실제 에이전트 13개로 G2 확인: 정의에 `model:` 있는 프로젝트·플러그인 에이전트 전부 통과, `hookify:conversation-analyzer` 는 `inherit` 로 통과. 막히는 것: 내장(general-purpose·Explore·claude-code-guide·statusline-setup)과 **명부 에이전트 `backlog-manager`** — 생성기 `scripts/hermes_mention_file.py:39` 가 역할 템플릿에 모델이 없으면 칸을 비운다(= 부모 상속). G2 가 막으려는 바로 그 경우다. → 사용자 결정(2026-10-21 "기본 sonnet 으로 해"): 생성기가 템플릿에 모델이 없거나 모르는 값이면 `model: sonnet` 을 쓴다(`_DEFAULT_MODEL`). `hermes-agent-mention-test.sh` 빨강 2 → 87/87, 머리말 주입 단언은 줄 수 대신 키 목록(`name description model`)으로. 공장 `sync-mention-files` 로 `backlog-manager.md` 에 `model: sonnet` → 훅 통과 확인. 다른 소우주의 명부 파일은 전파(G9) 때 다시 만들어진다.
 - 2026-10-21 리뷰 반영 후 R-cx: `_wrapper_width` 12 → 함수 분리로 최대 11.
 
+- 2026-10-21 전파(G9): 사용자 결정 "cost-guard 만" — 미커밋 기획 사슬 작업 중 설치에 닿는 경로(assets 스킬·에이전트·양식, harness.conf)만 `git stash push -u -- <경로>` 로 빼고 update-all, 끝나고 pop. 공장 푸시(af007ba·7f972b2 + 이전 세션 2건).
+  - 등록부에 시험 잔재 경로 `…/jobs/71400f1a/tmp/cmd` 한 줄 → 뺌(12곳).
+  - update-all 11 성공 · zeroday-frontend 실패 → 원인: `_pytest_venv_of` 가 못 찾으면 rc 1, `set -euo pipefail` 설치기가 조용히 종료(4b6b261 결함). 시험 [8b] 빨강 확인 후 `return 0` 으로 고침(4d3c13b), zeroday 는 끊긴 도구 단계만 마저(pytest → .venv).
+  - stash 대상에서 CLAUDE.md 를 빠뜨려 설치가 공장 CLAUDE.md 를 HEAD 기준으로 다시 씀 → 기획 사슬이 가졌던 차이는 수치 두 개뿐이라 `sync-doc-counts.sh CLAUDE.md` 로 복원. 덤으로 af007ba 에서 빠뜨린 skill-dev 생성 줄이 채워져 공장 자기 설치 커밋(8065f04)에 넣음.
+  - 소우주 10곳: 영수증 + 설치 목록 경로만 커밋·푸시 — novel-ab 7596625 · novel-bc 51cb454 · rim-kanban 2aabc8c · jjackkun_bot f3321e7 · upbit-ai-trading 8831553 · terminal-shipping 0bdc2b27(Node v22.23.3) · kis-trading 281774d · jj-agent-room 104887b · drh-cloth-shop 9f19e29 · Nbbang-Run fff17bf. 확인: 10곳 HEAD 에 훅 1 · settings 등록 2 · 기획 스킬 0 · 미푸시 0. zeroday-frontend 는 설치만(기억된 예외).
+
 ## 8. 회고 (완료 시 작성)
+
+- **전파**: 작업 폴더에서 설치하는 구조라, 미커밋 작업이 있으면 "무엇이 퍼지나" 를 먼저 물어야 한다 — 이번엔 물었고 stash 로 갈랐다. 다만 stash 경로를 고를 때 **설치가 다시 쓰는 생성물(CLAUDE.md)** 을 빠뜨렸다. 다음엔 생성물도 대상에 넣는다.
+- **시험이 결함을 숨긴 두 번**: 설치기 시험 [8] 은 실제 설치기와 달리 `set -e` 없이 돌았고, 새로 쓴 [8b] 첫 판은 `|| true` 가 안쪽 `set -e` 를 꺼서 초록이었다. 둘 다 "실제와 같은 모드에서 빨강을 먼저 본다" 로 잡았다.
 
 - **잘된 것**: Step 1 실측을 공식 문서로 닫아 설계가 줄었다 — `-p` 에서 ask 가 자동 거부되고 결정이 `deny > ask` 로 합쳐진다는 두 문장으로 헤드리스 판별·훅 병합 걱정이 모두 사라졌다. 빨강(18/37) → 초록 순서를 지켰고, 고친 시험(`gate-instrumentation`)은 일부러 깨 봐서 여전히 잡는지 확인했다.
 - **놓친 것**: 분류기 첫 판은 제어 구문·`$()`·`-lc`·`uv run` 등 12가지를 놓쳤고, 에이전트 탐색은 파일 이름만 봐서 하위 폴더·`name:` 불일치 정의를 잘못 막았다. 둘 다 리뷰어 1회(Sonnet, 약 6만 토큰)가 실제 입력으로 잡았다 — **모든 소우주의 Agent 호출을 막을 수 있는 훅은 리뷰가 값을 한다.**
