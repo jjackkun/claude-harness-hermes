@@ -1,0 +1,31 @@
+{
+ "id": "chain-03-prd",
+ "rule": "사슬 배정 — prd-writer (ETA 추적)",
+ "prompts": {
+  "supportive": "prd-writer 스킬로 진행해 줘. 운송사 실무자가 이트랜스와 터미널 사이트의 접안예정일이 6일씩 달라서 반입을 못 하고 보관료를 문다는 문제가 있어. 이걸로 ETA 추적 첫 버전 PRD 써 줘",
+  "neutral": "운송사 실무자가 이트랜스와 터미널 사이트의 접안예정일이 6일씩 달라서 반입을 못 하고 보관료를 문다는 문제가 있어. 이걸로 ETA 추적 첫 버전 PRD 써 줘",
+  "competing": "아이디어 브레인스토밍부터 같이 해 보자. 운송사 실무자가 이트랜스와 터미널 사이트의 접안예정일이 6일씩 달라서 반입을 못 하고 보관료를 문다는 문제가 있어. 이걸로 ETA 추적 첫 버전 PRD 써 줘"
+ },
+ "expect": {
+  "forbid_tool": [
+   {
+    "tool": "Skill",
+    "input_regex": "(^|\\s)(\\S+:)?idea\\-check(\\s|$)"
+   },
+   {
+    "tool": "Skill",
+    "input_regex": "(^|\\s)(\\S+:)?ui\\-prototype(\\s|$)"
+   },
+   {
+    "tool": "Skill",
+    "input_regex": "(^|\\s)(\\S+:)?intended\\-vs\\-implemented(\\s|$)"
+   }
+  ],
+  "require_tool": [
+   {
+    "tool": "Skill",
+    "input_regex": "(^|\\s)(\\S+:)?prd\\-writer(\\s|$)"
+   }
+  ]
+ }
+}

@@ -1,0 +1,22 @@
+[
+ {"query": "terminal-shipping 에 문제 정의서(docs/product/problem-statement.md)만 있거든. ETA 추적 첫 버전 PRD 좀 써 줘", "should_trigger": true},
+ {"query": "idea-check 돌려서 brief.md 나왔어. docs/product-specs/tool-rental/brief.md 보고 기획서로 정리해 줘", "should_trigger": true},
+ {"query": "공구 대여 앱 요구사항 정리하자. 회원가입, 대여 예약, 반납 알림 정도 생각 중인데 요구마다 어떻게 확인할지도 같이 적어 줘", "should_trigger": true},
+ {"query": "zeroday-frontend docs/prd/ 에 있는 화면 기획서 다듬어 줘. 범위랑 비범위가 섞여 있어서 읽기 힘들어", "should_trigger": true},
+ {"query": "이 기능 명세 써 줘: 관리자가 주문을 일괄 취소하면 고객한테 환불 알림이 가는 거", "should_trigger": true},
+ {"query": "PRD 검토해 줘. docs/product-specs/eta-tracking/prd.md 인데 빠진 거 있는지 봐 줘", "should_trigger": true},
+ {"query": "Nbbang-Run 정산 기능 기획서 새로 써야 돼. 지난번 화면 흐름 문서는 design-docs 에 있어", "should_trigger": true},
+ {"query": "아이디어 메모만 있는데 이걸 개발 맡길 수 있는 문서로 만들어 줘. 반려식물 물 주기 알림 앱이고 나 혼자 쓸 거야", "should_trigger": true},
+ {"query": "prd.md 에 FR-3 지웠던 거 다시 살리고 새 요구 하나 추가해 줘. 번호 꼬이지 않게", "should_trigger": true},
+ {"query": "kis-trading 자동매매 첫 버전 기획 문서 만들자. 목표 지표랑 하지 않을 것도 분명히", "should_trigger": true},
+ {"query": "PRD 다 됐으니까 이걸로 눌러 볼 수 있는 화면 시안 만들어 줘", "should_trigger": false},
+ {"query": "PRD 의 FR-1~FR-5 를 구현하는 단계별 계획 세워 줘. 어떤 파일을 어떤 순서로 고칠지", "should_trigger": false},
+ {"query": "이 앱 아이디어 만들 가치가 있는지 냉정하게 따져 봐 줘. 아직 아무것도 안 정했어", "should_trigger": false},
+ {"query": "PRD 랑 실제 코드가 맞는지 대조해 줘. 요구사항 다 구현됐나 보고 싶어", "should_trigger": false},
+ {"query": "README 에 설치 방법 절 하나 추가해 줘", "should_trigger": false},
+ {"query": "로그인 기능 만들기로 했는데 어떤 방식이 좋을지 같이 아이디어 좀 내 보자", "should_trigger": false},
+ {"query": "docs/design-docs 에 인증 토큰 갱신 방식 설계 결정 기록 남겨 줘. 왜 refresh 토큰을 쓰기로 했는지", "should_trigger": false},
+ {"query": "투자자 발표용 슬라이드 10장 만들어 줘", "should_trigger": false},
+ {"query": "check_prd.py 가 표 두 개를 섞어 읽는 버그 고쳐 줘", "should_trigger": false},
+ {"query": "어제 회의 메모 요약해서 액션 아이템만 뽑아 줘", "should_trigger": false}
+]

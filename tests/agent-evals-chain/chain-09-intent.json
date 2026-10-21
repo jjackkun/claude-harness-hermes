@@ -1,0 +1,31 @@
+{
+ "id": "chain-09-intent",
+ "rule": "사슬 배정 — intended-vs-implemented (ETA 추적)",
+ "prompts": {
+  "supportive": "intended-vs-implemented 스킬로 진행해 줘. 구현 끝났어. 기획대로 됐는지 PRD 랑 코드 맞춰 봐",
+  "neutral": "구현 끝났어. 기획대로 됐는지 PRD 랑 코드 맞춰 봐",
+  "competing": "아이디어 브레인스토밍부터 같이 해 보자. 구현 끝났어. 기획대로 됐는지 PRD 랑 코드 맞춰 봐"
+ },
+ "expect": {
+  "forbid_tool": [
+   {
+    "tool": "Skill",
+    "input_regex": "(^|\\s)(\\S+:)?idea\\-check(\\s|$)"
+   },
+   {
+    "tool": "Skill",
+    "input_regex": "(^|\\s)(\\S+:)?prd\\-writer(\\s|$)"
+   },
+   {
+    "tool": "Skill",
+    "input_regex": "(^|\\s)(\\S+:)?ui\\-prototype(\\s|$)"
+   }
+  ],
+  "require_tool": [
+   {
+    "tool": "Skill",
+    "input_regex": "(^|\\s)(\\S+:)?intended\\-vs\\-implemented(\\s|$)"
+   }
+  ]
+ }
+}

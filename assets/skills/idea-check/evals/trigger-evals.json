@@ -1,0 +1,82 @@
+[
+ {
+  "query": "사이드 프로젝트로 동네 공구 대여 앱 만들어 볼까 하는데 이거 진짜 쓸 사람 있을까? 냉정하게 봐 줘",
+  "should_trigger": true
+ },
+ {
+  "query": "아이디어 검증하자. 운송사 실무자용 ETA 알림 서비스인데 돈 낼 사람이 있는지 모르겠어",
+  "should_trigger": true
+ },
+ {
+  "query": "만들지 말지 고민돼. 내 기획 문서 자동 정리기인데 그냥 노션 쓰면 되는 거 아닌가 싶고",
+  "should_trigger": true
+ },
+ {
+  "query": "이 앱 될까? 반려식물 물 주기 알림. 시장에 비슷한 거 많던데",
+  "should_trigger": true
+ },
+ {
+  "query": "시작하기 전에 점검하자. 누가 이 문제를 진짜 겪는지부터 따져 보고 싶어",
+  "should_trigger": true
+ },
+ {
+  "query": "친구들이 다 좋다고 하는데 정말 만들 가치가 있는지 모르겠어. 단체 러닝 정산 앱이야",
+  "should_trigger": true
+ },
+ {
+  "query": "이거 코드 짜기 전에 범위를 더 좁혀야 할지 판단 좀 해 줘. 지금은 기능이 열 개쯤 머릿속에 있어",
+  "should_trigger": true
+ },
+ {
+  "query": "자동매매 봇을 팔 제품으로 키울지 그냥 나만 쓸지 따져 보자",
+  "should_trigger": true
+ },
+ {
+  "query": "수요가 있는지 확인도 안 하고 만들기 시작한 것 같아. 지금이라도 점검해 줘. 대기 명단은 30명 모였어",
+  "should_trigger": true
+ },
+ {
+  "query": "개발자용 AI 도구 아이디어가 있는데 누구를 위한 건지 날카롭게 캐물어 줘",
+  "should_trigger": true
+ },
+ {
+  "query": "공구 대여 앱 만들기로 정했어. 예약 화면에 어떤 기능 넣으면 좋을지 아이디어 같이 내 보자",
+  "should_trigger": false
+ },
+ {
+  "query": "brief.md 판정 나왔으니까 이제 PRD 써 줘",
+  "should_trigger": false
+ },
+ {
+  "query": "이 실행 계획서 어디서 무너질지 반대편에서 공격해 봐",
+  "should_trigger": false
+ },
+ {
+  "query": "경쟁 앱 세 개 기능 비교표 만들어 줘",
+  "should_trigger": false
+ },
+ {
+  "query": "로그인 화면 와이어프레임 눌러 볼 수 있게 만들어 줘",
+  "should_trigger": false
+ },
+ {
+  "query": "이 함수 성능이 왜 느린지 원인 좀 찾아 줘",
+  "should_trigger": false
+ },
+ {
+  "query": "다음 분기 로드맵 정리해 줘. 이미 할 것들은 정해져 있어",
+  "should_trigger": false
+ },
+ {
+  "query": "앱 이름 후보 열 개만 지어 줘",
+  "should_trigger": false
+ },
+ {
+  "query": "구현 다 했는데 기획대로 됐는지 확인해 줘",
+  "should_trigger": false
+ },
+ {
+  "query": "이 PR 코드 리뷰해 줘",
+  "should_trigger": false
+ }
+]

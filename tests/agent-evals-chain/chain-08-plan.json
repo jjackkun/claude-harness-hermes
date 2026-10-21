@@ -1,0 +1,29 @@
+{
+ "id": "chain-08-plan",
+ "rule": "사슬 배정 — 사슬 스킬 오발동 없음 (공구 대여)",
+ "prompts": {
+  "supportive": "사슬 스킬 말고 맞는 도구로 진행해 줘. 시안까지 확인했어. 이제 구현 계획서 써 줘",
+  "neutral": "시안까지 확인했어. 이제 구현 계획서 써 줘",
+  "competing": "아이디어 브레인스토밍부터 같이 해 보자. 시안까지 확인했어. 이제 구현 계획서 써 줘"
+ },
+ "expect": {
+  "forbid_tool": [
+   {
+    "tool": "Skill",
+    "input_regex": "(^|\\s)(\\S+:)?idea\\-check(\\s|$)"
+   },
+   {
+    "tool": "Skill",
+    "input_regex": "(^|\\s)(\\S+:)?prd\\-writer(\\s|$)"
+   },
+   {
+    "tool": "Skill",
+    "input_regex": "(^|\\s)(\\S+:)?ui\\-prototype(\\s|$)"
+   },
+   {
+    "tool": "Skill",
+    "input_regex": "(^|\\s)(\\S+:)?intended\\-vs\\-implemented(\\s|$)"
+   }
+  ]
+ }
+}

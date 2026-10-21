@@ -1,0 +1,37 @@
+{
+  "skill_name": "intended-vs-implemented",
+  "evals": [
+    {
+      "id": 1,
+      "name": "prd-vs-mutated-checker",
+      "prompt": "docs/product-specs/planning-chain/prd.md 기획대로 scripts/check_prd.py 가 동작하는지 PRD 랑 코드 맞춰 봐.",
+      "expected_output": "FR-2(빈 검증 칸을 실패로 잡음)가 강제되지 않음을 문서 인용 + 파일:줄 로 보고, 감사 문서 작성",
+      "files": [
+        "inputs/mutated-checker"
+      ],
+      "assertions": [
+        "docs/audits/ 아래 intent-check 감사 문서가 생겼다",
+        "FR-2 를 어긋남 또는 강제 없음으로 판정했다",
+        "FR-2 발견이 PRD 문장 인용과 check_prd.py 의 파일:줄 을 함께 댄다",
+        "이 저장소에 없는 코드가 필요한 주장(FR-1·FR-3)을 일치로 단정하지 않았다",
+        "폐기된 FR-4 를 대조 대상에서 뺐다"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "plan-goals-vs-installer",
+      "prompt": "docs/exec-plans/active/2026-10-21-product-specs-folder.md 의 §2 목표가 lib/harness_installers.sh 에서 실제로 강제되는지 대조해 줘.",
+      "expected_output": "G2·G3 는 일치(파일:줄), G1 은 *.tmpl·*.md 만 복사해 .gitkeep 같은 다른 파일은 빠진다는 점을 짚음, 없는 틈을 지어내지 않음",
+      "files": [
+        "inputs/installer-claim"
+      ],
+      "assertions": [
+        "docs/audits/ 아래 intent-check 감사 문서가 생겼다",
+        "G3 판정에서 HARNESS_DOCS_TEMPLATES 검사 줄을 파일:줄 로 대고 산술 비교 동작(01 등)을 다룬다 [원 단언 \"G3 일치\" 는 실제 코드와 달라 고침]",
+        "G2 를 일치로 판정하고 기존 파일 보존과 core-beliefs 마커 처리 줄을 댄다",
+        "G1 에서 *.tmpl·*.md 만 복사한다는 제한(.gitkeep 등 누락)을 짚는다",
+        "문서에 없는 의도를 지어내 결함을 만들지 않았다"
+      ]
+    }
+  ]
+}

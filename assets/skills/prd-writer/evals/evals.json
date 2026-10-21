@@ -1,0 +1,48 @@
+{
+  "skill_name": "prd-writer",
+  "evals": [
+    {
+      "id": 1,
+      "name": "brief-to-prd",
+      "prompt": "docs/product-specs/planning-chain/brief.md 에 점검 결과 써 놨어. 이걸로 PRD 써 줘. 이름은 planning-chain 그대로 가고, 따로 확인 안 받아도 돼.",
+      "expected_output": "docs/product-specs/planning-chain/prd.md 생성, 계약 검사 통과, brief 의 문제·대상·좁은 시작점·대안·가정을 이어받고, brief 에 없는 숫자는 가정으로만",
+      "files": ["inputs/brief-case"],
+      "assertions": [
+        "docs/product-specs/planning-chain/prd.md 가 생겼다",
+        "check_prd.py 종료 0",
+        "brief 의 '가장 좁은 시작점'(PRD 한 장 + 시안 스킬이 먼저 읽기)이 범위나 요구에 반영됐다",
+        "brief 의 가정(전역 brainstorming 선점)이 가정·열린 질문 절에 남았다",
+        "비범위 절에 brief 대안 1(외부 저장소 통설치)이 들어 있다",
+        "요구사항 표의 유효 행마다 검증 칸이 '누가 무엇을 하면 무엇이 보인다' 형태로 구체적이다"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "legacy-doc-no-questions",
+      "prompt": "terminal-shipping 프로젝트야. docs/product/problem-statement.md 에 문제 정의만 있고 PRD 는 아직 없어. ETA 추적 첫 버전 PRD 써 줘. 이름은 eta-tracking. 나한테 질문하지 말고 모르는 건 가정으로 표시하고 그냥 써.",
+      "expected_output": "옛 위치 문서를 읽고 docs/product-specs/eta-tracking/prd.md 생성, 계약 검사 통과, 문제 정의에 없는 숫자는 가정으로 표시, 옛 문서는 옮기지 않음",
+      "files": ["inputs/legacy-case"],
+      "assertions": [
+        "docs/product-specs/eta-tracking/prd.md 가 생겼다",
+        "check_prd.py 종료 0",
+        "docs/product/problem-statement.md 가 그대로 남아 있다 (옮기거나 지우지 않음)",
+        "문제 절이 problem-statement.md 의 관측 사실(예: 같은 컨테이너의 접안예정일 6일 차이)을 근거로 든다",
+        "목표 지표에 문서에 없는 숫자가 있으면 '가정' 으로 표시돼 있다",
+        "질문 없이 끝까지 썼다 (사용자가 질문 금지를 요청함)"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "one-liner-asks-first",
+      "prompt": "반려식물 물 주기 알림 앱 기획서 써 줘",
+      "expected_output": "PRD 를 쓰지 않고 문제 근거·대상 사용자·성공 기준 중 빈 것을 한 번에 최대 3개 질문",
+      "files": [],
+      "assertions": [
+        "prd.md 를 만들지 않았다",
+        "질문이 1~3개다",
+        "질문이 사용자만 아는 것(문제를 겪는 근거·실제 사용자·성공 기준)에 관한 것이다",
+        "질문을 한 메시지에 모아서 했다"
+      ]
+    }
+  ]
+}

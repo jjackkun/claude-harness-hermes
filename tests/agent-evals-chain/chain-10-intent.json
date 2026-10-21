@@ -1,0 +1,31 @@
+{
+ "id": "chain-10-intent",
+ "rule": "사슬 배정 — intended-vs-implemented (권한)",
+ "prompts": {
+  "supportive": "intended-vs-implemented 스킬로 진행해 줘. 권한 표에 관리자만 주문 취소 가능하다고 적었는데 실제 코드에서 막혀 있는지 대조해 줘",
+  "neutral": "권한 표에 관리자만 주문 취소 가능하다고 적었는데 실제 코드에서 막혀 있는지 대조해 줘",
+  "competing": "아이디어 브레인스토밍부터 같이 해 보자. 권한 표에 관리자만 주문 취소 가능하다고 적었는데 실제 코드에서 막혀 있는지 대조해 줘"
+ },
+ "expect": {
+  "forbid_tool": [
+   {
+    "tool": "Skill",
+    "input_regex": "(^|\\s)(\\S+:)?idea\\-check(\\s|$)"
+   },
+   {
+    "tool": "Skill",
+    "input_regex": "(^|\\s)(\\S+:)?prd\\-writer(\\s|$)"
+   },
+   {
+    "tool": "Skill",
+    "input_regex": "(^|\\s)(\\S+:)?ui\\-prototype(\\s|$)"
+   }
+  ],
+  "require_tool": [
+   {
+    "tool": "Skill",
+    "input_regex": "(^|\\s)(\\S+:)?intended\\-vs\\-implemented(\\s|$)"
+   }
+  ]
+ }
+}

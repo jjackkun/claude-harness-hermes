@@ -316,15 +316,22 @@ Claude 전용 `CLAUDE.md`, `.claude/settings.json` / `.claude/settings.local.jso
 
 `workflow/harness` 를 선택하면 프로젝트에 다음이 설치됩니다:
 
-- **스킬**: `harness-boundary-check`, `harness-reasoning-sandwich`, `harness-promote-rule`, `structured-file-layout`, `run-to-the-end`, `pre-commit-measure`, `ui-prototype`
+- **스킬**: `harness-boundary-check`, `harness-reasoning-sandwich`, `harness-promote-rule`, `structured-file-layout`, `run-to-the-end`, `pre-commit-measure`, `ui-prototype`, `idea-check`, `prd-writer`, `intended-vs-implemented`
   - `ui-prototype` — 기획서·PRD·화면 흐름 문서에서 눌러 보는 시안을 만듭니다 (왼쪽 화면 목록 + 오른쪽 휴대폰·웹·태블릿·데스크톱 틀). 문서 → 시안 명세표(`spec.md`) 확정 → 시작 틀 복사 → `check_spec.py` 대조 → `build_single.py` 로 단일 HTML. 결과는 `docs/prototypes/<이름>/` 과 `<이름>.html`
+  - **기획 문서 사슬** — 한 기획의 문서를 `docs/product-specs/<이름>/` 한 폴더에 모으고, 자연어 한마디로 다음 단계를 부릅니다. 규칙 정본은 `prd-writer/references/contract.md` 한 곳 (`tests/planning-chain-test.sh` 가 대조)
+    - `idea-check` — "이거 만들 가치 있나": 질문을 하나씩 → 전제 의심 → 대안 2~3개 → 판정(`만든다`·`좁힌다`·`보류`) → `brief.md`
+    - `prd-writer` — "PRD 써 줘": brief 이어받기, 빈 곳 질문 최대 3개, 요구마다 FR 번호·검증 방법, 지어낸 숫자는 「가정」 으로 → `prd.md`, `check_prd.py` 통과해야 끝
+    - (`ui-prototype` 이 이 PRD 를 먼저 찾고 FR 번호를 근거로 씀 → 실행 계획서 §2 에 FR 번호)
+    - `intended-vs-implemented` — "기획대로 됐는지 확인해": FR·계획 목표마다 문서 인용 + `파일:줄`, "적혀만 있고 강제 안 됨" 도 결함 → `docs/audits/…-intent-check.md`
+    - `devil-advocate` 에이전트에 계획·PRD 레드팀 절차 (가장 싼 시험 · 중단 기준)
+    - 출처: gstack(MIT)·phuryn/pm-skills(MIT)·product-on-purpose/pm-skills(Apache-2.0) 에서 절차만 골라 고침 — 각 스킬 `NOTICE.md`. 검토: `docs/audits/2026-10-21-pm-skill-repos-review.md`
 - **룰**: `harness` (코딩 규칙 전문)
 - **에이전트**: `architect-lite`, `devil-advocate`, `planner-lite`, `architect`, `planner`, `code-reviewer`, `silent-failure-hunter`, `tdd-guide`, `doc-updater`, `docs-lookup`, `performance-optimizer`, `refactor-cleaner`
 
 <!--===DS:COUNTS:BEGIN===-->
 - 세션 중 실행 훅 **17종** + 훅이 공유하는 판정 모듈 **18개**
 - git pre-commit 게이트 **22종** — 차단 12 / 경고 10
-- harness 프리셋이 까는 스킬 **7종** · 에이전트 **12종** · 공장 테스트 **141개**
+- harness 프리셋이 까는 스킬 **10종** · 에이전트 **12종** · 공장 테스트 **142개**
 <!--===DS:COUNTS:END===-->
 
 > 위 수치는 `assets/hooks/doc_counts.py` 가 소스에서 산출합니다. 손으로 고치지 마십시오 —

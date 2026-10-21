@@ -1,0 +1,31 @@
+{
+ "id": "chain-05-proto",
+ "rule": "사슬 배정 — ui-prototype (ETA 추적)",
+ "prompts": {
+  "supportive": "ui-prototype 스킬로 진행해 줘. PRD 다 썼으니 이걸로 눌러 볼 수 있는 화면 시안 만들어 줘. 왼쪽에 화면 목록 나오게",
+  "neutral": "PRD 다 썼으니 이걸로 눌러 볼 수 있는 화면 시안 만들어 줘. 왼쪽에 화면 목록 나오게",
+  "competing": "아이디어 브레인스토밍부터 같이 해 보자. PRD 다 썼으니 이걸로 눌러 볼 수 있는 화면 시안 만들어 줘. 왼쪽에 화면 목록 나오게"
+ },
+ "expect": {
+  "forbid_tool": [
+   {
+    "tool": "Skill",
+    "input_regex": "(^|\\s)(\\S+:)?idea\\-check(\\s|$)"
+   },
+   {
+    "tool": "Skill",
+    "input_regex": "(^|\\s)(\\S+:)?prd\\-writer(\\s|$)"
+   },
+   {
+    "tool": "Skill",
+    "input_regex": "(^|\\s)(\\S+:)?intended\\-vs\\-implemented(\\s|$)"
+   }
+  ],
+  "require_tool": [
+   {
+    "tool": "Skill",
+    "input_regex": "(^|\\s)(\\S+:)?ui\\-prototype(\\s|$)"
+   }
+  ]
+ }
+}

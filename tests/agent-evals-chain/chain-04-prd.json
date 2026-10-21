@@ -1,0 +1,31 @@
+{
+ "id": "chain-04-prd",
+ "rule": "사슬 배정 — prd-writer (공구 대여)",
+ "prompts": {
+  "supportive": "prd-writer 스킬로 진행해 줘. 공구 대여 앱 요구사항 정리하자. 예약·반납 알림 정도인데 요구마다 어떻게 확인할지도 적어 줘",
+  "neutral": "공구 대여 앱 요구사항 정리하자. 예약·반납 알림 정도인데 요구마다 어떻게 확인할지도 적어 줘",
+  "competing": "아이디어 브레인스토밍부터 같이 해 보자. 공구 대여 앱 요구사항 정리하자. 예약·반납 알림 정도인데 요구마다 어떻게 확인할지도 적어 줘"
+ },
+ "expect": {
+  "forbid_tool": [
+   {
+    "tool": "Skill",
+    "input_regex": "(^|\\s)(\\S+:)?idea\\-check(\\s|$)"
+   },
+   {
+    "tool": "Skill",
+    "input_regex": "(^|\\s)(\\S+:)?ui\\-prototype(\\s|$)"
+   },
+   {
+    "tool": "Skill",
+    "input_regex": "(^|\\s)(\\S+:)?intended\\-vs\\-implemented(\\s|$)"
+   }
+  ],
+  "require_tool": [
+   {
+    "tool": "Skill",
+    "input_regex": "(^|\\s)(\\S+:)?prd\\-writer(\\s|$)"
+   }
+  ]
+ }
+}

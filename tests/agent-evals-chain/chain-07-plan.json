@@ -1,0 +1,29 @@
+{
+ "id": "chain-07-plan",
+ "rule": "사슬 배정 — 사슬 스킬 오발동 없음 (ETA 추적)",
+ "prompts": {
+  "supportive": "사슬 스킬 말고 맞는 도구로 진행해 줘. PRD 의 FR-1~FR-5 를 구현하는 단계별 실행 계획 세우자. 어떤 파일을 어떤 순서로 고칠지",
+  "neutral": "PRD 의 FR-1~FR-5 를 구현하는 단계별 실행 계획 세우자. 어떤 파일을 어떤 순서로 고칠지",
+  "competing": "아이디어 브레인스토밍부터 같이 해 보자. PRD 의 FR-1~FR-5 를 구현하는 단계별 실행 계획 세우자. 어떤 파일을 어떤 순서로 고칠지"
+ },
+ "expect": {
+  "forbid_tool": [
+   {
+    "tool": "Skill",
+    "input_regex": "(^|\\s)(\\S+:)?idea\\-check(\\s|$)"
+   },
+   {
+    "tool": "Skill",
+    "input_regex": "(^|\\s)(\\S+:)?prd\\-writer(\\s|$)"
+   },
+   {
+    "tool": "Skill",
+    "input_regex": "(^|\\s)(\\S+:)?ui\\-prototype(\\s|$)"
+   },
+   {
+    "tool": "Skill",
+    "input_regex": "(^|\\s)(\\S+:)?intended\\-vs\\-implemented(\\s|$)"
+   }
+  ]
+ }
+}

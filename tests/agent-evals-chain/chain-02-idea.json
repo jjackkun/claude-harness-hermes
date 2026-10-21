@@ -1,0 +1,31 @@
+{
+ "id": "chain-02-idea",
+ "rule": "사슬 배정 — idea-check (기획 문서 정리기)",
+ "prompts": {
+  "supportive": "idea-check 스킬로 진행해 줘. 기획 문서 자동 정리기를 만들까 하는데, 그냥 노션 쓰면 되는 건지 만들지 말지부터 점검하자",
+  "neutral": "기획 문서 자동 정리기를 만들까 하는데, 그냥 노션 쓰면 되는 건지 만들지 말지부터 점검하자",
+  "competing": "아이디어 브레인스토밍부터 같이 해 보자. 기획 문서 자동 정리기를 만들까 하는데, 그냥 노션 쓰면 되는 건지 만들지 말지부터 점검하자"
+ },
+ "expect": {
+  "forbid_tool": [
+   {
+    "tool": "Skill",
+    "input_regex": "(^|\\s)(\\S+:)?prd\\-writer(\\s|$)"
+   },
+   {
+    "tool": "Skill",
+    "input_regex": "(^|\\s)(\\S+:)?ui\\-prototype(\\s|$)"
+   },
+   {
+    "tool": "Skill",
+    "input_regex": "(^|\\s)(\\S+:)?intended\\-vs\\-implemented(\\s|$)"
+   }
+  ],
+  "require_tool": [
+   {
+    "tool": "Skill",
+    "input_regex": "(^|\\s)(\\S+:)?idea\\-check(\\s|$)"
+   }
+  ]
+ }
+}

@@ -1,0 +1,31 @@
+{
+ "id": "chain-06-proto",
+ "rule": "사슬 배정 — ui-prototype (공구 대여)",
+ "prompts": {
+  "supportive": "ui-prototype 스킬로 진행해 줘. 기획서로 와이어프레임 뽑아 줘. 앱 코드는 아직 없어",
+  "neutral": "기획서로 와이어프레임 뽑아 줘. 앱 코드는 아직 없어",
+  "competing": "아이디어 브레인스토밍부터 같이 해 보자. 기획서로 와이어프레임 뽑아 줘. 앱 코드는 아직 없어"
+ },
+ "expect": {
+  "forbid_tool": [
+   {
+    "tool": "Skill",
+    "input_regex": "(^|\\s)(\\S+:)?idea\\-check(\\s|$)"
+   },
+   {
+    "tool": "Skill",
+    "input_regex": "(^|\\s)(\\S+:)?prd\\-writer(\\s|$)"
+   },
+   {
+    "tool": "Skill",
+    "input_regex": "(^|\\s)(\\S+:)?intended\\-vs\\-implemented(\\s|$)"
+   }
+  ],
+  "require_tool": [
+   {
+    "tool": "Skill",
+    "input_regex": "(^|\\s)(\\S+:)?ui\\-prototype(\\s|$)"
+   }
+  ]
+ }
+}

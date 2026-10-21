@@ -1,0 +1,29 @@
+{
+ "id": "chain-11-attack",
+ "rule": "사슬 배정 — 사슬 스킬 오발동 없음 (계획)",
+ "prompts": {
+  "supportive": "사슬 스킬 말고 맞는 도구로 진행해 줘. 이 실행 계획서가 어디서 무너질지 반대편에서 공격해 봐",
+  "neutral": "이 실행 계획서가 어디서 무너질지 반대편에서 공격해 봐",
+  "competing": "아이디어 브레인스토밍부터 같이 해 보자. 이 실행 계획서가 어디서 무너질지 반대편에서 공격해 봐"
+ },
+ "expect": {
+  "forbid_tool": [
+   {
+    "tool": "Skill",
+    "input_regex": "(^|\\s)(\\S+:)?idea\\-check(\\s|$)"
+   },
+   {
+    "tool": "Skill",
+    "input_regex": "(^|\\s)(\\S+:)?prd\\-writer(\\s|$)"
+   },
+   {
+    "tool": "Skill",
+    "input_regex": "(^|\\s)(\\S+:)?ui\\-prototype(\\s|$)"
+   },
+   {
+    "tool": "Skill",
+    "input_regex": "(^|\\s)(\\S+:)?intended\\-vs\\-implemented(\\s|$)"
+   }
+  ]
+ }
+}

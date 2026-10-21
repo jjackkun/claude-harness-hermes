@@ -1,0 +1,22 @@
+[
+ {"query": "eta-tracking PRD 대로 구현됐는지 확인해 줘. docs/product-specs/eta-tracking/prd.md 랑 src/ 맞춰 봐", "should_trigger": true},
+ {"query": "요구사항 다 구현됐어? FR 하나씩 코드에서 어디서 지키는지 보고 싶어", "should_trigger": true},
+ {"query": "권한 표에 관리자만 주문 취소 가능하다고 적었는데 실제로 막혀 있는지 대조해 줘", "should_trigger": true},
+ {"query": "실행 계획서 §2 목표가 코드에서 진짜 강제되는지 확인해 줘. 체크만 해 놓고 안 지켜지는 거 있을까 봐", "should_trigger": true},
+ {"query": "기획대로 됐는지 확인해. 시안까지 만들고 구현도 끝났어", "should_trigger": true},
+ {"query": "설계 문서에 'once 모드는 scheduled 를 import 하지 않는다' 고 써 놨는데 코드가 지키는지 봐 줘", "should_trigger": true},
+ {"query": "문서대로 동작하는지 대조해 줘. README 에 적힌 설치 옵션들이 실제 스크립트에 다 있는지", "should_trigger": true},
+ {"query": "PRD 랑 코드 맞춰 봐. 특히 폐기한 요구가 코드에 남아 있는지도", "should_trigger": true},
+ {"query": "이 API 문서에 적힌 응답 필드랑 실제 핸들러가 돌려주는 게 같은지 확인해 줘", "should_trigger": true},
+ {"query": "core-beliefs 에 적은 R 룰들이 시험이나 훅으로 다 강제되고 있는지 점검해 줘", "should_trigger": true},
+ {"query": "이 PR 코드 리뷰해 줘. 버그 있으면 짚어 주고", "should_trigger": false},
+ {"query": "로그인이 가끔 실패하는데 원인 좀 찾아 줘", "should_trigger": false},
+ {"query": "요구사항 문서 새로 써 줘. 아직 아무것도 없어", "should_trigger": false},
+ {"query": "테스트 커버리지 몇 퍼센트인지 재 줘", "should_trigger": false},
+ {"query": "보안 취약점 있는지 전체 훑어 줘", "should_trigger": false},
+ {"query": "이 함수 리팩터링해서 읽기 쉽게 만들어 줘", "should_trigger": false},
+ {"query": "PRD 다듬어 줘. 범위가 너무 넓어", "should_trigger": false},
+ {"query": "시안이랑 명세표가 어긋났는지 check_spec 돌려 줘", "should_trigger": false},
+ {"query": "이 계획서 어디서 무너질지 반대편에서 공격해 봐", "should_trigger": false},
+ {"query": "린트 경고 다 고쳐 줘", "should_trigger": false}
+]

@@ -1,0 +1,31 @@
+{
+ "id": "chain-01-idea",
+ "rule": "사슬 배정 — idea-check (동네 공구 대여 앱)",
+ "prompts": {
+  "supportive": "idea-check 스킬로 진행해 줘. 이거 만들 가치 있나 냉정하게 따져 봐 줘. 친구들은 좋다는데 돈 낼 사람이 있을지 모르겠어",
+  "neutral": "이거 만들 가치 있나 냉정하게 따져 봐 줘. 친구들은 좋다는데 돈 낼 사람이 있을지 모르겠어",
+  "competing": "아이디어 브레인스토밍부터 같이 해 보자. 이거 만들 가치 있나 냉정하게 따져 봐 줘. 친구들은 좋다는데 돈 낼 사람이 있을지 모르겠어"
+ },
+ "expect": {
+  "forbid_tool": [
+   {
+    "tool": "Skill",
+    "input_regex": "(^|\\s)(\\S+:)?prd\\-writer(\\s|$)"
+   },
+   {
+    "tool": "Skill",
+    "input_regex": "(^|\\s)(\\S+:)?ui\\-prototype(\\s|$)"
+   },
+   {
+    "tool": "Skill",
+    "input_regex": "(^|\\s)(\\S+:)?intended\\-vs\\-implemented(\\s|$)"
+   }
+  ],
+  "require_tool": [
+   {
+    "tool": "Skill",
+    "input_regex": "(^|\\s)(\\S+:)?idea\\-check(\\s|$)"
+   }
+  ]
+ }
+}
