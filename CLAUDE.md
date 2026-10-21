@@ -50,6 +50,9 @@ PDF 4~5쪽: "AGENTS.md 를 백과사전이 아닌 *목차* 로 취급한다."
   - run-to-the-end — 오래 걸리는 명령을 돌리기 **직전에** 본다. 내가 "시험을 돌립니다" · "전체 검사를 돌리고" · "검증하겠습니다" · "실측하겠습니다" · "빌드하겠습니다" 라고 말하려는 자리, 또는 사용자가 "검사부터…
   - pre-commit-measure — 커밋 **직전에** 본다. 사용자가 "커밋해" · "커밋하자" · "커밋 푸시하자" · "올려" 라고 한 자리, 내가 `git commit` 을 부르려는 자리, 또는 "고쳤습니다" · "이제 됩니다" 라고 말하려는…
   - ui-prototype — 기획서·PRD·화면 흐름 문서에서 눌러 보는 디자인 시안을 만든다 — 왼쪽 화면 목록 + 오른쪽 화면(휴대폰 앱·웹·태블릿·관리자 데스크톱 틀), 화면 안 버튼으로 다음 단계 이동, 라이트·다크, 단일…
+  - idea-check — 아이디어를 만들기 전에 "정말 만들 가치가 있나" 를 따진다 — 누가 실제로 겪는 문제인지, 지금은 어떻게 버티는지, 가장 좁은 시작점이 무엇인지 하나씩 캐묻고, 전제를 의심하고, 대안 2~3개를 낸 뒤…
+  - prd-writer — 기획서·PRD·요구사항 문서를 쓰거나 고친다 — 짧고 결정 가능한 PRD, 요구마다 FR 번호와 검증 방법, 모르는 것은 지어내지 않고 「가정·열린 질문」 으로, 결과는…
+  - intended-vs-implemented — 문서에 적힌 의도(PRD 의 FR 요구·실행 계획서 §2 목표·설계 문서·권한 표)와 실제 코드가 하는 일을 한 줄씩 대조해 어긋남을 찾는다 — 의도는 문서 인용으로, 구현은 파일:줄 로, "적혀만 있고 강제되지…
   - hermes-status — 헤르메스 전체 현황(스킬·규칙·세션 수·결정화 대기)을 보인다(/hermes-status). Show the overall Hermes engineering status. Use when the user types…
   - hermes-crystallize — 3번 이상 반복된 대화 패턴을 재사용 스킬로 결정화한다(헤르메스 학습 루프). Crystallize repeated conversation patterns into reusable skill files.…
   - hermes-recall — 헤르메스 요약에서 지난 대화 맥락을 떠올린다(/hermes-recall [키워드]). Recall past conversation context from Hermes rolling summaries. Use when…
@@ -65,8 +68,7 @@ PDF 4~5쪽: "AGENTS.md 를 백과사전이 아닌 *목차* 로 취급한다."
 
 ## 하네스 엔지니어링 (PDF 방법론)
 
-이 프로젝트는 claude-harness-hermes 의 `harness` 프리셋으로 강제 장치가 깔려 있다.
-훅 실체는 `scripts/hooks/`, 커밋 게이트는 `.git/hooks/pre-commit`.
+이 프로젝트는 claude-harness-hermes 의 `harness` 프리셋으로 강제 장치가 깔려 있다 — 훅 실체는 `scripts/hooks/`, 커밋 게이트는 `.git/hooks/pre-commit`.
 
 <!--===DS:COUNTS:BEGIN===-->
 - 세션 중 실행 훅 **17종** + 훅이 공유하는 판정 모듈 **18개**
@@ -86,17 +88,14 @@ size 조기 경고(400/500) + 인터페이스 폭 증가 경고 · 편집을 리
 
 **추론 샌드위치**: 비자명한 작업은 계획 → 구현 → 검증. 위반 발견 시 즉시 중단·보고, `--no-verify` 우회 금지.
 
-**프로젝트 고유 불변 원칙(R1~Rn)은 `docs/design-docs/core-beliefs.md` 에 직접 정의한다.**
-PDF 11쪽: "이 리포지터리의 특정 구조와 툴링에 따라 크게 달라지며, 유사한 투자 없이
-일반화할 수 있다고 가정해서는 안 된다." 규율이 틀렸다면 근거를 `docs/audits/` 에 남기고 고친다.
+**프로젝트 고유 불변 원칙(R1~Rn)은 `docs/design-docs/core-beliefs.md` 에 직접 정의한다** — PDF 11쪽: "이 리포지터리의 특정 구조와 툴링에 따라 크게 달라지며, 유사한 투자 없이 일반화할 수 있다고 가정해서는 안 된다." 규율이 틀렸다면 근거를 `docs/audits/` 에 남기고 고친다.
 
 ## 작업 기록 시스템 (PDF 5~6쪽)
 
 리포지터리의 지식 베이스는 `docs/` 디렉터리에 구조화되어 관리된다. **핸드오프 메모가 아닌 리포지터리 안의 계획 문서가 세션 간 연속성의 원천이다.**
 
-- `docs/exec-plans/backlog/` — 언젠가 할 작업 후보 (우선순위 미정)
-- `docs/exec-plans/active/` — 진행 중인 작업 계획 (세션 시작 시 반드시 읽을 것)
-- `docs/exec-plans/completed/` — 완료된 작업 (의사결정 로그 보존)
+- `docs/exec-plans/` — `backlog/` 언젠가 할 후보 (우선순위 미정) · `active/` 진행 중 (세션 시작 시 반드시 읽을 것) · `completed/` 완료 (의사결정 로그 보존)
+- `docs/product-specs/<이름>/` — 기획 하나의 점검(`brief.md`)·PRD(`prd.md`). 시안은 같은 이름으로 `docs/prototypes/<이름>/` (규칙: `.claude/skills/prd-writer/references/contract.md`)
 - `docs/design-docs/` — 설계 결정 + 불변 원칙(R 룰)
 - `docs/audits/` — 조사·감사 기록
 
