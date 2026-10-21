@@ -188,7 +188,7 @@ echo "== 설치 목록 등록 (조용한 관측 중단 방지) =="
 CONF="$REPO_ROOT/presets/workflow/harness.conf"
 for mod in gate_event.py gate_emit.sh; do
   assert "$mod 이 HARNESS_HOOK_SOURCES 에 등록됨" "1" \
-    "$(grep -A 40 'HARNESS_HOOK_SOURCES' "$CONF" | grep -qxF "  $mod" && echo 1 || echo 0)"
+    "$(sed -n '/^HARNESS_HOOK_SOURCES+=(/,/^)/p' "$CONF" | grep -qxF "  $mod" && echo 1 || echo 0)"
 done
 
 echo

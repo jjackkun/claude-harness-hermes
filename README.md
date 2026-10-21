@@ -322,9 +322,9 @@ Claude 전용 `CLAUDE.md`, `.claude/settings.json` / `.claude/settings.local.jso
 - **에이전트**: `architect-lite`, `devil-advocate`, `planner-lite`, `architect`, `planner`, `code-reviewer`, `silent-failure-hunter`, `tdd-guide`, `doc-updater`, `docs-lookup`, `performance-optimizer`, `refactor-cleaner`
 
 <!--===DS:COUNTS:BEGIN===-->
-- 세션 중 실행 훅 **16종** + 훅이 공유하는 판정 모듈 **15개**
+- 세션 중 실행 훅 **17종** + 훅이 공유하는 판정 모듈 **18개**
 - git pre-commit 게이트 **22종** — 차단 12 / 경고 10
-- harness 프리셋이 까는 스킬 **7종** · 에이전트 **12종** · 공장 테스트 **140개**
+- harness 프리셋이 까는 스킬 **7종** · 에이전트 **12종** · 공장 테스트 **141개**
 <!--===DS:COUNTS:END===-->
 
 > 위 수치는 `assets/hooks/doc_counts.py` 가 소스에서 산출합니다. 손으로 고치지 마십시오 —
@@ -344,6 +344,7 @@ Claude 전용 `CLAUDE.md`, `.claude/settings.json` / `.claude/settings.local.jso
 | UserPromptSubmit | `claude-userpromptsubmit-reminders.sh` | 매 턴 규율 리마인더 + active 계획서·backlog 표시 |
 | PreToolUse(Bash) | `claude-pretooluse-bash-guard.sh` | 커밋 전 리뷰 검토 리마인드 + `--no-verify` 탐지 · **R-sudo** — `-n` 없는 `sudo` **차단**(비밀번호 입력 대기로 멈추지 않게 사람에게 `! <명령>` 으로 넘김) · **R-fg** — 5분 이상 걸릴 수 있는 명령을 앞에서 돌리면 배경 실행 + Monitor 로 안내 |
 | PreToolUse(Task\|Agent) | `claude-pretooluse-agent-guard.sh` | 잘못된 에이전트 dispatch 차단 |
+| PreToolUse(Bash · Task\|Agent) | `claude-pretooluse-cost-guard.sh` | **R-cost** — 모델을 여러 번 부르는 평가 실행(`scripts.run_eval`·`run_loop`·`harness-eval.py`, `--dry-run`·`--help` 제외) **ask** · 모델이 정해지지 않은 서브에이전트(내장 general-purpose 등에 `model` 인자 없음) **차단** · 세션 누적 서브에이전트 `HARNESS_AGENT_ASK_AT`(기본 8) 배수 번째마다 **ask**. 끄기 `HARNESS_COST_GUARD=off` |
 | PreToolUse(Write) | `claude-pretooluse-iface-guard.sh` | **R-iface** — 새 파일의 공개 심볼이 8 이상이면 **차단** (`.py` JS/TS `.vue` `.svelte` + java kotlin csharp php swift go rust dart, ruby 제외) |
 | PreToolUse(Write) | `claude-pretooluse-plan-declare.sh` | **R-declare** — 새 코드 파일이 계획서 §4 에 선언됐는지 경고 |
 | PostToolUse(Edit) | `claude-posttooluse-size-warn.sh` | 400/500 줄 조기 경고 + 인터페이스 폭 증가 경고 |
@@ -372,6 +373,7 @@ Claude 전용 `CLAUDE.md`, `.claude/settings.json` / `.claude/settings.local.jso
 | `gate_emit.sh` | 관측 | 셸 훅에서 `gate_event.py` 를 부르는 얇은 래퍼 |
 | `gate_report.py` | 관측 | 룰별 기회·통과·경고·차단·우회·발화율 집계 |
 | `doc-gardening-drift.sh` | 문서 | 계획서가 코드를 따라오는지 편차 탐지 (주간 가드닝이 호출) |
+| `cost_command.py` · `cost_agent_model.py` · `agent_count.py` | R-cost | 명령을 **단어**로 나눠 평가 도구를 실제로 실행하는지(이름을 grep·cat 하기만 하면 통과) · 에이전트 정의(프로젝트 → 전역 → 플러그인)의 `model:` 찾기 · 세션별 dispatch 수(`.harness/agent-count/`, 7일 정리) |
 
 `iface_width.py` 를 모듈로 뺀 이유: 폭을 재는 곳이 둘(생성 시점 차단 / 편집 시점 델타 경고)이라
 각자 세다가 어긋났습니다. 후자는 `^export ` grep 이라 **Svelte 에서 한 번도 발화할 수 없었습니다**
