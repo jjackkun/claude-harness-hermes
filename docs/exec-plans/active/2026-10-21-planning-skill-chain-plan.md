@@ -229,6 +229,10 @@
 - 2026-10-21: 사슬 배정 합격선 "오발동 0 · 기대 스킬 pass@3 ≥ 9/12" — 근거: run_loop 는 첫 호출만 봐서 재현율 0~17% 로 나왔음(직전 실측). harness-eval 은 세션 전체를 보므로 brainstorming 선점과 무관하게 잴 수 있음. 9/12 = 단계마다 2개 중 적어도 1개 반 — 측정 후 §7 에 실제 분포를 남기고 필요하면 이 결정을 고친다
 - 2026-10-21: 평가 통과율 합격선 80% — 근거: 전역 시험 규칙의 최소 커버리지 80%
 
+- 2026-10-21 전파: update-all 12곳 성공(공장 1f0cd33). 영수증·설치 목록 경로만 커밋 — 푸시 9곳: novel-ab d277c47 · novel-bc 296bf8b · rim-kanban 3bd7997 · jjackkun_bot d3b80bb · upbit-ai-trading bb0d946 · terminal-shipping 06dc6512(R-fmt: docs/product-specs/README.md prettier 수정 뒤 재시도, Node v22.23.3) · kis-trading 1aad1e6 · drh-cloth-shop 9d38105 · Nbbang-Run 37c9ea8. jj-agent-room ad38465 은 커밋만(남의 미푸시 기능 커밋 21df22c 가 앞에 있어 푸시 안 함).
+- 2026-10-21: zeroday-frontend 는 사용자 지시로 레지스트리에서 뺐다(푸시=자동 배포, 프리징 중). 오늘 전파분은 ea0f5e9 판 재설치로 10-20 상태로 되돌리고 cost-guard 흔적·.venv·사슬 스킬을 지웠다. 원래 미커밋 20건 해시 변화 0, pnpm build:all(Node 22·pnpm 9.15.4) 통과, 커밋·푸시 0.
+- 2026-10-21: 깨진 가상환경 3곳(rim-kanban·upbit-ai-trading·kis-trading backend/venv)은 pytest 설치 실패 — 3.10 으로 만든 venv 의 bin/python3 가 지금 3.12 인 /usr/bin/python3 를 가리켜 pip·패키지 전체가 안 보인다. 설치기 범위 밖, 각 프로젝트 가상환경 재생성이 필요.
+
 ## 7. 발견·예외
 
 - **Step 1 빨강 (2026-10-21)**: 스킬 없을 때 `planning-chain-test.sh` 통과 5 · 실패 38. 통과 5 는 대상 파일이 없어 저절로 참인 단언(크기·금지 문자열) — 스킬이 생긴 뒤 실제로 잰다.

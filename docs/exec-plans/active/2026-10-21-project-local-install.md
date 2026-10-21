@@ -68,6 +68,10 @@
 - 2026-10-21: 공장 자신의 `.gitignore` 관리 블록에 `.venv/` 를 넣었다 — 공장에 `.venv` 가 생겼는데 무시되지 않아 `git add -A` 로 커밋될 위험이 있었다. 다음 자기 설치 때 설치기가 같은 줄을 만든다.
 - 2026-10-21: jj-agent-room·Nbbang-Run 은 파이썬 시험이 없어 설치기가 건너뛰므로, 사용자 지시로 각 `.venv` 에 pytest 9.1.1 을 손으로 깔았다(전역 무변화 확인).
 
+- 2026-10-21 전파: update-all 12곳 성공(공장 1f0cd33). 영수증·설치 목록 경로만 커밋 — 푸시 9곳: novel-ab d277c47 · novel-bc 296bf8b · rim-kanban 3bd7997 · jjackkun_bot d3b80bb · upbit-ai-trading bb0d946 · terminal-shipping 06dc6512(R-fmt: docs/product-specs/README.md prettier 수정 뒤 재시도, Node v22.23.3) · kis-trading 1aad1e6 · drh-cloth-shop 9d38105 · Nbbang-Run 37c9ea8. jj-agent-room ad38465 은 커밋만(남의 미푸시 기능 커밋 21df22c 가 앞에 있어 푸시 안 함).
+- 2026-10-21: zeroday-frontend 는 사용자 지시로 레지스트리에서 뺐다(푸시=자동 배포, 프리징 중). 오늘 전파분은 ea0f5e9 판 재설치로 10-20 상태로 되돌리고 cost-guard 흔적·.venv·사슬 스킬을 지웠다. 원래 미커밋 20건 해시 변화 0, pnpm build:all(Node 22·pnpm 9.15.4) 통과, 커밋·푸시 0.
+- 2026-10-21: 깨진 가상환경 3곳(rim-kanban·upbit-ai-trading·kis-trading backend/venv)은 pytest 설치 실패 — 3.10 으로 만든 venv 의 bin/python3 가 지금 3.12 인 /usr/bin/python3 를 가리켜 pip·패키지 전체가 안 보인다. 설치기 범위 밖, 각 프로젝트 가상환경 재생성이 필요.
+
 ## 7. 발견·예외
 
 - 2026-10-21 G5 확인(cost-guard 전파 update-all 에 4fe90cd 가 함께 실림): 전역 `~/.claude/rules/common/development-workflow.md` 갱신 11:16, `Install Scope` 1회, 원본과 같음. 소우주 12곳 `.claude/rules/common/` 은 없음 — 설치 구조상 정상. 다른 컴퓨터는 그 컴퓨터에서 update-all 을 돌려야 전역이 갱신된다.
