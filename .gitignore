@@ -44,6 +44,7 @@ docs/superpowers/plans/
 !.claude/.factory-manifest.json
 !.claude/memory/
 !.claude/memory/**
+.venv/
 .hermes/*
 !.hermes/skills/
 !.hermes/skills/**
@@ -67,7 +68,6 @@ docs/superpowers/plans/
 .hermes/units/*/*
 !.hermes/units/*/skills/
 !.hermes/units/*/skills/**
-.venv/
 # <<< harness-agent-preset <<<
 
 # ── 공장(이 저장소) 전용: 마커 블록 뒤에 와야 예외를 되무시할 수 있다 ─────────────
