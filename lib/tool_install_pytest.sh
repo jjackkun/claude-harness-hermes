@@ -23,6 +23,7 @@ _pytest_needed() {   # <project>
 _pytest_venv_of() {   # <project> → 첫 가상환경 폴더(절대 경로), 없으면 빈 문자열
   local d
   for d in "${_PYTEST_VENV_DIRS[@]}"; do [[ -x "$1/$d/bin/python" ]] && { echo "$1/$d"; return 0; }; done
+  return 0   # 못 찾음도 정상 — 마지막 [[ -x ]] 의 1 이 새면 set -e 인 설치기가 조용히 죽는다(2026-10-21 zeroday-frontend)
 }
 
 # 있음 = 실행된다. `bin/pytest` 파일만 남고 모듈이 없는 가상환경이 있다(2026-10-21 실측 3곳).

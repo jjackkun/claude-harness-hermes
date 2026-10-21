@@ -133,6 +133,18 @@ assert ".venv/bin/python 생김" "1" "$([[ -x "$P8/.venv/bin/python" ]] && echo 
 assert ".venv 의 pip 로 설치" "1" "$(grep -c "^$P8/.venv/bin -m pip install" "$FAKE/pip.log" 2>/dev/null)"
 assert "installed=pytest" "1" "$(printf '%s' "$OUT" | grep -c 'installed=pytest')"; no_global
 
+echo "[8b] 설치 스크립트와 같은 set -euo pipefail 에서도 끝까지 간다 (2026-10-21 zeroday-frontend: 가상환경 없음 → 조용히 종료)"
+P8B="$(mkproj p8b tests)"
+OUT="$(
+  set -euo pipefail
+  export PATH="$FAKE/cmd:$SYSBIN" FAKE_PIP_LOG="$FAKE/pip.log" FAKE_GLOBAL_LOG="$FAKE/global.log" FAKE_VENV_FAIL=0
+  source "$REPO_ROOT/lib/logging.sh"; source "$REPO_ROOT/lib/tool_installers.sh"
+  REQUIRED_BINS=(pytest)
+  tool_install_required "$P8B" 2>&1 </dev/null; tool_status_line; echo "끝까지 옴"
+)"   # `|| true` 를 붙이면 bash 가 안쪽 set -e 를 꺼 버려 결함이 숨는다 — 붙이지 않는다
+assert "set -e 아래에서 끝까지 옴" "1" "$(printf '%s' "$OUT" | grep -c '끝까지 옴')"
+assert "set -e 아래에서도 installed=pytest" "1" "$(printf '%s' "$OUT" | grep -c 'installed=pytest')"
+
 echo "[9] 가상환경을 못 만들면 세우지 않고 손으로 칠 명령을 남긴다"
 P9="$(mkproj p9 tests)"; run_py "$P9" 1
 assert "failed=pytest" "1" "$(printf '%s' "$OUT" | grep -c 'failed=pytest')"
