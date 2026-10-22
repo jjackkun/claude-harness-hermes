@@ -1,0 +1,23 @@
+{
+  "skill_name": "video-to-interaction",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "docs/design/refs/card-swipe.mp4 이거 영상 확인해. 카드를 옆으로 밀면 기울면서 넘어가고 덜 밀면 튕겨서 돌아오는 거, 승인 받을 페이지 하나 만들어 줘",
+      "expected_output": "영상 정보 확인 → 10fps 전수 추출·8장 묶음 전부 읽기 → 확대 → 관찰 기록 → 평면 스프링 기법으로 미리보기(file:// 로 열림) → Playwright 수치 검증 → 경로·다르게 한 것 보고",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "\\\\wsl.localhost\\Ubuntu-22.04\\home\\me\\proj\\assets\\ref\\receipt.mov 오른쪽에 영수증 종이가 있는데 손으로 구기듯 끌리고 뒤집으면 뒷면이 나와. 그거 똑같이 만들고 싶어",
+      "expected_output": "WSL 경로를 저장소 경로로 바꿔 열고, 오른쪽 영역으로 자른 전수 추출, 천 물리(Verlet+WebGL) 예시를 출발점으로 앞·뒷면 미리보기, 접힘 깊이·되돌림·뒤집기 수치 검증",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "아까 만든 거 영상이랑 달라. 대충 보지 말고 다시 봐. 영상은 design/ref/toggle.mp4 야",
+      "expected_output": "이전 관찰이 띄엄띄엄이었는지 확인하고 10fps 전수·확대로 다시 본 뒤 관찰 기록을 고쳐 적고(틀린 관찰 표시), 다른 점을 나란히 대조로 보이고 고침",
+      "files": []
+    }
+  ]
+}
