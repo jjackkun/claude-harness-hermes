@@ -1,5 +1,5 @@
 # test-gate-venv-selection-before-phase-b
-<!-- hermes:auto-generated version:1 created:2026-10-02 -->
+<!-- hermes:auto-generated version:2 created:2026-10-02 -->
 
 ## 문제 상황
 멀티 프로젝트 환경에서 테스트 실행 시 phase A (환경 준비)를 건너뛰고 phase B (규칙 적용)로 진입하면, 가상환경 경로 오류·패키지 미설치·환경변수 누락으로 연쇄 실패가 발생합니다. 세션에서 3회 반복 (venv 경로 인식 실패, DATABASE_URL 누락, auto-mode classifier 실패).
