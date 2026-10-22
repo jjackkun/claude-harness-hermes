@@ -17,3 +17,4 @@
 - [terminal-shipping 커밋은 Node 22 로](project-terminal-shipping-node22-gate.md) — 셸 기본 node 12 면 Playwright 시험 3건이 R-test 로 커밋을 막는다; nvm v22 를 PATH 앞에
 - [zeroday-frontend 전파 제외](project-zeroday-frontend-excluded.md) — 2026-10-21 레지스트리에서 뺌(11곳), 푸시=자동 배포라 설치·전파·푸시 제안 금지
 - [rim-kanban 전파 제외](project-rim-kanban-excluded.md) — 2026-10-21 레지스트리에서 뺌(10곳), 설치·전파·venv 재생성 제안 금지
+- [전파 때 커밋 금지 목록](project-propagate-no-commit-list.md) — 2026-10-22 jj-agent-room · Nbbang-Run · 제로데이 관련은 설치만, 커밋·푸시 안 함
