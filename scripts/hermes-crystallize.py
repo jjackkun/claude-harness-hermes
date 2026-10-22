@@ -22,6 +22,7 @@ import sys
 from datetime import datetime, timezone
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from hermes_machine_prompt import machine_prompt_cmd  # noqa: E402  (기계 프롬프트는 도구 없이)
 from hermes_skills import extract_keywords  # noqa: E402  (본문 키워드 추출 공유 헬퍼)
 from hermes_reversed_guard import reversal_hold  # noqa: E402  (철회 보류 판정, L-06)
 from hermes_skill_yield import is_generic_key  # noqa: E402  (일반 코드 단어 키 거부, 계획 skill-yield-junk)
@@ -226,8 +227,7 @@ def generate_skill_content(
         # 주의: claude CLI 에는 --max-tokens 옵션이 없다 (C1).
         # 출력 길이는 프롬프트 내 "60줄 이내" 지시로 제한한다.
         result = subprocess.run(
-            ["claude", "-p",
-             "--model", "claude-haiku-4-5-20251001"],
+            machine_prompt_cmd("claude-haiku-4-5-20251001"),
             input=prompt, capture_output=True,
             text=True,
             timeout=120,

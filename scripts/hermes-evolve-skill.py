@@ -18,6 +18,7 @@ import sys
 from datetime import datetime, timedelta, timezone
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from hermes_machine_prompt import machine_prompt_cmd  # noqa: E402  (기계 프롬프트는 도구 없이)
 from hermes_keywords import split_keywords  # noqa: E402  (토큰 분해 — 정의를 한 곳에 둔다)
 from hermes_redact import project_dir_for_db, redact  # noqa: E402
 from hermes_skill_write import write_skill_file  # noqa: E402  (스킬 파일은 가려서 쓴다)
@@ -150,8 +151,7 @@ def generate_evolved_content(skill_path: str, content: str, feedback: str,
         # 주의: claude CLI 에는 --max-tokens 옵션이 없다 (C1).
         # 출력 길이는 프롬프트 내 "60줄 이내" 지시로 제한한다.
         result = subprocess.run(
-            ["claude", "-p",
-             "--model", "claude-haiku-4-5-20251001"],
+            machine_prompt_cmd("claude-haiku-4-5-20251001"),
             input=prompt, capture_output=True,
             text=True,
             timeout=120,

@@ -362,6 +362,7 @@ REGISTERED_TESTS=(
   memory-symlink-roundtrip-test.sh
   hermes-mesh-consume-test.sh
   hermes-mesh-gate-test.sh
+  hermes-machine-prompt-no-tools-test.sh
   run-all-orphan-guard-test.sh
   run-all-parallel-test.sh
   mods-install-test.sh

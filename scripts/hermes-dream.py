@@ -23,6 +23,7 @@ import sys
 from datetime import datetime
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from hermes_machine_prompt import machine_prompt_cmd  # noqa: E402  (기계 프롬프트는 도구 없이)
 from hermes_summary_owner import ensure_agent_column  # noqa: E402  (C-29 — 개인 대화는 드리밍 재료가 아니다)
 from hermes_dream_evolve import (  # noqa: E402  (진화 대상 선정·실행)
     collect_evolution_hints,
@@ -215,7 +216,7 @@ def _propose_chunk(evidence: str):
     for attempt in (1, 2):  # 1회 재시도
         try:
             result = subprocess.run(
-                ["claude", "-p", "--model", "claude-haiku-4-5-20251001"],
+                machine_prompt_cmd("claude-haiku-4-5-20251001"),
                 input=prompt, capture_output=True, text=True, timeout=DREAM_TIMEOUT,
                 env={**os.environ, "HERMES_DISABLED": "1"},
             )

@@ -16,6 +16,7 @@ import subprocess
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from hermes_machine_prompt import machine_prompt_cmd  # noqa: E402  (기계 프롬프트는 도구 없이)
 from hermes_redact import redact  # noqa: E402  (비밀값·연락처·주소 마스킹 공유 헬퍼)
 
 # 요약기(hermes-summarize.py)와 같은 모델·입력 상한 — 같은 구독 CLI 비용 곡선 안에 둔다.
@@ -146,7 +147,7 @@ def extract_observations(batch: list, known_keys: list, run=subprocess.run):
     for _ in range(2):
         try:
             result = run(
-                [os.environ.get("HERMES_CLAUDE_BIN", "claude"), "-p", "--model", _MODEL],
+                machine_prompt_cmd(_MODEL, binary=os.environ.get("HERMES_CLAUDE_BIN", "claude")),
                 input=prompt, capture_output=True, text=True, timeout=_CALL_TIMEOUT_SEC,
                 env={**os.environ, "HERMES_DISABLED": "1"},
             )

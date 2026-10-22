@@ -19,6 +19,7 @@ import subprocess
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from hermes_machine_prompt import machine_prompt_cmd  # noqa: E402  (기계 프롬프트는 도구 없이)
 from hermes_privacy_pending import mark, status_of  # noqa: E402
 
 RULE = ("개인적인 내용(건강·가족·감정·사생활·특정인에 대한 평가)이나 업무와 무관한 잡담이면 표시한다. "
@@ -40,7 +41,7 @@ def _ask(texts: list):
         return None
     items = "\n".join(f"{i}. {t}" for i, t in enumerate(texts))
     try:
-        out = subprocess.run(["claude", "-p", "--model", _MODEL],
+        out = subprocess.run(machine_prompt_cmd(_MODEL),
                              input=_PROMPT.format(rule=RULE, items=items), capture_output=True, text=True,
                              timeout=_TIMEOUT, env={**os.environ, "HERMES_DISABLED": "1"})
         if out.returncode != 0:

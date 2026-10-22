@@ -26,6 +26,9 @@ def _call_claude(prompt: str, model: str | None, timeout: int = 300) -> str:
     cmd = ["claude", "-p", "--output-format", "text"]
     if model:
         cmd.extend(["--model", model])
+    # Text only: no built-in tools, no MCP servers — the prompt quotes a whole SKILL.md,
+    # and a tool-enabled run could act on what it reads (hermes 2026-10-22).
+    cmd.extend(["--tools", "", "--strict-mcp-config"])
 
     # Remove CLAUDECODE env var to allow nesting claude -p inside a
     # Claude Code session. The guard is for interactive terminal conflicts;

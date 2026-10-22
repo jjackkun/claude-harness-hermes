@@ -16,6 +16,7 @@ import sys
 # 단독 임포트(시험·다른 스크립트)에서도 동작하도록 스스로 경로를 세운다 —
 # 부르는 쪽이 sys.path 를 먼저 건드려 줬다는 전제에 기대지 않는다.
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from hermes_machine_prompt import machine_prompt_cmd  # noqa: E402  (기계 프롬프트는 도구 없이)
 
 from hermes_skills import iter_skill_files  # noqa: E402  (스킬 파일 순회 공유 헬퍼)
 from hermes_redact import redact  # noqa: E402  (질의를 LLM 에 보내기 전 마스킹)
@@ -76,7 +77,7 @@ def _ask_claude(prompt: str) -> str:
         result = subprocess.run(
             # 분류 한 번이라 haiku 로 충분 — crystallize·dream·summarize 와 같은 판단. --model 이 없으면
             # 세션 기본 모델(Opus)로 돌아 프로그래매틱 크레딧을 헛되이 쓴다(2026-09-15 실측, 계획 cost-levers).
-            ["claude", "-p", "--model", "claude-haiku-4-5-20251001"],
+            machine_prompt_cmd("claude-haiku-4-5-20251001"),
             input=prompt, capture_output=True,
             text=True,
             timeout=30,

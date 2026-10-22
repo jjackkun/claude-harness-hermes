@@ -124,7 +124,7 @@ assert "폴백은 별도 모듈이 소유한다" "yes" \
   "$([[ -f "$REPO_ROOT/scripts/hermes_search_fallback.py" ]] && echo yes || echo no)"
 # 비용 레버 C1·C5 (계획 2026-09-18-cost-levers-c1-c4-c5): 폴백은 haiku 로 고정, cron 헤드리스는 캐시 친화 플래그.
 assert "폴백 호출이 --model haiku 를 넘긴다" "1" \
-  "$(grep -cE -- '"--model", *"claude-haiku-4-5-20251001"' "$REPO_ROOT/scripts/hermes_search_fallback.py")"
+  "$(grep -cE -- '("--model", *|machine_prompt_cmd\()"claude-haiku-4-5-20251001"' "$REPO_ROOT/scripts/hermes_search_fallback.py")"
 assert "cron 헤드리스 호출에 --exclude-dynamic-system-prompt-sections" "1" \
   "$(grep -c -- 'nohup claude -p --exclude-dynamic-system-prompt-sections' "$REPO_ROOT/scripts/hermes-cron-run.sh")"   # 프롬프트는 stdin(계획 cli-prompt-via-stdin)
 

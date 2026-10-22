@@ -15,6 +15,10 @@ import os
 import re
 import shutil
 import subprocess
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from hermes_machine_prompt import machine_prompt_cmd  # noqa: E402  (기계 프롬프트는 도구 없이)
 
 from hermes_redact import redact
 
@@ -81,7 +85,7 @@ def stage2_is_general(text, *, timeout=120):
     prompt = _PROMPT_TMPL.format(body=redact(text or "")[:_MAX_PROMPT_BODY])
     try:
         result = subprocess.run(
-            ["claude", "-p", "--model", _GATE_MODEL],
+            machine_prompt_cmd(_GATE_MODEL),
             input=prompt, capture_output=True, text=True, timeout=timeout,
             env={**os.environ, "HERMES_DISABLED": "1"},
         )

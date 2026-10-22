@@ -21,6 +21,7 @@ import sys
 from datetime import datetime
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from hermes_machine_prompt import machine_prompt_cmd  # noqa: E402  (기계 프롬프트는 도구 없이)
 from hermes_redact import redact  # noqa: E402  (민감정보 마스킹 공유 헬퍼)
 from hermes_universe import universe_id  # noqa: E402  (소우주 키 — 폴더 이름 대체)
 from hermes_summary_owner import ensure_agent_column, room_owner_id  # noqa: E402  (요약의 주인, C-29)
@@ -180,7 +181,7 @@ def generate_slots(prev_slots: dict, delta_text: str):
     for _ in range(2):  # 1회 재시도
         try:
             result = subprocess.run(
-                ["claude", "-p", "--model", "claude-haiku-4-5-20251001"],
+                machine_prompt_cmd("claude-haiku-4-5-20251001"),
                 input=prompt, capture_output=True, text=True, timeout=60,
                 env={**os.environ, "HERMES_DISABLED": "1"},
             )
