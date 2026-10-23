@@ -2,23 +2,11 @@
 
 에이전트가 어기면 안 되는 불변 규칙. 코드·테스트·hook으로 기계 강제됨.
 
-## R1. 실행 모드 격리
+## 프로젝트 고유 규칙은 이 파일에 없다
 
-`once/` · `scheduled/` · `realtime/` 는 서로 import 금지.
-공통 코드는 `shared/` 에만 위치.
-
-**기계 강제**: `test_r1_boundary.py` AST 테스트 (pre-commit에서 실행)
-
-## R2. legacy 디렉터리 읽기 전용
-
-`docs_legacy/` 수정·import·재실행 금지. 어휘(enum 값)만 재사용 OK.
-
-## R3. LLM 경로 강제
-
-`anthropic` SDK 설치·import·호출 전부 금지.
-모든 LLM 호출은 구독 CLI 어댑터 경유.
-
-**기계 강제**: AST 스캔 + requirements 검사 + find_spec 3중 검증
+실행 모드 격리 · legacy 읽기 전용 · LLM 경로(구독/API) 같은 도메인 규칙은
+각 프로젝트의 `docs/design-docs/core-beliefs.md` 에만 적는다 — 그것이 그 프로젝트의 R 번호다.
+rim-kanban 에서 온 예시는 `examples/` 에 있다(복사할 출발점이지 이 프로젝트의 규칙이 아니다).
 
 ## R4. 인코딩 주의 환경
 
