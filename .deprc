@@ -17,6 +17,8 @@ tier: 0  assets/hooks/claude_config_scan.py
 tier: 0  assets/hooks/context_budget.py
 # R-out 이벤트의 명령 모양 계산(계획 2026-10-01-out-shape-agent-fields): 표준 모듈만 — 훅이 모든 Bash 호출에서 불러온다.
 tier: 0  assets/hooks/out_shape.py
+# R-del 삭제 판정(계획 2026-10-27-data-delete-guard): 표준 모듈만 — 훅이 지우기 글자가 든 Bash 호출에서 불러온다.
+tier: 0  assets/hooks/data_delete.py
 tier: 1  scripts/hermes-cleanup.py
 tier: 0  scripts/hermes-correlate.py
 tier: 0  scripts/hermes-increment.py scripts/hermes-message.py
