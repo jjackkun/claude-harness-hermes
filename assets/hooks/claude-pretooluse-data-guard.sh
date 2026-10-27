@@ -4,7 +4,7 @@
 # 출처: 2026-10-27 jj-agent-room 번역 실측 뒤 에이전트가 개발 DB 의 번역 결과(건 7 · 문장 512 · 기록 252)를
 #       `psql … DELETE` · `rm -rf` 로 묻지 않고 지웠다. 백업이 없어 되살릴 수 없었다. 규칙 문장은 이미 있었고
 #       에이전트가 계획서의 "지운다" 를 승인으로 읽었다 — 그래서 기계가 멈춰 세운다.
-# 근거: docs/exec-plans/active/2026-10-27-data-delete-guard-plan.md
+# 근거: docs/exec-plans/completed/2026-10-27-data-delete-guard-plan.md
 #
 # 판정은 같은 폴더의 data_delete.py. 지우는 명령이면 permissionDecision "ask" — 사람이 승인 창에서 고른다.
 # `-p` 실행에서는 Claude Code 가 ask 를 거부로 바꾸고 사유를 도구 결과로 돌려준다.

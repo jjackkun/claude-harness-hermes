@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Bash 명령이 데이터를 **지우는지** 가른다 (R-del).
 
-근거: docs/exec-plans/active/2026-10-27-data-delete-guard-plan.md 목표 G1 · G2
+근거: docs/exec-plans/completed/2026-10-27-data-delete-guard-plan.md 목표 G1 · G2
       (실측 뒤 에이전트가 개발 DB 의 번역 결과를 묻지 않고 지웠다 — 되살릴 수 없었다)
 
 단일 책임: 명령 문자열 → 무엇을 지우는지 한 줄(묻기) 또는 None(통과). 결정 출력·기록은 진입 훅 몫이다.

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # data-guard — 데이터를 지우는 Bash 명령은 사람 승인(ask) 뒤에만 (R-del).
 #
-# 근거: docs/exec-plans/active/2026-10-27-data-delete-guard-plan.md 목표 G1 · G2 · G3
+# 근거: docs/exec-plans/completed/2026-10-27-data-delete-guard-plan.md 목표 G1 · G2 · G3
 #       (실측 뒤 에이전트가 개발 DB 번역 결과를 묻지 않고 지운 사고, 되살릴 수 없었다)
 #
 # 실행: bash tests/data-guard-test.sh
