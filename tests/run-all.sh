@@ -250,6 +250,7 @@ REGISTERED_TESTS=(
   r5-detection-test.sh
   bash-guard-interactive-test.sh
   cost-guard-test.sh
+  data-guard-test.sh
   coverage-probe-test.sh
   mutation-probe-test.sh
   hermes-soul-render-test.sh
