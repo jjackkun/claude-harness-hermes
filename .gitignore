@@ -42,6 +42,7 @@ docs/superpowers/plans/
 .harness/
 .env.keys
 !.claude/.factory-manifest.json
+!.claude/presets.lock
 !.claude/memory/
 !.claude/memory/**
 .venv/
