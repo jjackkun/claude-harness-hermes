@@ -354,6 +354,8 @@ REGISTERED_TESTS=(
   hermes-repo-sync-test.sh
   git-ignore-judge-test.sh
   preset-lock-tracked-test.sh
+  preset-order-stable-test.sh
+  project-claude-restore-test.sh
   hermes-skill-layers-test.sh
   hermes-skill-inject-test.sh
   hermes-skill-extends-test.sh

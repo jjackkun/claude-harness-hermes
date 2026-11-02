@@ -616,19 +616,38 @@ install_harness_gc_workflows() {
 # 설치 목록이 실제로 git 에 들어가는가 — 무시 규칙 해석은 git 에게 맡긴다.
 # 2026-09-21 실측: 12곳 중 2곳(ai-create·kis-trading)에서 `.claude/*` 규칙에 덮여 추적되지 않았고,
 # 아무도 그 사실을 말해 주지 않았다. doctor 도 같은 판정을 낸다(scripts/harness-doctor.py).
-warn_manifest_untracked() {
-  local project_path="$1"
-  local rel=".claude/.factory-manifest.json"
-  [[ -f "$project_path/$rel" ]] || return 0
+# 프리셋 목록(presets.lock)도 같다 — 2026-11-02 jj-agent-room 에서 블록보다 앞선 `.claude/*` 에 덮여
+# 포맷과 함께 사라졌다. 블록 예외로 고쳐지지만 `.claude/`(디렉터리째) 무시는 예외가 못 뚫어 경고만 남는다.
+# 근거: docs/exec-plans/active/2026-11-02-new-pc-restore-plan.md G1
+warn_install_files_untracked() {
+  local project_path="$1" rel
   git -C "$project_path" rev-parse --is-inside-work-tree >/dev/null 2>&1 || return 0
-  git -C "$project_path" ls-files --error-unmatch "$rel" >/dev/null 2>&1 && return 0
+  rel=".claude/.factory-manifest.json"
+  if _install_file_ignored "$project_path" "$rel"; then
+    log_warn "  manifest → 설치 목록이 git 에 추적되지 않습니다 ($rel)"
+    _warn_untracked_fix "$rel" "이대로면 다른 컴퓨터의 clone 에서 doctor 는 진단 불가, 공존 설치는 base 없음이 됩니다"
+  fi
+  rel=".claude/presets.lock"
+  if _install_file_ignored "$project_path" "$rel"; then
+    log_warn "  presets → 프리셋 목록이 git 에 추적되지 않습니다 ($rel)"
+    _warn_untracked_fix "$rel" "이대로면 다른 컴퓨터의 clone 에서 'project-claude.sh <경로>' 로 되살릴 수 없습니다"
+  fi
+}
+
+# 0 = 파일이 있고, 추적되지 않고, 무시 규칙에 걸렸다
+_install_file_ignored() { # <project> <rel>
+  [[ -f "$1/$2" ]] || return 1
+  git -C "$1" ls-files --error-unmatch "$2" >/dev/null 2>&1 && return 1
   # 판정은 판정기 한 곳에서 — 옛 git 의 check-ignore 종료 코드는 예외 규칙을 못 가른다(계획 gitignore-judge).
   # rc 0 만 "무시됨" 이다. 1(아님)·2(판정 불가)는 조용히 넘어간다 — 전과 같다.
-  python3 "$DEV_SETTING_DIR/scripts/git_ignore_judge.py" --repo "$project_path" "$rel" >/dev/null 2>&1 || return 0
-  log_warn "  manifest → 설치 목록이 git 에 추적되지 않습니다 ($rel)"
-  log_warn "            ↳ 프로젝트 .gitignore 의 `.claude/*` 규칙이 하네스 예외보다 뒤에 있습니다"
-  log_warn "            ↳ 이대로면 다른 컴퓨터의 clone 에서 doctor 는 진단 불가, 공존 설치는 base 없음이 됩니다"
-  log_warn "            ↳ 고치려면 그 규칙 **뒤**에 !.claude/.factory-manifest.json 한 줄을 두고 커밋하십시오"
+  python3 "$DEV_SETTING_DIR/scripts/git_ignore_judge.py" --repo "$1" "$2" >/dev/null 2>&1
+}
+
+_warn_untracked_fix() { # <rel> <결과>
+  # 규칙 이름은 작은따옴표로 — 큰따옴표 안 백틱은 명령 치환이 되어 문구가 사라졌다(2026-11-02 발견).
+  log_warn "            ↳ 프로젝트 .gitignore 의 '.claude/*' 규칙이 하네스 예외보다 뒤에 있거나 '.claude/' 로 디렉터리째 무시합니다"
+  log_warn "            ↳ $2"
+  log_warn "            ↳ 고치려면 그 규칙 **뒤**에 !$1 한 줄을 두고 커밋하십시오('.claude/' 라면 먼저 '.claude/*' 로 바꿉니다)"
 }
 
 install_harness_gitignore() {
@@ -664,6 +683,8 @@ install_harness_gitignore() {
       # 변조 감지·공존 설치 base 가 동작한다. 단 프로젝트 자체 규칙이 이 블록보다 **뒤**에서
       # `.claude/*` 를 무시하면 이 예외는 덮인다 — 그래서 설치 끝에 실제 추적 여부를 git 에 묻고 경고한다.
       "!.claude/.factory-manifest.json"
+      # 프리셋 목록도 같은 이유로 예외 — 새 PC 에서 되살리는 유일한 근거다(계획 2026-11-02-new-pc-restore G1).
+      "!.claude/presets.lock"
       "!.claude/memory/"
       "!.claude/memory/**"
     ) ;;

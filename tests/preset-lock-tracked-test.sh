@@ -62,4 +62,29 @@ install harness hermes mcp >/dev/null 2>&1     # 되돌려 깔고 커밋하지 �
 install harness hermes                          # 다시 뺀다 — 이번엔 미추적 상태
 assert "미추적 제거는 경고 없음" 0 "$(grep -c 'preset-drop WARN' "$TMP/install.log")"
 
+echo "== 계획 2026-11-02 G1. 블록보다 앞선 프로젝트 자체 '.claude/*' 가 있어도 lock 은 추적된다 =="
+# 2026-11-02 jj-agent-room: .gitignore:20 의 `.claude/*` 가 lock 을 덮어 포맷과 함께 목록이 사라졌다.
+newproj() { P="$TMP/$1"; mkdir -p "$P"; git -C "$P" init -q; git -C "$P" config user.name t; git -C "$P" config user.email t@t; }
+newproj proj-star; printf '.claude/*\n!.claude/settings.json\n' > "$P/.gitignore"
+install harness hermes mcp
+assert "설치 rc 0" 0 "$?"
+assert "앞선 .claude/* 아래에서도 lock 이 무시되지 않는다" 1 "$(judge .claude/presets.lock)"
+assert "블록에 !.claude/presets.lock 예외가 있다" 1 "$(grep -c '^!\.claude/presets\.lock$' "$P/.gitignore")"
+assert "추적 경고 없음" 0 "$(grep -c '추적되지 않습니다' "$TMP/install.log")"
+
+echo "== '.claude/'(디렉터리째)는 설치기가 '.claude/*' 로 바꿔 lock 도 추적된다 =="
+newproj proj-dir; printf '.claude/\n' > "$P/.gitignore"
+install harness hermes mcp
+assert "설치 rc 0" 0 "$?"
+assert "'.claude/' 줄이 사라졌다" 0 "$(grep -cx '\.claude/' "$P/.gitignore")"
+assert "lock 이 무시되지 않는다" 1 "$(judge .claude/presets.lock)"
+
+echo "== G1 한계. 블록 **뒤**의 '.claude/*' 는 예외를 덮는다 — 경고가 lock 도 이름으로 말한다 =="
+printf '.claude/*\n' >> "$P/.gitignore"
+install harness hermes mcp
+assert "설치 rc 0(경고만)" 0 "$?"
+assert "lock 추적 경고가 떴다" 1 "$(grep '추적되지 않습니다' "$TMP/install.log" | grep -c 'presets\.lock')"
+# lib/harness_installers.sh 경고 문구의 백틱이 명령 치환으로 사라지던 결함 — 규칙 이름이 문구에 남아야 한다
+assert "경고 문구에 규칙 이름 .claude/* 가 남는다" 1 "$([[ $(grep '하네스 예외보다' "$TMP/install.log" | grep -c '\.claude/\*') -ge 1 ]] && echo 1 || echo 0)"
+
 echo; echo "preset-lock-tracked: PASS=$PASS FAIL=$FAIL"; [[ $FAIL -eq 0 ]]

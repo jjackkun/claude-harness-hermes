@@ -1,0 +1,16 @@
+# run-all 병렬 실행 중 실제 ~/.claude 에 전역 설치가 새어 나간다
+
+> 작성일: 2026-11-02
+> 출처: `docs/exec-plans/active/2026-11-02-new-pc-restore-plan.md` §7 — run-all 151개 실행 중 발견
+
+## 관측
+
+- 2026-11-02 14:17:54 run-all 도중 실제 `~/.claude` 에 `.factory-manifest.json` · `CLAUDE.md` · `agents/` 9개 · `keybindings.json` 이 생겼다(factory_commit `81e705a`).
+- `tests/update-all-roundtrip-test.sh:281` 의 "실제 ~/.claude 의 설치 목록을 건드리지 않음" 단언이 잡았다(전: none).
+- 같은 시험을 따로 돌리면 실제 파일을 건드리지 않는다. 범인은 병렬로 함께 돈 다른 시험이거나 다른 프로세스다 — 찾지 못했다.
+
+## 할 일
+
+- 전역 설치를 부르는 시험(`setup.sh` · 전역 설치 함수)을 모아, `export HOME=` 이 설치 호출보다 **앞**에 있는지 본다.
+- run-all 에 "실행 전후 실제 `~/.claude` 의 mtime 이 같다" 를 러너 단위로 재는 단언을 더해, 어느 묶음에서 새는지 좁힌다.
+- 이 PC 의 실제 `~/.claude` 에 생긴 파일을 둘지 지울지는 사용자가 정한다.

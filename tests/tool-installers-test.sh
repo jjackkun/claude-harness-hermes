@@ -4,7 +4,7 @@
 #   2. 없으면 픽스처를 받아 sha256 대조 뒤 HARNESS_TOOL_BIN_DIR 에 age·age-keygen 을 놓는다(installed)
 #   3. sha256 이 어긋나면 설치하지 않는다(failed, 파일 0)
 #   4. REQUIRED_BINS 가 비면 아무 줄도 내지 않는다
-#   5~9. pytest — 프로젝트 가상환경에만: 시험 없으면 skipped · 돌면 present · 깨졌으면 그 가상환경에 재설치 · 없으면 .venv 생성 · 실패는 안내. 전역(sudo·apt) 호출 0
+#   5~11. pytest — 프로젝트 가상환경에만: 시험 없으면 skipped · 돌면 present · 깨졌으면 그 가상환경에 재설치 · 없으면 .venv 생성 · 실패는 안내. 전역(sudo·apt) 호출 0
 # 실행: bash tests/tool-installers-test.sh
 set -uo pipefail
 export HARNESS_TOOL_INSTALL=1   # run-all.sh 가 전역으로 0 을 내보낸다 — 이 테스트는 바로 그 기능을 검증하므로 스스로 켠다(픽스처(HARNESS_TOOL_SOURCE_DIR)만 쓰므로 네트워크 0). 2026-09-20: 이것 없이 CI 에서 통째로 빨갰다
@@ -81,7 +81,8 @@ printf '#!/usr/bin/env bash\necho "pytest 9.1.1"\n' > "$d/pytest"; chmod +x "$d/
 SH
 cat > "$FAKE/cmd/python3" <<SH
 #!/usr/bin/env bash
-# 시스템 python3 — \`-m venv DIR\` 만 흉내 낸다
+# 시스템 python3 — \`-c 'import ensurepip'\` 와 \`-m venv DIR\` 만 흉내 낸다. FAKE_VENV_FAIL=1 = ensurepip 없음
+[[ "\$1" == "-c" ]] && { [[ "\${FAKE_VENV_FAIL:-0}" == 1 ]] && exit 1; exit 0; }
 [[ "\$1 \$2" == "-m venv" ]] || exit 1
 [[ "\${FAKE_VENV_FAIL:-0}" == 1 ]] && { echo "ensurepip is not available" >&2; exit 1; }
 mkdir -p "\$3/bin" && cp "$FAKE/venvpy" "\$3/bin/python" && chmod +x "\$3/bin/python"
@@ -92,8 +93,9 @@ chmod +x "$FAKE/venvpy" "$FAKE/cmd/"*
 mkproj() { # mkproj <이름> [tests] → 경로. tests 면 tests/test_a.py 를 둔다
   local d="$TMP/$1"; mkdir -p "$d"; [[ "${2:-}" == tests ]] && { mkdir -p "$d/tests"; : > "$d/tests/test_a.py"; }; echo "$d"
 }
-mkvenv() { # mkvenv <venv 폴더> <ok|broken|none>
+mkvenv() { # mkvenv <venv 폴더> <ok|broken|none|nopip>  nopip = ensurepip 없이 만들다 만 가상환경
   mkdir -p "$1/bin"; cp "$FAKE/venvpy" "$1/bin/python"
+  [[ "$2" == nopip ]] && printf '#!/usr/bin/env bash\necho "No module named pip" >&2; exit 1\n' > "$1/bin/python"
   case "$2" in
     ok) printf '#!/usr/bin/env bash\necho "pytest 9.1.1"\n' > "$1/bin/pytest"; chmod +x "$1/bin/pytest" ;;
     broken) printf '#!/usr/bin/env bash\necho "No module named pytest" >&2; exit 1\n' > "$1/bin/pytest"; chmod +x "$1/bin/pytest" ;;
@@ -150,6 +152,18 @@ P9="$(mkproj p9 tests)"; run_py "$P9" 1
 assert "failed=pytest" "1" "$(printf '%s' "$OUT" | grep -c 'failed=pytest')"
 assert "손으로 칠 명령 안내" "1" "$(printf '%s' "$OUT" | grep -c 'python3 -m venv .venv')"
 assert "pip 호출 0" "0" "$([[ -f "$FAKE/pip.log" ]] && echo 1 || echo 0)"; no_global
+
+# 계획 2026-11-02-new-pc-restore G5 — Ubuntu 기본 이미지에 python3-venv(ensurepip)가 없으면
+# 손으로 칠 명령도 같은 이유로 실패한다. 빠진 패키지를 **보이기만** 한다(sudo 호출 0 은 그대로).
+echo "[10] ensurepip 가 없어 가상환경을 못 만들면 빠진 패키지를 말한다 ([9] 의 출력)"
+assert "깔 패키지 한 줄" "1" "$(printf '%s' "$OUT" | grep -c 'sudo apt-get install -y python3-venv')"
+
+echo "[11] 만들다 만 가상환경(pip 없음)은 지우고 다시 만들라고 말한다"
+P11="$(mkproj p11 tests)"; mkvenv "$P11/.venv" nopip; run_py "$P11" 1
+assert "failed=pytest" "1" "$(printf '%s' "$OUT" | grep -c 'failed=pytest')"
+assert "깔 패키지 한 줄" "1" "$(printf '%s' "$OUT" | grep -c 'sudo apt-get install -y python3-venv')"
+assert "지우고 다시 만들기 안내" "1" "$(printf '%s' "$OUT" | grep -c 'rm -rf .venv')"
+assert "만들다 만 가상환경을 스스로 지우지 않는다" "1" "$([[ -d "$P11/.venv" ]] && echo 1 || echo 0)"; no_global
 
 echo
 echo "tool-installers: PASS=$PASS FAIL=$FAIL"

@@ -224,6 +224,26 @@ resolve_preset() {
   return 1
 }
 
+# sort_presets <name...>: 분류 순(resolve_preset 과 같은 순서) → 같은 분류 안 이름순(LC_ALL=C)으로 한 줄씩.
+# 같은 집합은 넘긴 순서와 상관없이 같은 설치 결과를 낸다 — 2026-11-02 jj-agent-room 에서 순서만 다른
+# 재설치가 CLAUDE.md · settings.json · .gitignore 를 474줄 바꿨다. 중복은 하나로, 모르는 이름은 맨 뒤
+# (뒤이은 resolve_preset 이 그 이름으로 멈춘다). 근거: docs/exec-plans/active/2026-11-02-new-pc-restore-plan.md G2
+# 불변: conf 는 서로가 source 한 뒤의 상태를 읽지 않는다(배열 += · 플래그 대입뿐) — 그래야 정렬이 의미를 안 바꾼다.
+sort_presets() {
+  local name category i
+  local -A seen=()
+  for name in "$@"; do
+    [[ -z "$name" || -n "${seen[$name]+x}" ]] && continue
+    seen[$name]=1
+    i=0
+    for category in lang framework database build workflow permissions tools; do
+      [[ -f "$DEV_SETTING_DIR/presets/$category/$name.conf" ]] && break
+      i=$((i + 1))
+    done
+    printf '%d\t%s\n' "$i" "$name"
+  done | LC_ALL=C sort -t$'\t' -k1,1n -k2,2 | cut -f2
+}
+
 # list_presets: prints all available presets, grouped.
 list_presets() {
   local category

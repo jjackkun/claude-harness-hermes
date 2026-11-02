@@ -35,6 +35,7 @@ usage() {
   cat <<EOF
 Usage:
   $0 <project_path> <preset1> [preset2] ...
+  $0 <project_path>          (커밋된 <project_path>/.claude/presets.lock 으로 되살리기)
   $0 --list
 
 Options:
@@ -65,6 +66,21 @@ case "${1:-}" in
     ;;
 esac
 
+# 경로 하나뿐이면 그 프로젝트의 커밋된 .claude/presets.lock 으로 되살린다 — 새 PC 는 .installed-projects 가
+# 비어 update-all 이 프로젝트를 모른다. 목록이 없거나 비면 추측하지 않고 사용법으로 끝낸다(틀린 프리셋은
+# 추적된 설치물을 지운다 — R-lock 2026-09-22). 근거: docs/exec-plans/active/2026-11-02-new-pc-restore-plan.md G3
+if [[ $# -eq 1 && -f "$1/.claude/presets.lock" ]]; then
+  _restore=()
+  while IFS= read -r _line || [[ -n "$_line" ]]; do
+    _line="${_line//[[:space:]]/}"
+    [[ -n "$_line" && "$_line" != \#* ]] && _restore+=("$_line")
+  done < "$1/.claude/presets.lock"
+  if [[ ${#_restore[@]} -gt 0 ]]; then
+    log_info "커밋된 목록으로 설치: ${_restore[*]} (.claude/presets.lock)"
+    set -- "$1" "${_restore[@]}"
+  fi
+fi
+
 if [[ $# -lt 2 ]]; then
   usage
   exit 1
@@ -72,7 +88,13 @@ fi
 
 PROJECT_PATH="$1"
 shift
-PRESETS=("$@")
+# 같은 집합은 같은 결과 — 분류 순 → 이름순(계획 2026-11-02-new-pc-restore G2)
+mapfile -t PRESETS < <(sort_presets "$@")
+# 프로세스 치환 안의 실패는 set -e 가 못 본다 — 빈 목록으로 lock 을 덮어쓰기 전에 멈춘다(2026-11-02 리뷰)
+if [[ ${#PRESETS[@]} -eq 0 ]]; then
+  log_error "프리셋 목록이 비었습니다 — 정렬 실패 또는 빈 인자. lock 을 건드리지 않고 멈춥니다."
+  exit 1
+fi
 
 # ---- Validate project path ----
 if [[ ! -d "$PROJECT_PATH" ]]; then
@@ -108,8 +130,8 @@ for preset in "${PRESETS[@]}"; do
 done
 
 # ---- Source presets in order (lang → framework → database → build) ----
-# Note: we source in the order the user passed them; presets are additive
-# via the += operator, so later presets can rely on earlier state.
+# PRESETS 는 위에서 sort_presets 로 정렬됐다 — 넘긴 순서가 아니라 분류 순 → 이름순으로 source 한다.
+# Presets are additive via the += operator, so later presets can rely on earlier state.
 reset_preset_vars
 for f in "${RESOLVED_FILES[@]}"; do
   log_info "Loading     : $(basename "$(dirname "$f")")/$(basename "$f" .conf)"
@@ -194,7 +216,7 @@ printf '%s\n' "${PRESETS[@]}" > "$CLAUDE_DIR/presets.lock"
 log_info "Saved presets → .claude/presets.lock"
 
 
-warn_manifest_untracked "$PROJECT_PATH"
+warn_install_files_untracked "$PROJECT_PATH"
 
 receipt_end "$PROJECT_PATH"
 

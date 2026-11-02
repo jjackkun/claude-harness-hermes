@@ -41,6 +41,7 @@ _pytest_ensure() {   # <project> → _PYTEST_RESULT 를 정한다. 실패해도 
     if ! python3 -m venv "$venv" >/dev/null 2>&1; then
       _PYTEST_RESULT=failed
       log_warn "  pytest: 가상환경을 만들지 못했습니다 — 프로젝트 폴더에서 손으로: python3 -m venv .venv && .venv/bin/python -m pip install $_PYTEST_SPEC"
+      _pytest_hint_ensurepip ""
       return 0
     fi
   fi
@@ -49,6 +50,18 @@ _pytest_ensure() {   # <project> → _PYTEST_RESULT 를 정한다. 실패해도 
     _PYTEST_RESULT=installed; log_info "  tool → $_PYTEST_SPEC → $rel (이 프로젝트 가상환경에만)"
   else
     _PYTEST_RESULT=failed; log_warn "  pytest: $rel 에 설치하지 못했습니다 — 프로젝트 폴더에서 손으로: $rel/bin/python -m pip install $_PYTEST_SPEC"
+    _pytest_hint_ensurepip "$rel"
   fi
+  return 0
+}
+
+# ensurepip 가 없으면(Ubuntu 기본 이미지에 python3-venv 가 빠짐) 위의 손 명령도 같은 이유로 실패한다 —
+# 빠진 패키지를 **보이기만** 한다(sudo 를 부르지 않는다). <rel> 이 있으면 그 가상환경은 pip 없이
+# 만들다 만 것이라 지우고 다시 만들라고 덧붙인다 — 스스로 지우지 않는다(사용자 데이터일 수 있다).
+# 근거: docs/exec-plans/active/2026-11-02-new-pc-restore-plan.md G5
+_pytest_hint_ensurepip() { # <rel 또는 "">
+  python3 -c 'import ensurepip' >/dev/null 2>&1 && return 0
+  log_warn "            ↳ 원인: python3 의 ensurepip 가 없습니다 — 먼저: sudo apt-get install -y python3-venv"
+  [[ -n "$1" ]] && log_warn "            ↳ $1 는 pip 없이 만들다 만 가상환경입니다 — 패키지를 깐 뒤: rm -rf $1 && 설치를 다시 돌리십시오"
   return 0
 }

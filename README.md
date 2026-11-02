@@ -187,7 +187,7 @@ claude-harness-hermes 이 업데이트된 후 등록된 모든 프로젝트에 �
 
 `project-claude.sh` 를 실행할 때마다 해당 프로젝트가 머신 로컬 레지스트리(`.installed-projects`)에 자동 등록됩니다. `update-all` 은 이 목록을 읽어 각 프로젝트에 `project-claude.sh` 를 재실행합니다.
 
-> `.installed-projects` 는 머신별 로컬 파일로 git에 포함되지 않습니다.
+> `.installed-projects` 는 머신별 로컬 파일로 git에 포함되지 않습니다. 포맷한 PC 에서는 이 목록이 비므로, 프로젝트마다 `project-claude.sh <경로>` 한 번으로 커밋된 프리셋 목록을 읽어 되살린 뒤 `update-all` 을 씁니다.
 
 ## 언인스톨
 
@@ -234,7 +234,14 @@ project-claude.sh <PROJECT_PATH> <preset1> [preset2] ...
 
 # 변경 없이 어떤 것이 설치될지 미리 보기
 ./project-claude.sh --dry-run ~/PROJECT/foo python fastapi postgres
+
+# 새 PC · 새 clone — 프리셋 없이 경로만 주면 그 프로젝트의 커밋된 .claude/presets.lock 으로 되살린다
+./project-claude.sh ~/PROJECT/foo
 ```
+
+- 프리셋은 넘긴 순서와 상관없이 분류 순(lang → framework → database → build → workflow → permissions → tools) → 이름순으로 정렬해 설치합니다. 같은 집합이면 결과 파일이 바이트 단위로 같습니다.
+- `.claude/presets.lock` 은 커밋 대상입니다. 하네스 블록이 `!.claude/presets.lock` 예외를 넣고, 그래도 무시되면 설치 끝에 경고합니다.
+- lock 이 없거나 비었으면 추측해서 깔지 않고 사용법으로 끝납니다. 모르는 이름이 섞여 있으면 아무것도 깔지 않습니다.
 
 ## Codex target
 
@@ -332,7 +339,7 @@ Claude 전용 `CLAUDE.md`, `.claude/settings.json` / `.claude/settings.local.jso
 <!--===DS:COUNTS:BEGIN===-->
 - 세션 중 실행 훅 **18종** + 훅이 공유하는 판정 모듈 **19개**
 - git pre-commit 게이트 **22종** — 차단 12 / 경고 10
-- harness 프리셋이 까는 스킬 **11종** · 에이전트 **12종** · 공장 테스트 **145개**
+- harness 프리셋이 까는 스킬 **11종** · 에이전트 **12종** · 공장 테스트 **147개**
 <!--===DS:COUNTS:END===-->
 
 > 위 수치는 `assets/hooks/doc_counts.py` 가 소스에서 산출합니다. 손으로 고치지 마십시오 —

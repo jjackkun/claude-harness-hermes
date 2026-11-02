@@ -17,15 +17,15 @@
 
 공통: 시험은 임시 폴더의 가짜 프로젝트(`git init`)에 설치한다. 실제 프로젝트를 건드리지 않는다.
 
-- [ ] G1 프리셋 목록이 커밋된다 — 프로젝트 `.gitignore` 에 하네스 블록보다 앞서 `.claude/*` 가 있어도, 설치 뒤 `git check-ignore -q .claude/presets.lock` 이 1(무시 안 됨)이다. 하네스 블록에 `!.claude/presets.lock` 을 매니페스트 예외와 같은 자리에 넣는다. 설치 끝의 "실제 추적 여부를 git 에 묻는 경고"(`warn_manifest_untracked`, `lib/harness_installers.sh:619` · 호출 `project-claude.sh:197`)가 presets.lock 도 본다 — 지금은 `rel` 이 `.factory-manifest.json` 으로 고정이라 경로를 인자로 받게 고친다(경고 문구의 `!…` 줄도 그 경로로).
+- [x] G1 프리셋 목록이 커밋된다 — 프로젝트 `.gitignore` 에 하네스 블록보다 앞서 `.claude/*` 가 있어도, 설치 뒤 `git check-ignore -q .claude/presets.lock` 이 1(무시 안 됨)이다. 하네스 블록에 `!.claude/presets.lock` 을 매니페스트 예외와 같은 자리에 넣는다. 설치 끝의 "실제 추적 여부를 git 에 묻는 경고"(`warn_manifest_untracked`, `lib/harness_installers.sh:619` · 호출 `project-claude.sh:197`)가 presets.lock 도 본다 — 지금은 `rel` 이 `.factory-manifest.json` 으로 고정이라 경로를 인자로 받게 고친다(경고 문구의 `!…` 줄도 그 경로로).
       `bash tests/preset-lock-tracked-test.sh` (기존 R-lock 시험에 "블록보다 앞선 `.claude/*`" 경우를 더한다 — 새 파일을 만들지 않는다)
-- [ ] G2 순서와 상관없는 결과 — 같은 프리셋 집합을 서로 다른 순서 3가지로 넘겨 설치하면 `CLAUDE.md` · `.claude/settings.json` · `.gitignore` · `.claude/presets.lock` 이 바이트 단위로 같다. 정렬 기준은 `setup.sh` 단계 순서(lang → framework → database → build → workflow → permissions → tools), 같은 분류 안에서는 이름순 — 지금 소우주들이 이미 받은 11:15 판과 같은 순서라 재설치 차이가 가장 적다.
+- [x] G2 순서와 상관없는 결과 — 같은 프리셋 집합을 서로 다른 순서 3가지로 넘겨 설치하면 `CLAUDE.md` · `.claude/settings.json` · `.gitignore` · `.claude/presets.lock` 이 바이트 단위로 같다. 정렬 기준은 `setup.sh` 단계 순서(lang → framework → database → build → workflow → permissions → tools), 같은 분류 안에서는 이름순 — 지금 소우주들이 이미 받은 11:15 판과 같은 순서라 재설치 차이가 가장 적다.
       `bash tests/preset-order-stable-test.sh`
-- [ ] G3 커밋된 목록으로 되살리기 — 프리셋 인자 없이 `project-claude.sh <경로>` 를 부르면 그 프로젝트의 커밋된 `.claude/presets.lock` 을 읽어 설치한다. 목록이 없으면 지금처럼 사용법을 보이고 끝낸다(추측해서 깔지 않음). 새 PC 는 `.installed-projects` 가 비어 `update-all` 이 그 프로젝트를 모르므로 이 길이 필요하다.
+- [x] G3 커밋된 목록으로 되살리기 — 프리셋 인자 없이 `project-claude.sh <경로>` 를 부르면 그 프로젝트의 커밋된 `.claude/presets.lock` 을 읽어 설치한다. 목록이 없으면 지금처럼 사용법을 보이고 끝낸다(추측해서 깔지 않음). 새 PC 는 `.installed-projects` 가 비어 `update-all` 이 그 프로젝트를 모르므로 이 길이 필요하다.
       `bash tests/project-claude-restore-test.sh`
-- [ ] G4 실행 권한 — `git ls-files -s project-claude.sh public-claude.sh` 가 둘 다 `100755`.
+- [x] G4 실행 권한 — `git ls-files -s project-claude.sh public-claude.sh` 가 둘 다 `100755`.
       `git ls-files -s project-claude.sh public-claude.sh | awk '{print $1}' | sort -u` → `100755`
-- [ ] G5 venv 실패가 원인과 한 줄을 말한다 — `python3 -c 'import ensurepip'` 가 실패하면, venv 를 새로 만들 때(`lib/tool_install_pytest.sh:41~44`)와 반쯤 만든 `.venv`(`bin/python` 은 있고 pip 없음)에 pip 를 깔다 실패할 때(`:51`) **두 경고 모두** `sudo apt-get install -y python3-venv` 를 보인다. 반쯤 만든 `.venv` 의 경고는 "지우고 다시 설치" 도 함께 보인다.
+- [x] G5 venv 실패가 원인과 한 줄을 말한다 — `python3 -c 'import ensurepip'` 가 실패하면, venv 를 새로 만들 때(`lib/tool_install_pytest.sh:41~44`)와 반쯤 만든 `.venv`(`bin/python` 은 있고 pip 없음)에 pip 를 깔다 실패할 때(`:51`) **두 경고 모두** `sudo apt-get install -y python3-venv` 를 보인다. 반쯤 만든 `.venv` 의 경고는 "지우고 다시 설치" 도 함께 보인다.
       (이미 되는 것 — 바꾸지 않는다: 요약의 `failed=pytest` 표기, 반쯤 만든 `.venv` 를 `present` 로 보지 않는 판정(`_pytest_runs_in`). 반쯤 만든 `.venv` 가 `:51` 로 가는 길은 코드를 읽은 추정이다 — S1 시험에서 먼저 확인한다.)
       `bash tests/tool-installers-test.sh` (기존 시험에 ensurepip 없는 가짜 `python3` 경우를 더한다)
 
@@ -118,8 +118,21 @@
 
 ## 7. 발견·예외
 
-- 2026-11-02 (planner-lite 리뷰): 프로젝트가 `.claude/`(디렉터리째)를 무시하면 git 은 그 안의 `!` 예외를 보지 않는다 — `!.claude/presets.lock` 도 먹지 않는다. 이 경우는 G1 이 고치지 않고 S2 의 추적 경고로만 알린다(manifest 와 같은 한계).
+- 2026-11-02 (planner-lite 리뷰 → S2 실측으로 정정): 리뷰는 "`.claude/`(디렉터리째) 무시면 `!` 예외가 안 먹는다" 고 했다. 설치기가 이미 `.claude/` 를 `.claude/*` 로 바꾼다(설치 로그 `gitignore → .claude/ 를 .claude/* 로 교체`) — 그 한계는 없다. 남는 한계는 블록 **뒤**에 사용자가 둔 `.claude/*` 이고, 이것만 S2 의 추적 경고로 알린다(manifest 와 같음). 시험도 그 경우로 고쳤다.
 - 2026-11-02 (planner-lite 리뷰): `lib/harness_installers.sh:629` 경고 문구의 백틱 명령 치환 — 기존 결함, S2 에서 함께 고친다.
+- 2026-11-02 S1: **공장 자신도 이 PC 에서 커밋 게이트가 없다.** `.git/hooks/` 에 `*.sample` 뿐이고 `core.hooksPath` 도 비어 있다 — 2026-10-30 포맷 뒤 공장에 자기 설치를 다시 하지 않았다. 이 계획의 커밋 `81e705a` 는 게이트 없이 들어갔다. 같은 원인(새 PC 에서 되살리기 길이 없음)의 공장판이다 — G3 가 끝나면 공장에도 `project-claude.sh .` 로 되살린다(사용자 확인 뒤).
+- 2026-11-02 S1: G2 의 순서 차이는 전부 순서에서 나온다 — 같은 순서 두 번은 바이트 동일, 다른 순서는 정렬 비교 시 8줄 차이(`CLAUDE.md` 룰셋·에이전트 줄 안의 나열 순서, `settings.json` 의 마지막 항목 쉼표). 정렬로 없어질 차이다.
+- 2026-11-02 code-reviewer (5건) — 코드로 가른 결과:
+  - [HIGH] "Ubuntu 는 python3-venv 없이도 `import ensurepip` 가 성공한다" → **성립 안 함.** `dpkg -S /usr/lib/python3.12/ensurepip/__init__.py` = `python3.12-venv`. 패키지가 없으면 모듈도 없다. `_bundled` 가 없는 것은 휠을 `/usr/share/python-wheels` 에 두는 Debian 방식이다. 판정은 그대로 둔다.
+  - [MEDIUM] locale 시험이 아무것도 재지 않는다 → 성립. 이 PC 에 `en_US.UTF-8` 이 없다. 설치 시험을 `sort_presets` 단위 시험(가짜 프리셋 폴더, 대문자 이름)으로 바꿨다. locale 이 없는 PC 에서는 한계를 한 줄로 알린다.
+  - [MEDIUM] `mapfile < <(sort_presets …)` 의 실패를 set -e 가 못 본다 → 성립. 빈 목록이면 lock 을 쓰기 전에 `exit 1`.
+  - [MEDIUM] 경로만 넘기는 암묵적 복원 → 지금은 버그가 아니다(`setup.sh:262` 가 0개 선택을 먼저 끝냄, `update-all` 은 항상 2개 이상). 플래그는 더하지 않았다.
+  - [LOW] conf 끼리 source 상태를 읽지 않는다는 불변 → `lib/preset.sh` 주석에 적었다.
+- 2026-11-02 전체 시험(run-all 151개): 148 통과 / 3 실패. 실패 셋을 가른 결과:
+  - `doc-counts-gate-test.sh` — 시험 파일 2개를 더해 개수가 낡았다. `scripts/sync-doc-counts.sh` 로 고쳤다(README · CLAUDE.md · harness.conf).
+  - `update-all-roundtrip-test.sh` · `hermes-handoff-test.sh` — 둘 다 따로 돌리면 통과한다(14:2x 실측). handoff 는 대기열 순서 단언(`지시1 지시2` ↔ `지시2 지시1`)이고, 이 계획이 건드리지 않은 코드다 — 병렬 부하에서의 순서 흔들림으로 본다(추정).
+  - **확인 못 한 것:** run-all 도중 14:17:54 에 **실제** `~/.claude` 에 전역 설치가 일어났다(`.factory-manifest.json` · `CLAUDE.md` · `agents/` 9개 · `keybindings.json`, factory_commit `81e705a`). roundtrip 시험의 "실제 ~/.claude 를 건드리지 않음" 단언이 이것을 잡았다. 따로 돌린 두 시험은 건드리지 않았다. 어느 시험(또는 다른 프로세스)이 HOME 을 새게 했는지 찾지 못했다. 전에 무엇이 있었는지도 모른다(백업 폴더에는 `.claude.json` 백업만). 지우지 않았다 — 사용자 판단. 후보: `docs/exec-plans/backlog/run-all-global-home-leak.md`.
+- 2026-11-02 S1 RED 결과: tool-installers 3 실패 / preset-lock-tracked 4 / project-claude-restore 9 / preset-order-stable 10. 기존 단언은 전부 초록. restore 의 "lock 은 같은 집합" 은 지금 파일을 안 건드려 통과한다 — S4 뒤에야 의미가 생긴다.
 
 ## 8. 회고 (완료 시 작성)
 
