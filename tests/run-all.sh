@@ -327,6 +327,7 @@ REGISTERED_TESTS=(
   hermes-soul-approval-test.sh
   hermes-sync-test.sh
   tool-installers-test.sh
+  precommit-gate-count-log-test.sh
   hermes-redact-pii-test.sh
   sync-autoenable-test.sh
   hermes-roster-test.sh

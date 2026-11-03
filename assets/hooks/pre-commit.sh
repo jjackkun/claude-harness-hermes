@@ -966,7 +966,8 @@ fi
 
 # 9. R-retro — completed/ 로 옮긴 계획서에 회고가 있는가 (경고)
 # GATE: R-retro warn
-# GATE: R-precheck warn   # 9-ter — 같은 루프 안에서 「착수 전 확인한 사실」을 본다
+# GATE: R-precheck warn
+# (R-precheck: 9-ter — 같은 루프 안에서 「착수 전 확인한 사실」을 본다)
 #
 # filter_files 를 쓸 수 없다. STAGED 는 --diff-filter=ACM 인데 git mv 는 rename(R100)
 # 으로 분류돼 그 필터에 잡히지 않는다(2026-08-13 실측). 자체 git 호출을 쓰되

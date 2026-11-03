@@ -338,8 +338,8 @@ Claude 전용 `CLAUDE.md`, `.claude/settings.json` / `.claude/settings.local.jso
 
 <!--===DS:COUNTS:BEGIN===-->
 - 세션 중 실행 훅 **18종** + 훅이 공유하는 판정 모듈 **19개**
-- git pre-commit 게이트 **22종** — 차단 12 / 경고 10
-- harness 프리셋이 까는 스킬 **11종** · 에이전트 **12종** · 공장 테스트 **147개**
+- git pre-commit 게이트 **23종** — 차단 12 / 경고 11
+- harness 프리셋이 까는 스킬 **11종** · 에이전트 **12종** · 공장 테스트 **148개**
 <!--===DS:COUNTS:END===-->
 
 > 위 수치는 `assets/hooks/doc_counts.py` 가 소스에서 산출합니다. 손으로 고치지 마십시오 —

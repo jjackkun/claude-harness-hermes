@@ -20,6 +20,7 @@
 사용법:
   doc_counts.py render              # 마커 블록 본문을 출력 (exit 0)
   doc_counts.py check <파일...>      # 파일의 블록이 산출값과 다르면 exit 1
+  doc_counts.py gates [pre-commit]  # "전체 차단 경고" 한 줄 (설치기 로그용, 인자 없으면 원본)
 
 종료코드 계약: 0 일치 · 1 문서 불일치 · 2 판정 불가(산출 근거 없음) · 3 사용법 오류.
 "잴 수 없음" 을 "문서가 틀림" 과 절대 합치지 않는다. 합치면 게이트가 꺼진 상태가
@@ -29,15 +30,36 @@
 """
 
 import re
+import subprocess
 import sys
 from pathlib import Path
 
 BEGIN = "<!--===DS:COUNTS:BEGIN===-->"
 END = "<!--===DS:COUNTS:END===-->"
 
-_ROOT = Path(__file__).resolve().parent.parent.parent
 _HARNESS_CONF = "presets/workflow/harness.conf"
 _PRECOMMIT = "assets/hooks/pre-commit.sh"
+
+
+def _repo_root():
+    """잴 저장소 루트. 현재 디렉터리의 git 최상위가 공장 저장소면 그곳, 아니면 이 파일 기준.
+
+    git worktree 는 .git/hooks 를 본 체크아웃과 같이 쓴다. 파일 위치만 보면 작업 트리에서
+    커밋해도 본 체크아웃을 재어, 작업 트리의 수치 변경이 R-doc 에 막혔다(2026-11-03).
+    """
+    try:
+        top = subprocess.run(
+            ["git", "rev-parse", "--show-toplevel"],
+            capture_output=True, text=True, check=True,
+        ).stdout.strip()
+    except (OSError, subprocess.CalledProcessError):
+        top = ""
+    if top and (Path(top) / _PRECOMMIT).is_file():
+        return Path(top)
+    return Path(__file__).resolve().parent.parent.parent
+
+
+_ROOT = _repo_root()
 _RUNALL = "tests/run-all.sh"
 
 
@@ -121,11 +143,21 @@ def _bash_array(text, name):
     raise DocCountsUnavailable(f"배열 {name}+=( 를 찾지 못했습니다 — 소스 구조가 바뀌었습니까?")
 
 
-def _gate_verdicts():
-    """pre-commit 의 `# GATE:` 선언을 읽는다. 선언이 없으면 예외."""
-    gates = re.findall(r"^# GATE: (R-[a-z-]+) (block|warn)$", _read(_PRECOMMIT), re.M)
+def _gate_verdicts(text=None):
+    """pre-commit 의 `# GATE:` 선언을 읽는다. 선언이 없으면 예외.
+
+    text 를 주면 그 본문(설치된 훅 등)을 읽는다. 형식에 안 맞는 `# GATE:` 줄도 예외다 —
+    뒤에 주석이 붙은 R-precheck 한 줄이 조용히 빠져 문서가 22종(실제 23)이라 했다(2026-11-02).
+    """
+    if text is None:
+        text = _read(_PRECOMMIT)
+    gates = re.findall(r"^# GATE: (R-[a-z-]+) (block|warn)$", text, re.M)
     if not gates:
         raise DocCountsUnavailable("`# GATE:` 선언을 하나도 찾지 못했습니다 — 선언이 지워졌습니까?")
+    declared = re.findall(r"^# GATE:.*$", text, re.M)
+    if len(declared) != len(gates):
+        odd = [d for d in declared if not re.fullmatch(r"# GATE: R-[a-z-]+ (block|warn)", d)]
+        raise DocCountsUnavailable(f"형식이 `# GATE: R-xxx block|warn` 이 아닌 선언이 있습니다: {odd}")
     return gates
 
 
@@ -135,6 +167,14 @@ def _test_names():
     if not names:
         raise DocCountsUnavailable("tests/*.sh 를 찾지 못했습니다")
     return names
+
+
+def _read_hook(path):
+    """설치된 pre-commit 처럼 저장소 밖 경로를 읽는다. 없으면 예외."""
+    hook = Path(path)
+    if not hook.is_file():
+        raise DocCountsUnavailable(f"pre-commit 파일이 없습니다: {hook}")
+    return hook.read_text(encoding="utf-8")
 
 
 def counts():
@@ -192,6 +232,14 @@ def check(paths):
     return problems
 
 
+def _print_gates(hook_path):
+    """"전체 차단 경고" 한 줄을 출력한다. hook_path 가 없으면 원본 pre-commit.sh 를 센다."""
+    text = _read_hook(hook_path) if hook_path else None
+    verdicts = [v for _, v in _gate_verdicts(text)]
+    print(len(verdicts), verdicts.count("block"), verdicts.count("warn"))
+    return 0
+
+
 def main(argv):
     """종료코드 계약: 0 일치 · 1 불일치 · 2 판정 불가(근거 없음) · 3 사용법 오류.
 
@@ -202,6 +250,8 @@ def main(argv):
         if len(argv) >= 2 and argv[1] == "render":
             print(render())
             return 0
+        if len(argv) in (2, 3) and argv[1] == "gates":
+            return _print_gates(argv[2] if len(argv) == 3 else None)
         if len(argv) >= 3 and argv[1] == "check":
             problems = check(argv[2:])
             for p in problems:
@@ -211,7 +261,7 @@ def main(argv):
         print(f"[R-doc] 수치를 산출할 수 없습니다 — {exc}", file=sys.stderr)
         return 2
     print(__doc__.strip().splitlines()[0], file=sys.stderr)
-    print("usage: doc_counts.py render | check <파일...>", file=sys.stderr)
+    print("usage: doc_counts.py render | check <파일...> | gates [pre-commit]", file=sys.stderr)
     return 3
 
 

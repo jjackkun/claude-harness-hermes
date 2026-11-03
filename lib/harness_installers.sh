@@ -80,7 +80,13 @@ install_harness_pre_commit() {
   local dest="$git_dir/hooks/pre-commit"
   mkdir -p "$git_dir/hooks"
   _install_git_hook "$project_path" "$src" pre-commit 755
-  log_info "  hook    → .git/hooks/pre-commit (게이트 13종 — 차단 9 / 경고 4)"
+  # 게이트 수는 R-doc 과 같은 산출기(doc_counts.py gates)로 설치된 훅에서 센다 — 글자로 박은 수는 낡는다.
+  local gate_total gate_block gate_warn
+  if read -r gate_total gate_block gate_warn < <(python3 "$ASSETS_DIR/hooks/doc_counts.py" gates "$dest"); then
+    log_info "  hook    → .git/hooks/pre-commit (게이트 ${gate_total}종 — 차단 ${gate_block} / 경고 ${gate_warn})"
+  else
+    log_warn "  hook    → .git/hooks/pre-commit (게이트 수 산출 실패 — 위 [R-doc] 메시지 참고)"
+  fi
 
   # R-struct 구조 검사기 — pre-commit 이 $(dirname $0) 에서 참조. 목록은 이 배열 하나다:
   # 흩어 두면 일부만 복사된 설치(부분 설치)가 생기고, 엔진은 그때 skipped 로 넘어간다.
