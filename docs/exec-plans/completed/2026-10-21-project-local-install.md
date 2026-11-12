@@ -20,7 +20,7 @@
       `grep -n 'venv' assets/hooks/pytest_gate.sh assets/hooks/pre-commit.sh`
 - [x] G5 — `update-all` 로 전파되어 원칙이 모든 소우주에 적용된다. **경로 정정(2026-10-21 실측)**: `common` 규칙은 소우주가 아니라 사용자 전역 `~/.claude/rules/common/` 에 하나만 깔린다(`presets/_common.conf:57` `RULES+=(common)` → `public-claude.sh:136` `install_rules "$CLAUDE_DIR"`). 소우주 `.claude/rules/` 에는 프리셋 규칙(harness·python 등)만 있어 원래 문구의 경로는 생기지 않는다.
       `grep -c 'Install Scope' ~/.claude/rules/common/development-workflow.md && cmp ~/.claude/rules/common/development-workflow.md assets/rules/common/development-workflow.md` → 1 · 같음
-- [ ] G6 — 공장 시험 전부 초록, 공장 README·CLAUDE.md 개수 표기와 맞음.
+- [x] G6 — 공장 시험 전부 초록, 공장 README·CLAUDE.md 개수 표기와 맞음.
       `bash tests/run-all.sh` (이름은 착수 때 확인)
 
 ## 2-bis. 착수 전 확인한 사실 (2026-10-21)
@@ -83,8 +83,10 @@
 
 - 2026-11-12 위 run-all 의 `update-all-roundtrip` 실패 원인을 찾아 고쳤다 — `harness-doctor-test.sh` 가 실제 `~/.claude` 에 전역 설치를 했다(`completed/2026-11-12-run-all-global-home-leak.md`). 남은 실패는 `age` 미설치 2건이다.
 
+- 2026-11-12 run-all 재실행(브랜치 claude/youtube-video-check-6d28a3, HEAD 67ac8fc): 152/152 통과, 스킵 0, 고아 0 · 결손 0(등록 148). `age` 가 이제 `/usr/bin/age` 에 있어 hermes-keys·hermes-sync 도 통과. `doc_counts.py check CLAUDE.md README.md` → 0. G6 닫음
+
 ## 8. 회고 (완료 시 작성)
 
-- 잘된 것:
-- 잘못된 것:
-- 다음 룰 후보:
+- 잘된 것: 원칙(설치는 그 프로젝트 안에만)을 규칙 문장 · 설치기 동작 · 커밋 게이트 안내 세 곳에 넣었고, 전파 중 `_pytest_venv_of` 결함을 실측으로 찾아 고쳤다
+- 잘못된 것: G5 의 원래 경로(소우주 `.claude/rules/common/`)를 설치 구조를 확인하지 않고 적었다. G6 은 다른 원인(run-all 의 전역 홈 누수 · age 미설치)에 막혀 3주 열려 있었다
+- 다음 룰 후보: 목표에 경로를 적을 때는 설치기가 실제로 그 경로를 만드는지 먼저 한 번 실행해 본다

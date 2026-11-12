@@ -56,7 +56,7 @@
 - [ ] G6 — jj-agent-room 이 포크 전용 복사본 대신 프리셋을 쓴다(`scripts/fork/secrets.sh`·`lib/env-secrets-*` 제거, `.harnessrc` 의 임시 sync 줄 제거, `init:setting`·npm 스크립트는 새 경로를 부름). 기존 `.env.secrets`·Bitwarden 항목은 그대로 열린다. — 검증: 전파 후 jj-agent-room 에서 `open` → 같음 12, 시험 통과
 - [x] G8 — Bitwarden 계정이 없는 사람도 막히지 않는다. 금고를 처음 열 때(로그인 안 된 상태) 이메일을 묻기 전에 "계정이 없으면 https://vault.bitwarden.com 에서 무료 가입(마스터 비밀번호는 본인이 정하고, 잊으면 Bitwarden 도 되찾아 주지 못함) 후 다시 실행" 안내를 보인다. 로그인 실패 때도 같은 안내로 끝낸다(지금은 "Bitwarden 열기 실패" 한 줄뿐). — 검증: 시험(가짜 bw 가 unauthenticated → 출력에 가입 주소와 다시 실행 명령) + 가상 터미널 실측  ✅ 2026-10-16 `env-secrets-test.sh` + 가상 터미널 실측
 - [x] G7 — 하류 수정이 공장 개정에 덮이지 않는다(`install_factory_file` 의 공존 규칙). — 검증: `tests/env-secrets-install-test.sh` 에서 실제 프리셋으로 설치 → 하류 수정 → 재설치 후 수정 보존  ✅ 2026-10-16 `env-secrets-install-test.sh` 재설치 단언
-- [ ] G9 — `tests/run-all.sh` 전체 통과, 고아 시험 0. — 검증: run-all 결과
+- [x] G9 — `tests/run-all.sh` 전체 통과, 고아 시험 0. — 검증: run-all 결과
 
 ## 2-bis. 착수 전 확인한 사실 (2026-10-16)
 
@@ -148,6 +148,8 @@
 - 2026-10-16: 게이트 분류는 "경고" — 근거: gate-declaration-coverage 가 block|warn 선언과 pass 기록을 요구한다. 재암호화가 일어났을 때 warn 으로 사람에게 보인다
 - 2026-10-16: `ENV_SECRETS_ROOT` 는 스크립트 위치로 계산(git rev-parse 아님) — 근거: 하류에서 검증된 방식이고 설치 경로 깊이가 같다. git 이 아닌 곳에서도 동작
 - 2026-10-16: init 연동 파일(`lib/env-secrets.sh`)은 공장에 넣지 않고 하류에 남긴다 — 근거: `init-setting.sh`·`init-ui.sh` 전용이고 공장에 그 장치가 없다
+
+- 2026-11-12: G9 — run-all 152/152 통과, 고아 0(등록 148). G6(jj-agent-room 전파)만 남음 — 전파 지시가 있어야 하고, jj-agent-room 은 설치만·커밋 안 함 목록이다
 
 ## 6-bis. 위험·되돌리기
 
