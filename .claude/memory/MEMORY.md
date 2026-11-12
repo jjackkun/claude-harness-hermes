@@ -18,3 +18,5 @@
 - [zeroday-frontend 전파 제외](project-zeroday-frontend-excluded.md) — 2026-10-21 레지스트리에서 뺌(11곳), 푸시=자동 배포라 설치·전파·푸시 제안 금지
 - [rim-kanban 전파 제외](project-rim-kanban-excluded.md) — 2026-10-21 레지스트리에서 뺌(10곳), 설치·전파·venv 재생성 제안 금지
 - [전파 때 커밋 금지 목록](project-propagate-no-commit-list.md) — 2026-10-22 jj-agent-room · Nbbang-Run · 제로데이 관련은 설치만, 커밋·푸시 안 함
+- [답변은 한국어로](feedback-reply-in-korean.md) — 지시문이 영어여도 보고·질문은 한국어; 2026-11-03 지적
+- [PR 안 씀 — 로컬 main 에 ff 합치기](feedback-no-pr-solo.md) — 혼자 작업, create_pr 제안 금지; 2026-11-12 지적
