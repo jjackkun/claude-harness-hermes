@@ -27,3 +27,9 @@
 - **다른 호출자:** `update-all.sh`·`setup.sh`·`public-claude.sh` 를 실제로 실행하는 시험은 이 시험과 `mods-install-test.sh` 둘이다. `mods-install-test.sh` 는 이미 `CLAUDE_CONFIG_DIR` 을 준다.
 - **하지 않은 것:** run-all 러너 단위의 mtime 단언은 더하지 않았다 — `update-all-roundtrip-test.sh` 10절이 이미 두 번 잡았다. 실제 `~/.claude` 에 생긴 파일(2026-11-02 의 `CLAUDE.md` 스텁 포함)은 지우지 않았다 — 사용자 판단.
 - **룰 후보:** "전역 설치를 부르는 시험은 `HOME` 이 아니라 `CLAUDE_CONFIG_DIR` 을 바꾼다" 가 두 번(10-06 · 11-12) 나왔다. 세 번째가 나오면 R 룰로 올린다.
+
+## 8. 회고
+
+- 잘된 것: `getent` 를 가짜로 끼워 실제 `~/.claude` 를 다시 건드리지 않고 범인 시험을 확정했다. 고친 줄을 뺀 사본으로 새 단언이 실제로 빨개지는지도 쟀다.
+- 잘못된 것: 2026-10-06 roundtrip 시험에서 같은 원인을 고칠 때, `update-all.sh` 를 부르는 다른 시험을 함께 훑지 않았다. 그래서 같은 누수가 한 달 뒤 두 번 더 났다.
+- 다음 룰 후보: 전역 설치(`update-all.sh`·`setup.sh`·`public-claude.sh`)를 부르는 시험은 `CLAUDE_CONFIG_DIR` 을 고정해야 한다. 정적 시험 한 장으로 강제할 수 있다. 세 번째 재발 때 R 룰로 올린다.
