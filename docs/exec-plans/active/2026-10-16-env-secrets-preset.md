@@ -191,6 +191,8 @@
   pre-commit.sh 를 쓰는 기존 시험 12개 전부 실패 0.
   경고가 11 이 아니라 10 인 것은 `# GATE: R-precheck warn   # …` 줄 끝 주석 때문에 `doc_counts.py:126` 정규식에 안 걸려서다 — 이번 변경과 무관한 기존 상태.
 
+- 2026-11-12 run-all(152개): 149 통과 / 3 실패, 고아 0. 실패 셋은 이 계획이 바꾼 코드가 아니다 — `hermes-keys`·`hermes-sync` 는 "전제: age 미설치"(이 PC 에 `age` 없음, 시스템 설치라 세션에서 깔지 않음), `update-all-roundtrip` 은 따로 돌리면 35/35 이고 run-all 중 실제 `~/.claude` 가 덮인 것을 잡았다(백로그 `run-all-global-home-leak.md` 두 번째 재현). 두 원인이 풀리기 전에는 이 목표를 닫지 않는다.
+
 ## 8. 회고 (완료 시 작성)
 
 - 잘된 것:
