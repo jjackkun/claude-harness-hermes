@@ -20,7 +20,12 @@ assert() {
   else echo "  ✗ $desc (expected=$expected actual=$actual)"; FAIL=$((FAIL+1)); fi
 }
 T="$(mktemp -d)"; trap 'rm -rf "$T"' EXIT
+# 4절의 update-all 은 public-claude.sh 를 부르고, 그것은 HOME 이 아니라 getent 로 홈을 찾는다.
+# HOME 만 바꾸면 실제 ~/.claude 에 전역 설치가 새므로(2026-11-02·11-12 run-all 누수) 대상 폴더를 고정한다.
+REAL_CLAUDE_DIR="${CLAUDE_CONFIG_DIR:-$(getent passwd "$(id -un)" | cut -d: -f6)/.claude}"
+REAL_MANIFEST_BEFORE="$(stat -c %Y "$REAL_CLAUDE_DIR/.factory-manifest.json" 2>/dev/null || echo none)"
 export HOME="$T/home"; mkdir -p "$HOME"
+export CLAUDE_CONFIG_DIR="$HOME/.claude"
 export HARNESS_TOOL_INSTALL=0 HARNESS_SYNC_AUTOENABLE=0 HERMES_NO_REGISTER=1
 P="$T/proj"; mkdir -p "$P"; git -C "$P" init -q
 bash "$REPO_ROOT/project-claude.sh" "$P" harness adhd > "$T/install.out" 2>&1 || { echo "FAIL: 픽스처 설치 실패"; tail -5 "$T/install.out"; exit 1; }
@@ -108,6 +113,9 @@ HARNESS_REGISTRY_FILE="$REG" bash "$REPO_ROOT/update-all.sh" > "$T/ua.out" 2>&1;
 assert "update-all rc 0" 0 "$RC"
 assert "재설치 전 doctor 한 줄" 1 "$(grep -c '\[doctor\]' "$T/ua.out")"
 assert "lock 어긋남 경고(재설치로 사라질 항목)" 1 "$(grep -c '재설치로 사라' "$T/ua.out")"
+assert "실제 ~/.claude 의 설치 목록을 건드리지 않음" "$REAL_MANIFEST_BEFORE" \
+  "$(stat -c %Y "$REAL_CLAUDE_DIR/.factory-manifest.json" 2>/dev/null || echo none)"
+assert "전역 설치는 가짜 홈으로 갔다" 1 "$([[ -f "$HOME/.claude/.factory-manifest.json" ]] && echo 1 || echo 0)"
 
 echo; echo "PASS=$PASS FAIL=$FAIL"
 [[ $FAIL -eq 0 ]]
