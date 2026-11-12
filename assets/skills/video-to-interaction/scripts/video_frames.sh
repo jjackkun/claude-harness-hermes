@@ -6,6 +6,7 @@
 #   video_frames.sh full   <영상> <출력폴더>                   # 1초 간격 전체 화면 → 출력/full/ (자를 범위 정하기용)
 #   video_frames.sh sheets <영상> <출력폴더> [자르기] [fps]     # 전수 추출 → 출력/f/ , 8장 묶음 → 출력/sheets/
 #   video_frames.sh zoom   <출력폴더> <시작 프레임> <장 수> <자르기> <이름>   # 원본 해상도 확대 묶음 → 출력/zoom/<이름>.png
+#   video_frames.sh order  <관찰 기록> <미리보기 폴더>          # 관찰 기록이 구현 파일보다 먼저인지 (아니면 1)
 #
 # 자르기 = ffmpeg crop 값 "폭:높이:x:y" (예 1342:773:94:62). 출력 폴더는 git 이 무시하는 곳(.harness/out/ 등)에 둔다.
 # ffmpeg 순서: $VIDEO_FFMPEG → 시스템 ffmpeg(H.264 디코더가 있을 때만) → uv 로 imageio-ffmpeg 를 프로젝트 안 캐시에 받는다.
@@ -20,12 +21,32 @@ UV_CACHE="${VIDEO_UV_CACHE:-.harness/out/uv-cache}"
 
 die() { echo "video_frames: $*" >&2; exit 2; }
 
+# uv 는 PATH 가 먼저, 없으면 설치 기본 자리 — 비로그인 셸은 ~/.local/bin 을 PATH 에 넣지 않는다(2026-11-12 평가에서 실측)
+find_uv() {
+  if command -v uv >/dev/null 2>&1; then command -v uv; return; fi
+  local c
+  for c in "$HOME/.local/bin/uv" "$HOME/.cargo/bin/uv"; do [[ -x "$c" ]] && { echo "$c"; return; }; done
+  return 1
+}
+
+# 관찰 기록(④)이 구현(⑤)보다 먼저인지 — 미리보기 폴더에서 관찰 기록보다 오래된 파일을 찾는다
+check_order() {
+  local obs=$1 dir=$2 early
+  [[ -f "$obs" && -d "$dir" ]] || die "order <관찰 기록> <미리보기 폴더> — 관찰 기록이 없으면 구현을 시작하지 않는다"
+  early=$(find "$dir" -type f ! -newer "$obs" ! -path '*/shots/*' | sed "s|^$dir/||")
+  if [[ -n "$early" ]]; then
+    echo "관찰 기록보다 먼저 생긴 구현 파일:" >&2; echo "$early" | sed 's/^/  /' >&2
+    echo "→ ② 묶음을 다시 보고 ④ 관찰 기록을 고친 뒤, 기록과 다른 구현을 고친다" >&2; return 1
+  fi
+  echo "순서 통과 — 관찰 기록이 미리보기 파일 전부보다 먼저다"
+}
+
 find_ffmpeg() {
   if [[ -n "${VIDEO_FFMPEG:-}" ]]; then echo "$VIDEO_FFMPEG"; return; fi
   if command -v ffmpeg >/dev/null 2>&1 && ffmpeg -hide_banner -decoders 2>/dev/null | grep -q ' h264 '; then command -v ffmpeg; return; fi
-  command -v uv >/dev/null 2>&1 || die "ffmpeg 가 없습니다. VIDEO_FFMPEG=<경로> 로 알려 주거나 uv 를 설치해 주세요(전역 ffmpeg 설치는 사용자가 정할 일)"
-  local p
-  p=$(UV_CACHE_DIR="$UV_CACHE" uv run --no-project --with "$IMAGEIO_FFMPEG" python -c "import imageio_ffmpeg;print(imageio_ffmpeg.get_ffmpeg_exe())" 2>/dev/null) \
+  local uv p
+  uv=$(find_uv) || die "ffmpeg 가 없습니다. VIDEO_FFMPEG=<경로> 로 알려 주거나 uv 를 설치해 주세요(전역 ffmpeg 설치는 사용자가 정할 일)"
+  p=$(UV_CACHE_DIR="$UV_CACHE" "$uv" run --no-project --with "$IMAGEIO_FFMPEG" python -c "import imageio_ffmpeg;print(imageio_ffmpeg.get_ffmpeg_exe())" 2>/dev/null) \
     || die "uv 로 $IMAGEIO_FFMPEG 를 받지 못했습니다(네트워크 확인)"
   echo "$p"
 }
@@ -63,5 +84,8 @@ case "$cmd" in
     "$(find_ffmpeg)" -loglevel error -y -start_number "$start" -i "$out/f/f%04d.png" \
       -vf "select='lt(n,$count)',crop=$crop,tile=${cols}x${rows}:padding=4:color=red" -frames:v 1 -update 1 "$out/zoom/$name.png"
     echo "확대 묶음 → $out/zoom/$name.png (프레임 $start ~ $((start + count - 1)))" ;;
-  *) sed -n '2,12p' "$0"; exit 3 ;;
+  order)
+    [[ $# -ge 2 ]] || die "order <관찰 기록> <미리보기 폴더>"
+    check_order "$1" "$2" || exit 1 ;;
+  *) sed -n '2,13p' "$0"; exit 3 ;;
 esac

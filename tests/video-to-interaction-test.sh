@@ -40,6 +40,29 @@ else
   assert "없는 영상 → 사용 오류(2)" 2 "$?"
 fi
 
+echo "[평가 고침] 2026-11-12 G5 평가에서 나온 3건 (계획 2026-11-12-video-to-interaction-eval-fixes)"
+# G3 — PATH 에 uv 가 없어도 ~/.local/bin/uv 를 쓴다 (가짜 uv 가 ffmpeg 경로를 돌려준다)
+mkdir -p "$TMP/home/.local/bin"
+printf '#!/usr/bin/env bash\necho /fake/ffmpeg-from-local-uv\n' > "$TMP/home/.local/bin/uv"; chmod +x "$TMP/home/.local/bin/uv"
+got=$(env -u VIDEO_FFMPEG HOME="$TMP/home" PATH="/nonexistent:$(dirname "$(command -v bash)")" bash "$VF" ffmpeg 2>/dev/null)
+assert "PATH 에 uv 가 없어도 ~/.local/bin/uv 로 ffmpeg 를 찾는다" "/fake/ffmpeg-from-local-uv" "$got"
+# G1 — 관찰 기록보다 먼저 생긴 구현 파일을 잡는다
+mkdir -p "$TMP/ord/preview/check"; obs="$TMP/ord/references.md"
+touch -d '2026-01-01 10:00' "$obs"; touch -d '2026-01-01 11:00' "$TMP/ord/preview/index.html" "$TMP/ord/preview/check/verify.mjs"
+bash "$VF" order "$obs" "$TMP/ord/preview" > /dev/null 2>&1
+assert "관찰 기록이 먼저면 order 통과(0)" 0 "$?"
+touch -d '2026-01-01 09:00' "$TMP/ord/preview/app.js"
+out=$(bash "$VF" order "$obs" "$TMP/ord/preview" 2>&1); code=$?
+assert "구현 파일이 관찰 기록보다 먼저면 order 실패(1)" 1 "$code"
+assert "실패 메시지에 먼저 생긴 파일 이름" 1 "$(grep -c 'app.js' <<< "$out")"
+bash "$VF" order "$TMP/ord/none.md" "$TMP/ord/preview" > /dev/null 2>&1
+assert "관찰 기록이 없으면 order 사용 오류(2)" 2 "$?"
+assert "SKILL ⑤·⑥ 이 order 를 부른다" 2 "$(awk '/^## ⑤/,/^## ⑦/' "$SKILL/SKILL.md" | grep -c 'video_frames.sh order')"
+# G2 — 브라우저가 없을 때의 길
+assert "verification.md 에 「브라우저가 없을 때」 절" 1 "$(grep -c '^## .*브라우저가 없을 때' "$SKILL/references/verification.md")"
+assert "그 절에 무응답 한도 · 프로젝트 안 설치 · 검증 못 한 주장" 3 "$(sec=$(awk '/^## .*브라우저가 없을 때/,0' "$SKILL/references/verification.md"); for k in 무응답 '프로젝트 안' '검증 못 한 주장'; do grep -q "$k" <<< "$sec" && echo x; done | wc -l)"
+assert "SKILL ⑥ 이 그 절을 가리킨다" 1 "$(awk '/^## ⑥/,/^## ⑦/' "$SKILL/SKILL.md" | grep -c '브라우저가 없을 때')"
+
 echo "[천] cloth.js — 반쪽권 찢김 · 본권 끌기 · 되돌림"
 node - "$SKILL/assets/cloth/cloth.js" > "$TMP/cloth.out" 2>&1 <<'JS'
 const fs = require('fs'); global.window = {}; eval(fs.readFileSync(process.argv[2], 'utf8'));

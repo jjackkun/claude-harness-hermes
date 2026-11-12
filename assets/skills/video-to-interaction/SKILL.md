@@ -59,6 +59,11 @@ bash $S zoom .harness/out/<주제>-video <시작 프레임> <장 수> "<자르�
 
 ## ⑤ 기법 고르기 · 구현
 
+**시작 조건: ④ 관찰 기록이 파일로 있다.** 머릿속 관찰로 먼저 만들고 기록을 나중에 쓰면, 기록이 영상이 아니라 만든 것을 옮겨 적게 된다
+(2026-11-12 평가: 기록을 구현 31분 뒤에 썼고, 연속 끌기를 "멈춤" 으로 잘못 본 것이 그대로 구현됐다).
+미리보기 첫 파일을 만들기 전에 기록 경로를 보고에 적고, 구현이 끝나면 순서를 잰다 —
+`bash <스킬>/scripts/video_frames.sh order <관찰 기록> <미리보기 폴더>` (구현 파일이 기록보다 먼저면 1).
+
 [references/techniques.md](references/techniques.md) 에서 움직임 종류에 맞는 기법을 고른다 (평면 스프링 · SVG 끈적임 · 천 물리 Verlet+WebGL).
 천처럼 휘는 면이면 [assets/cloth/](assets/cloth/) 의 `cloth.js`·`render.js` 를 출발점으로 쓴다.
 
@@ -70,7 +75,9 @@ bash $S zoom .harness/out/<주제>-video <시작 프레임> <장 수> "<자르�
 
 ## ⑥ 검증 — 수치로, 그리고 영상 같은 순간과 나란히
 
+먼저 `bash <스킬>/scripts/video_frames.sh order <관찰 기록> <미리보기 폴더>` — 1 이면 ② 묶음을 다시 보고 기록부터 고친다.
 [references/verification.md](references/verification.md) 대로 Playwright 스크립트를 미리보기 폴더 `check/` 에 둔다.
+브라우저를 바로 못 찾으면 같은 문서의 「브라우저가 없을 때」 절을 따른다 — 찾느라 시간을 쓰거나 응답 없는 도구를 기다리지 않는다.
 
 - 주장마다 수치 하나: "끌면 접힌다" → 면 깊이 0 → 70px, "놓으면 돌아온다" → 3초 뒤 0px, "끝까지 당기면 찢긴다" → 100% + 상태 문구
 - 콘솔 오류 0, 라이트·다크 × 프로젝트 휴대폰 크기 스크린숏
