@@ -21,6 +21,17 @@ D="$(other_pc)"
 run_in "$D" BW_BIN="$SRC_VAULT/bw" open
 check "다른 PC 가 같은 금고 열쇠로 바뀐 .env 를 그대로 받는다" cmp -s "$D/.env" "$CHANGED"
 
+# dotenvx decrypt --stdout 은 환경에 같은 이름이 있으면 파일 값 대신 그 값을 찍는다.
+# 셸에 새 값이 export 돼 있으면 sync 가 "안 바뀜" 으로 속아 재암호화를 건너뛰었다
+# (하류 jj-agent-room 5853b117, 2026-11-09).
+sed 's/^PORT=5999$/PORT=6001/' "$CHANGED" >"$SRC/.env"
+SHELL_VAR="$WORK/shell-var.expected"; cp "$SRC/.env" "$SHELL_VAR"
+run_in "$SRC" PORT=6001 sync
+check "셸에 같은 이름 변수가 있어도 다시 암호화한다" has "$OUT" "다시 암호화"
+D="$(other_pc)"
+run_in "$D" BW_BIN="$SRC_VAULT/bw" open
+check "다른 PC 가 셸 변수가 아닌 파일 값을 받는다" cmp -s "$D/.env" "$SHELL_VAR"
+
 D="$(other_pc "PORT=7001
 ")"; BEFORE="$(cat "$D/.env.secrets")"
 run_in "$D" sync

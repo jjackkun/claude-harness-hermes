@@ -23,9 +23,13 @@ env_secrets_find_key() {
 # env_secrets_plaintext [file] — prints the original .env text held in an encrypted
 # file (default .env.secrets; dotenvx's header removed). Only ever piped or written
 # to a 600 file; returns 1 on a wrong key.
+# env -i: `dotenvx decrypt --stdout` prints a variable already in the environment
+# instead of the file's value, so an exported DATABASE_URL made sync's round-trip
+# check fail and skip re-encrypting (downstream jj-agent-room 5853b117, 2026-11-09).
 env_secrets_plaintext() {
   local text
-  text="$(DOTENV_PRIVATE_KEY_SECRETS="$ENV_SECRETS_KEY" "$ENV_SECRETS_DOTENVX" decrypt -f "${1:-$ENV_SECRETS_FILE}" \
+  text="$(env -i PATH="$PATH" HOME="${HOME:-}" DOTENV_PRIVATE_KEY_SECRETS="$ENV_SECRETS_KEY" \
+    "$ENV_SECRETS_DOTENVX" decrypt -f "${1:-$ENV_SECRETS_FILE}" \
     --stdout --no-armor --no-native 2>/dev/null)" || return 1
   [[ "$text" != *"encrypted:"* ]] || return 1
   printf '%s\n' "$text" | node "$ENV_SECRETS_ENV_FILE_JS" unwrap
