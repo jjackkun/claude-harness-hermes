@@ -53,7 +53,8 @@
 - [x] G3 — `package.json`·`node_modules` 가 없는 프로젝트(파이썬 등)에서도 동작한다. dotenvx·dotenv 는 고정 판을 사용자 캐시에 받아 쓴다. 필요 조건은 `node`·`npm` 뿐. — 검증: package.json 없는 임시 프로젝트에서 import→open  ✅ 2026-10-16 시험 프로젝트 전부 package.json 없음 + clone 직후 캐시 받기 시험
 - [x] G4 — `.env.keys` 가 그 프로젝트의 `.gitignore` 에 들어가고, 프리셋을 lock 에서 빼고 재설치해도 남는다(공통 무시 목록). — 검증: 설치 후·프리셋 뺀 재설치 후 `git check-ignore .env.keys`  ✅ 2026-10-16 `env-secrets-install-test.sh` (프리셋 뺀 재설치 포함)
 - [x] G5 — 커밋 게이트에 `R-env-secrets` 단계: `scripts/env-secrets/secrets.sh` 가 있으면 `sync --stage` 를 돌려 바뀐 `.env` 를 그 커밋에 넣는다. 없으면 `skipped`. **절대 커밋을 막지 않고, 입력을 기다리며 멈추지도 않는다**(금고 잠김·열쇠 없음도 경고만. git 이 훅 stdin 을 `/dev/null` 로 주고 게이트가 stderr 도 받는다). — 검증: 시험(실제 git 커밋에 `.env.secrets` 포함 / 스크립트 없으면 skipped / 가짜 bw 가 locked 일 때 프롬프트 없이 끝남) + gate-declaration-coverage 통과  ✅ 2026-10-16 `env-secrets-install-test.sh` 25/25 · gate-declaration 36/36
-- [ ] G6 — jj-agent-room 이 포크 전용 복사본 대신 프리셋을 쓴다(`scripts/fork/secrets.sh`·`lib/env-secrets-*` 제거, `.harnessrc` 의 임시 sync 줄 제거, `init:setting`·npm 스크립트는 새 경로를 부름). 기존 `.env.secrets`·Bitwarden 항목은 그대로 열린다. — 검증: 전파 후 jj-agent-room 에서 `open` → 같음 12, 시험 통과
+- [x] G6 — jj-agent-room 이 포크 전용 복사본 대신 프리셋을 쓴다(`scripts/fork/secrets.sh`·`lib/env-secrets-*` 제거, `.harnessrc` 의 임시 sync 줄 제거, `init:setting`·npm 스크립트는 새 경로를 부름). 기존 `.env.secrets`·Bitwarden 항목은 그대로 열린다. — 검증: 전파 후 jj-agent-room 에서 `open` → 같음 12, 시험 통과
+  결과(2026-11-12): 사람 터미널 `npm run secrets:open` → `열쇠: Bitwarden 'jj-agent-room dotenvx' · 추가 0 · 갱신 0 · 같음 31`(키가 12 → 31 로 늘어남, `.env` 안 바뀜). 시험 26/26. 하류 커밋 6d870b58
 - [x] G8 — Bitwarden 계정이 없는 사람도 막히지 않는다. 금고를 처음 열 때(로그인 안 된 상태) 이메일을 묻기 전에 "계정이 없으면 https://vault.bitwarden.com 에서 무료 가입(마스터 비밀번호는 본인이 정하고, 잊으면 Bitwarden 도 되찾아 주지 못함) 후 다시 실행" 안내를 보인다. 로그인 실패 때도 같은 안내로 끝낸다(지금은 "Bitwarden 열기 실패" 한 줄뿐). — 검증: 시험(가짜 bw 가 unauthenticated → 출력에 가입 주소와 다시 실행 명령) + 가상 터미널 실측  ✅ 2026-10-16 `env-secrets-test.sh` + 가상 터미널 실측
 - [x] G7 — 하류 수정이 공장 개정에 덮이지 않는다(`install_factory_file` 의 공존 규칙). — 검증: `tests/env-secrets-install-test.sh` 에서 실제 프리셋으로 설치 → 하류 수정 → 재설치 후 수정 보존  ✅ 2026-10-16 `env-secrets-install-test.sh` 재설치 단언
 - [x] G9 — `tests/run-all.sh` 전체 통과, 고아 시험 0. — 검증: run-all 결과
@@ -199,9 +200,10 @@
 
 - 2026-11-12 G6 착수 — 하류 포크 사본과 `assets/env-secrets/` 를 줄 단위로 대조했다. 차이는 문구(`npm run …` ↔ `$ENV_SECRETS_CMD`)·가입 안내(G8) 외에 **하류에만 있는 결함 수정 하나**: `env-secrets-key.sh` 의 `env -i`(하류 5853b117, 11-09). dotenvx `decrypt --stdout` 이 환경 변수 값을 파일 값보다 앞세워, 셸에 `.env` 와 같은 이름이 export 돼 있으면 sync 가 재암호화를 건너뛴다. 그대로 바꿔 끼우면 이 수정이 사라진다 → 공장에 먼저 옮겼다. 시험 먼저: `sync-cases.sh` 에 `PORT=6001` 을 환경에 준 sync 시나리오 2단언 → 빨강 61/2 확인 → 고친 뒤 63/0, 설치 시험 25/0.
 - 2026-11-12 G6 하류 이전 — 사용자 결정 "수정+커밋, 푸시 안 함". jj-agent-room `presets.lock` 에 env-secrets 추가 → `project-claude.sh` 로 그 프로젝트만 재설치(공장 3f08529). 포크 사본 10파일 삭제, init 단계 `scripts/fork/lib/env-secrets.sh` 는 남기고 `../../env-secrets/lib` 를 source, npm `secrets:*` 3줄·`.gitignore`·`config.py` 주석·백로그 한 줄을 새 경로로, `.harnessrc` 임시 sync 줄 삭제. `tests/fork-env-secrets.test.ts` 는 새 경로로 바꾸고 `.harnessrc` 커밋 시나리오 1건은 지움(게이트는 공장 install 시험이 잰다) — 바꾸기 전 27/27 → 바꾼 뒤 26/26. 하류 커밋 6d870b58(푸시 안 함). 그 커밋에서 실제 R-env-secrets 게이트가 돌아 "열쇠 없음" 경고만 내고 막지 않았다. `.env` 백업 `.harness/.env.before-g6`(600). **남은 것: 사람 터미널에서 `npm run secrets:open` 실측**(Bitwarden 마스터 비밀번호 필요).
+- 2026-11-12 실측 중 멈춤: 첫 `secrets:open` 이 60초 뒤 "bw 상태 알 수 없음". 원인은 코드가 아니라 홈의 **빈 `~/.bash_profile`**(11-03 13:31:11, jj-agent-room 에이전트 dongha 의 샌드박스 첫 실행 때 0바이트 7개와 함께 생김 — 하류 `completed/2026-10-15-agent-file-access-plan.md:98` 과 같은 현상). 로그인 bash 가 `~/.profile` 을 건너뛰어 `~/.local/bin` 이 PATH 에서 빠지고, `bw` 가 윈도우 쪽 `/mnt/c/.../npm/bw`(11-05 설치, `--version` 88초)로 잡혀 `VAULT_BW_TIMEOUT_SECONDS=60` 에 걸렸다. 사용자 승인으로 `~/.bash_profile` 을 `~/.profile` 을 읽는 한 줄로 만듦 → 새 로그인 셸 `bw` = `~/.local/bin/bw`. 도구 쪽 안전망(WSL 에서 `/mnt/*` bw 건너뛰기)은 백로그 `env-secrets-wsl-windows-bw.md`.
 
 ## 8. 회고 (완료 시 작성)
 
-- 잘된 것:
-- 잘못된 것:
-- 다음 룰 후보:
+- 잘된 것: 하류 구현을 시험째 옮겨(61→63 단언) 프리셋으로 만들었고, 하류로 되돌려 끼우기 전에 줄 단위 대조를 해서 하류에만 있던 결함 수정(`env -i`)을 놓치지 않았다. 하류 시험은 바꾸기 전후 27/27 → 26/26 으로 재서 지운 1건을 이유와 함께 남겼다.
+- 잘못된 것: 계획 이후 하류 사본이 고쳐졌는데(11-09) 공장 계획에 알릴 길이 없었다 — G6 대조가 아니었으면 결함이 되살아났다. 실측 멈춤 때 "G6 와 무관" 이라고 코드만 읽고 먼저 말했고, 사용자가 "원래 되던 게 왜" 라고 물은 뒤에야 홈 파일까지 실측했다.
+- 다음 룰 후보: 하류 사본을 공장으로 올린 뒤에는 하류 사본에 "공장으로 옮겨짐 — 고치면 공장에도" 표시를 남기거나 바로 프리셋으로 바꿔 끼운다(사본이 둘인 기간을 짧게). 외부 CLI 가 멈추면 `ps` 의 wchan·경로부터 본다.
