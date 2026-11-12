@@ -198,6 +198,7 @@
 - 2026-11-12 위 run-all 의 `update-all-roundtrip` 실패 원인을 찾아 고쳤다 — `harness-doctor-test.sh` 가 실제 `~/.claude` 에 전역 설치를 했다(`completed/2026-11-12-run-all-global-home-leak.md`). 남은 실패는 `age` 미설치 2건이다.
 
 - 2026-11-12 G6 착수 — 하류 포크 사본과 `assets/env-secrets/` 를 줄 단위로 대조했다. 차이는 문구(`npm run …` ↔ `$ENV_SECRETS_CMD`)·가입 안내(G8) 외에 **하류에만 있는 결함 수정 하나**: `env-secrets-key.sh` 의 `env -i`(하류 5853b117, 11-09). dotenvx `decrypt --stdout` 이 환경 변수 값을 파일 값보다 앞세워, 셸에 `.env` 와 같은 이름이 export 돼 있으면 sync 가 재암호화를 건너뛴다. 그대로 바꿔 끼우면 이 수정이 사라진다 → 공장에 먼저 옮겼다. 시험 먼저: `sync-cases.sh` 에 `PORT=6001` 을 환경에 준 sync 시나리오 2단언 → 빨강 61/2 확인 → 고친 뒤 63/0, 설치 시험 25/0.
+- 2026-11-12 G6 하류 이전 — 사용자 결정 "수정+커밋, 푸시 안 함". jj-agent-room `presets.lock` 에 env-secrets 추가 → `project-claude.sh` 로 그 프로젝트만 재설치(공장 3f08529). 포크 사본 10파일 삭제, init 단계 `scripts/fork/lib/env-secrets.sh` 는 남기고 `../../env-secrets/lib` 를 source, npm `secrets:*` 3줄·`.gitignore`·`config.py` 주석·백로그 한 줄을 새 경로로, `.harnessrc` 임시 sync 줄 삭제. `tests/fork-env-secrets.test.ts` 는 새 경로로 바꾸고 `.harnessrc` 커밋 시나리오 1건은 지움(게이트는 공장 install 시험이 잰다) — 바꾸기 전 27/27 → 바꾼 뒤 26/26. 하류 커밋 6d870b58(푸시 안 함). 그 커밋에서 실제 R-env-secrets 게이트가 돌아 "열쇠 없음" 경고만 내고 막지 않았다. `.env` 백업 `.harness/.env.before-g6`(600). **남은 것: 사람 터미널에서 `npm run secrets:open` 실측**(Bitwarden 마스터 비밀번호 필요).
 
 ## 8. 회고 (완료 시 작성)
 
