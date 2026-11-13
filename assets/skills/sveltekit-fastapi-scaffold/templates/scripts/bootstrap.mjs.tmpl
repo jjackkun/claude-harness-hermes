@@ -1,0 +1,69 @@
+// One-time (idempotent) setup after `corepack pnpm install`:
+//   1. backend/.venv via uv sync      2. .pgdata initdb + database (first run only)
+//   3. alembic upgrade head           Everything stays inside this project folder.
+import fs from 'node:fs';
+import path from 'node:path';
+import { execFileSync } from 'node:child_process';
+import { createRequire } from 'node:module';
+import EmbeddedPostgres from 'embedded-postgres';
+
+const require = createRequire(import.meta.url);
+const { readEnv } = require('./env.cjs');
+
+const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
+const env = readEnv(path.join(ROOT, '.env'));
+const UV = path.join(ROOT, 'scripts/uv.sh');
+
+function step(title) {
+	console.log(`\n▶ ${title}`);
+}
+
+function uv(args) {
+	execFileSync('sh', [UV, '--directory', path.join(ROOT, 'backend'), ...args], { stdio: 'inherit' });
+}
+
+for (const key of ['DB_PORT', 'DB_NAME', 'DB_USER', 'DB_PASSWORD']) {
+	if (!env[key]) throw new Error(`.env is missing ${key} — re-run the scaffold or fill it in`);
+}
+
+step('backend/.venv (uv sync)');
+uv(['sync']);
+
+const dataDir = path.join(ROOT, '.pgdata');
+const pg = new EmbeddedPostgres({
+	databaseDir: dataDir,
+	port: Number(env.DB_PORT),
+	user: env.DB_USER,
+	password: env.DB_PASSWORD,
+	persistent: true,
+	onLog: () => {}
+});
+
+const firstRun = !fs.existsSync(path.join(dataDir, 'PG_VERSION'));
+if (firstRun) {
+	step(`initdb → .pgdata (user ${env.DB_USER})`);
+	await pg.initialise();
+}
+
+step(`start PostgreSQL on ${env.DB_PORT}`);
+let startedHere = true;
+try {
+	await pg.start();
+} catch (err) {
+	// pm2 may already be running the db app; then just use it.
+	console.log(`  start skipped (${String(err).split('\n')[0]}) — assuming it is already running`);
+	startedHere = false;
+}
+
+try {
+	if (firstRun) {
+		step(`create database ${env.DB_NAME}`);
+		await pg.createDatabase(env.DB_NAME);
+	}
+	step('alembic upgrade head');
+	uv(['run', 'alembic', 'upgrade', 'head']);
+} finally {
+	if (startedHere) await pg.stop();
+}
+
+console.log('\n✔ bootstrap done. Next: corepack pnpm create-user <email> <password> · corepack pnpm start:dev');

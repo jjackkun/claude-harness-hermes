@@ -258,6 +258,7 @@ REGISTERED_TESTS=(
   mutation-trigger-test.sh
   doc-gardening-drift-test.sh
   claude-md-skill-index-test.sh
+  sveltekit-fastapi-scaffold-test.sh
   update-all-roundtrip-test.sh
   harness-hooks-smoke.sh
   hook-prune-test.sh

@@ -1,0 +1,60 @@
+/**
+ * API client. The backend wraps every /api response as { ok, status, data, error } with HTTP 200,
+ * so callers check `ok` instead of HTTP status. Tokens live in localStorage; a 401 triggers one refresh.
+ */
+import { browser } from '$app/environment';
+
+const ACCESS_KEY = 'access_token';
+const REFRESH_KEY = 'refresh_token';
+
+export const tokens = {
+	get access() {
+		return browser ? localStorage.getItem(ACCESS_KEY) : null;
+	},
+	get refresh() {
+		return browser ? localStorage.getItem(REFRESH_KEY) : null;
+	},
+	save({ access_token, refresh_token }) {
+		localStorage.setItem(ACCESS_KEY, access_token);
+		localStorage.setItem(REFRESH_KEY, refresh_token);
+	},
+	clear() {
+		localStorage.removeItem(ACCESS_KEY);
+		localStorage.removeItem(REFRESH_KEY);
+	}
+};
+
+async function send(method, url, body, withAuth) {
+	const headers = { 'Content-Type': 'application/json' };
+	if (withAuth && tokens.access) headers.Authorization = `Bearer ${tokens.access}`;
+	let res;
+	try {
+		res = await fetch(url, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
+	} catch (err) {
+		return { ok: false, status: 0, data: null, error: `서버에 연결할 수 없습니다 (${err.message})` };
+	}
+	try {
+		return await res.json();
+	} catch {
+		return { ok: false, status: res.status, data: null, error: '응답을 읽을 수 없습니다.' };
+	}
+}
+
+let refreshing = null;
+async function refreshTokens() {
+	if (!tokens.refresh) return false;
+	refreshing ??= send('POST', '/api/auth/refresh', { refresh_token: tokens.refresh }, false).finally(() => {
+		refreshing = null;
+	});
+	const result = await refreshing;
+	if (result.ok) tokens.save(result.data);
+	else tokens.clear();
+	return result.ok;
+}
+
+/** @returns {Promise<{ok: boolean, status: number, data: any, error?: string}>} */
+export async function api(method, url, body, { auth = true } = {}) {
+	const first = await send(method, url, body, auth);
+	if (first.status !== 401 || !auth || !(await refreshTokens())) return first;
+	return send(method, url, body, auth);
+}

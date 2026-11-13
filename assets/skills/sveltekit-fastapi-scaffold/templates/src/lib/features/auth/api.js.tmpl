@@ -1,0 +1,4 @@
+import { api } from '$lib/utils/api.js';
+
+export const login = (email, password) => api('POST', '/api/auth/login', { email, password }, { auth: false });
+export const fetchMe = () => api('GET', '/api/auth/me');

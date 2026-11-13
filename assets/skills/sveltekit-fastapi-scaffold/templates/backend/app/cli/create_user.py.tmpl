@@ -1,0 +1,42 @@
+"""Create (or reset the password of) a login user.
+
+    corepack pnpm create-user admin@example.com 'password'
+"""
+
+import asyncio
+import sys
+
+from sqlalchemy import select
+
+from app.core.database import SessionLocal, engine
+from app.core.security import hash_password
+from app.models import User
+
+MIN_PASSWORD = 8
+
+
+async def upsert_user(email: str, password: str) -> str:
+    async with SessionLocal() as db:
+        user = await db.scalar(select(User).where(User.email == email))
+        if user is None:
+            db.add(User(email=email, hashed_password=hash_password(password)))
+            action = "created"
+        else:
+            user.hashed_password = hash_password(password)
+            action = "password reset"
+        await db.commit()
+    await engine.dispose()
+    return action
+
+
+def main() -> None:
+    if len(sys.argv) != 3:
+        sys.exit("usage: create-user <email> <password>")
+    email, password = sys.argv[1], sys.argv[2]
+    if len(password) < MIN_PASSWORD:
+        sys.exit(f"password must be at least {MIN_PASSWORD} characters")
+    print(f"{email}: {asyncio.run(upsert_user(email, password))}")
+
+
+if __name__ == "__main__":
+    main()

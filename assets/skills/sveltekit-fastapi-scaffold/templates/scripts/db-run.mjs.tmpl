@@ -1,0 +1,48 @@
+// Runs the project-local PostgreSQL (embedded-postgres, data in .pgdata/) in the foreground for pm2.
+// pm2 sends SIGINT/SIGTERM on stop; we shut PostgreSQL down cleanly before exiting.
+import path from 'node:path';
+import { createRequire } from 'node:module';
+import EmbeddedPostgres from 'embedded-postgres';
+
+const require = createRequire(import.meta.url);
+const { readEnv } = require('./env.cjs');
+
+const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
+const env = { ...readEnv(path.join(ROOT, '.env')), ...process.env };
+
+const pg = new EmbeddedPostgres({
+	databaseDir: path.join(ROOT, '.pgdata'),
+	port: Number(env.DB_PORT),
+	user: env.DB_USER,
+	password: env.DB_PASSWORD,
+	persistent: true,
+	onLog: (msg) => process.stdout.write(String(msg)),
+	onError: (err) => process.stderr.write(String(err))
+});
+
+let stopping = false;
+async function shutdown(signal) {
+	if (stopping) return;
+	stopping = true;
+	console.log(`[db] ${signal} — stopping PostgreSQL`);
+	try {
+		await pg.stop();
+	} catch (err) {
+		console.error('[db] stop failed:', err);
+		process.exit(1);
+	}
+	process.exit(0);
+}
+
+process.on('SIGINT', () => shutdown('SIGINT'));
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+
+try {
+	await pg.start();
+	console.log(`[db] PostgreSQL listening on ${env.DB_PORT}`);
+} catch (err) {
+	console.error('[db] start failed (run `corepack pnpm bootstrap` first?):', err);
+	process.exit(1);
+}
+
+setInterval(() => {}, 1 << 30); // keep the process alive for pm2

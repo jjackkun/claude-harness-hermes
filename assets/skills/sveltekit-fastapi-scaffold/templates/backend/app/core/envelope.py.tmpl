@@ -1,0 +1,41 @@
+"""Wrap every JSON /api response as {ok, status, data, error} with HTTP 200.
+
+The frontend then checks `ok` instead of HTTP status codes. Binary and streaming
+responses (downloads, exports) pass through untouched.
+"""
+
+import json
+
+from fastapi import Request
+from fastapi.responses import JSONResponse
+from starlette.middleware.base import BaseHTTPMiddleware
+
+DEFAULT_ERROR = "요청 처리에 실패했습니다."
+
+
+class EnvelopeMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        if not request.url.path.startswith("/api/"):
+            return response
+        if not response.headers.get("content-type", "").startswith("application/json"):
+            return response
+
+        body = b"".join([chunk async for chunk in response.body_iterator])
+        try:
+            data = json.loads(body) if body else None
+        except json.JSONDecodeError:
+            data = body.decode(errors="replace")
+
+        ok = 200 <= response.status_code < 300
+        wrapped = {"ok": ok, "status": response.status_code, "data": data if ok else None}
+        if not ok:
+            detail = data.get("detail") if isinstance(data, dict) else None
+            wrapped["error"] = detail if isinstance(detail, str) else DEFAULT_ERROR
+            if detail is not None and not isinstance(detail, str):
+                wrapped["data"] = detail  # validation errors: keep the field list
+
+        headers = {
+            k: v for k, v in response.headers.items() if k.lower() not in ("content-length", "content-type")
+        }
+        return JSONResponse(content=wrapped, status_code=200, headers=headers)

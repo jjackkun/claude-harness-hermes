@@ -1,0 +1,45 @@
+from .conftest import TEST_EMAIL, TEST_PASSWORD
+
+
+async def _login(client, password=TEST_PASSWORD):
+    return (await client.post("/api/auth/login", json={"email": TEST_EMAIL, "password": password})).json()
+
+
+async def test_login_returns_token_pair(client):
+    body = await _login(client)
+    assert body["ok"] is True
+    assert set(body["data"]) == {"access_token", "refresh_token", "token_type"}
+
+
+async def test_wrong_password_is_401_inside_envelope(client):
+    body = await _login(client, password="wrong-password")
+    assert body["ok"] is False
+    assert body["status"] == 401
+    assert body["error"] == "이메일 또는 비밀번호가 맞지 않습니다."
+
+
+async def test_me_requires_token(client):
+    body = (await client.get("/api/auth/me")).json()
+    assert (body["ok"], body["status"]) == (False, 401)
+
+
+async def test_me_with_access_token(client):
+    access = (await _login(client))["data"]["access_token"]
+    body = (await client.get("/api/auth/me", headers={"Authorization": f"Bearer {access}"})).json()
+    assert body["ok"] is True
+    assert body["data"]["email"] == TEST_EMAIL
+
+
+async def test_refresh_issues_new_pair_and_rejects_access_token(client):
+    pair = (await _login(client))["data"]
+    good = (await client.post("/api/auth/refresh", json={"refresh_token": pair["refresh_token"]})).json()
+    assert good["ok"] is True
+    bad = (await client.post("/api/auth/refresh", json={"refresh_token": pair["access_token"]})).json()
+    assert (bad["ok"], bad["status"]) == (False, 401)
+
+
+async def test_validation_error_keeps_field_list(client):
+    body = (await client.post("/api/auth/login", json={"email": "not-an-email"})).json()
+    assert body["ok"] is False
+    assert body["status"] == 422
+    assert isinstance(body["data"], list)

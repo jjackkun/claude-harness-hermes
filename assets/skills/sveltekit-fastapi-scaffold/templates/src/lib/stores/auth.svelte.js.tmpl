@@ -1,0 +1,39 @@
+import { login, fetchMe } from '$features/auth';
+import { tokens } from '$lib/utils/api.js';
+
+/** Signed-in user state shared across routes. */
+class AuthStore {
+	user = $state(null);
+	checked = $state(false);
+
+	get isAuthenticated() {
+		return this.user !== null;
+	}
+
+	/** Load the current user once per page load. */
+	async check() {
+		if (this.checked) return this.isAuthenticated;
+		const result = tokens.access ? await fetchMe() : { ok: false };
+		this.user = result.ok ? result.data : null;
+		this.checked = true;
+		return this.isAuthenticated;
+	}
+
+	/** @returns {Promise<string|null>} error message, or null on success */
+	async login(email, password) {
+		const result = await login(email, password);
+		if (!result.ok) return result.error ?? '로그인에 실패했습니다.';
+		tokens.save(result.data);
+		this.checked = false;
+		await this.check();
+		return null;
+	}
+
+	logout() {
+		tokens.clear();
+		this.user = null;
+		this.checked = true;
+	}
+}
+
+export const auth = new AuthStore();

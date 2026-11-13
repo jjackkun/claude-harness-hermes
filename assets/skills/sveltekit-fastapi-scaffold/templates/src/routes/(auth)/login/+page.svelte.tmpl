@@ -1,0 +1,35 @@
+<script>
+	import { goto } from '$app/navigation';
+	import { toast } from 'svelte-sonner';
+	import { auth } from '$stores/auth.svelte.js';
+
+	let email = $state('');
+	let password = $state('');
+	let busy = $state(false);
+
+	async function submit(event) {
+		event.preventDefault();
+		busy = true;
+		const error = await auth.login(email, password);
+		busy = false;
+		if (error) toast.error(error);
+		else goto('/dashboard');
+	}
+</script>
+
+<main class="grid min-h-screen place-items-center p-6">
+	<form class="flex w-full max-w-sm flex-col gap-4 rounded-lg border p-8" onsubmit={submit}>
+		<h1 class="text-xl font-semibold">로그인</h1>
+		<label class="flex flex-col gap-1 text-sm">
+			이메일
+			<input class="rounded-md border bg-background px-3 py-2" type="email" bind:value={email} required autocomplete="username" />
+		</label>
+		<label class="flex flex-col gap-1 text-sm">
+			비밀번호
+			<input class="rounded-md border bg-background px-3 py-2" type="password" bind:value={password} required autocomplete="current-password" />
+		</label>
+		<button class="rounded-md bg-primary px-3 py-2 text-primary-foreground disabled:opacity-50" disabled={busy}>
+			{busy ? '확인 중…' : '로그인'}
+		</button>
+	</form>
+</main>

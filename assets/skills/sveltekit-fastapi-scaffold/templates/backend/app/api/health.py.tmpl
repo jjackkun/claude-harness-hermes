@@ -1,0 +1,28 @@
+import logging
+
+from fastapi import APIRouter
+from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
+
+from .deps import DbSession
+
+router = APIRouter(tags=["health"])
+log = logging.getLogger(__name__)
+
+
+@router.get("/health")
+async def health() -> dict:
+    """Process liveness (no DB). Used by pm2/monitoring."""
+    return {"status": "ok"}
+
+
+@router.get("/api/health")
+async def api_health(db: DbSession) -> dict:
+    """API + database check, shown on the dashboard."""
+    try:
+        await db.execute(text("SELECT 1"))
+        db_ok = True
+    except SQLAlchemyError:
+        log.exception("database health check failed")
+        db_ok = False
+    return {"status": "ok", "db": db_ok}

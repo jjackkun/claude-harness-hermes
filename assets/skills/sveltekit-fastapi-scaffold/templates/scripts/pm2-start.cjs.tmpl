@@ -1,0 +1,20 @@
+// Start or restart the pm2 apps with the project-local pm2 (no global install).
+//   node scripts/pm2-start.cjs [--prod] [--restart]
+const path = require('node:path');
+const { execFileSync } = require('node:child_process');
+
+const ROOT = path.resolve(__dirname, '..');
+const isProd = process.argv.includes('--prod');
+const isRestart = process.argv.includes('--restart');
+const pm2 = require.resolve('pm2/bin/pm2', { paths: [ROOT] });
+const env = { ...process.env, NODE_ENV: isProd ? 'production' : 'development' };
+
+function run(file, args) {
+	execFileSync(file, args, { cwd: ROOT, env, stdio: 'inherit' });
+}
+
+if (isProd) run(process.execPath, [path.join(ROOT, 'node_modules/vite/bin/vite.js'), 'build']);
+
+const action = isRestart ? 'startOrRestart' : 'start';
+run(process.execPath, [pm2, action, 'ecosystem.config.cjs', '--update-env']);
+run(process.execPath, [pm2, 'save']);

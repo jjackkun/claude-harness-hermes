@@ -1,0 +1,71 @@
+/**
+ * pm2 apps for {{PROJECT}} — db, backend, frontend.
+ * Namespace {{PROJECT}}-dev / {{PROJECT}}-prod. Start with `corepack pnpm start:dev`.
+ *   dev : vite dev (HMR) + uvicorn --reload
+ *   prod: vite preview (after build) + uvicorn (2 workers)
+ */
+const path = require('node:path');
+const { readEnv } = require('./scripts/env.cjs');
+
+const ROOT = __dirname;
+const rootEnv = readEnv(path.join(ROOT, '.env'));
+const backendEnv = readEnv(path.join(ROOT, 'backend/.env'));
+
+const isDev = process.env.NODE_ENV !== 'production';
+const suffix = isDev ? 'dev' : 'prod';
+const ns = `{{PROJECT}}-${suffix}`;
+const frontPort = isDev ? rootEnv.VITE_FRONTEND_PORT_DEV : rootEnv.VITE_FRONTEND_PORT_PROD;
+const apiPort = isDev ? rootEnv.API_PORT_DEV : rootEnv.API_PORT_PROD;
+
+const common = {
+	namespace: ns,
+	interpreter: 'none',
+	watch: false,
+	autorestart: true,
+	max_restarts: 10,
+	restart_delay: 3000,
+	merge_logs: true,
+	log_date_format: 'YYYY-MM-DD HH:mm:ss'
+};
+
+const logs = (name) => ({
+	error_file: path.join(ROOT, `logs/${name}-${suffix}-error.log`),
+	out_file: path.join(ROOT, `logs/${name}-${suffix}-out.log`)
+});
+
+module.exports = {
+	apps: [
+		{
+			...common,
+			...logs('db'),
+			name: `${ns}-db`,
+			cwd: ROOT,
+			script: process.execPath,
+			args: 'scripts/db-run.mjs',
+			kill_timeout: 15000,
+			env: { ...rootEnv }
+		},
+		{
+			...common,
+			...logs('backend'),
+			name: `${ns}-backend`,
+			cwd: path.join(ROOT, 'backend'),
+			script: path.join(ROOT, 'backend/.venv/bin/python'),
+			args: isDev
+				? `-u -m uvicorn app.main:app --reload --reload-dir ./app --port ${apiPort} --host 0.0.0.0`
+				: `-u -m uvicorn app.main:app --port ${apiPort} --host 0.0.0.0 --workers 2`,
+			kill_timeout: 5000,
+			env: { ...backendEnv, APP_ENV: isDev ? 'development' : 'production' }
+		},
+		{
+			...common,
+			...logs('frontend'),
+			name: `${ns}-frontend`,
+			cwd: ROOT,
+			script: process.execPath,
+			args: `node_modules/vite/bin/vite.js ${isDev ? 'dev' : 'preview'} --port ${frontPort} --host`,
+			kill_timeout: 5000,
+			env: { ...rootEnv, NODE_ENV: isDev ? 'development' : 'production' }
+		}
+	]
+};

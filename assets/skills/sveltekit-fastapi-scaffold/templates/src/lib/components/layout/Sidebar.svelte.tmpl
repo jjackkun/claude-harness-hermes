@@ -1,0 +1,21 @@
+<script>
+	import { page } from '$app/state';
+	import { LayoutDashboard } from '@lucide/svelte';
+
+	// Add one entry per feature route.
+	const items = [{ href: '/dashboard', label: '대시보드', icon: LayoutDashboard }];
+</script>
+
+<nav class="flex w-60 shrink-0 flex-col gap-1 border-r p-4">
+	<a href="/dashboard" class="mb-4 px-2 text-lg font-semibold">{{PROJECT}}</a>
+	{#each items as item (item.href)}
+		<a
+			href={item.href}
+			class="flex items-center gap-2 rounded-md px-2 py-2 text-sm hover:bg-accent"
+			class:bg-accent={page.url.pathname.startsWith(item.href)}
+		>
+			<item.icon class="size-4" />
+			{item.label}
+		</a>
+	{/each}
+</nav>

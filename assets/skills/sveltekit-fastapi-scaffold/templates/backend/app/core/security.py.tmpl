@@ -1,0 +1,47 @@
+"""Password hashing (bcrypt) and JWT access/refresh tokens."""
+
+from datetime import UTC, datetime, timedelta
+from typing import Literal
+
+import bcrypt
+import jwt
+
+from .config import get_settings
+
+TokenKind = Literal["access", "refresh"]
+
+
+class InvalidTokenError(Exception):
+    """Token is malformed, expired, or of the wrong kind."""
+
+
+def hash_password(password: str) -> str:
+    return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+
+
+def verify_password(password: str, hashed: str) -> bool:
+    return bcrypt.checkpw(password.encode(), hashed.encode())
+
+
+def create_token(subject: str, kind: TokenKind) -> str:
+    s = get_settings()
+    lifetime = (
+        timedelta(minutes=s.ACCESS_TOKEN_EXPIRE_MINUTES)
+        if kind == "access"
+        else timedelta(days=s.REFRESH_TOKEN_EXPIRE_DAYS)
+    )
+    now = datetime.now(UTC)
+    payload = {"sub": subject, "kind": kind, "iat": now, "exp": now + lifetime}
+    return jwt.encode(payload, s.SECRET_KEY, algorithm=s.ALGORITHM)
+
+
+def decode_token(token: str, expected: TokenKind) -> str:
+    """Return the subject, or raise InvalidTokenError."""
+    s = get_settings()
+    try:
+        payload = jwt.decode(token, s.SECRET_KEY, algorithms=[s.ALGORITHM])
+    except jwt.PyJWTError as err:
+        raise InvalidTokenError(str(err)) from err
+    if payload.get("kind") != expected or not payload.get("sub"):
+        raise InvalidTokenError("wrong token kind")
+    return str(payload["sub"])

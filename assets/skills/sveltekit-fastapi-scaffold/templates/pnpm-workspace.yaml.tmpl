@@ -1,0 +1,10 @@
+# pnpm 11+ blocks install scripts unless listed here (pnpm 12 ignores the old onlyBuiltDependencies).
+# embedded-postgres needs its script to link the PostgreSQL shared libraries.
+allowBuilds:
+  '@embedded-postgres/linux-x64': true
+  '@embedded-postgres/darwin-arm64': true
+  '@embedded-postgres/darwin-x64': true
+  embedded-postgres: true
+  esbuild: true
+  '@parcel/watcher': true
+  pm2: true

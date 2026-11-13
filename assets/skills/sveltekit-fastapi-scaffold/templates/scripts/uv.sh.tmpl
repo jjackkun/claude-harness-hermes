@@ -1,0 +1,7 @@
+#!/bin/sh
+# Run the user-level uv even when ~/.local/bin is not on PATH. Never installs anything globally.
+for c in "$(command -v uv 2>/dev/null)" "$HOME/.local/bin/uv" "$HOME/.cargo/bin/uv"; do
+  if [ -n "$c" ] && [ -x "$c" ]; then exec "$c" "$@"; fi
+done
+echo "uv not found. Install it for your user: https://docs.astral.sh/uv/getting-started/installation/" >&2
+exit 127

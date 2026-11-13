@@ -1,0 +1,25 @@
+<script>
+	import { onMount } from 'svelte';
+	import { api } from '$lib/utils/api.js';
+	import { auth } from '$stores/auth.svelte.js';
+
+	let health = $state(null);
+
+	onMount(async () => {
+		health = await api('GET', '/api/health');
+	});
+</script>
+
+<h1 class="mb-4 text-2xl font-semibold">대시보드</h1>
+<p class="mb-6 text-muted-foreground">{auth.user?.email} 님으로 로그인했습니다.</p>
+
+<section class="rounded-lg border p-4 text-sm">
+	<h2 class="mb-2 font-medium">서버 상태</h2>
+	{#if health === null}
+		확인 중…
+	{:else if health.ok}
+		API 정상 · DB {health.data.db ? '연결됨' : '연결 안 됨'}
+	{:else}
+		API 오류: {health.error}
+	{/if}
+</section>

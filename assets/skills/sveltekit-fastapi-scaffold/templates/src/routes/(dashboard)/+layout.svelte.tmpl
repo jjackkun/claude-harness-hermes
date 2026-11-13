@@ -1,0 +1,22 @@
+<script>
+	import { onMount } from 'svelte';
+	import { goto } from '$app/navigation';
+	import { auth } from '$stores/auth.svelte.js';
+	import { Navbar, Sidebar } from '$components/layout';
+
+	let { children } = $props();
+
+	onMount(async () => {
+		if (!(await auth.check())) goto('/login');
+	});
+</script>
+
+{#if auth.isAuthenticated}
+	<div class="flex min-h-screen">
+		<Sidebar />
+		<div class="flex flex-1 flex-col">
+			<Navbar />
+			<main class="flex-1 p-6">{@render children()}</main>
+		</div>
+	</div>
+{/if}

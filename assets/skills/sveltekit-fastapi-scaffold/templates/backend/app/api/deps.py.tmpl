@@ -1,0 +1,34 @@
+"""Shared request dependencies: the signed-in user."""
+
+from typing import Annotated
+
+from fastapi import Depends, HTTPException, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.database import get_db
+from app.core.security import InvalidTokenError, decode_token
+from app.models import User
+
+_bearer = HTTPBearer(auto_error=False)
+DbSession = Annotated[AsyncSession, Depends(get_db)]
+
+
+async def get_current_user(
+    db: DbSession,
+    creds: Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer)],
+) -> User:
+    unauthorized = HTTPException(status.HTTP_401_UNAUTHORIZED, "로그인이 필요합니다.")
+    if creds is None:
+        raise unauthorized
+    try:
+        user_id = int(decode_token(creds.credentials, "access"))
+    except (InvalidTokenError, ValueError) as err:
+        raise unauthorized from err
+    user = await db.get(User, user_id)
+    if user is None or not user.is_active:
+        raise unauthorized
+    return user
+
+
+CurrentUser = Annotated[User, Depends(get_current_user)]
