@@ -68,6 +68,15 @@ echo "[6] --dry-run 은 쓰지 않음"
 python3 "$SCAFFOLD" --name dry-one --dest "$TMP/p4" --dry-run > /dev/null; rc=$?
 check "exit 0 + 폴더 없음" '[[ $rc -eq 0 && ! -e "$TMP/p4" ]]'
 
+echo "[7] 기존 .env 는 값을 지키고 빠진 키만 덧붙임 (예: GEMINI_API_KEY 만 있던 프로젝트)"
+mkdir -p "$TMP/p5"; printf 'GEMINI_API_KEY=keep-me\nDB_NAME=my_own_db\n' > "$TMP/p5/.env"
+python3 "$SCAFFOLD" --name p-five --dest "$TMP/p5" > "$TMP/p5.json"; rc=$?
+check "exit 0 (충돌 아님)" '[[ $rc -eq 0 ]]'
+check "기존 키 값 유지" 'grep -qx "GEMINI_API_KEY=keep-me" "$TMP/p5/.env" && grep -qx "DB_NAME=my_own_db" "$TMP/p5/.env"'
+check "같은 키를 두 번 쓰지 않음" '[[ $(grep -c "^DB_NAME=" "$TMP/p5/.env") -eq 1 ]]'
+check "빠진 키(DB_PORT·API_PORT_DEV) 추가" 'grep -q "^DB_PORT=[0-9]" "$TMP/p5/.env" && grep -q "^API_PORT_DEV=[0-9]" "$TMP/p5/.env"'
+check "요약의 포트가 .env 와 같음" 'grep -q "\"DB_PORT\": \"$(grep ^DB_PORT= "$TMP/p5/.env" | cut -d= -f2)\"" "$TMP/p5.json"'
+
 echo
 echo "결과: $PASS 통과 / $FAIL 실패"
 [[ $FAIL -eq 0 ]]

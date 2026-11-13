@@ -7,6 +7,8 @@
   already written in sibling projects' .env files.
 - Never overwrites: if any target file exists, nothing is written and the conflicts are listed (exit 2).
 - Writes .env (root) and backend/.env with a random DB password and SECRET_KEY, mode 600.
+  If a .env already exists, its keys and values are kept and only missing keys are appended
+  (e.g. a project that already holds GEMINI_API_KEY in .env).
 Exit codes: 0 ok · 1 bad input · 2 conflicts.
 """
 
@@ -22,7 +24,7 @@ from free_ports import pick_ports
 TEMPLATES = Path(__file__).resolve().parent.parent / "templates"
 NAME_RE = re.compile(r"^[a-z][a-z0-9-]{1,39}$")
 PLACEHOLDER_RE = re.compile(r"\{\{[A-Z_]+\}\}")
-MERGE_FILES = {".gitignore"}  # appended to instead of treated as a conflict
+MERGE_FILES = {".gitignore", ".env"}  # appended to instead of treated as a conflict
 PORT_KEYS = re.compile(r"^(?:VITE_FRONTEND_PORT_\w+|API_PORT_\w+|DB_PORT)=(\d+)$", re.M)
 
 
@@ -94,15 +96,28 @@ def merge_lines(existing: str, wanted: str) -> str:
     return f"{existing}{sep}\n# --- sveltekit-fastapi-scaffold ---\n" + "\n".join(extra) + "\n"
 
 
-def plan(name: str, dest: Path) -> tuple[dict[Path, str], dict[str, int]]:
-    """Return (files to write, chosen ports). Existing .env files and merge files are not conflicts."""
+def env_keys(text: str) -> set[str]:
+    return {line.split("=", 1)[0].strip() for line in text.splitlines() if "=" in line and not line.startswith("#")}
+
+
+def merge_env(existing: str, wanted: str) -> str:
+    """Keep every existing KEY=value; append only keys the file does not have yet."""
+    have = env_keys(existing)
+    extra = [line for line in wanted.splitlines() if "=" in line and line.split("=", 1)[0] not in have]
+    if not extra:
+        return existing
+    sep = "" if existing.endswith("\n") or not existing else "\n"
+    return f"{existing}{sep}\n# --- sveltekit-fastapi-scaffold ---\n" + "\n".join(extra) + "\n"
+
+
+def plan(name: str, dest: Path) -> dict[Path, str]:
+    """Return files to write. Existing .gitignore/.env are merged, never treated as conflicts."""
     files = {target_path(t, dest): render(t.read_text(), name) for t in sorted(TEMPLATES.rglob("*.tmpl"))}
+    files.update({dest / rel: body for rel, body in env_files(name, pick_ports(ports_used_by_siblings(dest))).items()})
     for path in [p for p in files if p.name in MERGE_FILES and p.exists()]:
-        files[path] = merge_lines(path.read_text(), files[path])
-    ports = pick_ports(ports_used_by_siblings(dest))
-    env_targets = {dest / rel: body for rel, body in env_files(name, ports).items()}
-    files.update({p: b for p, b in env_targets.items() if not p.exists()})  # keep an existing .env
-    return files, ports
+        merge = merge_env if path.name == ".env" else merge_lines
+        files[path] = merge(path.read_text(), files[path])
+    return files
 
 
 def find_conflicts(files: dict[Path, str], dest: Path) -> list[str]:
@@ -130,20 +145,20 @@ def main() -> int:
         print(f"bad --name {args.name!r}: use ^[a-z][a-z0-9-]{{1,39}}$", file=sys.stderr)
         return 1
 
-    files, ports = plan(args.name, args.dest)
+    files = plan(args.name, args.dest)
     conflicts = find_conflicts(files, args.dest)
     if conflicts:
         print(json.dumps({"status": "conflict", "existing": conflicts}, ensure_ascii=False, indent=2))
         return 2
 
-    kept_env = (args.dest / ".env") not in files  # an existing .env was left untouched
     if not args.dry_run:
         write_files(files)
 
+    root_env = files[args.dest / ".env"]  # final content: existing values win over new ones
     summary = {
         "status": "dry-run" if args.dry_run else "ok",
         "files": len(files),
-        "ports": "kept existing .env" if kept_env else ports,
+        "ports": dict(re.findall(r"^((?:VITE_FRONTEND_PORT|API_PORT)_\w+|DB_PORT)=(\d+)$", root_env, re.M)),
     }
     print(json.dumps(summary, ensure_ascii=False, indent=2))
     return 0
