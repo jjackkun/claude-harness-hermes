@@ -104,6 +104,8 @@
 - `create-user` 실행 때 asyncio 디버그 경고("Executing <Task …> took 0.205 seconds")가 한 줄 나온다. 동작에는 영향 없음, 원인 미확인.
 - 공장 시험: `sveltekit-fastapi-scaffold-test.sh` 22 통과 · `claude-md-skill-index-test.sh` 13 통과 · `copy-install-test.sh` 60 통과 · `doc-counts-gate-test.sh` 19 통과(`scripts/sync-doc-counts.sh` 로 148→149 갱신 뒤).
 
+- **apt-curtain 적용 때 발견 (2026-11-13, 커밋 37c9cd1)**: 프로젝트에 이미 `.env`(GEMINI_API_KEY 만)가 있으면 scaffold 가 `.env` 를 통째로 건너뛰어 포트·DB 키가 빠졌다 → bootstrap 이 실패할 상태. 기존 키·값은 지키고 빠진 키만 덧붙이게 고침, 시험 [7] 5단언 추가(고치기 전 코드로 2개 실패 확인). 적용 결과: install·bootstrap·시험 8·build 통과, pm2 3앱 online, `/api/health` db true.
+
 ## 8. 회고 (완료 시 작성)
 
 - 잘된 것:
