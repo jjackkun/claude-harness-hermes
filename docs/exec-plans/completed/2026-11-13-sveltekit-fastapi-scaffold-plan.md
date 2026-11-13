@@ -13,7 +13,7 @@
 - [x] 생성된 백엔드 시험이 통과한다(헬스·로그인·토큰 갱신·응답 봉투) — 검증: `cd backend && uv run pytest`
 - [x] 생성된 프론트가 빌드된다 — 검증: `corepack pnpm install && corepack pnpm build`
 - [x] 공장 시험이 스크립트를 지킨다(덮어쓰기 금지·치환 누락 0·빈 포트) — 검증: `bash tests/sveltekit-fastapi-scaffold-test.sh`
-- [ ] apt-curtain 에 실제로 깔아 pm2 dev 로 프론트·백엔드가 뜬다 — 검증: `curl -s localhost:<api>/health`
+- [x] apt-curtain 에 실제로 깔아 pm2 dev 로 프론트·백엔드가 뜬다 — 검증: `curl -s localhost:<api>/health`
 
 ## 2-bis. 착수 전 확인한 사실 (2026-11-13)
 
@@ -111,8 +111,10 @@
 
 - **.env 를 루트 하나로 (2026-11-14, 사용자 질문 "backend 에 따로 둔 게 맞나")**: tsukiji 를 따라 루트 + `backend/.env` 로 나눴으나, (1) env-secrets 는 루트 `.env` 만 백업 → `SECRET_KEY`·`SUPERADMIN_PASSWORD` 가 포맷 때 사라질 구조, (2) DB 비밀번호가 `DB_PASSWORD` 와 `DATABASE_URL` 두 곳, (3) 백엔드가 쓸 `GEMINI_API_KEY` 는 루트에 있음. 한 PC·pm2 동시 기동 구조라 나눌 이득 없음 → 백엔드 `config.py` 가 루트 `.env` 를 절대 경로로 읽고, `DATABASE_URL`·`ALLOWED_ORIGINS` 는 `DB_*`·포트로 조립(직접 적으면 우선). `backend/.env`·`backend/.env.example` 템플릿 삭제. 실측(새 임시 프로젝트 one-env): `.env*` 는 루트 2개뿐, install·bootstrap(0001→0002, superadmin created)·시험 14·build 통과, pm2 3앱 online, 로그인 → `is_superuser: True`, CORS 허용 주소 = 프론트 포트. 공장 시험 31 통과. apt-curtain: backend/.env 의 6키를 루트로 옮기고(`DATABASE_URL`·`ALLOWED_ORIGINS` 버림), backend/.env 를 치운 상태에서 시험 14·pm2 재기동·`/api/health` db true·CORS 확인.
 
+- **G6 실측 (2026-11-14)**: apt-curtain 에서 pm2 `apt-curtain-dev-{db,backend,frontend}` 3앱 online · `curl localhost:8813/health` → `{"status":"ok"}` · 프론트 `localhost:8811/` HTTP 200. 오류 로그는 `favicon.ico` 404 와 asyncio 느린 작업 경고(0.2~1.1초)뿐, 예외 0. apt-curtain 은 git 저장소가 아니라 그쪽 커밋은 없다.
+
 ## 8. 회고 (완료 시 작성)
 
-- 잘된 것:
-- 잘못된 것:
-- 다음 룰 후보:
+- 잘된 것: 전역 설치 없이(embedded-postgres · uv · corepack pnpm · pm2 devDependency) sudo 0 으로 DB 까지 한 번에 떴다. 임시 폴더에서 끝까지 실측한 뒤 실제 프로젝트에 깔아 pnpm `allowBuilds`·기존 `.env` 건너뛰기 결함을 실제 적용 전에 또는 적용 직후 시험으로 막았다.
+- 잘못된 것: 기준 예시를 따라 `.env` 를 루트·backend 두 곳으로 나눴다가 하루 뒤 되돌렸다 — env-secrets 백업 범위를 먼저 확인했으면 처음부터 하나였다. 시험 폴더가 PROJECT 형제가 아니어서 DB 포트가 겹쳐 첫 측정이 헛돌았다. G6 는 적용 당일 통과했는데 체크박스를 늦게 닫았다.
+- 다음 룰 후보: 템플릿이 비밀을 둘 자리를 정할 때 env-secrets 백업 범위(루트 `.env`)와 맞는지 먼저 본다. 아직 1회라 룰로 올리지 않는다.
