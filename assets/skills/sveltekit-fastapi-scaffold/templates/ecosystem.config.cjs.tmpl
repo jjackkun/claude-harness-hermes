@@ -8,8 +8,7 @@ const path = require('node:path');
 const { readEnv } = require('./scripts/env.cjs');
 
 const ROOT = __dirname;
-const rootEnv = readEnv(path.join(ROOT, '.env'));
-const backendEnv = readEnv(path.join(ROOT, 'backend/.env'));
+const rootEnv = readEnv(path.join(ROOT, '.env')); // one .env for db, backend and frontend
 
 const isDev = process.env.NODE_ENV !== 'production';
 const suffix = isDev ? 'dev' : 'prod';
@@ -55,7 +54,7 @@ module.exports = {
 				? `-u -m uvicorn app.main:app --reload --reload-dir ./app --port ${apiPort} --host 0.0.0.0`
 				: `-u -m uvicorn app.main:app --port ${apiPort} --host 0.0.0.0 --workers 2`,
 			kill_timeout: 5000,
-			env: { ...backendEnv, APP_ENV: isDev ? 'development' : 'production' }
+			env: { ...rootEnv, APP_ENV: isDev ? 'development' : 'production' }
 		},
 		{
 			...common,

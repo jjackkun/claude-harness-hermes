@@ -1,0 +1,43 @@
+import pytest
+from sqlalchemy import select
+
+from app.cli.seed_superadmin import seed_superadmin
+from app.core.security import verify_password
+from app.models import User
+
+from .conftest import TEST_EMAIL
+
+ADMIN = "admin@example.com"
+
+
+async def test_creates_superadmin_once(session_factory):
+    assert await seed_superadmin(session_factory, ADMIN, "admin-pass-123") == "created"
+    async with session_factory() as db:
+        user = await db.scalar(select(User).where(User.email == ADMIN))
+    assert user.is_superuser is True
+    assert verify_password("admin-pass-123", user.hashed_password)
+
+
+async def test_existing_user_is_left_unchanged(session_factory):
+    await seed_superadmin(session_factory, ADMIN, "first-password")
+    assert await seed_superadmin(session_factory, ADMIN, "second-password") == "exists"
+    async with session_factory() as db:
+        user = await db.scalar(select(User).where(User.email == ADMIN))
+    assert verify_password("first-password", user.hashed_password)
+
+
+async def test_existing_normal_user_is_not_promoted(session_factory):
+    assert await seed_superadmin(session_factory, TEST_EMAIL, "whatever-123") == "exists"
+    async with session_factory() as db:
+        user = await db.scalar(select(User).where(User.email == TEST_EMAIL))
+    assert user.is_superuser is False
+
+
+async def test_unset_values_skip(session_factory):
+    assert await seed_superadmin(session_factory, "", "") == "unset"
+
+
+@pytest.mark.parametrize(("email", "password"), [("not-an-email", "long-enough-1"), (ADMIN, "short")])
+async def test_bad_values_are_rejected(session_factory, email, password):
+    with pytest.raises(ValueError):
+        await seed_superadmin(session_factory, email, password)

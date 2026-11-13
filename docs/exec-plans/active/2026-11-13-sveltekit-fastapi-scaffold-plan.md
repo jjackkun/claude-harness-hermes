@@ -106,6 +106,11 @@
 
 - **apt-curtain 적용 때 발견 (2026-11-13, 커밋 37c9cd1)**: 프로젝트에 이미 `.env`(GEMINI_API_KEY 만)가 있으면 scaffold 가 `.env` 를 통째로 건너뛰어 포트·DB 키가 빠졌다 → bootstrap 이 실패할 상태. 기존 키·값은 지키고 빠진 키만 덧붙이게 고침, 시험 [7] 5단언 추가(고치기 전 코드로 2개 실패 확인). 적용 결과: install·bootstrap·시험 8·build 통과, pm2 3앱 online, `/api/health` db true.
 
+- **최초 슈퍼관리자를 .env 로 (2026-11-13, 사용자 제안)**: `backend/.env`·`.env.example` 에 `SUPERADMIN_EMAIL`·`SUPERADMIN_PASSWORD`, `bootstrap` 이 마이그레이션 뒤 `app.cli.seed_superadmin` 실행 — 값이 비면 건너뜀, 그 이메일이 있으면 손대지 않음(비밀번호도), 없으면 `is_superuser=true` 로 생성. `users.is_superuser` 는 마이그레이션 0002 로 추가(이미 깔린 프로젝트에도 적용). 실측(demo-app, 포트 8821~8825): 비어 있음 → skipped · 값 있음 → created · .env 비번을 바꿔 재실행 → exists, 원래 비번 로그인 ok=True / 바꾼 비번 ok=False · `/api/auth/me` → `is_superuser: True`. 생성물 시험 14 통과(seed 6 추가), 공장 시험 28 통과. apt-curtain: 0001→0002 적용, 값 비어 있어 skipped.
+- 첫 측정 실패 원인: demo-app 과 apt-curtain 이 같은 DB 포트(8815)를 썼다. 시험 폴더(scratchpad)는 PROJECT 의 형제가 아니라 형제 .env 회피가 닿지 않았고, 그때 demo-app pm2 는 꺼져 있었다. bootstrap 은 "이미 떠 있다"고 보고 다른 프로젝트 DB 에 붙어 인증 실패 → 문구를 "this project's db app" 으로 바꿔 오해를 줄임. 실제 프로젝트끼리는 형제 .env 회피 + 사용 중 포트 검사로 막힌다.
+
+- **.env 를 루트 하나로 (2026-11-14, 사용자 질문 "backend 에 따로 둔 게 맞나")**: tsukiji 를 따라 루트 + `backend/.env` 로 나눴으나, (1) env-secrets 는 루트 `.env` 만 백업 → `SECRET_KEY`·`SUPERADMIN_PASSWORD` 가 포맷 때 사라질 구조, (2) DB 비밀번호가 `DB_PASSWORD` 와 `DATABASE_URL` 두 곳, (3) 백엔드가 쓸 `GEMINI_API_KEY` 는 루트에 있음. 한 PC·pm2 동시 기동 구조라 나눌 이득 없음 → 백엔드 `config.py` 가 루트 `.env` 를 절대 경로로 읽고, `DATABASE_URL`·`ALLOWED_ORIGINS` 는 `DB_*`·포트로 조립(직접 적으면 우선). `backend/.env`·`backend/.env.example` 템플릿 삭제. 실측(새 임시 프로젝트 one-env): `.env*` 는 루트 2개뿐, install·bootstrap(0001→0002, superadmin created)·시험 14·build 통과, pm2 3앱 online, 로그인 → `is_superuser: True`, CORS 허용 주소 = 프론트 포트. 공장 시험 31 통과. apt-curtain: backend/.env 의 6키를 루트로 옮기고(`DATABASE_URL`·`ALLOWED_ORIGINS` 버림), backend/.env 를 치운 상태에서 시험 14·pm2 재기동·`/api/health` db true·CORS 확인.
+
 ## 8. 회고 (완료 시 작성)
 
 - 잘된 것:

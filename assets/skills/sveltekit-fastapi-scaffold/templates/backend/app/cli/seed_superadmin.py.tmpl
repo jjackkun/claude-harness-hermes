@@ -1,0 +1,74 @@
+"""Create the first superadmin from the project-root .env, once.
+
+Reads SUPERADMIN_EMAIL / SUPERADMIN_PASSWORD. Called by `corepack pnpm bootstrap` after migrations.
+- both empty            → skip (prints how to set them)
+- user already exists   → skip, never touches the existing password
+- otherwise             → create the user with is_superuser = true
+"""
+
+import asyncio
+import sys
+from typing import Literal
+
+from pydantic import EmailStr, TypeAdapter, ValidationError
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+
+from app.core.config import get_settings
+from app.core.security import hash_password
+from app.models import User
+
+MIN_PASSWORD = 8
+SeedResult = Literal["created", "exists", "unset"]
+_email = TypeAdapter(EmailStr)
+
+
+def validate(email: str, password: str) -> None:
+    """Raise ValueError with a readable reason if the .env values cannot be used."""
+    try:
+        _email.validate_python(email)
+    except ValidationError as err:
+        raise ValueError(f"SUPERADMIN_EMAIL is not a valid email: {email!r}") from err
+    if len(password) < MIN_PASSWORD:
+        raise ValueError(f"SUPERADMIN_PASSWORD must be at least {MIN_PASSWORD} characters")
+
+
+async def seed_superadmin(sessions: async_sessionmaker[AsyncSession], email: str, password: str) -> SeedResult:
+    if not email and not password:
+        return "unset"
+    validate(email, password)
+    async with sessions() as db:
+        if await db.scalar(select(User.id).where(User.email == email)) is not None:
+            return "exists"
+        db.add(User(email=email, hashed_password=hash_password(password), is_superuser=True))
+        await db.commit()
+    return "created"
+
+
+async def _run() -> SeedResult:
+    from app.core.database import SessionLocal, engine  # imported here so tests can use their own engine
+
+    s = get_settings()
+    try:
+        return await seed_superadmin(SessionLocal, s.SUPERADMIN_EMAIL.strip(), s.SUPERADMIN_PASSWORD)
+    finally:
+        await engine.dispose()
+
+
+def main() -> None:
+    try:
+        result = asyncio.run(_run())
+    except ValueError as err:
+        sys.exit(f"superadmin: {err}")
+    email = get_settings().SUPERADMIN_EMAIL.strip()
+    messages = {
+        "created": f"superadmin: created {email}",
+        "exists": f"superadmin: {email} already exists — left unchanged",
+        "unset": "superadmin: skipped — set SUPERADMIN_EMAIL and SUPERADMIN_PASSWORD in .env, "
+        "then run `corepack pnpm bootstrap` again",
+    }
+    print(messages[result])
+
+
+if __name__ == "__main__":
+    main()

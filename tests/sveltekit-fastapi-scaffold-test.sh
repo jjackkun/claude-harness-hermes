@@ -24,17 +24,24 @@ check() { if eval "$2"; then ok "$1"; else bad "$1"; fi; }
 echo "[1] 빈 폴더에 생성"
 out=$(python3 "$SCAFFOLD" --name demo-app --dest "$TMP/p1"); rc=$?
 check "exit 0" '[[ $rc -eq 0 ]]'
-check "템플릿 수만큼 파일 + .env 2개" \
-  '[[ $(find "$TMP/p1" -type f | wc -l) -eq $(( $(find "$SKILL/templates" -name "*.tmpl" | wc -l) + 2 )) ]]'
+check "템플릿 수만큼 파일 + .env 1개" \
+  '[[ $(find "$TMP/p1" -type f | wc -l) -eq $(( $(find "$SKILL/templates" -name "*.tmpl" | wc -l) + 1 )) ]]'
 check ".tmpl 접미사가 남지 않음" '[[ -z $(find "$TMP/p1" -name "*.tmpl") ]]'
-check "dot. 접두가 . 으로 바뀜" '[[ -f "$TMP/p1/.gitignore" && -f "$TMP/p1/backend/.env.example" ]]'
+check "dot. 접두가 . 으로 바뀜" '[[ -f "$TMP/p1/.gitignore" && -f "$TMP/p1/.env.example" ]]'
+check ".env 는 루트 하나뿐 (backend/.env·backend/.env.example 없음)" \
+  '[[ ! -e "$TMP/p1/backend/.env" && ! -e "$TMP/p1/backend/.env.example" ]]'
 check "치환 안 된 {{ 자리 0" '! grep -rq "{{[A-Z_]*}}" "$TMP/p1"'
 check "기준 예시 이름(tsukiji) 잔재 0" '! grep -rqi "tsukiji" "$TMP/p1"'
 check "프로젝트 이름이 package.json 에 들어감" 'grep -q "\"name\": \"demo-app\"" "$TMP/p1/package.json"'
-check ".env 권한 600" '[[ $(stat -c %a "$TMP/p1/.env") == 600 && $(stat -c %a "$TMP/p1/backend/.env") == 600 ]]'
+check ".env 권한 600" '[[ $(stat -c %a "$TMP/p1/.env") == 600 ]]'
 check "uv.sh 실행 권한" '[[ -x "$TMP/p1/scripts/uv.sh" ]]'
-check "DATABASE_URL 이 asyncpg + DB_PORT 를 씀" \
-  'port=$(grep ^DB_PORT= "$TMP/p1/.env" | cut -d= -f2); grep -q "^DATABASE_URL=postgresql+asyncpg://.*:$port/demo_app$" "$TMP/p1/backend/.env"'
+check "DB 비밀번호는 DB_PASSWORD 한 곳에만 (DATABASE_URL 줄 없음)" \
+  '[[ $(grep -c "^DB_PASSWORD=." "$TMP/p1/.env") -eq 1 ]] && ! grep -q "^DATABASE_URL=" "$TMP/p1/.env"'
+check "SECRET_KEY 가 무작위로 채워짐" 'grep -qE "^SECRET_KEY=.{40,}$" "$TMP/p1/.env"'
+check ".env 와 .env.example 의 키 이름이 같음" \
+  'diff <(grep -oE "^[A-Z_]+=" "$TMP/p1/.env" | sort) <(grep -oE "^[A-Z_]+=" "$TMP/p1/.env.example" | sort) >/dev/null'
+check "최초 슈퍼관리자 키는 값 없이" \
+  'grep -qx "SUPERADMIN_EMAIL=" "$TMP/p1/.env" && grep -qx "SUPERADMIN_PASSWORD=" "$TMP/p1/.env"'
 check "포트 5개가 서로 다름" \
   '[[ $(grep -E "^(VITE_FRONTEND_PORT_|API_PORT_|DB_PORT)" "$TMP/p1/.env" | cut -d= -f2 | sort -u | wc -l) -eq 5 ]]'
 

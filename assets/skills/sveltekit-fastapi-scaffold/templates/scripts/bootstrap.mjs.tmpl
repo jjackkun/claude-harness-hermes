@@ -1,6 +1,7 @@
 // One-time (idempotent) setup after `corepack pnpm install`:
 //   1. backend/.venv via uv sync      2. .pgdata initdb + database (first run only)
-//   3. alembic upgrade head           Everything stays inside this project folder.
+//   3. alembic upgrade head           4. first superadmin from .env (skipped if it exists)
+// Everything stays inside this project folder.
 import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
@@ -51,7 +52,8 @@ try {
 	await pg.start();
 } catch (err) {
 	// pm2 may already be running the db app; then just use it.
-	console.log(`  start skipped (${String(err).split('\n')[0]}) — assuming it is already running`);
+	const reason = err ? String(err).split('\n')[0] : `port ${env.DB_PORT} busy or data dir locked`;
+	console.log(`  start skipped (${reason}) — assuming this project's db app is already running`);
 	startedHere = false;
 }
 
@@ -62,8 +64,10 @@ try {
 	}
 	step('alembic upgrade head');
 	uv(['run', 'alembic', 'upgrade', 'head']);
+	step('superadmin from .env (only if not created yet)');
+	uv(['run', 'python', '-m', 'app.cli.seed_superadmin']);
 } finally {
 	if (startedHere) await pg.stop();
 }
 
-console.log('\n✔ bootstrap done. Next: corepack pnpm create-user <email> <password> · corepack pnpm start:dev');
+console.log('\n✔ bootstrap done. Next: corepack pnpm start:dev');

@@ -1,4 +1,4 @@
-"""Copy the SvelteKit + FastAPI skeleton into a project folder and write its .env files.
+"""Copy the SvelteKit + FastAPI skeleton into a project folder and write its single root .env.
 
     python3 scaffold.py --name apt-curtain --dest /path/to/project [--dry-run]
 
@@ -6,7 +6,8 @@
 - `{{PROJECT}}` is replaced with --name. Ports are picked from free ports, skipping ports
   already written in sibling projects' .env files.
 - Never overwrites: if any target file exists, nothing is written and the conflicts are listed (exit 2).
-- Writes .env (root) and backend/.env with a random DB password and SECRET_KEY, mode 600.
+- Writes one .env at the project root (frontend, pm2, db and backend all read it) with a random
+  DB password and SECRET_KEY, mode 600. One file so env-secrets backs up every value.
   If a .env already exists, its keys and values are kept and only missing keys are appended
   (e.g. a project that already holds GEMINI_API_KEY in .env).
 Exit codes: 0 ok · 1 bad input · 2 conflicts.
@@ -54,9 +55,8 @@ def ports_used_by_siblings(dest: Path) -> frozenset[int]:
 
 
 def env_files(name: str, ports: dict[str, int]) -> dict[str, str]:
+    """The project's single .env. DATABASE_URL / ALLOWED_ORIGINS are derived by the backend."""
     db_name = name.replace("-", "_")
-    db_user = f"{db_name}_app"
-    db_password = secrets.token_urlsafe(24)
     root = "\n".join(
         [
             f"PROJECT_NAME={name}",
@@ -66,24 +66,19 @@ def env_files(name: str, ports: dict[str, int]) -> dict[str, str]:
             f"API_PORT_PROD={ports['API_PROD']}",
             f"DB_PORT={ports['DB']}",
             f"DB_NAME={db_name}",
-            f"DB_USER={db_user}",
-            f"DB_PASSWORD={db_password}",
-            "",
-        ]
-    )
-    origins = f"http://localhost:{ports['FRONT_DEV']},http://localhost:{ports['FRONT_PROD']}"
-    backend = "\n".join(
-        [
-            f"DATABASE_URL=postgresql+asyncpg://{db_user}:{db_password}@localhost:{ports['DB']}/{db_name}",
+            f"DB_USER={db_name}_app",
+            f"DB_PASSWORD={secrets.token_urlsafe(24)}",
             f"SECRET_KEY={secrets.token_urlsafe(48)}",
-            f"ALLOWED_ORIGINS={origins}",
             "ACCESS_TOKEN_EXPIRE_MINUTES=30",
             "REFRESH_TOKEN_EXPIRE_DAYS=7",
             "DEBUG_SQL=false",
+            "# First superadmin: fill both, then `corepack pnpm bootstrap` creates it once.",
+            "SUPERADMIN_EMAIL=",
+            "SUPERADMIN_PASSWORD=",
             "",
         ]
     )
-    return {".env": root, "backend/.env": backend}
+    return {".env": root}
 
 
 def merge_lines(existing: str, wanted: str) -> str:

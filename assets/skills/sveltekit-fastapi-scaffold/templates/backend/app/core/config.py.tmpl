@@ -1,26 +1,57 @@
-"""Application settings, read from backend/.env (and the process environment, which wins)."""
+"""Application settings, read from the project-root .env (one file for the whole project).
+
+The process environment wins over the file (pm2 passes the same .env; tests override DATABASE_URL).
+DATABASE_URL and ALLOWED_ORIGINS are built from DB_* / port keys unless set explicitly.
+"""
 
 from functools import lru_cache
+from pathlib import Path
+from urllib.parse import quote
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+ROOT_ENV = Path(__file__).resolve().parents[3] / ".env"  # backend/app/core/config.py → project root
+
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    model_config = SettingsConfigDict(env_file=ROOT_ENV, extra="ignore")
 
-    DATABASE_URL: str
+    # Project-local PostgreSQL (same keys scripts/db-run.mjs uses)
+    DB_PORT: int = 5432
+    DB_NAME: str = ""
+    DB_USER: str = ""
+    DB_PASSWORD: str = ""
+    DATABASE_URL: str = ""  # optional override, e.g. a production server
+
     SECRET_KEY: str
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
-    ALLOWED_ORIGINS: str = ""
+
+    VITE_FRONTEND_PORT_DEV: int | None = None
+    VITE_FRONTEND_PORT_PROD: int | None = None
+    ALLOWED_ORIGINS: str = ""  # optional override, comma separated
     DEBUG_SQL: bool = False
+
+    # First superadmin, created by `bootstrap` (app.cli.seed_superadmin) only if that email does not exist yet.
+    SUPERADMIN_EMAIL: str = ""
+    SUPERADMIN_PASSWORD: str = ""
+
+    @property
+    def database_url(self) -> str:
+        if self.DATABASE_URL:
+            return self.DATABASE_URL
+        password = quote(self.DB_PASSWORD, safe="")
+        return f"postgresql+asyncpg://{self.DB_USER}:{password}@localhost:{self.DB_PORT}/{self.DB_NAME}"
 
     @property
     def allowed_origins(self) -> list[str]:
-        return [o.strip() for o in self.ALLOWED_ORIGINS.split(",") if o.strip()]
+        if self.ALLOWED_ORIGINS:
+            return [o.strip() for o in self.ALLOWED_ORIGINS.split(",") if o.strip()]
+        ports = (self.VITE_FRONTEND_PORT_DEV, self.VITE_FRONTEND_PORT_PROD)
+        return [f"http://localhost:{p}" for p in ports if p]
 
 
 @lru_cache
 def get_settings() -> Settings:
-    return Settings()  # type: ignore[call-arg]  # values come from the environment
+    return Settings()  # type: ignore[call-arg]  # values come from .env / the environment

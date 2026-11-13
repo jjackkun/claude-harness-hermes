@@ -15,7 +15,8 @@ description: 새 웹 프로젝트에 SvelteKit(JavaScript) + FastAPI + PostgreSQ
 ## 왜 이렇게 하나
 
 - `sudo apt install postgresql` 은 비밀번호를 물어 자동 세팅이 멈추고, PC 의 모든 프로젝트가 한 DB 서버를 같이 쓰게 된다. `embedded-postgres` 는 PostgreSQL 실제 바이너리를 `node_modules` 에 받아 `.pgdata/` 에서 돌린다.
-- 운영으로 옮길 때는 `pg_dump` → 운영 DB 복원 → `backend/.env` 의 `DATABASE_URL` 교체. 코드는 그대로다. (embedded-postgres 에는 `pg_dump`·`psql` 이 없다 — 이관 때 따로 준비.)
+- 운영으로 옮길 때는 `pg_dump` → 운영 DB 복원 → `.env` 에 `DATABASE_URL` 한 줄 추가(있으면 `DB_*` 보다 우선). 코드는 그대로다. (embedded-postgres 에는 `pg_dump`·`psql` 이 없다 — 이관 때 따로 준비.)
+- **`.env` 는 루트 하나**다. 프론트(vite)·pm2·DB 스크립트·백엔드가 모두 같은 파일을 읽는다. 한 PC·한 서버에서 pm2 로 같이 띄우는 구조라 나눌 이득이 없고, 나누면 (1) env-secrets 가 루트 `.env` 만 백업해 나머지를 잃고 (2) DB 비밀번호가 두 군데 생겨 어긋난다. 브라우저로 가는 값은 `VITE_` 로 시작하는 키뿐이므로 비밀 키에 `VITE_` 를 붙이지 않는다. 프론트를 따로 호스팅하게 되면 그때 `VITE_*` 만 떼어 내면 된다.
 
 ## 순서
 
@@ -30,9 +31,9 @@ description: 새 웹 프로젝트에 SvelteKit(JavaScript) + FastAPI + PostgreSQ
    - 통과하면 `--dry-run` 없이 다시 실행한다. 출력의 `ports` 를 사용자에게 알린다.
 4. **설치** — 길다(처음 1~3분). `run_in_background` 로 돌리고 로그를 지켜본다.
    `COREPACK_ENABLE_DOWNLOAD_PROMPT=0 corepack pnpm install`
-5. **부트스트랩** — `corepack pnpm bootstrap`: `uv sync`(backend/.venv) → `.pgdata` 초기화·DB 생성(첫 실행만) → `alembic upgrade head`. 다시 돌려도 안전하다.
+5. **부트스트랩** — `corepack pnpm bootstrap`: `uv sync`(backend/.venv) → `.pgdata` 초기화·DB 생성(첫 실행만) → `alembic upgrade head` → 최초 슈퍼관리자. 다시 돌려도 안전하다.
 6. **확인** — `corepack pnpm test:backend`(SQLite 메모리로 돈다) · `corepack pnpm build`.
-7. **첫 사용자** — 사용자에게 이메일·비밀번호를 받아 `corepack pnpm create-user <email> <password>`. 비밀번호를 대화·파일·커밋에 남기지 않는다.
+7. **최초 슈퍼관리자** — 사용자가 루트 `.env` 의 `SUPERADMIN_EMAIL`·`SUPERADMIN_PASSWORD` 를 채우고 `corepack pnpm bootstrap` 을 다시 돌리면 `is_superuser=true` 계정이 생긴다. 그 이메일이 이미 있으면 아무것도 하지 않는다(비밀번호도 안 바꾼다). 값이 비어 있으면 건너뛰고 안내만 찍는다. 비밀번호는 사용자가 직접 파일에 쓴다 — 대화·커밋에 남기지 않는다. 추가 사용자·비밀번호 재설정은 `corepack pnpm create-user <email> <password>`.
 8. **기동** — `corepack pnpm start:dev` → pm2 가 db·backend·frontend 세 앱을 띄운다. `curl -s localhost:<API_PORT_DEV>/health` 와 브라우저 `http://localhost:<VITE_FRONTEND_PORT_DEV>/login` 으로 확인한다.
 9. **문서** — 프로젝트 `ARCHITECTURE.md` §2 디렉터리 지도·§5 외부 의존을 [references/structure.md](references/structure.md) 를 보고 채운다.
 
@@ -51,11 +52,12 @@ description: 새 웹 프로젝트에 SvelteKit(JavaScript) + FastAPI + PostgreSQ
 ## 하지 않는 것
 
 - 기능 화면·API(예시 tsukiji 의 재고·채팅·OCR 등). 골격까지만.
-- 회원가입 API. 공개 가입은 보안 결정이라 기본에서 뺐다. 사용자는 `create-user` 로 만든다.
+- 회원가입 API. 공개 가입은 보안 결정이라 기본에서 뺐다. 최초 슈퍼관리자는 `.env` 로, 그 뒤 사용자는 `create-user` 로 만든다.
 - 배포(도메인·HTTPS). shadcn 컴포넌트는 필요할 때 `npx shadcn-svelte@latest add <이름>`.
 
 ## 문제가 생기면
 
 - `pnpm install` 이 `ERR_PNPM_IGNORED_BUILDS` → `pnpm-workspace.yaml` 의 `allowBuilds:` 에 그 패키지를 `true` 로 넣고, `node_modules` 를 지운 뒤 다시 설치. (pnpm 12 는 예전 `onlyBuiltDependencies` 를 무시한다 — 2026-11-13 실측.) 이 단계가 빠지면 bootstrap 이 `Missing symlink "native/lib/libecpg.so"` 로 죽는다.
 - `db-run` 이 바로 죽음 → `corepack pnpm bootstrap` 을 먼저 했는지, `DB_PORT` 를 다른 프로세스가 쓰는지(`ss -ltn | grep <포트>`) 본다.
-- 포트를 바꾸려면 루트 `.env` 의 포트와 `backend/.env` 의 `DATABASE_URL`·`ALLOWED_ORIGINS` 를 같이 바꾼다.
+- 포트를 바꾸려면 루트 `.env` 의 포트 키만 바꾼다. `DATABASE_URL`·`ALLOWED_ORIGINS` 는 백엔드가 그 값으로 만든다(직접 적어 둔 경우만 같이 고친다).
+- 예전 판(2026-11-13 오전)으로 깐 프로젝트에 `backend/.env` 가 있으면: 그 안의 `SECRET_KEY`·`SUPERADMIN_*` 등을 루트 `.env` 로 옮기고 `DATABASE_URL`·`ALLOWED_ORIGINS` 줄은 버린다(자동 계산). 새 판 백엔드는 `backend/.env` 를 읽지 않는다.
