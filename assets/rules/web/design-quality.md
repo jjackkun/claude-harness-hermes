@@ -36,15 +36,18 @@ Every meaningful frontend surface should demonstrate at least four of these:
 
 Use `/impeccable` as the default skill for all frontend design work.
 
-- First time on a project: run `/impeccable teach` to set up design context (brand, audience, tone).
-- Building UI: run `/impeccable craft` to shape and build with full project context.
-- Extracting reusable pieces: run `/impeccable extract`.
+- First time on a project: run `/impeccable init` to write `PRODUCT.md` (who it is for, what it must do). `teach` is an alias.
+- Existing visual system: run `/impeccable document` to capture it in `DESIGN.md`.
+- Building UI: describe the surface (or `/impeccable shape`); `craft` is a deprecated alias.
+- Before calling a screen done: `/impeccable critique <target>` and `/impeccable audit <target>`, then `/impeccable polish <target>`.
+- Look at the rendered result (screenshot) at the sizes it ships at. Rules alone do not catch an AI-looking screen.
 
-Do not skip `/impeccable teach` — design without project context produces generic output.
+Do not skip `init` — design without project context produces generic output.
+Projects that still have only a legacy `.impeccable.md` (impeccable 2.x): run `/impeccable init`; 4.x reads `PRODUCT.md` and `DESIGN.md`, not `.impeccable.md`.
 
 ## Before Writing Frontend Code
 
-1. Confirm design context exists (`.impeccable.md` or loaded instructions). If not, run `/impeccable teach` first.
+1. Confirm design context exists (`PRODUCT.md` / `DESIGN.md`, or loaded instructions). If not, run `/impeccable init` first.
 2. Pick a specific style direction. Avoid vague defaults like "clean minimal".
 3. Define a palette intentionally.
 4. Choose typography deliberately.
