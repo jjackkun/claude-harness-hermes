@@ -46,7 +46,9 @@ _log() {
 [[ -f "$checker" ]] || { _log "skip:no-checker"; exit 0; }
 
 # 1) 알림 — 상태 파일만 읽으므로 빠르다. 실패해도 세션은 계속된다.
-timeout 5 python3 "$checker" --notice --ledger "$ledger" 2>>"$log_file" || _log "notice rc=$?"
+err_to=/dev/null
+[[ -d "$project_dir/.hermes" ]] && err_to="$log_file"
+timeout 5 python3 "$checker" --notice --ledger "$ledger" 2>>"$err_to" || _log "notice rc=$?"
 
 # 2) 확인 — 뒤에서. 잠금·20시간·1시간 재시도 판단은 확인 프로그램이 한다.
 UPSTREAM_CHECKER="$checker" UPSTREAM_LEDGER="$ledger" UPSTREAM_LOG="$log_file" \

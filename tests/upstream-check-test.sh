@@ -112,6 +112,29 @@ python3 -c "import json;d=json.load(open('$F/assets/upstream.json'));d['items'][
 rm -f "$STATE/upstream-last-notice"
 assert "공장은 최신 → 전파 필요" 1 "$([[ "$(run --notice --ledger "$A")" == *'전파가 필요'* ]] && echo 1 || echo 0)"
 
+echo "== 같은 저장소, 다른 경로를 깐 프로젝트 (리뷰 MEDIUM) =="
+fresh 12; rm -f "$FIX"/*.json
+python3 - "$FIX/org__one.json" "$SHA_NEW" <<'PY'
+import json, sys
+json.dump({'tree': [{'path': 'skills/alpha', 'sha': sys.argv[2]}, {'path': 'skills/gamma', 'sha': sys.argv[2]}], 'truncated': False}, open(sys.argv[1], 'w'))
+PY
+ledger "$TMP/c.json" org/one gamma
+run --check --ledger "$A"; : > "$UPSTREAM_FETCH_LOG"
+run --check --ledger "$TMP/c.json"
+assert "다른 경로면 같은 저장소라도 다시 묻는다" 1 "$(grep -c '^org/one$' "$UPSTREAM_FETCH_LOG")"
+assert "상태에 gamma 경로" 1 "$(python3 -c "import json,sys;print(1 if 'org/one:skills/gamma' in json.load(open(sys.argv[1]))['sources'] else 0)" "$STATE/upstream-status.json")"
+
+echo "== 일부 실패한 저장소는 1시간 안에 다시 묻지 않는다 (리뷰 MEDIUM) =="
+fresh 13; rm -f "$FIX"/*.json; tree org/one alpha "$SHA_NEW"
+run --check --ledger "$TMP/ab.json"; : > "$UPSTREAM_FETCH_LOG"
+run --check --ledger "$TMP/ab.json"
+assert "실패한 org/two 를 바로 다시 묻지 않는다" 0 "$(grep -c '^org/two$' "$UPSTREAM_FETCH_LOG")"
+
+echo "== 원본에서 경로가 사라지면 알린다 (리뷰 LOW) =="
+fresh 14; rm -f "$FIX"/*.json; echo '{"tree": [{"path": "other", "sha": "x"}], "truncated": false}' > "$FIX/org__one.json"
+run --check --ledger "$A"
+assert "경로 사라짐 알림" 1 "$([[ "$(run --notice --ledger "$A")" == *'경로가 사라짐'* ]] && echo 1 || echo 0)"
+
 echo ""
 echo "PASS=$PASS FAIL=$FAIL"
 [[ $FAIL -eq 0 ]]

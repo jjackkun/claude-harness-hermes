@@ -147,3 +147,5 @@ tier: 0  scripts/hooks/complexity.py scripts/hooks/coverage_probe.py scripts/hoo
 tier: 0  scripts/hermes_dashboard_html.py
 tier: 3  scripts/hermes_dashboard_data.py
 tier: 4  scripts/hermes-dashboard.py
+# 밖에서 가져온 에셋의 원본 확인·업데이트 — 둘 다 표준 라이브러리만 쓰고 서로 import 하지 않는다 (계획 2026-11-15-upstream-version-watch)
+tier: 0  scripts/upstream-check.py scripts/upstream-update.py

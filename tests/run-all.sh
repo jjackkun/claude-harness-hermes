@@ -356,6 +356,14 @@ REGISTERED_TESTS=(
   hermes-repo-sync-test.sh
   git-ignore-judge-test.sh
   preset-lock-tracked-test.sh
+  # 밖에서 가져온 에셋 새 버전 감시 (계획 2026-11-15-upstream-version-watch)
+  upstream-ledger-test.sh
+  upstream-project-ledger-test.sh
+  upstream-factory-path-test.sh
+  upstream-check-test.sh
+  upstream-sessionstart-test.sh
+  upstream-update-test.sh
+  upstream-downgrade-guard-test.sh
   preset-order-stable-test.sh
   project-claude-restore-test.sh
   hermes-skill-layers-test.sh

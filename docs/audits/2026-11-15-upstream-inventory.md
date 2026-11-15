@@ -4,7 +4,7 @@
 
 ## 방법
 
-- `assets/` 의 스킬·규칙·에이전트·훅 165개를 하나씩 보았다.
+- `assets/` 의 스킬·규칙·에이전트·훅 165개(조사 뒤 이 계획으로 1개 추가해 166개)를 하나씩 보았다.
 - 흔적 찾기: 파일 안의 LICENSE·`license:`·NOTICE·`origin:` 주석·`출처:`·외부 GitHub URL, 그리고 그 에셋이 처음 들어온 커밋.
 - 이름 대조: `affaan-m/ECC`(옛 이름 everything-claude-code)와 `anthropics/skills` 의 전체 트리를 받아 같은 이름의 스킬·에이전트·규칙 폴더를 찾았다.
 - 내용 대조: 같은 이름이면 원본 SKILL.md(에이전트는 본문)와 공장 사본의 유사도를 쟀다. description 줄과 origin 주석은 빼고 쟀다. 0.99 이상이면 "그대로", 아니면 "고쳐 씀".
@@ -14,7 +14,7 @@
 ## 요약
 
 - 고쳐 씀: 37개
-- 공장 제작: 107개
+- 공장 제작: 108개
 - 그대로: 13개
 - 확인 못 함: 8개
 
@@ -189,3 +189,4 @@
 | hooks | structure-rule-deep-import.mjs | 공장 제작 | 처음 커밋: 3dfd678 feat(struct): R-struct 를 언어 무관 엔진 + 언어 설정표로 바꾸고 Tier |
 | hooks | structure-rule-reexport.mjs | 공장 제작 | 처음 커밋: 3dfd678 feat(struct): R-struct 를 언어 무관 엔진 + 언어 설정표로 바꾸고 Tier |
 | hooks | structure-rules-common.mjs | 공장 제작 | 처음 커밋: 3dfd678 feat(struct): R-struct 를 언어 무관 엔진 + 언어 설정표로 바꾸고 Tier |
+| hooks | claude-sessionstart-upstream.sh | 공장 제작 | 이 조사와 함께 만든 시작 훅(계획 2026-11-15-upstream-version-watch G5) |

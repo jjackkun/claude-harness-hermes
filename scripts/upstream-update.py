@@ -123,6 +123,16 @@ def _apply_prefix(skill_md, prefix):
         f.write(text[:m.start()] + new + text[m.end():])
 
 
+def _download_into(repo, upstream_path, stage, rel):
+    """원본 파일 하나를 stage/rel 에 쓴다. rel 이 stage 밖을 가리키면 거부한다."""
+    dst = os.path.join(stage, rel)
+    if not os.path.realpath(dst).startswith(os.path.realpath(stage) + os.sep):
+        raise _Fail(f'{repo}: 원본 경로가 받는 폴더 밖을 가리킵니다 {upstream_path}')
+    os.makedirs(os.path.dirname(dst), exist_ok=True)
+    with open(dst, 'wb') as f:
+        f.write(_raw(repo, upstream_path))
+
+
 def _stage(item, src, tree, stage):
     """원본 파일을 stage 에 내려받는다. 반환: stage 안의 설치 대상 경로."""
     files = _files_under(tree, src['path'])
@@ -132,12 +142,8 @@ def _stage(item, src, tree, stage):
     skip = set(item.get('skip_files', []))
     for e in files:
         rel = os.path.basename(e['path']) if single else os.path.relpath(e['path'], src['path'])
-        if rel in skip:
-            continue
-        dst = os.path.join(stage, rel)
-        os.makedirs(os.path.dirname(dst), exist_ok=True)
-        with open(dst, 'wb') as f:
-            f.write(_raw(src['repo'], e['path']))
+        if rel not in skip:
+            _download_into(src['repo'], e['path'], stage, rel)
     out = os.path.join(stage, os.path.basename(files[0]['path'])) if single else stage
     prefix = (item.get('local_patch') or {}).get('description_prefix')
     if prefix and os.path.isfile(os.path.join(out, 'SKILL.md')):
@@ -156,13 +162,42 @@ def _replace(target, new):
         shutil.copy2(new, target)
 
 
+_TEST_TIMEOUT = 900
+
+
 def _run_tests(root, tests):
     for t in tests:
-        r = subprocess.run(['bash', os.path.join(root, t)], cwd=root, capture_output=True, text=True)
+        try:
+            r = subprocess.run(['bash', os.path.join(root, t)], cwd=root, capture_output=True, text=True,
+                               timeout=_TEST_TIMEOUT)
+        except subprocess.TimeoutExpired:
+            return f'{t} 가 {_TEST_TIMEOUT}초 안에 끝나지 않았습니다'
         if r.returncode != 0:
             tail = '\n'.join((r.stdout + r.stderr).strip().splitlines()[-5:])
             return f'{t} 실패:\n{tail}'
     return None
+
+
+def _local_only(target, new):
+    """원본에 없어 교체 때 사라질 공장 사본의 파일 (사람이 알아야 한다)."""
+    if not os.path.isdir(target):
+        return []
+    have = {os.path.relpath(os.path.join(d, f), target) for d, _, fs in os.walk(target) for f in fs}
+    keep = {os.path.relpath(os.path.join(d, f), new) for d, _, fs in os.walk(new) for f in fs}
+    return sorted(have - keep)
+
+
+def _swap_and_test(root, item, target, new, backup):
+    """교체 → 시험. 시험 실패든 도중 예외든 되돌린다."""
+    try:
+        _replace(target, new)
+        failed = _run_tests(root, item.get('tests', []))
+    except BaseException:
+        _replace(target, backup)
+        raise
+    if failed:
+        _replace(target, backup)
+        raise _Fail(f"시험이 실패해 되돌렸습니다 — {item['name']}\n{failed}")
 
 
 def _update_vendored(root, ledger, item, latest_sha, tree):
@@ -175,11 +210,10 @@ def _update_vendored(root, ledger, item, latest_sha, tree):
             shutil.copytree(target, backup)
         else:
             shutil.copy2(target, backup)
-        _replace(target, new)
-        failed = _run_tests(root, item.get('tests', []))
-        if failed:
-            _replace(target, backup)
-            raise _Fail(f"시험이 실패해 되돌렸습니다 — {item['name']}\n{failed}")
+        gone = _local_only(target, new)
+        _swap_and_test(root, item, target, new, backup)
+    if gone:
+        print('원본에 없어 공장 사본에서 사라진 파일 (필요하면 되살리십시오): ' + ', '.join(gone))
     src['sha'] = latest_sha
     _save_ledger(root, ledger)
     print(f"올렸습니다: {item['name']} ← {src['repo']} {src['path']} · 시험 {len(item.get('tests', []))}개 통과")

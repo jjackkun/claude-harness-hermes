@@ -64,6 +64,7 @@ assert "원본에 없는 옛 파일은 사라짐" 0 "$([[ -f "$F/assets/skills/d
 assert "skip_files 는 빼고 깐다" 0 "$([[ -f "$F/assets/skills/demo/big.js" ]] && echo 1 || echo 0)"
 assert "장부 sha 를 올렸다" "$NEW" "$(sha_of demo)"
 assert "커밋·전파 안 했다고 말한다" 1 "$(grep -c '커밋·전파는 하지 않았습니다' "$TMP/out")"
+assert "사라진 공장 파일을 알린다" 1 "$(grep -c '사라진 파일.*old-only.md' "$TMP/out")"
 
 echo "== 이미 최신 =="
 python3 "$UPD" demo --factory "$F" >"$TMP/out" 2>&1; assert "rc 0" 0 "$?"

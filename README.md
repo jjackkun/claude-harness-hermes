@@ -339,7 +339,7 @@ Claude 전용 `CLAUDE.md`, `.claude/settings.json` / `.claude/settings.local.jso
 <!--===DS:COUNTS:BEGIN===-->
 - 세션 중 실행 훅 **18종** + 훅이 공유하는 판정 모듈 **19개**
 - git pre-commit 게이트 **23종** — 차단 12 / 경고 11
-- harness 프리셋이 까는 스킬 **11종** · 에이전트 **12종** · 공장 테스트 **156개** (그중 7개는 run-all.sh 미등재)
+- harness 프리셋이 까는 스킬 **11종** · 에이전트 **12종** · 공장 테스트 **156개**
 <!--===DS:COUNTS:END===-->
 
 > 위 수치는 `assets/hooks/doc_counts.py` 가 소스에서 산출합니다. 손으로 고치지 마십시오 —
@@ -486,6 +486,7 @@ R-iface  1   0   0   1   0   0    100.0%
 | 스크립트 | `[project]/scripts/hermes-*.py`, `hermes_*.py` 공용 모듈 + cron 러너 `hermes-cron-run.sh` |
 | Stop Hook | `claude-stop-retrospective.sh` — 세션 종료 시 러닝 루프 실행 (save → summarize → crystallize → correlate → prune) |
 | SessionStart Hook | `claude-sessionstart-dream.sh` — startup/resume 세션 시작 시 하루 1회(throttle 20h) 드리밍 백그라운드 구동 (cron 대체). 끄기 `HERMES_DREAM_ON_SESSION_START=0` |
+| 외부 에셋 새 버전 확인 | `claude-sessionstart-upstream.sh` + `scripts/upstream-check.py` — 밖에서 가져온 스킬·규칙·에이전트(공장 장부 `assets/upstream.json`, 프로젝트 몫은 `.claude/.upstream.json`)의 원본이 바뀌었는지 **어느 프로젝트에서 열든 컴퓨터마다 하루 1회** 원본 저장소당 트리 1회로 확인하고, 바뀌었으면 하루 1회 한 줄로 알린다. 공장 없이 clone 만 한 컴퓨터에서도 돈다. 올리기는 언제나 공장에서: `python3 scripts/upstream-update.py <이름>` (그대로 가져온 것은 교체+시험, 고쳐 쓴 것은 바뀐 파일만 보임 → 반영 뒤 `--mark-reviewed`). 전파는 소우주에서 먼저 올린 더 새 버전을 덮지 않는다. 상태 보기 `python3 scripts/upstream-check.py --show`, 끄기 `HERMES_UPSTREAM_CHECK=0` |
 | UserPromptSubmit Hook | 관련 스킬 FTS5 검색 주입 + 직전 세션 요약 회상 주입(`hermes-recall --inject`) |
 | 민감정보 마스킹 | `hermes_redact.py` — 저장·요약·LLM 전송 경계(검색·evolve·summon·cron·loop·mesh 포함)에서 비밀을 `[REDACTED:TYPE]`로 비가역 치환 (원본 미보관) |
 | 스킬 | `hermes-status`, `hermes-crystallize`, `hermes-recall`, `hermes-dream`, `hermes-loop`, `hermes-agent`, `hermes-dashboard`, `hermes-roster`, `hermes-room` |

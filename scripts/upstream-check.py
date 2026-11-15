@@ -137,35 +137,58 @@ class _Paths:
         self.factory_path = os.path.join(state_dir, 'factory-path')
 
 
+def _take_lock(p):
+    """mkdir 한 번. 주인 기록에 실패하면 잡은 잠금을 풀고 False."""
+    try:
+        os.mkdir(p.lock)
+    except FileExistsError:
+        return False
+    try:
+        with open(os.path.join(p.lock, 'owner'), 'w') as f:
+            f.write(f'{os.getpid()} {int(time.time())}\n')
+        return True
+    except OSError:
+        _remove_dir(p.lock)
+        return False
+
+
+def _break_stale(p):
+    """10분 지난 잠금을 고유 이름으로 옮긴 뒤 지운다 — 둘이 동시에 깨도 새 잠금을 지우지 않는다."""
+    try:
+        if time.time() - os.path.getmtime(p.lock) <= _LOCK_STALE_SEC:
+            return
+        moved = f'{p.lock}.stale.{os.getpid()}.{time.time_ns()}'
+        os.rename(p.lock, moved)
+    except OSError:
+        return
+    _remove_dir(moved)
+
+
 def _acquire_lock(p, wait_sec):
     """mkdir 잠금. 낡은 잠금(10분)은 깬다. 못 잡으면 False."""
     deadline = time.time() + wait_sec
     while True:
-        try:
-            os.mkdir(p.lock)
-            with open(os.path.join(p.lock, 'owner'), 'w') as f:
-                f.write(f'{os.getpid()} {int(time.time())}\n')
+        if _take_lock(p):
             return True
-        except FileExistsError:
-            try:
-                age = time.time() - os.path.getmtime(p.lock)
-            except OSError:
-                continue
-            if age > _LOCK_STALE_SEC:
-                _release_lock(p)
-                continue
-            if time.time() >= deadline:
-                return False
-            time.sleep(0.5)
+        if not os.path.isdir(p.lock):     # 주인 기록 실패 등 — 잠금이 없는데도 못 잡았다
+            return False
+        _break_stale(p)
+        if time.time() >= deadline:
+            return False
+        time.sleep(0.5)
+
+
+def _remove_dir(path):
+    try:
+        for name in os.listdir(path):
+            os.remove(os.path.join(path, name))
+        os.rmdir(path)
+    except OSError:
+        pass
 
 
 def _release_lock(p):
-    try:
-        for name in os.listdir(p.lock):
-            os.remove(os.path.join(p.lock, name))
-        os.rmdir(p.lock)
-    except OSError:
-        pass
+    _remove_dir(p.lock)
 
 
 def _repos_of(ledger):
@@ -176,10 +199,20 @@ def _repos_of(ledger):
     return out
 
 
-def _is_fresh(state, repo, t):
+def _is_fresh(state, repo, pairs, t):
+    """이번에 묻지 않아도 되는가. 실패한 저장소는 1시간, 성공한 저장소는 20시간 동안 묻지 않는다.
+    단 이 장부의 경로가 상태에 하나라도 없으면 다시 묻는다 — 다른 프로젝트가 같은 저장소의 다른 경로만 확인했을 수 있다."""
     r = state.get('repos', {}).get(repo, {})
     checked = _parse_iso(r.get('checked_at'))
-    return checked is not None and not r.get('error') and (t - checked).total_seconds() < _FRESH_HOURS * 3600
+    if checked is None:
+        return False
+    age = (t - checked).total_seconds()
+    if r.get('error'):
+        return age < _RETRY_AFTER_FAIL_SEC
+    have = state.get('sources', {})
+    if any(f"{repo}:{s['path']}" not in have for _, s in pairs):
+        return False
+    return age < _FRESH_HOURS * 3600
 
 
 # ── --check ───────────────────────────────────────────────────────────────
@@ -214,7 +247,7 @@ def _run_check(ledger, p):
         state.setdefault('repos', {})
         state.setdefault('sources', {})
         t = _now()
-        todo = {r: pairs for r, pairs in _repos_of(ledger).items() if not _is_fresh(state, r, t)}
+        todo = {r: pairs for r, pairs in _repos_of(ledger).items() if not _is_fresh(state, r, pairs, t)}
         if not todo:
             return 0
         started, ok = time.time(), 0
@@ -234,19 +267,28 @@ def _run_check(ledger, p):
 
 
 # ── 판정·알림 ──────────────────────────────────────────────────────────────
+_RANK = {'same': 0, 'unknown': 1, 'behind': 2}
+
+
+def _source_status(got, s):
+    """(상태, 보일 버전). 확인은 됐는데 경로가 없으면 원본에서 옮겨지거나 지워진 것 — 알린다."""
+    if not got:
+        return 'unknown', None
+    if not got.get('sha'):
+        return 'behind', '원본에서 경로가 사라짐'
+    return ('behind' if got['sha'] != s['sha'] else 'same'), got.get('version')
+
+
 def _evaluate(ledger, state):
     """[{name, kind, mode, status: behind|same|unknown, latest}] — 이 장부 기준."""
     out = []
     for it in ledger.get('items', []):
         status, latest = 'same', None
         for s in it.get('sources', []):
-            got = state.get('sources', {}).get(f"{s['repo']}:{s['path']}")
-            if not got or not got.get('sha'):
-                status = 'unknown' if status == 'same' else status
-                continue
-            if got['sha'] != s['sha']:
-                status = 'behind'
-            latest = got.get('version') or latest
+            st, ver = _source_status(state.get('sources', {}).get(f"{s['repo']}:{s['path']}"), s)
+            if _RANK[st] > _RANK[status]:
+                status = st
+            latest = ver or latest
         out.append({'name': it['name'], 'kind': it['kind'], 'mode': it['mode'], 'status': status, 'latest': latest})
     return out
 

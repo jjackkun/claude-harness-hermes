@@ -5,7 +5,7 @@
 # 계획: docs/exec-plans/active/2026-11-15-upstream-version-watch-plan.md G3
 #
 # 공장이 없는 컴퓨터(소우주만 clone)도 새 버전을 확인할 수 있게, 확인에 필요한 장부를 프로젝트 안에 둔다.
-# 이 파일은 설치가 매번 다시 쓰므로 커밋하지 않는다(.gitignore 블록).
+# 이 파일은 커밋한다 — 공장 없이 clone 만 한 컴퓨터가 읽는다(.gitignore 블록의 `!` 예외, 미추적이면 설치가 경고).
 #
 # 공개 함수 1개: upstream_write_project_ledger
 
@@ -26,7 +26,7 @@ import json, os, sys
 src, dst, commit = sys.argv[1:4]
 installed = {
     'skills': set(os.environ.get('UL_SKILLS', '').split()),
-    'agents': {n.removesuffix('.md') for n in os.environ.get('UL_AGENTS', '').split()},
+    'agents': {n[:-3] if n.endswith('.md') else n for n in os.environ.get('UL_AGENTS', '').split()},
     'rules': set(os.environ.get('UL_RULES', '').split()),
 }
 ledger = json.load(open(src))
