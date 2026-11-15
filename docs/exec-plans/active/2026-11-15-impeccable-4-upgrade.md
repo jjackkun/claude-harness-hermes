@@ -15,7 +15,7 @@
 - [x] G4 `assets/rules/web/design-quality.md` 가 teach/craft 대신 init·critique·audit·polish 와 PRODUCT.md·DESIGN.md 를 가리킨다
 - [x] G5 `tests/claude-md-skill-index-test.sh` · `tests/mods-install-test.sh` 종료 0
 - [ ] G6 엔진 바이너리·원격 통계 방침을 사용자가 정한다 (아래 §6 열린 결정)
-- [ ] G7 소우주 전파(update-all) — 사용자가 시킬 때
+- [x] G7 소우주 전파(update-all) — 2026-11-15 공장 1bee51d 를 4곳에 설치(jj-agent-room 은 설치만, drh-cloth-shop 커밋·푸시 747db52, apt-curtain 커밋 e6bc04e, 공장 baf49b3)
 
 ## 2-bis. 착수 전 확인한 사실 (2026-11-15)
 
