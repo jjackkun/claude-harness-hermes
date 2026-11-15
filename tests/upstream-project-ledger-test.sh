@@ -42,6 +42,13 @@ PY
 )
 assert "장부의 항목은 모두 실제로 깔린 것" 0 "$installed_bad"
 assert "공장 커밋을 적는다" 1 "$(python3 -c "import json,sys; print(1 if json.load(open(sys.argv[1])).get('factory_commit') else 0)" "$L")"
+assert "확인 프로그램이 프로젝트에 복사됐다(G4)" 1 "$([[ -f "$P/scripts/upstream-check.py" ]] && echo 1 || echo 0)"
+assert "시작 훅 파일이 깔렸다(G5)" 1 "$([[ -x "$P/scripts/hooks/claude-sessionstart-upstream.sh" ]] && echo 1 || echo 0)"
+assert "settings.json SessionStart 에 훅이 등록됐다(G5)" 1 "$(python3 -c "
+import json,sys
+d=json.load(open(sys.argv[1]))
+cmds=[h.get('command','') for g in d.get('hooks',{}).get('SessionStart',[]) for h in g.get('hooks',[])]
+print(1 if any('claude-sessionstart-upstream.sh' in c for c in cmds) else 0)" "$P/.claude/settings.json")"
 
 echo "== 프리셋을 빼면 장부도 바뀐다 =="
 install harness hermes
