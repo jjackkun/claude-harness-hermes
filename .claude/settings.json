@@ -132,6 +132,10 @@
           },
           {
             "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/scripts/hooks/claude-sessionstart-upstream.sh"
+          },
+          {
+            "type": "command",
             "command": "${CLAUDE_PROJECT_DIR}/scripts/hooks/claude-sessionstart-dashboard.sh"
           },
           {

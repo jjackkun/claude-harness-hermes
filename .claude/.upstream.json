@@ -1,0 +1,331 @@
+{
+  "version": 1,
+  "factory_commit": "1bee51d2a1a687b06e51a0b93c986f07b6372796",
+  "items": [
+    {
+      "name": "architect",
+      "kind": "agents",
+      "path": "assets/agents/architect.md",
+      "mode": "adapted",
+      "sources": [
+        {
+          "repo": "affaan-m/ECC",
+          "path": "agents/architect.md",
+          "sha": "d65bea41b09b14faeb02f1dba606ce9f16933a33"
+        }
+      ],
+      "similarity": 0.03,
+      "tests": [
+        "tests/claude-md-skill-index-test.sh",
+        "tests/mods-install-test.sh"
+      ]
+    },
+    {
+      "name": "architect-lite",
+      "kind": "agents",
+      "path": "assets/agents/architect-lite.md",
+      "mode": "adapted",
+      "sources": [
+        {
+          "repo": "affaan-m/ECC",
+          "path": "agents/architect.md",
+          "sha": "d65bea41b09b14faeb02f1dba606ce9f16933a33"
+        }
+      ],
+      "tests": [
+        "tests/claude-md-skill-index-test.sh",
+        "tests/mods-install-test.sh"
+      ]
+    },
+    {
+      "name": "code-reviewer",
+      "kind": "agents",
+      "path": "assets/agents/code-reviewer.md",
+      "mode": "adapted",
+      "sources": [
+        {
+          "repo": "affaan-m/ECC",
+          "path": "agents/code-reviewer.md",
+          "sha": "884d94ec2d45a51ba091519dbee416c7d563e3d6"
+        }
+      ],
+      "similarity": 0.017,
+      "tests": [
+        "tests/claude-md-skill-index-test.sh",
+        "tests/mods-install-test.sh"
+      ]
+    },
+    {
+      "name": "doc-updater",
+      "kind": "agents",
+      "path": "assets/agents/doc-updater.md",
+      "mode": "adapted",
+      "sources": [
+        {
+          "repo": "affaan-m/ECC",
+          "path": "agents/doc-updater.md",
+          "sha": "5cc7dac99637e3accf23605edf38ed25b92ed4a0"
+        }
+      ],
+      "similarity": 0.859,
+      "tests": [
+        "tests/claude-md-skill-index-test.sh",
+        "tests/mods-install-test.sh"
+      ]
+    },
+    {
+      "name": "docs-lookup",
+      "kind": "agents",
+      "path": "assets/agents/docs-lookup.md",
+      "mode": "adapted",
+      "sources": [
+        {
+          "repo": "affaan-m/ECC",
+          "path": "agents/docs-lookup.md",
+          "sha": "f018ce4eb09f209760683f2ae52bfb80640f828d"
+        }
+      ],
+      "similarity": 0.866,
+      "tests": [
+        "tests/claude-md-skill-index-test.sh",
+        "tests/mods-install-test.sh"
+      ]
+    },
+    {
+      "name": "performance-optimizer",
+      "kind": "agents",
+      "path": "assets/agents/performance-optimizer.md",
+      "mode": "adapted",
+      "sources": [
+        {
+          "repo": "affaan-m/ECC",
+          "path": "agents/performance-optimizer.md",
+          "sha": "4d5de6f963600ce606020caa70f1ae7cc2ad9aad"
+        }
+      ],
+      "similarity": 0.955,
+      "tests": [
+        "tests/claude-md-skill-index-test.sh",
+        "tests/mods-install-test.sh"
+      ]
+    },
+    {
+      "name": "planner",
+      "kind": "agents",
+      "path": "assets/agents/planner.md",
+      "mode": "adapted",
+      "sources": [
+        {
+          "repo": "affaan-m/ECC",
+          "path": "agents/planner.md",
+          "sha": "e9e282f54d5ea8dbecae31d00c8647960c089f05"
+        }
+      ],
+      "similarity": 0.041,
+      "tests": [
+        "tests/claude-md-skill-index-test.sh",
+        "tests/mods-install-test.sh"
+      ]
+    },
+    {
+      "name": "planner-lite",
+      "kind": "agents",
+      "path": "assets/agents/planner-lite.md",
+      "mode": "adapted",
+      "sources": [
+        {
+          "repo": "affaan-m/ECC",
+          "path": "agents/planner.md",
+          "sha": "e9e282f54d5ea8dbecae31d00c8647960c089f05"
+        }
+      ],
+      "tests": [
+        "tests/claude-md-skill-index-test.sh",
+        "tests/mods-install-test.sh"
+      ]
+    },
+    {
+      "name": "refactor-cleaner",
+      "kind": "agents",
+      "path": "assets/agents/refactor-cleaner.md",
+      "mode": "adapted",
+      "sources": [
+        {
+          "repo": "affaan-m/ECC",
+          "path": "agents/refactor-cleaner.md",
+          "sha": "093c8f6478052f3cc78072204fca957ffac82f07"
+        }
+      ],
+      "similarity": 0.828,
+      "tests": [
+        "tests/claude-md-skill-index-test.sh",
+        "tests/mods-install-test.sh"
+      ]
+    },
+    {
+      "name": "silent-failure-hunter",
+      "kind": "agents",
+      "path": "assets/agents/silent-failure-hunter.md",
+      "mode": "adapted",
+      "sources": [
+        {
+          "repo": "affaan-m/ECC",
+          "path": "agents/silent-failure-hunter.md",
+          "sha": "e38053453908f27687826db7b34ba5849971205b"
+        }
+      ],
+      "similarity": 0.635,
+      "tests": [
+        "tests/claude-md-skill-index-test.sh",
+        "tests/mods-install-test.sh"
+      ]
+    },
+    {
+      "name": "tdd-guide",
+      "kind": "agents",
+      "path": "assets/agents/tdd-guide.md",
+      "mode": "adapted",
+      "sources": [
+        {
+          "repo": "affaan-m/ECC",
+          "path": "agents/tdd-guide.md",
+          "sha": "d4f6443b8fa3b7e31d469d9b557b658f612f6077"
+        }
+      ],
+      "similarity": 0.84,
+      "tests": [
+        "tests/claude-md-skill-index-test.sh",
+        "tests/mods-install-test.sh"
+      ]
+    },
+    {
+      "name": "adhd",
+      "kind": "rules",
+      "path": "assets/rules/adhd",
+      "mode": "adapted",
+      "sources": [
+        {
+          "repo": "ayghri/i-have-adhd",
+          "path": "skills/i-have-adhd/SKILL.md",
+          "sha": "6c42757ffae37e442adfb52fbba2a8609f1cff00"
+        }
+      ],
+      "tests": [
+        "tests/claude-md-skill-index-test.sh",
+        "tests/mods-install-test.sh"
+      ]
+    },
+    {
+      "name": "harness",
+      "kind": "rules",
+      "path": "assets/rules/harness",
+      "mode": "adapted",
+      "sources": [
+        {
+          "repo": "obra/superpowers",
+          "path": "skills/subagent-driven-development/SKILL.md",
+          "sha": "45195787cb3f5d141af203e2fdc12f158be14522"
+        }
+      ],
+      "tests": [
+        "tests/claude-md-skill-index-test.sh",
+        "tests/mods-install-test.sh"
+      ]
+    },
+    {
+      "name": "idea-check",
+      "kind": "skills",
+      "path": "assets/skills/idea-check",
+      "mode": "adapted",
+      "sources": [
+        {
+          "repo": "garrytan/gstack",
+          "path": "openclaw/skills/gstack-openclaw-office-hours",
+          "sha": "5a0655d68289d7e76bcd29b8363940ec6fd1e89a"
+        }
+      ],
+      "tests": [
+        "tests/claude-md-skill-index-test.sh",
+        "tests/mods-install-test.sh"
+      ]
+    },
+    {
+      "name": "intended-vs-implemented",
+      "kind": "skills",
+      "path": "assets/skills/intended-vs-implemented",
+      "mode": "adapted",
+      "sources": [
+        {
+          "repo": "phuryn/pm-skills",
+          "path": "pm-ai-shipping/skills/intended-vs-implemented",
+          "sha": "113ff62965108dd9577dec4b8f2e9955a5459fd6"
+        }
+      ],
+      "tests": [
+        "tests/claude-md-skill-index-test.sh",
+        "tests/mods-install-test.sh"
+      ]
+    },
+    {
+      "name": "mcp-builder",
+      "kind": "skills",
+      "path": "assets/skills/mcp-builder",
+      "mode": "adapted",
+      "sources": [
+        {
+          "repo": "anthropics/skills",
+          "path": "skills/mcp-builder",
+          "sha": "ea6e4d7bc108b44b3009129688049e23d801f0f3"
+        }
+      ],
+      "similarity": 0.396,
+      "tests": [
+        "tests/claude-md-skill-index-test.sh",
+        "tests/mods-install-test.sh"
+      ]
+    },
+    {
+      "name": "prd-writer",
+      "kind": "skills",
+      "path": "assets/skills/prd-writer",
+      "mode": "adapted",
+      "sources": [
+        {
+          "repo": "phuryn/pm-skills",
+          "path": "pm-execution/skills/create-prd",
+          "sha": "ce67db32ee2e54205d86420a0a9a3137dff0dc6e"
+        },
+        {
+          "repo": "product-on-purpose/pm-skills",
+          "path": "skills/deliver-prd/SKILL.md",
+          "sha": "c4dbd77a628e17849dd72f9307dbe3b77042a636"
+        }
+      ],
+      "tests": [
+        "tests/claude-md-skill-index-test.sh",
+        "tests/mods-install-test.sh"
+      ]
+    },
+    {
+      "name": "skill-creator",
+      "kind": "skills",
+      "path": "assets/skills/skill-creator",
+      "mode": "vendored",
+      "sources": [
+        {
+          "repo": "anthropics/skills",
+          "path": "skills/skill-creator",
+          "sha": "3cf9a8db32597ba3e24b584a3d696f4e11c7d7b6"
+        }
+      ],
+      "similarity": 1.0,
+      "tests": [
+        "tests/claude-md-skill-index-test.sh",
+        "tests/mods-install-test.sh"
+      ],
+      "local_patch": {
+        "description_prefix": "스킬을 만들고 고치고 성능(평가·발동 정확도)을 잰다. "
+      }
+    }
+  ]
+}
