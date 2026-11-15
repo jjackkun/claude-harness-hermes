@@ -15,7 +15,7 @@
 
 - [x] G1 공장 장부 `assets/upstream.json` 에 밖에서 온 에셋마다 출처·방식·버전 읽는 곳·기록 버전·관련 시험이 있다 — `bash tests/upstream-ledger-test.sh` (경로 존재 · 필수 칸 · LICENSE/`license:`/원본 URL 이 든 에셋의 누락)
 - [x] G2 전수 조사 `docs/audits/2026-11-15-upstream-inventory.md`: 표의 이름 집합 = `assets/` 의 스킬·규칙·에이전트·훅 이름 집합이고, 행마다 분류(공장 제작 / 그대로 / 고쳐 씀 / 확인 못 함) 하나가 있다 — 같은 시험이 이름 집합과 분류 칸을 대조한다. "확인 못 함" 은 통과로 치되 개수를 출력한다.
-- [ ] G3 소우주 장부: hermes 프리셋을 쓰는 프로젝트를 설치하면 공장 장부에서 **그 프로젝트에 깐 항목만** 골라 `<프로젝트>/.claude/.upstream.json` 에 쓴다(공장 자기 설치 포함). 깔린 외부 에셋이 없으면 파일을 지운다. 이 파일은 `.gitignore` 블록에 들어가 커밋되지 않고, 설치 영수증에 오르고, 언인스톨이 지운다 — `bash tests/upstream-project-ledger-test.sh` (프리셋에 따라 항목이 달라짐 · 빈 경우 · 재설치 때 갱신 · 영수증에 있음 · 언인스톨 뒤 없음 · 설치한 임시 프로젝트에 `scripts/upstream-check.py` 가 생김 · `settings.json` 에 시작 훅이 등록됨)
+- [ ] G3 소우주 장부: hermes 프리셋을 쓰는 프로젝트를 설치하면 공장 장부에서 **그 프로젝트에 깐 항목만** 골라 `<프로젝트>/.claude/.upstream.json` 에 쓴다(공장 자기 설치 포함). 깔린 외부 에셋이 없으면 파일을 지운다. 이 파일은 git 에 무시되지 않고(공장 없는 clone 이 읽는다), 설치 영수증에 오르고, 언인스톨이 지운다 — `bash tests/upstream-project-ledger-test.sh` (프리셋에 따라 항목이 달라짐 · 빈 경우 · 재설치 때 갱신 · 영수증에 있음 · 언인스톨 뒤 없음 · 설치한 임시 프로젝트에 `scripts/upstream-check.py` 가 생김 · `settings.json` 에 시작 훅이 등록됨)
 - [ ] G4 확인 프로그램 `scripts/upstream-check.py` 가 소우주에도 복사된다(`presets/workflow/hermes.conf` 의 `hermes_scripts` 목록). 다른 `.py` 를 import 하지 않는 한 파일로 둔다. **현재 프로젝트의** `.claude/.upstream.json` 을 읽어, 컴퓨터 공용 상태 `~/.hermes/upstream-status.json` 에서 20시간 안에 확인한 원본은 건너뛰고 나머지만 GitHub 에 묻는다. 결과는 원본(저장소+경로)별로 합쳐 임시 파일 + `mv` 로 쓴다. 항목 일부 실패는 `error` 로 남기고, **전부** 실패(연결 없음·403/429·시간 초과)면 상태를 건드리지 않고 종료 코드 3 — `bash tests/upstream-check-test.sh` (`UPSTREAM_FIXTURE_DIR` 로 가짜 응답: 새 버전 · 같음 · 일부 실패 · 전부 실패 · 한도 초과 · 응답 모양 바뀜 · 장부 깨짐 · 다른 프로젝트가 이미 확인한 원본은 다시 묻지 않음)
 - [ ] G5 시작 훅 `assets/hooks/claude-sessionstart-upstream.sh`:
   (a) 컴퓨터 공용 잠금 `mkdir ~/.hermes/upstream-check.lock` 으로 한 번에 하나만 G4 를 뒤에서 돌린다. 잠금 안에 PID·시각을 적고, 10분이 넘은 잠금은 깨고 잡는다. 잠금을 못 잡은 쪽은 건너뛰지 않고 최대 40초 기다린 뒤 상태를 다시 읽어 **남은 원본만** 묻는다. 전부 실패면 `upstream-last-attempt` 를 남기고 1시간 안에는 다시 시도하지 않는다.
@@ -23,7 +23,7 @@
   (c) 알림 문구는 셋이다: 공장이 없으면 "공장이 있는 컴퓨터에서 올려 주세요". 공장이 있고 공장 장부도 낡았으면 "공장에서 올릴까요?". 공장 장부는 이미 최신인데 이 프로젝트만 낡았으면 "공장은 올라가 있습니다 — 이 프로젝트에 전파가 필요합니다".
   (d) 프로젝트 장부가 없거나 `~/.hermes` 를 못 만들면 조용히 끝나고 `.hermes/hooks.log` 에만 남긴다.
   — `bash tests/upstream-sessionstart-test.sh` (가짜 `HOME` · **장부가 서로 다른** 두 프로젝트를 동시에 시작하면 두 장부의 합집합이 모두 확인되고 같은 원본은 1회만 물음 · 10분 넘은 잠금 깨기 · 전부 실패 뒤 1시간 재시도 · 알림 하루 1회 · 문구 셋 · `HERMES_DISABLED=1` · `~/.hermes` 쓰기 불가)
-- [ ] G6 공장 위치 기록: 공장이 있는 컴퓨터에서 설치(공장 자기 설치 포함)가 `~/.hermes/factory-path` 에 **메인 저장소 루트**(워크트리면 `git rev-parse --git-common-dir` 의 부모)를 쓴다. 그 경로에 `assets/upstream.json` 이 없으면 쓰지 않는다. 공장이 없는 컴퓨터에는 이 파일이 없다. 설치 시험은 모두 가짜 `HOME` 에서 돌아 진짜 `~/.hermes` 를 건드리지 않는다 — `bash tests/upstream-factory-path-test.sh` (일반 설치 · 워크트리에서 설치 · 장부 없는 경로 · 임시 경로 공장은 기록하지 않음)
+- [x] G6 공장 위치 기록: 공장이 있는 컴퓨터에서 설치(공장 자기 설치 포함)가 `~/.hermes/factory-path` 에 **메인 저장소 루트**(워크트리면 `git rev-parse --git-common-dir` 의 부모)를 쓴다. 그 경로에 `assets/upstream.json` 이 없으면 쓰지 않는다. 공장이 없는 컴퓨터에는 이 파일이 없다. 설치 시험은 모두 가짜 `HOME` 에서 돌아 진짜 `~/.hermes` 를 건드리지 않는다 — `bash tests/upstream-factory-path-test.sh` (일반 설치 · 워크트리에서 설치 · 장부 없는 경로 · 임시 경로 공장은 기록하지 않음)
 - [ ] G7 공장 업데이트 명령 `scripts/upstream-update.py <이름>` (공장에서만 돈다. 소우주 세션은 `factory-path` 로 공장의 이 스크립트를 부른다. 공장이 없으면 부르지 않는다):
   `vendored` 는 원본을 임시 폴더에 받아 `assets/` 를 바꾸고 장부의 `tests` 칸 시험을 돌린 뒤 `recorded` 를 갱신한다. `adapted` 는 덮어쓰지 않고 `recorded.commit..최신` 사이 원본 변경만 보여 준다. 사람이 반영한 뒤 `--mark-reviewed` 로 `recorded` 를 갱신한다 — `bash tests/upstream-update-test.sh` (가짜 원본으로 vendored 교체 · adapted 는 파일 무변경 · mark-reviewed 뒤 상태가 "최신")
 - [ ] G8 거꾸로 덮어쓰기 막기: 전파 중 소우주 사본과 공장 사본의 버전을 **둘 다 읽을 수 있고** 소우주가 높으면, 그 항목은 백업·삭제·복사·`manifest_add` 를 모두 건너뛰고 경고와 요약 줄을 남긴다. 버전을 못 읽으면 지금처럼 백업 후 교체한다 — `bash tests/upstream-downgrade-guard-test.sh` (소우주 높음 → 유지 · 같음/낮음 → 교체 · 버전 없음 → 지금 동작 · 사용자 로컬 항목(rc=2) → 지금 동작 · 공장 자기 설치 → 지금 동작)
@@ -70,7 +70,8 @@
 고치는 파일:
 - `lib/installers.sh` — `_backup_user_asset` 가 "소우주가 더 새 버전" 이면 3 을 돌려주고, `_install_asset` 이 3 을 받으면 그 항목을 통째로 건너뛴다(G8). 이 파일에는 이것만 고친다.
 - `project-claude.sh` — 설치 끝(영수증 시작 177행 이후)에서 `lib/upstream_ledger.sh`(G3)와 `lib/factory_path.sh`(G6)를 한 줄씩 부른다
-- `lib/harness_installers.sh` — `.gitignore` 블록(674행 부근)에 `.claude/.upstream.json`
+- `lib/harness_installers.sh` — `.gitignore` 블록에 `!.claude/.upstream.json` 예외, 미추적 경고 함수에 같은 파일
+- `lib/common.sh` — 새 lib 두 개 source
 - `lib/uninstall_helpers.sh` — 언인스톨이 `.claude/.upstream.json` 을 지운다(182행 부근, 목록·영수증 옆)
 - `presets/workflow/hermes.conf` — 시작 훅 등록 두 줄 + `hermes_scripts` 목록에 `upstream-check.py`
 - `README.md` — 새 훅·명령 설명 (readme-sync-before-commit)
@@ -134,7 +135,7 @@
 - 버전을 못 읽는 항목은 G8 보호에서 빠진다 — 지금 동작을 깨지 않으려고 — 그 항목은 여전히 내려갈 수 있다.
 - `factory-path` 는 장부가 있는 메인 저장소 루트만 기록한다 — 워크트리·임시 사본이 기록되면 사라진 경로를 가리킨다 — 공장 클론이 여럿이면 마지막으로 설치한 클론이 기준이 된다.
 - 시작 훅·확인 프로그램·프로젝트 장부는 hermes 프리셋일 때만 넣는다 — 드리밍·대시보드 훅과 같은 자리이고 이 컴퓨터의 소우주 4곳이 모두 hermes 를 쓴다 — hermes 를 안 쓰는 프로젝트는 확인하지 않는다.
-- 프로젝트 장부는 커밋하지 않는다(`.gitignore`) — 설치가 매번 다시 쓰는 파일이라 커밋하면 버전이 바뀔 때마다 diff 가 생긴다 — 다른 컴퓨터에서 clone 만 하고 설치를 안 하면 장부가 없어 확인하지 않는다.
+- 프로젝트 장부는 **커밋한다**(`.gitignore` 블록의 `!` 예외, 2026-11-15 구현 중 2차 리뷰 권고를 뒤집음) — 공장 없이 clone 만 한 컴퓨터는 설치를 돌리지 않으므로, 커밋된 장부가 없으면 확인할 근거가 없다. 훅·스크립트·`settings.json`·`.factory-manifest.json` 도 이미 커밋된다(apt-curtain 실측) — 공장 장부가 바뀌어 전파할 때마다 소우주에 diff 가 생긴다.
 - 잠금을 못 잡으면 기다렸다가 남은 원본만 묻는다 — 장부가 다른 두 프로젝트가 동시에 열릴 때 한쪽 몫이 그날 빠지지 않게 — 늦게 연 세션의 확인이 최대 40초 늦다(뒤에서 돌아 작업은 막지 않는다).
 
 ## 7. 발견·예외

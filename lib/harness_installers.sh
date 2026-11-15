@@ -638,6 +638,11 @@ warn_install_files_untracked() {
     log_warn "  presets → 프리셋 목록이 git 에 추적되지 않습니다 ($rel)"
     _warn_untracked_fix "$rel" "이대로면 다른 컴퓨터의 clone 에서 'project-claude.sh <경로>' 로 되살릴 수 없습니다"
   fi
+  rel=".claude/.upstream.json"
+  if _install_file_ignored "$project_path" "$rel"; then
+    log_warn "  upstream → 외부 에셋 장부가 git 에 추적되지 않습니다 ($rel)"
+    _warn_untracked_fix "$rel" "이대로면 공장 없이 clone 만 한 컴퓨터에서 새 버전 확인이 멈춥니다"
+  fi
 }
 
 # 0 = 파일이 있고, 추적되지 않고, 무시 규칙에 걸렸다
@@ -691,6 +696,9 @@ install_harness_gitignore() {
       "!.claude/.factory-manifest.json"
       # 프리셋 목록도 같은 이유로 예외 — 새 PC 에서 되살리는 유일한 근거다(계획 2026-11-02-new-pc-restore G1).
       "!.claude/presets.lock"
+      # 외부 에셋 장부도 예외 — 공장 없이 clone 만 한 컴퓨터가 새 버전을 확인하는 근거다
+      # (계획 2026-11-15-upstream-version-watch G3).
+      "!.claude/.upstream.json"
       "!.claude/memory/"
       "!.claude/memory/**"
     ) ;;

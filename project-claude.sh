@@ -187,6 +187,9 @@ report_converted_links
 # dry-run 분기 이후여야 --dry-run 에서 파일이 생성되지 않는다.
 if declare -f _hermes_setup >/dev/null 2>&1; then
   _hermes_setup "$PROJECT_PATH"
+  # 새 버전 확인(시작 훅)이 쓰는 프로젝트 몫 장부와 공장 위치 — hermes 프리셋일 때만 (계획 2026-11-15-upstream-version-watch)
+  upstream_write_project_ledger "$DEV_SETTING_DIR" "$CLAUDE_DIR"
+  factory_path_record "$DEV_SETTING_DIR"
 fi
 # env-secrets — 선택 프리셋(tools/env-secrets.conf). 고른 프로젝트에만 scripts/env-secrets/ 를 깐다.
 if declare -f _env_secrets_setup >/dev/null 2>&1; then

@@ -182,6 +182,8 @@ uninstall_asset_symlinks() {
   [[ -f "$manifest" ]] && _rm_path file "$manifest" ".claude/.factory-manifest.json"
   local receipt="$project_path/.claude/.last-install.txt"
   [[ -f "$receipt" ]] && _rm_path file "$receipt" ".claude/.last-install.txt"
+  local upstream="$project_path/.claude/.upstream.json"   # 계획 2026-11-15-upstream-version-watch G3
+  [[ -f "$upstream" ]] && _rm_path file "$upstream" ".claude/.upstream.json"
   return 0
 }
 

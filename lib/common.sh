@@ -41,6 +41,10 @@ source "$_DS_LIB/factory_coexist.sh"   # 공존 설치 — 하류 수정을 덮�
 source "$_DS_LIB/registry.sh"           # 레지스트리 등록 판정 — project-claude/codex 공용
 # shellcheck source=lib/installers.sh
 source "$_DS_LIB/installers.sh"
+# shellcheck source=lib/upstream_ledger.sh
+source "$_DS_LIB/upstream_ledger.sh"     # 프로젝트 몫 외부 에셋 장부 (계획 2026-11-15-upstream-version-watch G3)
+# shellcheck source=lib/factory_path.sh
+source "$_DS_LIB/factory_path.sh"        # ~/.hermes/factory-path 기록 (같은 계획 G6)
 # shellcheck source=lib/install_receipt.sh
 source "$_DS_LIB/install_receipt.sh"
 # shellcheck source=lib/plugins.sh
