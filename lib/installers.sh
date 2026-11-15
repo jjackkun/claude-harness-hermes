@@ -64,12 +64,18 @@ _is_tracked_asset() {
 #   rc=1 목록에 있으나 내용이 다름 — 공장 설치물을 로컬에서 고쳤음 (훅 경고를 놓쳤거나 세션 밖 편집).
 #        덮어쓰면 편집 내용이 완전히 사라지므로 백업한다(리뷰 2026-09-16 MEDIUM).
 #   rc=0 목록과 같음 — 그냥 교체.
+# 반환 3 = 건너뛰라: rc=1 이면서 소우주 사본이 공장보다 높은 버전(공장 장부가 버전 위치를 정한 에셋만).
+#   덮으면 소우주에서 먼저 올린 새 버전이 옛 버전으로 내려간다(계획 2026-11-15-upstream-version-watch G8).
 _backup_user_asset() {
   local claude_dir="$1" kind="$2" name="$3" dst="$4" label="$5"
   [[ -e "$dst" && ! -L "$dst" ]] || return 0
   local rc=0
   manifest_verify "$claude_dir" "$kind" "$name" "$dst" || rc=$?   # set -e 아래서도 종료 코드를 받는다
   [[ $rc -ne 0 ]] || return 0
+  if [[ $rc -eq 1 ]] && upstream_project_is_newer "$kind" "$name" "$dst" "$ASSETS_DIR/$kind/$(basename "$dst")"; then
+    log_warn "  ${label} '$name' 는 공장보다 새 버전이라 건너뜀 — 공장을 먼저 올리세요 (upstream-update.py $name)"
+    return 3
+  fi
   local backup why
   backup="${dst}.backup-$(date +%Y%m%d-%H%M%S)"
   mv "$dst" "$backup"
@@ -86,7 +92,9 @@ _install_asset() {
     log_warn "$label missing in assets: $name$ext (skipped)"
     return 0
   fi
-  _backup_user_asset "$claude_dir" "$kind" "$name" "$dst" "$label"
+  local brc=0
+  _backup_user_asset "$claude_dir" "$kind" "$name" "$dst" "$label" || brc=$?
+  [[ $brc -eq 3 ]] && return 0   # 소우주가 더 새 버전 — 복사·목록 기록 모두 건너뛴다(G8)
   if [[ -L "$dst" ]] && ! _is_factory_self "$claude_dir"; then
     _CONVERTED_LINKS=$((_CONVERTED_LINKS+1))
   fi

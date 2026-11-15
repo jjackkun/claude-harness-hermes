@@ -26,7 +26,7 @@
 - [x] G6 공장 위치 기록: 공장이 있는 컴퓨터에서 설치(공장 자기 설치 포함)가 `~/.hermes/factory-path` 에 **메인 저장소 루트**(워크트리면 `git rev-parse --git-common-dir` 의 부모)를 쓴다. 그 경로에 `assets/upstream.json` 이 없으면 쓰지 않는다. 공장이 없는 컴퓨터에는 이 파일이 없다. 설치 시험은 모두 가짜 `HOME` 에서 돌아 진짜 `~/.hermes` 를 건드리지 않는다 — `bash tests/upstream-factory-path-test.sh` (일반 설치 · 워크트리에서 설치 · 장부 없는 경로 · 임시 경로 공장은 기록하지 않음)
 - [x] G7 공장 업데이트 명령 `scripts/upstream-update.py <이름>` (공장에서만 돈다. 소우주 세션은 `factory-path` 로 공장의 이 스크립트를 부른다. 공장이 없으면 부르지 않는다):
   `vendored` 는 원본을 임시 폴더에 받아 `assets/` 를 바꾸고 장부의 `tests` 칸 시험을 돌린 뒤 `recorded` 를 갱신한다. `adapted` 는 덮어쓰지 않고 `recorded.commit..최신` 사이 원본 변경만 보여 준다. 사람이 반영한 뒤 `--mark-reviewed` 로 `recorded` 를 갱신한다 — `bash tests/upstream-update-test.sh` (가짜 원본으로 vendored 교체 · adapted 는 파일 무변경 · mark-reviewed 뒤 상태가 "최신")
-- [ ] G8 거꾸로 덮어쓰기 막기: 전파 중 소우주 사본과 공장 사본의 버전을 **둘 다 읽을 수 있고** 소우주가 높으면, 그 항목은 백업·삭제·복사·`manifest_add` 를 모두 건너뛰고 경고와 요약 줄을 남긴다. 버전을 못 읽으면 지금처럼 백업 후 교체한다 — `bash tests/upstream-downgrade-guard-test.sh` (소우주 높음 → 유지 · 같음/낮음 → 교체 · 버전 없음 → 지금 동작 · 사용자 로컬 항목(rc=2) → 지금 동작 · 공장 자기 설치 → 지금 동작)
+- [x] G8 거꾸로 덮어쓰기 막기: 전파 중 소우주 사본과 공장 사본의 버전을 **둘 다 읽을 수 있고** 소우주가 높으면, 그 항목은 백업·삭제·복사·`manifest_add` 를 모두 건너뛰고 경고와 요약 줄을 남긴다. 버전을 못 읽으면 지금처럼 백업 후 교체한다 — `bash tests/upstream-downgrade-guard-test.sh` (소우주 높음 → 유지 · 같음/낮음 → 교체 · 버전 없음 → 지금 동작 · 사용자 로컬 항목(rc=2) → 지금 동작 · 공장 자기 설치 → 지금 동작)
 - [ ] G9 전체 시험 마지막 한 번 — `bash tests/run-all.sh`
 
 ## 2-bis. 착수 전 확인한 사실 (2026-11-15)
