@@ -13,8 +13,8 @@
 
 ## 2. 목표 (What — 검증 가능한 형태)
 
-- [ ] G1 공장 장부 `assets/upstream.json` 에 밖에서 온 에셋마다 출처·방식·버전 읽는 곳·기록 버전·관련 시험이 있다 — `bash tests/upstream-ledger-test.sh` (경로 존재 · 필수 칸 · LICENSE/`license:`/원본 URL 이 든 에셋의 누락)
-- [ ] G2 전수 조사 `docs/audits/2026-11-15-upstream-inventory.md`: 표의 이름 집합 = `assets/` 의 스킬·규칙·에이전트·훅 이름 집합이고, 행마다 분류(공장 제작 / 그대로 / 고쳐 씀 / 확인 못 함) 하나가 있다 — 같은 시험이 이름 집합과 분류 칸을 대조한다. "확인 못 함" 은 통과로 치되 개수를 출력한다.
+- [x] G1 공장 장부 `assets/upstream.json` 에 밖에서 온 에셋마다 출처·방식·버전 읽는 곳·기록 버전·관련 시험이 있다 — `bash tests/upstream-ledger-test.sh` (경로 존재 · 필수 칸 · LICENSE/`license:`/원본 URL 이 든 에셋의 누락)
+- [x] G2 전수 조사 `docs/audits/2026-11-15-upstream-inventory.md`: 표의 이름 집합 = `assets/` 의 스킬·규칙·에이전트·훅 이름 집합이고, 행마다 분류(공장 제작 / 그대로 / 고쳐 씀 / 확인 못 함) 하나가 있다 — 같은 시험이 이름 집합과 분류 칸을 대조한다. "확인 못 함" 은 통과로 치되 개수를 출력한다.
 - [ ] G3 소우주 장부: hermes 프리셋을 쓰는 프로젝트를 설치하면 공장 장부에서 **그 프로젝트에 깐 항목만** 골라 `<프로젝트>/.claude/.upstream.json` 에 쓴다(공장 자기 설치 포함). 깔린 외부 에셋이 없으면 파일을 지운다. 이 파일은 `.gitignore` 블록에 들어가 커밋되지 않고, 설치 영수증에 오르고, 언인스톨이 지운다 — `bash tests/upstream-project-ledger-test.sh` (프리셋에 따라 항목이 달라짐 · 빈 경우 · 재설치 때 갱신 · 영수증에 있음 · 언인스톨 뒤 없음 · 설치한 임시 프로젝트에 `scripts/upstream-check.py` 가 생김 · `settings.json` 에 시작 훅이 등록됨)
 - [ ] G4 확인 프로그램 `scripts/upstream-check.py` 가 소우주에도 복사된다(`presets/workflow/hermes.conf` 의 `hermes_scripts` 목록). 다른 `.py` 를 import 하지 않는 한 파일로 둔다. **현재 프로젝트의** `.claude/.upstream.json` 을 읽어, 컴퓨터 공용 상태 `~/.hermes/upstream-status.json` 에서 20시간 안에 확인한 원본은 건너뛰고 나머지만 GitHub 에 묻는다. 결과는 원본(저장소+경로)별로 합쳐 임시 파일 + `mv` 로 쓴다. 항목 일부 실패는 `error` 로 남기고, **전부** 실패(연결 없음·403/429·시간 초과)면 상태를 건드리지 않고 종료 코드 3 — `bash tests/upstream-check-test.sh` (`UPSTREAM_FIXTURE_DIR` 로 가짜 응답: 새 버전 · 같음 · 일부 실패 · 전부 실패 · 한도 초과 · 응답 모양 바뀜 · 장부 깨짐 · 다른 프로젝트가 이미 확인한 원본은 다시 묻지 않음)
 - [ ] G5 시작 훅 `assets/hooks/claude-sessionstart-upstream.sh`:
@@ -84,15 +84,19 @@
 { "version": 1, "items": [
   { "name": "impeccable", "kind": "skills", "path": "assets/skills/impeccable",
     "mode": "vendored",
-    "source": { "type": "github", "repo": "pbakaus/impeccable", "path": ".claude/skills/impeccable", "track": "release" },
+    "sources": [ { "repo": "pbakaus/impeccable", "path": ".claude/skills/impeccable", "sha": "<git tree sha>" } ],
     "version_from": { "file": "SKILL.md", "frontmatter": "version" },
-    "recorded": { "version": "4.9.1", "commit": "1b2aa57" },
-    "tests": ["tests/claude-md-skill-index-test.sh", "tests/mods-install-test.sh"] } ] }
+    "local_patch": { "description_prefix": "<공장이 붙인 한국어 첫 문장> " },
+    "skip_files": ["scripts/live-browser.js"],
+    "tests": ["tests/claude-md-skill-index-test.sh", "tests/mods-install-test.sh"] } ],
+  "untracked": [ { "kind": "agents", "name": "fullstack-developer.md", "origin": "affaan-m/ECC", "reason": "..." } ] }
 ```
-- `track: release` — 최신 릴리스 태그. 버전 비교는 숫자 마디 비교(`4.9.1` < `4.10.0`). 숫자로 못 읽으면 "모름".
-- `track: path-commit` — 그 경로의 최신 커밋. 순서가 없으므로 "바뀜/같음" 만 말하고 G8 보호에서 빠진다.
-- `version_from` 이 없는 항목은 G8 보호에서 빠진다.
-- 원본 저장소가 20개를 넘으면 무인증 60회 한도에 가까우므로 §6 을 다시 본다.
+- **바뀜 감지는 git tree/blob sha 로 한다(2026-11-15 구현 중 바꿈).** 원본 저장소마다 `git/trees/HEAD?recursive=1` 을 **한 번** 받아 각 항목 경로의 sha 를 장부 값과 비교한다. 같으면 "같음", 다르면 "바뀜". 처음 계획의 `track: release / path-commit` 은 항목마다 요청이 나가 한도를 넘기 쉬워 뺐다.
+- 버전 숫자는 `version_from` 이 있는 항목만 원본 파일(raw.githubusercontent, API 한도 밖)을 읽어 알림에 보인다. 비교는 숫자 마디(`4.9.1` < `4.10.0`). 못 읽으면 "모름" 이고 G8 보호에서 빠진다.
+- `local_patch.description_prefix` — 그대로 가져온 스킬에 공장이 붙인 한국어 첫 문장. 업데이트 뒤 다시 붙인다.
+- `skip_files` — 공장 게이트 때문에 사본에서 뺀 원본 파일.
+- `untracked` — 밖에서 왔지만 감시할 원본 경로를 못 찾은 것.
+- 2026-11-15 실측: 항목 50개, 원본 저장소 8개 → 하루 확인 요청 8회.
 
 ### Step 2. 설치가 소우주에 넣는 것 [Impl]
 설치 끝에 (1) 그 프로젝트 몫 장부 `.claude/.upstream.json`, (2) 공장이 있는 컴퓨터면 `~/.hermes/factory-path`. 확인 프로그램은 `hermes.conf` 스크립트 목록으로 복사된다.
@@ -125,7 +129,9 @@
 - 적용은 자동으로 하지 않는다 — 4.x 는 `.impeccable.md` 를 안 읽었고 큰 파일이 게이트에 막혔고 엔진 결정이 따라왔다 — 사람이 "올려" 를 말해야 새 판이 들어온다.
 - `adapted` 는 덮어쓰지 않고 바뀐 부분만 보인다 — 한국어로 옮긴 규칙을 덮으면 공장 수정이 사라진다 — 반영과 `--mark-reviewed` 는 사람 몫이다.
 - GitHub 공개 API 를 인증 없이 쓴다 — `gh` 가 없고 토큰을 다루지 않기 위해 — 시간당 60회 제한.
-- 버전을 못 읽는 항목과 `path-commit` 항목은 G8 보호에서 빠진다 — 지금 동작을 깨지 않으려고 — 그 항목은 여전히 내려갈 수 있다.
+- 바뀜 감지를 원본 저장소당 트리 1회 요청으로 한다 — 항목 50개를 하나씩 물으면 무인증 60회 한도에 걸린다 — 트리가 아주 커서 GitHub 가 잘라 보내면(`truncated`) 그 저장소는 "모름" 이 된다(ECC 6,449개는 잘리지 않음).
+- 장부 sha 의 기준선은 2026-11-15 원본이다 — 복사 당시 판을 기록한 적이 없어 알 수 없다 — 그 전에 원본에서 바뀐 것은 "바뀜" 으로 잡히지 않는다(조사 문서의 유사도 값으로만 보인다).
+- 버전을 못 읽는 항목은 G8 보호에서 빠진다 — 지금 동작을 깨지 않으려고 — 그 항목은 여전히 내려갈 수 있다.
 - `factory-path` 는 장부가 있는 메인 저장소 루트만 기록한다 — 워크트리·임시 사본이 기록되면 사라진 경로를 가리킨다 — 공장 클론이 여럿이면 마지막으로 설치한 클론이 기준이 된다.
 - 시작 훅·확인 프로그램·프로젝트 장부는 hermes 프리셋일 때만 넣는다 — 드리밍·대시보드 훅과 같은 자리이고 이 컴퓨터의 소우주 4곳이 모두 hermes 를 쓴다 — hermes 를 안 쓰는 프로젝트는 확인하지 않는다.
 - 프로젝트 장부는 커밋하지 않는다(`.gitignore`) — 설치가 매번 다시 쓰는 파일이라 커밋하면 버전이 바뀔 때마다 diff 가 생긴다 — 다른 컴퓨터에서 clone 만 하고 설치를 안 하면 장부가 없어 확인하지 않는다.

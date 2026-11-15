@@ -1,0 +1,951 @@
+{
+  "version": 1,
+  "note": "밖에서 가져온 에셋 장부. sha 는 원본 저장소의 git tree/blob sha (2026-11-15 기준선).",
+  "items": [
+    {
+      "name": "architect",
+      "kind": "agents",
+      "path": "assets/agents/architect.md",
+      "mode": "adapted",
+      "sources": [
+        {
+          "repo": "affaan-m/ECC",
+          "path": "agents/architect.md",
+          "sha": "d65bea41b09b14faeb02f1dba606ce9f16933a33"
+        }
+      ],
+      "similarity": 0.03,
+      "tests": [
+        "tests/claude-md-skill-index-test.sh",
+        "tests/mods-install-test.sh"
+      ]
+    },
+    {
+      "name": "architect-lite",
+      "kind": "agents",
+      "path": "assets/agents/architect-lite.md",
+      "mode": "adapted",
+      "sources": [
+        {
+          "repo": "affaan-m/ECC",
+          "path": "agents/architect.md",
+          "sha": "d65bea41b09b14faeb02f1dba606ce9f16933a33"
+        }
+      ],
+      "tests": [
+        "tests/claude-md-skill-index-test.sh",
+        "tests/mods-install-test.sh"
+      ]
+    },
+    {
+      "name": "code-reviewer",
+      "kind": "agents",
+      "path": "assets/agents/code-reviewer.md",
+      "mode": "adapted",
+      "sources": [
+        {
+          "repo": "affaan-m/ECC",
+          "path": "agents/code-reviewer.md",
+          "sha": "884d94ec2d45a51ba091519dbee416c7d563e3d6"
+        }
+      ],
+      "similarity": 0.017,
+      "tests": [
+        "tests/claude-md-skill-index-test.sh",
+        "tests/mods-install-test.sh"
+      ]
+    },
+    {
+      "name": "database-reviewer",
+      "kind": "agents",
+      "path": "assets/agents/database-reviewer.md",
+      "mode": "adapted",
+      "sources": [
+        {
+          "repo": "affaan-m/ECC",
+          "path": "agents/database-reviewer.md",
+          "sha": "8537765b7ca94b5b349267b1b36cb5d9fd92d626"
+        }
+      ],
+      "similarity": 0.882,
+      "tests": [
+        "tests/claude-md-skill-index-test.sh",
+        "tests/mods-install-test.sh"
+      ]
+    },
+    {
+      "name": "doc-updater",
+      "kind": "agents",
+      "path": "assets/agents/doc-updater.md",
+      "mode": "adapted",
+      "sources": [
+        {
+          "repo": "affaan-m/ECC",
+          "path": "agents/doc-updater.md",
+          "sha": "5cc7dac99637e3accf23605edf38ed25b92ed4a0"
+        }
+      ],
+      "similarity": 0.859,
+      "tests": [
+        "tests/claude-md-skill-index-test.sh",
+        "tests/mods-install-test.sh"
+      ]
+    },
+    {
+      "name": "docs-lookup",
+      "kind": "agents",
+      "path": "assets/agents/docs-lookup.md",
+      "mode": "adapted",
+      "sources": [
+        {
+          "repo": "affaan-m/ECC",
+          "path": "agents/docs-lookup.md",
+          "sha": "f018ce4eb09f209760683f2ae52bfb80640f828d"
+        }
+      ],
+      "similarity": 0.866,
+      "tests": [
+        "tests/claude-md-skill-index-test.sh",
+        "tests/mods-install-test.sh"
+      ]
+    },
+    {
+      "name": "performance-optimizer",
+      "kind": "agents",
+      "path": "assets/agents/performance-optimizer.md",
+      "mode": "adapted",
+      "sources": [
+        {
+          "repo": "affaan-m/ECC",
+          "path": "agents/performance-optimizer.md",
+          "sha": "4d5de6f963600ce606020caa70f1ae7cc2ad9aad"
+        }
+      ],
+      "similarity": 0.955,
+      "tests": [
+        "tests/claude-md-skill-index-test.sh",
+        "tests/mods-install-test.sh"
+      ]
+    },
+    {
+      "name": "planner",
+      "kind": "agents",
+      "path": "assets/agents/planner.md",
+      "mode": "adapted",
+      "sources": [
+        {
+          "repo": "affaan-m/ECC",
+          "path": "agents/planner.md",
+          "sha": "e9e282f54d5ea8dbecae31d00c8647960c089f05"
+        }
+      ],
+      "similarity": 0.041,
+      "tests": [
+        "tests/claude-md-skill-index-test.sh",
+        "tests/mods-install-test.sh"
+      ]
+    },
+    {
+      "name": "planner-lite",
+      "kind": "agents",
+      "path": "assets/agents/planner-lite.md",
+      "mode": "adapted",
+      "sources": [
+        {
+          "repo": "affaan-m/ECC",
+          "path": "agents/planner.md",
+          "sha": "e9e282f54d5ea8dbecae31d00c8647960c089f05"
+        }
+      ],
+      "tests": [
+        "tests/claude-md-skill-index-test.sh",
+        "tests/mods-install-test.sh"
+      ]
+    },
+    {
+      "name": "python-reviewer",
+      "kind": "agents",
+      "path": "assets/agents/python-reviewer.md",
+      "mode": "adapted",
+      "sources": [
+        {
+          "repo": "affaan-m/ECC",
+          "path": "agents/python-reviewer.md",
+          "sha": "b1b3ee6f53dfb21f1d97b70f4ba5be17a142e11f"
+        }
+      ],
+      "similarity": 0.838,
+      "tests": [
+        "tests/claude-md-skill-index-test.sh",
+        "tests/mods-install-test.sh"
+      ]
+    },
+    {
+      "name": "refactor-cleaner",
+      "kind": "agents",
+      "path": "assets/agents/refactor-cleaner.md",
+      "mode": "adapted",
+      "sources": [
+        {
+          "repo": "affaan-m/ECC",
+          "path": "agents/refactor-cleaner.md",
+          "sha": "093c8f6478052f3cc78072204fca957ffac82f07"
+        }
+      ],
+      "similarity": 0.828,
+      "tests": [
+        "tests/claude-md-skill-index-test.sh",
+        "tests/mods-install-test.sh"
+      ]
+    },
+    {
+      "name": "silent-failure-hunter",
+      "kind": "agents",
+      "path": "assets/agents/silent-failure-hunter.md",
+      "mode": "adapted",
+      "sources": [
+        {
+          "repo": "affaan-m/ECC",
+          "path": "agents/silent-failure-hunter.md",
+          "sha": "e38053453908f27687826db7b34ba5849971205b"
+        }
+      ],
+      "similarity": 0.635,
+      "tests": [
+        "tests/claude-md-skill-index-test.sh",
+        "tests/mods-install-test.sh"
+      ]
+    },
+    {
+      "name": "tdd-guide",
+      "kind": "agents",
+      "path": "assets/agents/tdd-guide.md",
+      "mode": "adapted",
+      "sources": [
+        {
+          "repo": "affaan-m/ECC",
+          "path": "agents/tdd-guide.md",
+          "sha": "d4f6443b8fa3b7e31d469d9b557b658f612f6077"
+        }
+      ],
+      "similarity": 0.84,
+      "tests": [
+        "tests/claude-md-skill-index-test.sh",
+        "tests/mods-install-test.sh"
+      ]
+    },
+    {
+      "name": "typescript-reviewer",
+      "kind": "agents",
+      "path": "assets/agents/typescript-reviewer.md",
+      "mode": "adapted",
+      "sources": [
+        {
+          "repo": "affaan-m/ECC",
+          "path": "agents/typescript-reviewer.md",
+          "sha": "c72b2edd6acfbd3b2ed6f82241c841d359d13afa"
+        }
+      ],
+      "similarity": 0.655,
+      "tests": [
+        "tests/claude-md-skill-index-test.sh",
+        "tests/mods-install-test.sh"
+      ]
+    },
+    {
+      "name": "adhd",
+      "kind": "rules",
+      "path": "assets/rules/adhd",
+      "mode": "adapted",
+      "sources": [
+        {
+          "repo": "ayghri/i-have-adhd",
+          "path": "skills/i-have-adhd/SKILL.md",
+          "sha": "6c42757ffae37e442adfb52fbba2a8609f1cff00"
+        }
+      ],
+      "tests": [
+        "tests/claude-md-skill-index-test.sh",
+        "tests/mods-install-test.sh"
+      ]
+    },
+    {
+      "name": "common",
+      "kind": "rules",
+      "path": "assets/rules/common",
+      "mode": "adapted",
+      "sources": [
+        {
+          "repo": "affaan-m/ECC",
+          "path": "rules/common",
+          "sha": "cbe76e75fa1c41e727bab020ebc1b4c34a24bdbf"
+        }
+      ],
+      "tests": [
+        "tests/claude-md-skill-index-test.sh",
+        "tests/mods-install-test.sh"
+      ]
+    },
+    {
+      "name": "dart",
+      "kind": "rules",
+      "path": "assets/rules/dart",
+      "mode": "adapted",
+      "sources": [
+        {
+          "repo": "affaan-m/ECC",
+          "path": "rules/dart",
+          "sha": "ee25a1fe9b04b61429db7b8672060630bb5e2f00"
+        }
+      ],
+      "tests": [
+        "tests/claude-md-skill-index-test.sh",
+        "tests/mods-install-test.sh"
+      ]
+    },
+    {
+      "name": "harness",
+      "kind": "rules",
+      "path": "assets/rules/harness",
+      "mode": "adapted",
+      "sources": [
+        {
+          "repo": "obra/superpowers",
+          "path": "skills/subagent-driven-development/SKILL.md",
+          "sha": "45195787cb3f5d141af203e2fdc12f158be14522"
+        }
+      ],
+      "tests": [
+        "tests/claude-md-skill-index-test.sh",
+        "tests/mods-install-test.sh"
+      ]
+    },
+    {
+      "name": "java",
+      "kind": "rules",
+      "path": "assets/rules/java",
+      "mode": "adapted",
+      "sources": [
+        {
+          "repo": "affaan-m/ECC",
+          "path": "rules/java",
+          "sha": "6f8d05a3593d8bd992427c862646c695bb953de2"
+        }
+      ],
+      "tests": [
+        "tests/claude-md-skill-index-test.sh",
+        "tests/mods-install-test.sh"
+      ]
+    },
+    {
+      "name": "python",
+      "kind": "rules",
+      "path": "assets/rules/python",
+      "mode": "adapted",
+      "sources": [
+        {
+          "repo": "affaan-m/ECC",
+          "path": "rules/python",
+          "sha": "fc632c90601ad1b20919a1224cb353af1d645daf"
+        }
+      ],
+      "tests": [
+        "tests/claude-md-skill-index-test.sh",
+        "tests/mods-install-test.sh"
+      ]
+    },
+    {
+      "name": "typescript",
+      "kind": "rules",
+      "path": "assets/rules/typescript",
+      "mode": "adapted",
+      "sources": [
+        {
+          "repo": "affaan-m/ECC",
+          "path": "rules/typescript",
+          "sha": "2b3f9387a71742fb353e4a0bfed67863e85a5cc1"
+        }
+      ],
+      "tests": [
+        "tests/claude-md-skill-index-test.sh",
+        "tests/mods-install-test.sh"
+      ]
+    },
+    {
+      "name": "web",
+      "kind": "rules",
+      "path": "assets/rules/web",
+      "mode": "adapted",
+      "sources": [
+        {
+          "repo": "affaan-m/ECC",
+          "path": "rules/web",
+          "sha": "87016e8aed24ddc66d7e8545ad90f936ba5eeed5"
+        }
+      ],
+      "tests": [
+        "tests/claude-md-skill-index-test.sh",
+        "tests/mods-install-test.sh"
+      ]
+    },
+    {
+      "name": "backend-patterns",
+      "kind": "skills",
+      "path": "assets/skills/backend-patterns",
+      "mode": "adapted",
+      "sources": [
+        {
+          "repo": "affaan-m/ECC",
+          "path": "skills/backend-patterns",
+          "sha": "70475f53e26735e2bed243107ff921c2c32cdca5"
+        }
+      ],
+      "similarity": 0.947,
+      "tests": [
+        "tests/claude-md-skill-index-test.sh",
+        "tests/mods-install-test.sh"
+      ]
+    },
+    {
+      "name": "coding-standards",
+      "kind": "skills",
+      "path": "assets/skills/coding-standards",
+      "mode": "vendored",
+      "sources": [
+        {
+          "repo": "affaan-m/ECC",
+          "path": "skills/coding-standards",
+          "sha": "cba68c74a296bc865d33e6178cb07abc39bb94d6"
+        }
+      ],
+      "similarity": 0.997,
+      "tests": [
+        "tests/claude-md-skill-index-test.sh",
+        "tests/mods-install-test.sh"
+      ],
+      "local_patch": {
+        "description_prefix": "프로젝트 공통 코딩 규칙(이름·가독성·불변성·품질 리뷰). "
+      }
+    },
+    {
+      "name": "continuous-learning-v2",
+      "kind": "skills",
+      "path": "assets/skills/continuous-learning-v2",
+      "mode": "adapted",
+      "sources": [
+        {
+          "repo": "affaan-m/ECC",
+          "path": "skills/continuous-learning-v2",
+          "sha": "da199ddff27ba365fe088efeb078d92d112fb72d"
+        }
+      ],
+      "similarity": 0.899,
+      "tests": [
+        "tests/claude-md-skill-index-test.sh",
+        "tests/mods-install-test.sh"
+      ]
+    },
+    {
+      "name": "dart-flutter-patterns",
+      "kind": "skills",
+      "path": "assets/skills/dart-flutter-patterns",
+      "mode": "vendored",
+      "sources": [
+        {
+          "repo": "affaan-m/ECC",
+          "path": "skills/dart-flutter-patterns",
+          "sha": "92253cbba0298bda6e359517abd4bc97196cc03f"
+        }
+      ],
+      "similarity": 1.0,
+      "tests": [
+        "tests/claude-md-skill-index-test.sh",
+        "tests/mods-install-test.sh"
+      ],
+      "local_patch": {
+        "description_prefix": "Dart·Flutter 실전 패턴(널 안전·상태 관리·내비게이션·클린 아키텍처). "
+      }
+    },
+    {
+      "name": "database-migrations",
+      "kind": "skills",
+      "path": "assets/skills/database-migrations",
+      "mode": "vendored",
+      "sources": [
+        {
+          "repo": "affaan-m/ECC",
+          "path": "skills/database-migrations",
+          "sha": "b0acdc0e55cafeeef965a66c6827dedb240a8cd9"
+        }
+      ],
+      "similarity": 1.0,
+      "tests": [
+        "tests/claude-md-skill-index-test.sh",
+        "tests/mods-install-test.sh"
+      ],
+      "local_patch": {
+        "description_prefix": "DB 마이그레이션 모범 사례(스키마·데이터 이전·롤백·무중단 배포). "
+      }
+    },
+    {
+      "name": "fastapi-patterns",
+      "kind": "skills",
+      "path": "assets/skills/fastapi-patterns",
+      "mode": "adapted",
+      "sources": [
+        {
+          "repo": "affaan-m/ECC",
+          "path": "skills/fastapi-patterns",
+          "sha": "df69f4aa698df06662dbd3ffc23f8fadaa272c61"
+        }
+      ],
+      "similarity": 0.047,
+      "tests": [
+        "tests/claude-md-skill-index-test.sh",
+        "tests/mods-install-test.sh"
+      ]
+    },
+    {
+      "name": "flutter-dart-code-review",
+      "kind": "skills",
+      "path": "assets/skills/flutter-dart-code-review",
+      "mode": "vendored",
+      "sources": [
+        {
+          "repo": "affaan-m/ECC",
+          "path": "skills/flutter-dart-code-review",
+          "sha": "97d34be246dbda5172b3e482b6ffd0de6be0294f"
+        }
+      ],
+      "similarity": 1.0,
+      "tests": [
+        "tests/claude-md-skill-index-test.sh",
+        "tests/mods-install-test.sh"
+      ],
+      "local_patch": {
+        "description_prefix": "Flutter/Dart 코드 리뷰 체크리스트. "
+      }
+    },
+    {
+      "name": "frontend-design",
+      "kind": "skills",
+      "path": "assets/skills/frontend-design",
+      "mode": "adapted",
+      "sources": [
+        {
+          "repo": "anthropics/skills",
+          "path": "skills/frontend-design",
+          "sha": "d79e2a5bb4df4a386c2adcdd9ab8709bba28c3f6"
+        }
+      ],
+      "similarity": 0.028,
+      "tests": [
+        "tests/claude-md-skill-index-test.sh",
+        "tests/mods-install-test.sh"
+      ]
+    },
+    {
+      "name": "frontend-patterns",
+      "kind": "skills",
+      "path": "assets/skills/frontend-patterns",
+      "mode": "adapted",
+      "sources": [
+        {
+          "repo": "affaan-m/ECC",
+          "path": "skills/frontend-patterns",
+          "sha": "380b1cf11c65e7b2f99631ca67176ffefb9c9a63"
+        }
+      ],
+      "similarity": 0.952,
+      "tests": [
+        "tests/claude-md-skill-index-test.sh",
+        "tests/mods-install-test.sh"
+      ]
+    },
+    {
+      "name": "idea-check",
+      "kind": "skills",
+      "path": "assets/skills/idea-check",
+      "mode": "adapted",
+      "sources": [
+        {
+          "repo": "garrytan/gstack",
+          "path": "openclaw/skills/gstack-openclaw-office-hours",
+          "sha": "5a0655d68289d7e76bcd29b8363940ec6fd1e89a"
+        }
+      ],
+      "tests": [
+        "tests/claude-md-skill-index-test.sh",
+        "tests/mods-install-test.sh"
+      ]
+    },
+    {
+      "name": "impeccable",
+      "kind": "skills",
+      "path": "assets/skills/impeccable",
+      "mode": "vendored",
+      "sources": [
+        {
+          "repo": "pbakaus/impeccable",
+          "path": ".claude/skills/impeccable",
+          "sha": "67becbfb789733481b7a474426db184b9f0a1d70"
+        }
+      ],
+      "version_from": {
+        "file": "SKILL.md",
+        "frontmatter": "version"
+      },
+      "local_patch": {
+        "description_prefix": "프론트엔드 디자인·재디자인·비평·점검·다듬기 — 명령 24개와 AI 티 검출기(critique·audit·polish·detect). "
+      },
+      "skip_files": [
+        "scripts/live-browser.js"
+      ],
+      "tests": [
+        "tests/claude-md-skill-index-test.sh",
+        "tests/mods-install-test.sh"
+      ]
+    },
+    {
+      "name": "intended-vs-implemented",
+      "kind": "skills",
+      "path": "assets/skills/intended-vs-implemented",
+      "mode": "adapted",
+      "sources": [
+        {
+          "repo": "phuryn/pm-skills",
+          "path": "pm-ai-shipping/skills/intended-vs-implemented",
+          "sha": "113ff62965108dd9577dec4b8f2e9955a5459fd6"
+        }
+      ],
+      "tests": [
+        "tests/claude-md-skill-index-test.sh",
+        "tests/mods-install-test.sh"
+      ]
+    },
+    {
+      "name": "java-coding-standards",
+      "kind": "skills",
+      "path": "assets/skills/java-coding-standards",
+      "mode": "adapted",
+      "sources": [
+        {
+          "repo": "affaan-m/ECC",
+          "path": "skills/java-coding-standards",
+          "sha": "82d6c06731702476735e392fcb016274d8845191"
+        }
+      ],
+      "similarity": 0.401,
+      "tests": [
+        "tests/claude-md-skill-index-test.sh",
+        "tests/mods-install-test.sh"
+      ]
+    },
+    {
+      "name": "jpa-patterns",
+      "kind": "skills",
+      "path": "assets/skills/jpa-patterns",
+      "mode": "vendored",
+      "sources": [
+        {
+          "repo": "affaan-m/ECC",
+          "path": "skills/jpa-patterns",
+          "sha": "9034c5c2be68fdf6d13ed7f495949495bdf46f1b"
+        }
+      ],
+      "similarity": 1.0,
+      "tests": [
+        "tests/claude-md-skill-index-test.sh",
+        "tests/mods-install-test.sh"
+      ],
+      "local_patch": {
+        "description_prefix": "JPA/Hibernate 엔티티·관계·쿼리·트랜잭션 패턴. "
+      }
+    },
+    {
+      "name": "mcp-builder",
+      "kind": "skills",
+      "path": "assets/skills/mcp-builder",
+      "mode": "adapted",
+      "sources": [
+        {
+          "repo": "anthropics/skills",
+          "path": "skills/mcp-builder",
+          "sha": "ea6e4d7bc108b44b3009129688049e23d801f0f3"
+        }
+      ],
+      "similarity": 0.396,
+      "tests": [
+        "tests/claude-md-skill-index-test.sh",
+        "tests/mods-install-test.sh"
+      ]
+    },
+    {
+      "name": "postgres-patterns",
+      "kind": "skills",
+      "path": "assets/skills/postgres-patterns",
+      "mode": "vendored",
+      "sources": [
+        {
+          "repo": "affaan-m/ECC",
+          "path": "skills/postgres-patterns",
+          "sha": "363862ac5bb33ec6621d63565bcf5d7f92db6be6"
+        }
+      ],
+      "similarity": 1.0,
+      "tests": [
+        "tests/claude-md-skill-index-test.sh",
+        "tests/mods-install-test.sh"
+      ],
+      "local_patch": {
+        "description_prefix": "PostgreSQL 쿼리 최적화·스키마·인덱스·보안 패턴. "
+      }
+    },
+    {
+      "name": "prd-writer",
+      "kind": "skills",
+      "path": "assets/skills/prd-writer",
+      "mode": "adapted",
+      "sources": [
+        {
+          "repo": "phuryn/pm-skills",
+          "path": "pm-execution/skills/create-prd",
+          "sha": "ce67db32ee2e54205d86420a0a9a3137dff0dc6e"
+        },
+        {
+          "repo": "product-on-purpose/pm-skills",
+          "path": "skills/deliver-prd/SKILL.md",
+          "sha": "c4dbd77a628e17849dd72f9307dbe3b77042a636"
+        }
+      ],
+      "tests": [
+        "tests/claude-md-skill-index-test.sh",
+        "tests/mods-install-test.sh"
+      ]
+    },
+    {
+      "name": "python-patterns",
+      "kind": "skills",
+      "path": "assets/skills/python-patterns",
+      "mode": "vendored",
+      "sources": [
+        {
+          "repo": "affaan-m/ECC",
+          "path": "skills/python-patterns",
+          "sha": "a760f82665c97712722cf849f7b0d24872678a70"
+        }
+      ],
+      "similarity": 0.998,
+      "tests": [
+        "tests/claude-md-skill-index-test.sh",
+        "tests/mods-install-test.sh"
+      ],
+      "local_patch": {
+        "description_prefix": "파이썬다운 관용구·PEP 8·타입 힌트·모범 사례. "
+      }
+    },
+    {
+      "name": "search-first",
+      "kind": "skills",
+      "path": "assets/skills/search-first",
+      "mode": "adapted",
+      "sources": [
+        {
+          "repo": "affaan-m/ECC",
+          "path": "skills/search-first",
+          "sha": "3ac0daf42ee5c7d0cbe28c399f02ff057283b889"
+        }
+      ],
+      "similarity": 0.871,
+      "tests": [
+        "tests/claude-md-skill-index-test.sh",
+        "tests/mods-install-test.sh"
+      ]
+    },
+    {
+      "name": "skill-creator",
+      "kind": "skills",
+      "path": "assets/skills/skill-creator",
+      "mode": "vendored",
+      "sources": [
+        {
+          "repo": "anthropics/skills",
+          "path": "skills/skill-creator",
+          "sha": "3cf9a8db32597ba3e24b584a3d696f4e11c7d7b6"
+        }
+      ],
+      "similarity": 1.0,
+      "tests": [
+        "tests/claude-md-skill-index-test.sh",
+        "tests/mods-install-test.sh"
+      ],
+      "local_patch": {
+        "description_prefix": "스킬을 만들고 고치고 성능(평가·발동 정확도)을 잰다. "
+      }
+    },
+    {
+      "name": "springboot-patterns",
+      "kind": "skills",
+      "path": "assets/skills/springboot-patterns",
+      "mode": "vendored",
+      "sources": [
+        {
+          "repo": "affaan-m/ECC",
+          "path": "skills/springboot-patterns",
+          "sha": "c5ea2e78864dae862e9add17aea0f1c21f592bf4"
+        }
+      ],
+      "similarity": 1.0,
+      "tests": [
+        "tests/claude-md-skill-index-test.sh",
+        "tests/mods-install-test.sh"
+      ],
+      "local_patch": {
+        "description_prefix": "Spring Boot 아키텍처·REST API·계층 서비스 패턴. "
+      }
+    },
+    {
+      "name": "springboot-security",
+      "kind": "skills",
+      "path": "assets/skills/springboot-security",
+      "mode": "vendored",
+      "sources": [
+        {
+          "repo": "affaan-m/ECC",
+          "path": "skills/springboot-security",
+          "sha": "7f9b93f7fc95d5f490744e8a20ac34644faab007"
+        }
+      ],
+      "similarity": 1.0,
+      "tests": [
+        "tests/claude-md-skill-index-test.sh",
+        "tests/mods-install-test.sh"
+      ],
+      "local_patch": {
+        "description_prefix": "Spring Security 인증·인가·검증·비밀값 보안 모범 사례. "
+      }
+    },
+    {
+      "name": "springboot-tdd",
+      "kind": "skills",
+      "path": "assets/skills/springboot-tdd",
+      "mode": "vendored",
+      "sources": [
+        {
+          "repo": "affaan-m/ECC",
+          "path": "skills/springboot-tdd",
+          "sha": "0dbe04e4ce6ed7d11c5eac60f01d12fcfbc040ec"
+        }
+      ],
+      "similarity": 1.0,
+      "tests": [
+        "tests/claude-md-skill-index-test.sh",
+        "tests/mods-install-test.sh"
+      ],
+      "local_patch": {
+        "description_prefix": "Spring Boot 시험 주도 개발(JUnit 5·Mockito·Testcontainers). "
+      }
+    },
+    {
+      "name": "strategic-compact",
+      "kind": "skills",
+      "path": "assets/skills/strategic-compact",
+      "mode": "adapted",
+      "sources": [
+        {
+          "repo": "affaan-m/ECC",
+          "path": "skills/strategic-compact",
+          "sha": "e6aaaf15b106aca085d9adddff245e8344f02ce7"
+        }
+      ],
+      "similarity": 0.642,
+      "tests": [
+        "tests/claude-md-skill-index-test.sh",
+        "tests/mods-install-test.sh"
+      ]
+    },
+    {
+      "name": "tdd-workflow",
+      "kind": "skills",
+      "path": "assets/skills/tdd-workflow",
+      "mode": "adapted",
+      "sources": [
+        {
+          "repo": "affaan-m/ECC",
+          "path": "skills/tdd-workflow",
+          "sha": "b445be0df65fae209e92047b52990a8436f79442"
+        }
+      ],
+      "similarity": 0.588,
+      "tests": [
+        "tests/claude-md-skill-index-test.sh",
+        "tests/mods-install-test.sh"
+      ]
+    },
+    {
+      "name": "typescript-patterns",
+      "kind": "skills",
+      "path": "assets/skills/typescript-patterns",
+      "mode": "adapted",
+      "sources": [
+        {
+          "repo": "affaan-m/ECC",
+          "path": "skills/typescript-patterns",
+          "sha": "17645d0bb211c5efded3e00d649ac3ab6356b81e"
+        }
+      ],
+      "similarity": 0.048,
+      "tests": [
+        "tests/claude-md-skill-index-test.sh",
+        "tests/mods-install-test.sh"
+      ]
+    },
+    {
+      "name": "verification-loop",
+      "kind": "skills",
+      "path": "assets/skills/verification-loop",
+      "mode": "adapted",
+      "sources": [
+        {
+          "repo": "affaan-m/ECC",
+          "path": "skills/verification-loop",
+          "sha": "39868fe42ac9cfbda008f2428744baf4904702e7"
+        }
+      ],
+      "similarity": 0.643,
+      "tests": [
+        "tests/claude-md-skill-index-test.sh",
+        "tests/mods-install-test.sh"
+      ]
+    },
+    {
+      "name": "webapp-testing",
+      "kind": "skills",
+      "path": "assets/skills/webapp-testing",
+      "mode": "vendored",
+      "sources": [
+        {
+          "repo": "anthropics/skills",
+          "path": "skills/webapp-testing",
+          "sha": "5ffb7dc66b9fd4c25c3e400a4c00da99a349b714"
+        }
+      ],
+      "similarity": 1.0,
+      "tests": [
+        "tests/claude-md-skill-index-test.sh",
+        "tests/mods-install-test.sh"
+      ],
+      "local_patch": {
+        "description_prefix": "Playwright 로 로컬 웹앱을 조작·시험한다(스크린숏·브라우저 로그). "
+      }
+    }
+  ],
+  "untracked": [
+    {
+      "kind": "agents",
+      "name": "fullstack-developer.md",
+      "origin": "affaan-m/ECC",
+      "reason": "origin 주석이 ECC 를 가리키지만 2026-11-15 ECC 트리에 같은 이름·경로가 없다. 감시할 원본 경로를 못 찾았다."
+    }
+  ]
+}
