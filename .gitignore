@@ -41,6 +41,7 @@ docs/superpowers/plans/
 .claude/.last-install.txt
 .harness/
 .env.keys
+.impeccable/bin/
 !.claude/.factory-manifest.json
 !.claude/presets.lock
 !.claude/.upstream.json
