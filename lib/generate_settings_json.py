@@ -35,6 +35,7 @@ from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))   # 옆 모듈 — 다른 경로에서 불러와도 찾게
 from settings_file_suggestion import apply_file_suggestion  # noqa: E402
+from settings_shared_env import apply_shared_env  # noqa: E402
 
 
 def _read_lines(tmpdir: Path, name: str) -> list[str]:
@@ -332,6 +333,7 @@ def main(output_path: str) -> int:
 
     # ---- fileSuggestion ---- `@` 목록 교체(`@hag` 약속어, 계획 2026-09-28-hermes-chat 목표 6)
     existing = _file_suggestion(tmpdir, existing)
+    existing = apply_shared_env(existing, _read_lines(tmpdir, "shared_env"))
 
     # ---- permissions ----
     # allow: ownership-synced. Entries in the harness inventory are reclaimed and

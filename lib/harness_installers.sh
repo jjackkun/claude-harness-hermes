@@ -690,6 +690,9 @@ install_harness_gitignore() {
       # 빼고 재설치하면 설치물은 남는데 무시 줄만 사라져 열쇠가 커밋될 수 있었다(2026-10-16 실측).
       # 근거: docs/exec-plans/active/2026-10-16-env-secrets-preset.md §7
       ".env.keys"
+      # impeccable 4.x 엔진 바이너리(약 24MB) — 프로젝트 안 .impeccable/bin/ 에 처음 쓸 때 받는다. 기계마다 받으므로 커밋하지 않는다.
+      # .impeccable/config.json(원격 통계 끔)은 커밋한다. 계획 2026-11-15-impeccable-4-upgrade G6
+      ".impeccable/bin/"
       # 설치 목록은 커밋돼야 한다(I-02) — 다른 컴퓨터의 clone 도 어느 파일이 공장 것인지 알아야
       # 변조 감지·공존 설치 base 가 동작한다. 단 프로젝트 자체 규칙이 이 블록보다 **뒤**에서
       # `.claude/*` 를 무시하면 이 예외는 덮인다 — 그래서 설치 끝에 실제 추적 여부를 git 에 묻고 경고한다.

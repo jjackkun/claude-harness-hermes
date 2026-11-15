@@ -178,6 +178,7 @@ receipt_begin   # 이 뒤에 쓰인 파일이 .claude/.last-install.txt 에 오�
 
 log_info "Installing assets…"
 install_skills "$CLAUDE_DIR"
+impeccable_project_setup "$PROJECT_PATH"   # impeccable 을 깔았으면 원격 통계 끄기
 install_agents "$CLAUDE_DIR"
 install_rules  "$CLAUDE_DIR"
 report_converted_links

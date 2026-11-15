@@ -39,6 +39,7 @@ _settings_gen_write_arrays() {
   _write_array "$tmpdir/permissions_allow"  "${HARNESS_PERMISSIONS_ALLOW[@]:-}"
   _write_array "$tmpdir/worktree_bg_isolation" "${WORKTREE_BG_ISOLATION[@]:-}"
   _write_array "$tmpdir/file_suggestion"    "${FILE_SUGGESTION_COMMAND[@]:-}"
+  _write_array "$tmpdir/shared_env"         "${SHARED_ENV_VARS[@]:-}"
 
   # 하네스 소유 hook 파일명 — 생성기가 "preset 에서 빠진 hook"과 "사용자가 직접
   # 등록한 hook"을 구분해 전자만 회수하는 데 쓴다.

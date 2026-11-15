@@ -364,6 +364,7 @@ REGISTERED_TESTS=(
   upstream-sessionstart-test.sh
   upstream-update-test.sh
   upstream-downgrade-guard-test.sh
+  impeccable-engine-setup-test.sh
   preset-order-stable-test.sh
   project-claude-restore-test.sh
   hermes-skill-layers-test.sh

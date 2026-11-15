@@ -89,6 +89,7 @@ claude-harness-hermes/               ← 이 디렉터리 (private git repo 권�
 │   ├── codex_md_gen.sh               ← AGENTS.md 생성
 │   ├── generate_settings.py          ← settings.local.json (env 전용) 생성
 │   ├── generate_settings_json.py     ← settings.json (hooks+permissions) 머지 생성
+│   ├── settings_shared_env.py        ← 프리셋 SHARED_ENV_VARS → settings.json env (커밋 — clone 만 한 컴퓨터도 같은 값)
 │   └── generate_codex_hooks.py       ← Codex hooks.json 생성 (Python)
 ├── presets/
 │   ├── _common.conf                  ← public-claude.sh 가 사용
@@ -339,7 +340,7 @@ Claude 전용 `CLAUDE.md`, `.claude/settings.json` / `.claude/settings.local.jso
 <!--===DS:COUNTS:BEGIN===-->
 - 세션 중 실행 훅 **18종** + 훅이 공유하는 판정 모듈 **19개**
 - git pre-commit 게이트 **23종** — 차단 12 / 경고 11
-- harness 프리셋이 까는 스킬 **11종** · 에이전트 **12종** · 공장 테스트 **156개**
+- harness 프리셋이 까는 스킬 **11종** · 에이전트 **12종** · 공장 테스트 **157개**
 <!--===DS:COUNTS:END===-->
 
 > 위 수치는 `assets/hooks/doc_counts.py` 가 소스에서 산출합니다. 손으로 고치지 마십시오 —
@@ -641,7 +642,7 @@ rm .git/hooks/check-secrets.py.factory-new                                 # 게
 
 | target | 추가 항목 |
 |--------|-----------|
-| claude | `.claude/settings.local.json` 등 머신 로컬 파일 · `.env.keys`(env-secrets 열쇠 — 프리셋을 빼도 남도록 공통 목록에 둠) |
+| claude | `.claude/settings.local.json` 등 머신 로컬 파일 · `.env.keys`(env-secrets 열쇠 — 프리셋을 빼도 남도록 공통 목록에 둠) · `.impeccable/bin/`(impeccable 엔진 약 24MB — svelte 프리셋이 `IMPECCABLE_HOME=.impeccable` 로 프로젝트 안에 받게 하고 `.impeccable/config.json` 에 원격 통계 끔을 쓴다) |
 | codex  | `.codex/settings.local.json` |
 
 마커 블록 `# >>> harness-agent-preset >>>` ~ `# <<< harness-agent-preset <<<` 사이에만 기록하므로

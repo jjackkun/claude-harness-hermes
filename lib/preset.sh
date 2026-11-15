@@ -69,6 +69,7 @@ reset_preset_vars() {
   POST_EDIT_HOOKS=()
   STOP_HOOKS=()
   ENV_VARS=()
+  SHARED_ENV_VARS=()   # settings.json(커밋) env — clone 만 한 컴퓨터에도 같은 값이 필요할 때 (lib/settings_shared_env.py)
   DENY_AGENTS=()
   CLAUDE_MD_SECTIONS=()
   # Harness-engineering arrays (PDF 8~9쪽 "엄격한 경계" 강제 장치)

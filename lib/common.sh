@@ -47,6 +47,8 @@ source "$_DS_LIB/upstream_ledger.sh"     # 프로젝트 몫 외부 에셋 장부
 source "$_DS_LIB/factory_path.sh"        # ~/.hermes/factory-path 기록 (같은 계획 G6)
 # shellcheck source=lib/upstream_version.sh
 source "$_DS_LIB/upstream_version.sh"    # 소우주 사본이 더 새 버전이면 전파가 덮지 않게 (같은 계획 G8)
+# shellcheck source=lib/impeccable_setup.sh
+source "$_DS_LIB/impeccable_setup.sh"    # impeccable 원격 통계 끄기 (계획 2026-11-15-impeccable-4-upgrade G6)
 # shellcheck source=lib/install_receipt.sh
 source "$_DS_LIB/install_receipt.sh"
 # shellcheck source=lib/plugins.sh
