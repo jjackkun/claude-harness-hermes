@@ -69,6 +69,17 @@ max.nardit.com 이 Issue 9 원문과 대조한 결과. 수치 제한(20/25단어
 | HTML | Artifact 도구, `ui-prototype` 스킬 |
 | 영상 | `video-to-interaction` 스킬 (2026-10-22, 입력 쪽) — 설명 영상 생성은 없음 |
 
+## 추가 대조 (2026-11-16)
+
+빌더 조쉬 쇼츠(_g-ROA0W5DE, 38초)를 watch 스킬로 자막 19줄·장면 25장 전부 보고, 노션 가이드·STE 관리단 AI 백서와 대조했다.
+
+| 확인한 것 | 결과 |
+|---|---|
+| 카파시 요청문(영상 화면의 stork.ai 기사) | short sentences · common words · consistent terms · one action per instruction · Keep the tone natural |
+| 우리 규칙에 없던 것 | 숫자·조건 보존 → 10번, 이전 → 지금 비교 → 11번, 자연스럽게 → 12번, common words → 13번 |
+| 규격 최신판 | Issue 9 (2025-01-15). 2026 판 없음. 판 간격 수 년(Issue 8 은 2021) — 자동 버전 감시 대상 아님 |
+| STEMG AI 백서 (2026-06, 3쪽) | 프롬프트·부분 준수 지침 없음. "AI 는 돕기만", "자동 준수 검사 정확도 들쭉날쭉", "확인되지 않은 오류" 경고 → 10번의 근거 |
+
 ## 출처
 
 - https://www.searchenginejournal.com/karpathy-llm-aircraft-manual-writing/591813/
@@ -77,3 +88,6 @@ max.nardit.com 이 Issue 9 원문과 대조한 결과. 수치 제한(20/25단어
 - https://explainx.ai/blog/asd-ste100-simplified-technical-english-ai-skill-2026
 - https://github.com/AminBlg/SimpleEnglish
 - https://en.wikipedia.org/wiki/Simplified_Technical_English
+- https://www.youtube.com/watch?v=_g-ROA0W5DE
+- https://www.stork.ai/blog/make-ai-write-like-an-aircraft-manual
+- https://www.asd-europe.org/news-media/publications/asd-position-papers/asd-ste100-simplified-technical-english-and-artificial-intelligence-ai/
