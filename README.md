@@ -324,9 +324,10 @@ Claude 전용 `CLAUDE.md`, `.claude/settings.json` / `.claude/settings.local.jso
 
 `workflow/harness` 를 선택하면 프로젝트에 다음이 설치됩니다:
 
-- **스킬**: `harness-boundary-check`, `harness-reasoning-sandwich`, `harness-promote-rule`, `structured-file-layout`, `run-to-the-end`, `pre-commit-measure`, `ui-prototype`, `idea-check`, `prd-writer`, `intended-vs-implemented`, `video-to-interaction`
+- **스킬**: `harness-boundary-check`, `harness-reasoning-sandwich`, `harness-promote-rule`, `structured-file-layout`, `run-to-the-end`, `pre-commit-measure`, `ui-prototype`, `idea-check`, `prd-writer`, `intended-vs-implemented`, `video-to-interaction`, `watch`
   - `ui-prototype` — 기획서·PRD·화면 흐름 문서에서 눌러 보는 시안을 만듭니다 (왼쪽 화면 목록 + 오른쪽 휴대폰·웹·태블릿·데스크톱 틀). 문서 → 시안 명세표(`spec.md`) 확정 → 시작 틀 복사 → `check_spec.py` 대조 → `build_single.py` 로 단일 HTML. 결과는 `docs/prototypes/<이름>/` 과 `<이름>.html`
   - `video-to-interaction` — 사용자가 준 참고 영상(인터랙션 녹화)을 0.1초 간격으로 **전부** 뽑아 보고(`video_frames.sh` — 8장 묶음·확대, ffmpeg 는 프로젝트 안 캐시), 본 것을 기록한 뒤 승인용 미리보기로 구현하고 Playwright 수치·영상 같은 순간 나란히 대조로 검증합니다. 천처럼 휘는 면은 `assets/cloth/`(Verlet 격자 + WebGL) 예시에서 출발
+  - `watch` — 유튜브 링크나 영상 파일을 **실제로 받아서** 봅니다: 자막을 끝까지 읽고(`[MM:SS]` 정리) 장면 묶음을 본 뒤 내용·우리 프로젝트와의 접점을 답하고, 원하면 `docs/videos/` 에 기록합니다. yt-dlp 는 uv 캐시의 최신판(전역 설치 없음), ffmpeg 는 `video-to-interaction` 의 `video_frames.sh` 가 찾습니다
   - **기획 문서 사슬** — 한 기획의 문서를 `docs/product-specs/<이름>/` 한 폴더에 모으고, 자연어 한마디로 다음 단계를 부릅니다. 규칙 정본은 `prd-writer/references/contract.md` 한 곳 (`tests/planning-chain-test.sh` 가 대조)
     - `idea-check` — "이거 만들 가치 있나": 질문을 하나씩 → 전제 의심 → 대안 2~3개 → 판정(`만든다`·`좁힌다`·`보류`) → `brief.md`
     - `prd-writer` — "PRD 써 줘": brief 이어받기, 빈 곳 질문 최대 3개, 요구마다 FR 번호·검증 방법, 지어낸 숫자는 「가정」 으로 → `prd.md`, `check_prd.py` 통과해야 끝
@@ -340,7 +341,7 @@ Claude 전용 `CLAUDE.md`, `.claude/settings.json` / `.claude/settings.local.jso
 <!--===DS:COUNTS:BEGIN===-->
 - 세션 중 실행 훅 **18종** + 훅이 공유하는 판정 모듈 **19개**
 - git pre-commit 게이트 **23종** — 차단 12 / 경고 11
-- harness 프리셋이 까는 스킬 **11종** · 에이전트 **12종** · 공장 테스트 **157개**
+- harness 프리셋이 까는 스킬 **12종** · 에이전트 **12종** · 공장 테스트 **158개**
 <!--===DS:COUNTS:END===-->
 
 > 위 수치는 `assets/hooks/doc_counts.py` 가 소스에서 산출합니다. 손으로 고치지 마십시오 —

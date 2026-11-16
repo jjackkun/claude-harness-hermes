@@ -352,6 +352,7 @@ REGISTERED_TESTS=(
   hermes-dashboard-test.sh
   ui-prototype-build-test.sh
   video-to-interaction-test.sh
+  watch-skill-test.sh
   planning-chain-test.sh
   hermes-repo-sync-test.sh
   git-ignore-judge-test.sh

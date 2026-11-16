@@ -1,0 +1,23 @@
+{
+  "skill_name": "watch",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "https://www.youtube.com/watch?v=-VA5KctJjf8 이거 확인해봐.",
+      "expected_output": "자막을 받아 끝까지 읽고 장면을 본 뒤, 세션을 지우지 않고 아카이브해 밤마다 프롬프트를 분석한다는 내용을 시각과 함께 정리하고 헤르메스(세션 요약·결정화)와의 접점을 말한다. 제목만으로 답하지 않는다.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "https://www.youtube.com/watch?v=_g-ROA0W5DE 카파시 STE 쇼츠인데 우리 ste-writing 규칙이랑 뭐가 다른지 영상 기준으로 봐 줘",
+      "expected_output": "자막·장면을 근거로 영상이 말한 규칙을 뽑고 assets/rules/adhd/ste-writing.md 와 대조한다.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "이 강의 정리해서 docs 에 남겨 줘 https://youtu.be/5kTFyEOgark",
+      "expected_output": "docs/videos/YYYY-MM-DD-<slug>/ 에 기록 틀(개요·타임라인·본문·걸러 들을 부분·접점·부록)과 transcript vtt/txt 를 남긴다.",
+      "files": []
+    }
+  ]
+}
