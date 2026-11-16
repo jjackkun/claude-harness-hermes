@@ -5,37 +5,48 @@ responses (downloads, exports) pass through untouched.
 """
 
 import json
+from typing import Any
 
 from fastapi import Request
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import Response
 
 DEFAULT_ERROR = "요청 처리에 실패했습니다."
+DROP_HEADERS = ("content-length", "content-type")
+
+
+def should_wrap(request: Request, response: Response) -> bool:
+    is_api = request.url.path.startswith("/api/")
+    is_json = response.headers.get("content-type", "").startswith("application/json")
+    return is_api and is_json
+
+
+def parse_body(body: bytes) -> Any:
+    if not body:
+        return None
+    try:
+        return json.loads(body)
+    except json.JSONDecodeError:
+        return body.decode(errors="replace")
+
+
+def wrap(status: int, data: Any) -> dict[str, Any]:
+    ok = 200 <= status < 300
+    if ok:
+        return {"ok": True, "status": status, "data": data}
+    detail = data.get("detail") if isinstance(data, dict) else None
+    if isinstance(detail, str):
+        return {"ok": False, "status": status, "data": None, "error": detail}
+    # validation errors: keep the field list as data
+    return {"ok": False, "status": status, "data": detail, "error": DEFAULT_ERROR}
 
 
 class EnvelopeMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         response = await call_next(request)
-        if not request.url.path.startswith("/api/"):
+        if not should_wrap(request, response):
             return response
-        if not response.headers.get("content-type", "").startswith("application/json"):
-            return response
-
         body = b"".join([chunk async for chunk in response.body_iterator])
-        try:
-            data = json.loads(body) if body else None
-        except json.JSONDecodeError:
-            data = body.decode(errors="replace")
-
-        ok = 200 <= response.status_code < 300
-        wrapped = {"ok": ok, "status": response.status_code, "data": data if ok else None}
-        if not ok:
-            detail = data.get("detail") if isinstance(data, dict) else None
-            wrapped["error"] = detail if isinstance(detail, str) else DEFAULT_ERROR
-            if detail is not None and not isinstance(detail, str):
-                wrapped["data"] = detail  # validation errors: keep the field list
-
-        headers = {
-            k: v for k, v in response.headers.items() if k.lower() not in ("content-length", "content-type")
-        }
-        return JSONResponse(content=wrapped, status_code=200, headers=headers)
+        headers = {k: v for k, v in response.headers.items() if k.lower() not in DROP_HEADERS}
+        return JSONResponse(content=wrap(response.status_code, parse_body(body)), status_code=200, headers=headers)

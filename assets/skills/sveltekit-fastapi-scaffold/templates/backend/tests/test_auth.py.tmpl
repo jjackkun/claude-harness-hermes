@@ -12,7 +12,7 @@ async def test_login_returns_token_pair(client):
 
 
 async def test_wrong_password_is_401_inside_envelope(client):
-    body = await _login(client, password="wrong-password")
+    body = await _login(client, password="dummy-wrong-password")
     assert body["ok"] is False
     assert body["status"] == 401
     assert body["error"] == "이메일 또는 비밀번호가 맞지 않습니다."
