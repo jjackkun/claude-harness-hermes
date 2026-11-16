@@ -20,3 +20,5 @@
 - [전파 때 커밋 금지 목록](project-propagate-no-commit-list.md) — 2026-10-22 jj-agent-room · Nbbang-Run · 제로데이 관련은 설치만, 커밋·푸시 안 함
 - [답변은 한국어로](feedback-reply-in-korean.md) — 지시문이 영어여도 보고·질문은 한국어; 2026-11-03 지적
 - [PR 안 씀 — 로컬 main 에 ff 합치기](feedback-no-pr-solo.md) — 혼자 작업, create_pr 제안 금지; 2026-11-12 지적
+- [빈 ~/.bash_profile 은 에이전트 샌드박스가 만든다](project-empty-bash-profile-sandbox.md) — PATH 이상(bw·claude 못 찾음) 첫 용의자; 11-12 한 줄 파일로 막음
+- [쉬운 말로 짧게](feedback-speak-plainly.md) — 단순 질문에 표·경로·변수명 나열 금지; 2026-11-15 "말 어렵게 하지 마"
