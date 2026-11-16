@@ -246,4 +246,7 @@ if [[ ${#SKIP_NAMES[@]} -gt 0 ]]; then
   for n in "${SKIP_NAMES[@]}"; do echo -e "    ⚠ $n"; done
 fi
 
+# Code Mode 는 컴퓨터마다 사용자 설정 한 줄로 켠다 — 꺼져 있으면 알리기만 한다(계획 2026-11-16-code-mode-notice)
+[[ "$TARGET" != codex ]] && bash "$DEV_SETTING_DIR/lib/code_mode_notice.sh"
+
 [[ $FAIL -eq 0 ]]

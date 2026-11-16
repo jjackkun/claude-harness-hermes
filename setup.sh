@@ -308,3 +308,8 @@ case "$TARGET" in
     bash "$DEV_SETTING_DIR/project-codex.sh" "$PROJECT_PATH" $PRESETS_ARGS
     ;;
 esac
+SETUP_RC=$?
+
+# Code Mode 는 컴퓨터마다 사용자 설정 한 줄로 켠다 — 꺼져 있으면 알리기만 한다(계획 2026-11-16-code-mode-notice)
+[[ "$TARGET" != codex ]] && bash "$DEV_SETTING_DIR/lib/code_mode_notice.sh"
+exit "$SETUP_RC"

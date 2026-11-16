@@ -190,6 +190,8 @@ claude-harness-hermes 이 업데이트된 후 등록된 모든 프로젝트에 �
 
 > `.installed-projects` 는 머신별 로컬 파일로 git에 포함되지 않습니다. 포맷한 PC 에서는 이 목록이 비므로, 프로젝트마다 `project-claude.sh <경로>` 한 번으로 커밋된 프리셋 목록을 읽어 되살린 뒤 `update-all` 을 씁니다.
 
+**Code Mode 안내** — `setup.sh`·`update-all.sh` 가 끝날 때, 이 컴퓨터에서 Code Mode(클로드 코드 2.1.323+ 실험 기능, 도구를 코드로 묶어 불러 사용량을 줄인다)가 꺼져 있으면 한 줄로 알립니다. 이 기능은 **컴퓨터마다** 사용자 설정 `~/.claude/settings.json` 의 `"env"` 에 `"CLAUDE_CODE_EXPERIMENTAL_CODE_MODE": "1"` 을 넣어야 켜지고(프로젝트 설정은 무시됨), 공장은 이 파일을 고치지 않습니다. 이미 켰거나 `"0"` 으로 일부러 껐으면 아무것도 띄우지 않습니다. 공장 훅·모드와 함께 도는지는 `docs/audits/2026-11-16-code-mode-hooks.md` 에서 실측했습니다.
+
 ## 언인스톨
 
 ```bash
@@ -341,7 +343,7 @@ Claude 전용 `CLAUDE.md`, `.claude/settings.json` / `.claude/settings.local.jso
 <!--===DS:COUNTS:BEGIN===-->
 - 세션 중 실행 훅 **18종** + 훅이 공유하는 판정 모듈 **19개**
 - git pre-commit 게이트 **23종** — 차단 12 / 경고 11
-- harness 프리셋이 까는 스킬 **12종** · 에이전트 **12종** · 공장 테스트 **158개**
+- harness 프리셋이 까는 스킬 **12종** · 에이전트 **12종** · 공장 테스트 **159개**
 <!--===DS:COUNTS:END===-->
 
 > 위 수치는 `assets/hooks/doc_counts.py` 가 소스에서 산출합니다. 손으로 고치지 마십시오 —

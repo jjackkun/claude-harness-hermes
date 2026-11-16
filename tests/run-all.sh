@@ -353,6 +353,7 @@ REGISTERED_TESTS=(
   ui-prototype-build-test.sh
   video-to-interaction-test.sh
   watch-skill-test.sh
+  code-mode-notice-test.sh
   planning-chain-test.sh
   hermes-repo-sync-test.sh
   git-ignore-judge-test.sh
