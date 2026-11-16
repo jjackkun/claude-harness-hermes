@@ -12,7 +12,7 @@
 | 만든 것 | 패널 모드 세 개 — `tool-calls-pane`, `hermes-roster-pane`, `file-explorer` |
 | 위치 | 원본은 이 저장소의 `assets/skills/<모드 이름>/`. 전역 기본 설치(`presets/_common.conf`)에 들어 있어 모든 컴퓨터의 `~/.claude/skills/<모드 이름>/` 에 깔린다 |
 | 설치 | 따로 켤 것이 없다. `setup.sh` 로 새로 설치하거나 `update-all.sh` 로 갱신하면 함께 깔린다. Claude Code 2.1.290 이상에서 로드된다 |
-| 상태 | 세 모드 모두 실제 화면에서 동작 확인(`file-explorer` 의 탭과 git 탭 포함). 모드 시험: `file-explorer` 77건, `hermes-roster-pane` 9건, `tool-calls-pane` 7건 통과. 설치 시험(`tests/mods-install-test.sh`) 21개 항목 통과 |
+| 상태 | 세 모드 모두 실제 화면에서 동작 확인(`file-explorer` 의 탭과 git 탭 포함). 모드 시험: `file-explorer` 77건, `hermes-roster-pane` 11건, `tool-calls-pane` 9건 통과. 설치 시험(`tests/mods-install-test.sh`) 21개 항목 통과 |
 | 주의 | 엔진 타입 파일 머리말에 "EARLY ACCESS: 예고 없이 바뀔 수 있다"고 적혀 있다. 아래 규칙은 2.1.290 기준이다 |
 
 이 문서의 "엔진 규칙"은 두 종류다. **확인**은 시험이나 실제 화면으로 본 것이고, **문서**는 엔진 타입 파일
@@ -111,6 +111,7 @@
 | 파일 트리에 git 상태 색을 넣는다(고친 것 노랑, 새 것 초록, 지운 것 빨강. 폴더는 안의 파일을 따르되 파일과 다른 색: 고친 것을 품으면 주황, 새 것만 품으면 청록) | 편집기들이 쓰는 기준이라 익숙하다. 폴더에 고친 파일과 새 파일이 함께 있으면 고친 쪽(노랑)이 이긴다 | 패널을 열 때·저장할 때·새로고침할 때 `git status` 가 한 번씩 더 돈다. git 탭의 색 기준(스테이징 여부)과 다르다 |
 | 트리 폭은 세로선을 끌어 바꾼다 | 긴 파일 이름이 잘린다. 화면 모듈은 누른 뒤 뗄 때까지 영역 밖의 움직임도 받으므로, 지금 폭에 가로 이동량을 더하면 새 폭이 된다 | 폭은 세션 동안만 기억한다. 트리 12칸, 보기 화면의 글자 자리 12칸 아래로는 줄지 않는다 |
 | 명부 패널은 명령 출력을 그대로 그린다 | `/hermes-roster` 스킬의 원칙("표가 곧 사실이다")을 따른다. JSON 출력이 없다 | 패널이 표보다 좁으면 줄이 접힌다 |
+| 도구 호출은 `tool.call` 이 아니라 대화 줄(`session.append` 의 `response`·`tool-result`)로 본다(`tool-calls-pane`·`hermes-roster-pane`) | 막지 않고 지켜보기만 해도 `tool.call` 훅이 있으면 Code Mode(2.1.323+)가 "isn't available" 로 꺼진다. 대화 줄로 바꾸자 켜졌다(2026-11-16 실측, `docs/audits/2026-11-16-code-mode-hooks.md`) | Code Mode 에서는 코드 안의 도구 호출이 대화 줄을 남기지 않아 패널에 `REPL` 한 줄만 보인다. 다시 불러오면 명부 모드가 기억한 Agent 호출 id 가 비어 그 한 번의 새로고침이 빠진다 |
 
 ## 엔진 규칙
 

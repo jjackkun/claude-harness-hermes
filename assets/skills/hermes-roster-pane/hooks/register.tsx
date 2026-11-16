@@ -2,6 +2,7 @@ import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
 import type { RosterView } from '../types'
+import { agentUseIds, finishesAgent } from './agent-rows'
 import { registerBand } from './band'
 import { ALL_PANES, COMMAND, PANE, REFRESH_KEY, ROSTER_ARGV, TITLE } from './constants'
 import { paneColumns, toFailedView, toView } from './roster'
@@ -44,12 +45,24 @@ export const register: Register = on => {
     }
   })
 
-  // 에이전트를 부르면 "최근 불린 때" 가 바뀌므로 끝난 뒤 다시 읽는다.
-  on('tool.call', { tool: 'Agent' }, async ($, e, next) => {
-    const ran = await next(e)
-    await refresh($)
+  // 에이전트를 부르면 "최근 불린 때" 가 바뀌므로 그 결과 줄이 쌓인 뒤 다시 읽는다.
+  // 보기만 한다: 대화 줄을 읽고 그대로 넘긴다. tool.call 을 쓰면 Code Mode 가 꺼진다.
+  // 다시 불러오면(reload) 기억이 비지만, 그때는 그 호출 하나의 새로고침만 빠진다.
+  const pendingAgents = new Set<string>()
+  on('session.append', { door: 'response' }, async ($, e, next) => {
+    const kept = await next(e)
+    for (const id of agentUseIds(e)) pendingAgents.add(id)
 
-    return ran
+    return kept
+  })
+  on('session.append', { door: 'tool-result' }, async ($, e, next) => {
+    const kept = await next(e)
+    const finished = finishesAgent(e, pendingAgents)
+    if (finished.length === 0) return kept
+    for (const id of finished) pendingAgents.delete(id)
+    await refresh($).catch(err => $.ui.status(`명부 새로고침 실패: ${String(err)}`))
+
+    return kept
   })
 
   on('ui.render', { component: 'Pane', requestId: 'hermes-roster-pane' }, async ($, e) => {

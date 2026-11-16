@@ -1,13 +1,11 @@
 import { atom, read, update } from 'claude-code'
 import type { Register } from 'claude-code'
 
-import type { ToolCall } from '../types'
 import { registerBand } from './band'
+import { applyRow } from './calls'
 import { ALL_PANES, PANE, TITLE } from './constants'
 
 const COMMAND = 'tool-calls'
-// 한 세션에서 보관할 호출 수 상한. 패널은 화면 높이만큼만 그리므로 그보다 넉넉하면 된다.
-const MAX_KEPT_CALLS = 200
 // 머리줄 1 + 빈 줄 1 + 패널 테두리 여유 2
 const RESERVED_ROWS = 4
 const FALLBACK_ROWS = 24
@@ -32,16 +30,16 @@ export const register: Register = on => {
     return { text: '도구 호출 패널을 열었습니다.' }
   })
 
-  on('tool.call', async ($, e, next) => {
-    const call: ToolCall = { id: e.tool_use_id, tool: e.tool, isDone: false }
-    await update($, calls, list => [...list, call].slice(-MAX_KEPT_CALLS))
-    const ran = await next(e)
-    await update($, calls, list =>
-      list.map(one => (one.id === call.id ? { ...one, isDone: true } : one)),
-    )
+  // 보기만 한다: 대화에 쌓인 줄을 읽고 그대로 넘긴다. tool.call 을 쓰면 Code Mode 가 꺼진다.
+  for (const door of ['response', 'tool-result'] as const) {
+    on('session.append', { door }, async ($, e, next) => {
+      const kept = await next(e)
+      // 패널 갱신이 실패해도 대화 줄은 이미 저장됐다 — 오류를 삼키지 않고 상태줄에 알린다
+      if (!e.agentId) await update($, calls, list => applyRow(list, e)).catch(err => $.ui.status(`도구 호출 패널 갱신 실패: ${String(err)}`))
 
-    return ran
-  })
+      return kept
+    })
+  }
 
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
     const { Box, Button, Text } = $.ui.resolve(e)

@@ -1,5 +1,8 @@
 import { expect, test } from 'claude-code/testing'
 
+import { agentUseIds, finishesAgent } from '../hooks/agent-rows'
+import type { AppendedRow } from '../hooks/agent-rows'
+
 const PLUGIN = 'hermes-roster-pane'
 const PANE = {
   plugin: PLUGIN,
@@ -92,4 +95,19 @@ test('닫기는 명부 패널만, 전체 닫기는 세 패널을 모두 닫으�
   await ui.press({ key: 'close-all' })
   expect(ids.slice(1).sort()).toEqual(['file-explorer', 'hermes-roster-pane', 'tool-calls-pane'])
   await ui.unmount()
+})
+
+const ROW = (door: 'response' | 'tool-result', content: unknown[]) =>
+  ({ door, message: { type: door === 'response' ? 'assistant' : 'user', content }, origin: { kind: 'model' }, uuid: `u-${door}` }) as unknown as AppendedRow
+
+test('Agent 를 부른 응답 줄에서 그 호출 id 만 고른다', () => {
+  const row = ROW('response', [{ type: 'tool_use', id: 'a1', name: 'Agent' }, { type: 'tool_use', id: 'r1', name: 'Read' }])
+  expect(agentUseIds(row)).toEqual(['a1'])
+  expect(agentUseIds(ROW('tool-result', [{ type: 'tool_use', id: 'a2', name: 'Agent' }]))).toEqual([])
+})
+
+test('기억한 Agent 호출의 결과 줄만 새로고침 대상이 된다', () => {
+  const pending = new Set(['a1'])
+  expect(finishesAgent(ROW('tool-result', [{ type: 'tool_result', tool_use_id: 'a1' }]), pending)).toEqual(['a1'])
+  expect(finishesAgent(ROW('tool-result', [{ type: 'tool_result', tool_use_id: 'r1' }]), pending)).toEqual([])
 })
