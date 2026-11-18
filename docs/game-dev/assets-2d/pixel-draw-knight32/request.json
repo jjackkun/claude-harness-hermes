@@ -1,0 +1,24 @@
+{
+ "subject": "A medieval fantasy knight for a side-scrolling action game: steel helmet with a red plume, blue tabard over chainmail, sword in the right hand, round wooden shield, side view facing right, standing ready.",
+ "size": 32,
+ "kind": "sprite",
+ "frames": [
+  "sprite"
+ ],
+ "walk_cycle": false,
+ "palette": {
+  "name": "free:16",
+  "limit": 16,
+  "colors": []
+ },
+ "candidates": 2,
+ "effort": "high",
+ "answer_format": "chargrid",
+ "batch": false,
+ "max_tokens": 32000,
+ "pick": "vision",
+ "style": null,
+ "motion": null,
+ "poses": {},
+ "duration_ms": 150
+}

@@ -9,7 +9,7 @@ Claude Code 로 게임을 만들 수 있는지 조사한 기록이다. 아직 �
 
 - Claude Code 는 **엔진 없이** 브라우저 게임을 만들 수 있다. 브라우저가 엔진 역할을 한다(2D 는 Canvas, 3D 는 WebGL/three.js).
 - 유니티를 쓰려면 유니티 본체 설치·로그인이 필요하고, Claude 는 유니티 명령창과 공식 스킬로 조종한다.
-- 그림은 Claude 가 코드로 그리면 볼품이 없다. 영상 3에서는 코드로 찍은 도트도, 무료 도트 팩을 붙인 판도 "눈이 안 갔다". 그래서 3D 로 바꾸고 무료 3D 팩(CC0)을 썼다. 그림 재료를 무엇으로 할지가 먼저 정할 일이다.
+- 그림은 Claude 가 맨손 코드로 그리면 볼품이 없다(영상 3, 우리 실측 모두). sprite-gen 의 `pixel-draw` 는 Claude 구독만으로 32px 도트를 쓸 만하게 그리고, 큰 그림과 "캐릭터 한 장 → 동작" 은 sprite-gen 영상 파이프라인(ChatGPT·xAI 필요)이 한다 — [2D 에셋](2026-11-18-2d-assets.md).
 
 ## 문서
 
@@ -17,6 +17,7 @@ Claude Code 로 게임을 만들 수 있는지 조사한 기록이다. 아직 �
 |---|---|
 | [2026-11-18-findings.md](2026-11-18-findings.md) | 논의 정리 — 엔진, three.js 와 유니티, 출시 경로, 이 컴퓨터 준비 상태 |
 | [2026-11-18-jj-agent-room-game-company.md](2026-11-18-jj-agent-room-game-company.md) | jj-agent-room 에 게임회사 세우기 — 정한 것 5개, 49명 직원, 열린 질문 셋과 추천 |
+| [2026-11-18-2d-assets.md](2026-11-18-2d-assets.md) | 2D 에셋 얻는 법 — 코드 그림의 한계, sprite-gen(pixel-draw 32px 기사 실측, 영상 → 동작), 라이선스 |
 | [ccgs-repo.md](ccgs-repo.md) | Claude Code Game Studios 저장소 정리 — README·`/prototype` 스킬 |
 | [videos/2026-11-18-ccgs-shorts-sysmaker/](videos/2026-11-18-ccgs-shorts-sysmaker/ccgs-shorts.md) | 영상 1 — 게임 스튜디오 소개 쇼츠 (50초) |
 | [videos/2026-11-18-ccgs-intro-yamyam/](videos/2026-11-18-ccgs-intro-yamyam/ccgs-intro.md) | 영상 2 — 게임 스튜디오 README 소개 (9분) |
