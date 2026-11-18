@@ -8,7 +8,7 @@
 
 ## 0. 다음 세션 시작점
 
-**진행: G1~G10 완료 (G8 은 근거로 닫고 건너뜀, §7). 남은 것: G11 전파(지시 시).**
+**진행: G1~G11 완료 (G8 은 근거로 닫고 건너뜀, §7). 완료 — 2026-11-12.**
 
 실측 요약: 사슬 시험 44/44 · ui-prototype 40/40 · 프리셋 무결성 107 참조 · 전체 시험 145 중 143 → 실패 2(문서 수치·생성 CLAUDE.md 103줄, 둘 다 이번 변경) 고친 뒤 해당 시험 재실행 통과 · `update-all-roundtrip` 은 다른 세션과 겹친 흔들림(단독 35/35)
 
@@ -23,7 +23,7 @@
 | Step 6 기존 자산 잇기 | G6 · G7 | 완료 — 사슬 평가: 수준 B 판정, 근거·requires 에 FR 16회. ui-prototype 시험 40/40, devil-advocate 62줄 |
 | Step 7 사슬 배정 측정 (사람이 터미널에서) | G8 | 건너뜀 (사용자 결정, §7) |
 | Step 8 출처·README·전체 시험 | G9 · G10 | 완료 — README·수치 동기화, 생성 CLAUDE.md 99줄(줄 합치기 + product-specs 목차 한 줄), 전체 시험 1회 |
-| Step 9 전파 (사용자 지시가 있을 때만) | G11 | 대기 |
+| Step 9 전파 (사용자 지시가 있을 때만) | G11 | 완료 — 2026-10-21 12곳 전파(§6), 2026-11-12 재전파 3/3 성공으로 재확인 |
 
 ## 1. 동기 (Why)
 
@@ -71,8 +71,9 @@
       검증: G1 (d), `grep -rli deanpeters assets/skills` → 없음
 - [x] G10 — 등록·전체 시험: 스킬마다 완성 직후 `harness.conf` `SKILLS+=` 에 근거 주석과 함께 등록하고 `bash tests/preset-integrity-test.sh` 통과. 마지막에 전체 1회
       검증: `bash tests/run-all.sh --check-orphans && bash tests/run-all.sh`, README 스킬 설명 절 갱신(readme-sync-before-commit)
-- [ ] G11 — (Step 9, 사용자 지시가 있을 때만) 전파: 등록 소우주 전부에 스킬 셋과 `docs/product-specs/README.md`(없을 때만) 가 깔린다. 커밋·푸시는 기억된 예외 규칙을 따른다
+- [x] G11 — (Step 9, 사용자 지시가 있을 때만) 전파: 등록 소우주 전부에 스킬 셋과 `docs/product-specs/README.md`(없을 때만) 가 깔린다. 커밋·푸시는 기억된 예외 규칙을 따른다
       검증: `bash update-all.sh` 성공 수, 소우주마다 `ls .claude/skills/{idea-check,prd-writer,intended-vs-implemented}`
+      결과(2026-11-12, 공장 fe087d1): update-all 성공 3 · 실패 0 (이 컴퓨터 레지스트리 3곳). jj-agent-room·drh-cloth-shop 모두 스킬 4개(idea-check·prd-writer·intended-vs-implemented·ui-prototype)와 `docs/product-specs/README.md` 있음
 
 ## 2-bis. 착수 전 확인한 사실 (2026-10-21)
 
@@ -268,9 +269,9 @@
 
 ## 8. 회고 (완료 시 작성)
 
-- 잘된 것:
-- 잘못된 것:
-- 다음 룰 후보:
+- 잘된 것: 스킬마다 작성 → 평가 → 등록을 한 단위로 묶어 평가 통과율(100% vs 42~70%)과 오발동 0 을 단계마다 확인했다. 평가가 공장 결함 3건(마커 블록 데이터 손실·산술 비교 명령 실행·`.gitkeep` 누락)과 우리 검사기 결함 1건을 찾았다.
+- 잘못된 것: G8 1차 실행이 구독 한도에 걸려 36회 중 22회가 무효였다 — 대량 평가 전 호출 수를 먼저 알리지 않았다. G11 은 2026-10-21 에 이미 전파했는데 체크를 빠뜨려 3주간 active 에 남았다.
+- 다음 룰 후보: 전파를 기록할 때 §6 로그와 §2 체크박스를 같은 편집에서 고친다(한쪽만 고치면 계획이 끝나지 않은 것으로 보인다).
 
 ## 9. 리뷰 반영 (2026-10-21)
 
