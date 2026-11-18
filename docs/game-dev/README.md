@@ -2,7 +2,7 @@
 
 Claude Code 로 게임을 만들 수 있는지 조사한 기록이다. 아직 게임은 만들지 않았다.
 
-- 상태: **조사 단계** (2026-11-18). 다음 결정: 첫 출시 목표(웹·스팀·모바일) 고르기.
+- 상태: **설계 논의 단계** (2026-11-18). jj-agent-room 에 게임회사를 세우는 쪽으로 정했다. 다음 결정: [게임회사 논의](2026-11-18-jj-agent-room-game-company.md) 4절의 추천 셋(한도·장부·스킬 이식)을 받아들일지.
 - 조사한 것: 영상 3편, 깃허브 저장소 1개(Claude Code Game Studios 1.3.0).
 
 ## 한 줄 결론
@@ -16,6 +16,7 @@ Claude Code 로 게임을 만들 수 있는지 조사한 기록이다. 아직 �
 | 문서 | 내용 |
 |---|---|
 | [2026-11-18-findings.md](2026-11-18-findings.md) | 논의 정리 — 엔진, three.js 와 유니티, 출시 경로, 이 컴퓨터 준비 상태 |
+| [2026-11-18-jj-agent-room-game-company.md](2026-11-18-jj-agent-room-game-company.md) | jj-agent-room 에 게임회사 세우기 — 정한 것 5개, 49명 직원, 열린 질문 셋과 추천 |
 | [ccgs-repo.md](ccgs-repo.md) | Claude Code Game Studios 저장소 정리 — README·`/prototype` 스킬 |
 | [videos/2026-11-18-ccgs-shorts-sysmaker/](videos/2026-11-18-ccgs-shorts-sysmaker/ccgs-shorts.md) | 영상 1 — 게임 스튜디오 소개 쇼츠 (50초) |
 | [videos/2026-11-18-ccgs-intro-yamyam/](videos/2026-11-18-ccgs-intro-yamyam/ccgs-intro.md) | 영상 2 — 게임 스튜디오 README 소개 (9분) |
