@@ -147,7 +147,7 @@
 
 - 2026-11-19 covered 처리(사용자 지시 "4개만 지우기" — ⚠️ 2개 제외한 4개):
   - 지움(git rm, 되살리기: `git checkout <이 커밋>^ -- <경로>`): `check-privacy-before-commit` · `redact-sensitive-data-before-commit` · `full-test-suite-before-commit`. 셋 다 주입 0회.
-  - **남김: `auto-redact-email-in-docs`** — 지우기 직전 본 checkout DB 를 읽기 전용으로 보니 주입 6 · 도움 5 였다. 내용도 "게이트에 걸리기 전에 예시 도메인을 써라" 는 예방법이라 §7 기준으로는 prose 에 가깝다. 사용자 판단을 기다린다.
+  - **남김: `auto-redact-email-in-docs`** — 지우기 직전 본 checkout DB 를 읽기 전용으로 보니 주입 6 · 도움 5 였다. 내용도 "게이트에 걸리기 전에 예시 도메인을 써라" 는 예방법이라 §7 기준으로는 prose 에 가깝다. 2026-11-19 사용자 결정: 남겨 둔다.
   - 남은 일: 본 checkout `.hermes/state.db` 의 `skill_index` 행 id 82 · 168 · 170 이 지운 파일을 가리킨다. 색인 도구에는 없는 파일의 행을 지우는 경로가 없다. main 에 합친 뒤 `state='tombstoned'` 로 바꿀지(검색이 tombstoned 를 거른다, `hermes-search.py:389`), 지울지 정한다 — DB 를 바꾸는 일이라 승인 뒤에.
 
 ## 8. 회고 (완료 시 작성)
