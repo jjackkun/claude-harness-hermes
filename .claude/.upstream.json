@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "factory_commit": "b50f4f1ca893c284305434e5973ac6a944b8363c",
+  "factory_commit": "12da55519a4f0511f1b84e34629f7e0e51552829",
   "items": [
     {
       "name": "architect",
@@ -326,6 +326,27 @@
       "local_patch": {
         "description_prefix": "스킬을 만들고 고치고 성능(평가·발동 정확도)을 잰다. "
       }
+    },
+    {
+      "name": "review-coverage",
+      "kind": "skills",
+      "path": "assets/skills/review-coverage",
+      "mode": "adapted",
+      "sources": [
+        {
+          "repo": "alibaba/open-code-review",
+          "path": "skills/open-code-review-delegate/SKILL.md",
+          "sha": "78bb26d19f2b2e6f56a16ef8673e208a04251855"
+        },
+        {
+          "repo": "alibaba/open-code-review",
+          "path": "internal/config/rules/rule_docs",
+          "sha": "8c06bf66bfc741c87f1feb309607e09e6acac6a8"
+        }
+      ],
+      "tests": [
+        "tests/review-coverage-test.sh"
+      ]
     }
   ]
 }
