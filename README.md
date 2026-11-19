@@ -104,7 +104,9 @@ claude-harness-hermes/               ← 이 디렉터리 (private git repo 권�
 ├── scripts/
 │   ├── hermes-init.py                ← 헤르메스 SQLite DB 초기화
 │   ├── hermes-save-session.py        ← 세션 내용 DB 저장 + 패턴 집계 (session_id upsert, 사용자 지적 + 객관 실패 신호 감지)
-│   ├── hermes-crystallize.py         ← 패턴 결정화 (claude -p 호출 + junk SKIP 게이트)
+│   ├── hermes-crystallize.py         ← 패턴 결정화 (claude -p 호출 + junk SKIP 게이트 + 검사 판정)
+│   ├── hermes_enforce_verdict.py     ← 결정화 검사 판정 해석 (covered/checkable/prose, 차단 게이트 목록)
+│   ├── hermes_enforce_ledger.py      ← 검사 판정 장부 + 후보 list
 │   ├── hermes-increment.py           ← 패턴 카운트 증가 (결정화된 패턴 제외)
 │   ├── hermes-search.py              ← FTS5 스킬 검색
 │   ├── hermes-evolve-skill.py        ← 스킬 자가 진화
@@ -344,7 +346,7 @@ Claude 전용 `CLAUDE.md`, `.claude/settings.json` / `.claude/settings.local.jso
 <!--===DS:COUNTS:BEGIN===-->
 - 세션 중 실행 훅 **18종** + 훅이 공유하는 판정 모듈 **19개**
 - git pre-commit 게이트 **23종** — 차단 12 / 경고 11
-- harness 프리셋이 까는 스킬 **13종** · 에이전트 **12종** · 공장 테스트 **160개**
+- harness 프리셋이 까는 스킬 **13종** · 에이전트 **12종** · 공장 테스트 **161개**
 <!--===DS:COUNTS:END===-->
 
 > 위 수치는 `assets/hooks/doc_counts.py` 가 소스에서 산출합니다. 손으로 고치지 마십시오 —
@@ -538,6 +540,11 @@ Claude 작업
 
 > **SKIP 게이트**: LLM이 "이 패턴은 스킬로 만들 가치가 없다"고 판단하면 `crystallized=-1` 로 마킹됩니다.
 > 이 행은 재결정화 대상에서 영구 제외되므로, 동일 패턴이 반복 집계되어도 불필요한 `claude -p` 호출이 발생하지 않습니다.
+
+> **검사 판정 (ENFORCE)**: 같은 `claude -p` 호출에서 모델이 끝줄에 "이 실수를 기계로 막을 수 있나" 를 판정합니다 —
+> `covered:<R-이름>`(pre-commit 의 차단 게이트가 이미 막음 → 스킬을 쓰지 않고 `-1`) · `checkable:<hook|gate|test>`(검사로 옮길 후보) · `prose`(글로만).
+> 판정은 `.hermes/enforce-verdicts.jsonl` 장부에 남고, 후보는 `python3 scripts/hermes_enforce_ledger.py list --hermes-dir .hermes` 로 봅니다.
+> 실제 승격은 사람이 `harness-promote-rule` 스킬로 합니다.
 
 > **B 신호 (객관적 실수 감지)**: 사용자가 입으로 지적하지 않아도, 세션 transcript 의 도구 실행 결과에서
 > 테스트/빌드 실패(`test-fail:<파일>`)와 git 되돌림(`revert:<파일>`)을 감지해 같은 결정화 파이프라인에 넣습니다.

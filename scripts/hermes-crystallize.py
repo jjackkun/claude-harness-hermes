@@ -32,6 +32,8 @@ from hermes_skill_write import write_skill_file  # noqa: E402  (스킬 파일은
 
 from hermes_crystallize_evidence import (  # noqa: E402
     derive_search_terms, evidence_for, fetch_evidence, fetch_memory_evidence, get_pattern_count)
+from hermes_enforce_verdict import ENFORCE_RULE, gate_names, pre_commit_path, split_verdict  # noqa: E402  (검사 판정, 계획 2026-11-19)
+import hermes_enforce_ledger as enforce_ledger  # noqa: E402
 
 
 def connect_db(db_path: str) -> sqlite3.Connection:
@@ -187,7 +189,7 @@ def skill_filename(content: str, key: str) -> str:
 
 
 def generate_skill_content(
-    key: str, meta: dict, evidence: str, count: int, *, from_evidence: bool = False
+    key: str, meta: dict, evidence: str, count: int, *, from_evidence: bool = False, enforce_rule: str = ""
 ) -> str | None:
     """Claude CLI를 텍스트 생성기로만 사용해 스킬 본문을 생성한다.
 
@@ -203,7 +205,7 @@ def generate_skill_content(
     date_str = datetime.now().strftime("%Y-%m-%d")
     if from_evidence:
         prompt = SKILL_PROMPT_FROM_EVIDENCE.format(
-            quality_gate=QUALITY_GATE,
+            quality_gate=QUALITY_GATE + enforce_rule,
             naming_rule=NAMING_RULE,
             key=key,
             description=meta["description"],
@@ -213,7 +215,7 @@ def generate_skill_content(
         )
     else:
         prompt = SKILL_PROMPT.format(
-            quality_gate=QUALITY_GATE,
+            quality_gate=QUALITY_GATE + enforce_rule,
             naming_rule=NAMING_RULE,
             key=key,
             description=meta["description"],
@@ -392,6 +394,9 @@ def crystallize(db_path: str, keys: list[str], project_dir: str, agent_id: str =
     else:
         skills_dir = os.path.join(os.path.dirname(db_path), "skills")
     os.makedirs(skills_dir, exist_ok=True)
+    hermes_dir = os.path.dirname(db_path)
+    gates = gate_names(pre_commit_path(project_dir))
+    enforce_rule = ENFORCE_RULE.format(gates=", ".join(gates) or "(없음)")
 
     for key in keys:
         is_fallback = key not in CATEGORY_METADATA
@@ -405,13 +410,21 @@ def crystallize(db_path: str, keys: list[str], project_dir: str, agent_id: str =
 
         evidence, count = evidence_for(db_path, key, meta, is_fallback, agent_id, about)
 
-        content = generate_skill_content(key, meta, evidence, count, from_evidence=is_fallback)
+        content = generate_skill_content(key, meta, evidence, count, from_evidence=is_fallback,
+                                         enforce_rule=enforce_rule)
         if content == SKIP_SENTINEL:
             mark_rejected(db_path, key)
             print(f"[hermes-crystallize] REJECT:{key} — junk 패턴 (재시도 안 함)")
             continue
         if not content:
             print(f"[hermes-crystallize] SKIP:{key} — 콘텐츠 생성 실패")
+            continue
+        # 판정 줄은 본문에서 뗀다. 게이트가 이미 막으면 글로 굳히지 않고 거부(-1)로 두고 장부에 이유를 남긴다.
+        verdict, detail, note, content = split_verdict(content, gates)
+        if verdict == "covered":
+            enforce_ledger.append(hermes_dir, key, verdict, detail, note)  # 이유 먼저 — -1 만 남고 이유가 없는 일을 막는다
+            mark_rejected(db_path, key)
+            print(f"[hermes-crystallize] COVERED:{key} — {detail} 가 이미 막음 (스킬 안 씀)")
             continue
 
         # 모델 출력에 비밀이 있을 수 있다 — 이름을 짓기 전에 가린다(제목이 파일명이 된다)
@@ -423,6 +436,8 @@ def crystallize(db_path: str, keys: list[str], project_dir: str, agent_id: str =
         write_skill_file(skill_path, content + "\n", project_dir)
 
         register_skill(db_path, skill_path, key, agent_id=agent_id)
+        enforce_ledger.append(hermes_dir, key, verdict, detail, note,
+                              skill_file=os.path.relpath(skill_path, project_dir))
         print(f"[hermes] DONE:{filename} (키: {key})")
 
 

@@ -25,9 +25,9 @@
 - [ ] G3. `checkable` 이면 스킬은 지금처럼 쓰고, 장부에 `verdict=checkable`, `kind`, `skill_file` 을 남긴다.
   `list` 명령이 장부에서 후보를 모아 보인다 —
   검증: 후보 2건 장부 → `list` 출력 2줄. 스킬 파일을 진화(`hermes-evolve-skill.py`)로 다시 써도 `list` 결과가 같다.
-- [ ] G4. "이미 있는 게이트 목록" 은 `core-beliefs.md` 의 `## R-…` 제목에서 기계로 뽑는다(손 목록 금지).
+- [ ] G4. "이미 있는 게이트 목록" 은 설치된 pre-commit 첫머리 `#   차단 N — R-…` 줄에서 기계로 뽑는다(손 목록 금지).
   모델이 목록에 없는 이름으로 `covered` 를 내면 `prose` 로 강등한다 —
-  검증: 실제 `core-beliefs.md` 에서 R-size·R-secret·R-cx 를 찾는다. `covered:R-없는이름` → 스킬 파일 1개 생성, 장부 `verdict=prose`, `note=unknown-gate`.
+  검증: 실제 `assets/hooks/pre-commit.sh` 에서 R-size·R-secret·R-cx·R-privacy 를 찾고, R-out·R-cov 는 없다. `covered:R-없는이름` → 스킬 파일 1개 생성, 장부 `verdict=prose`, `note=unknown-gate`.
 - [ ] G5. 판정 줄이 없거나 형식이 틀리면 `prose` 로 처리한다(결정화가 멈추지 않는다) —
   검증: 판정 줄 없는 가짜 출력 → 스킬 파일 1개, 장부 `verdict=prose`, `note=missing`.
 - [ ] G6. 에이전트 개인 층(`--agent`)도 같은 분기를 탄다 —
@@ -117,6 +117,11 @@
 - 2026-11-19: `covered` 는 파일을 안 쓴다 — 근거: 게이트가 이미 막는 것을 매 턴 글로 주입하면 주입 자리만 차지한다. 장부와 되돌리기 절차(§4)로 틀린 판정을 되살린다.
 - 2026-11-19: 게이트 목록은 `core-beliefs.md` 제목에서 뽑고, 목록 밖 이름은 `prose` 로 강등한다 — 근거: 모델이 지어낸 게이트 이름으로 스킬이 영구히 사라지는 것을 막는다.
 - 2026-11-19: 새 값 `-2` 대신 기존 `-1` + 장부 — 근거(검토 지적): `-2` 는 `hermes-cleanup.py:123` 에서 삭제 보호를 못 받고, `hermes-increment.py:62` 에서 "거부됨" 으로 찍히고, 동기화 `max()` 에서도 다르게 섞인다. 세 곳을 고치는 것보다 이미 맞게 다루는 `-1` 을 쓰고 이유를 장부에 두는 편이 작다.
+- 2026-11-19 (구현 중): 게이트 목록을 `## R-` 제목에서 → 두 문서에 나온 `R-…` 이름 전부로 넓혔다 — 근거: 시험 [f] 가 실제 `core-beliefs.md` 에서 R-secret 을 못 찾았다. 제목은 31개인데 R-secret 은 다른 절 본문(668줄)에만, R-privacy 는 `CLAUDE.md` 에만 있다. 제목만 보면 진짜 게이트의 `covered` 판정이 `unknown-gate` 로 강등된다.
+- 2026-11-19 (리뷰 뒤): 게이트 목록을 다시 바꿨다 — 두 문서의 `R-…` 전부 → pre-commit 첫머리 "차단" 줄 — 근거(code-reviewer MEDIUM): 문서 이름을 다 모으면 측정 훅(R-out)·경고 게이트(R-cov)까지 들어간다. 모델이 그 이름으로 `covered` 를 내면 막지도 않는 게이트 때문에 스킬이 영영 안 생긴다. "차단" 줄은 공장·소우주 pre-commit 에 같은 형식으로 있다(공장 · drh-cloth-shop · jj-agent-room 확인).
+- 2026-11-19 (리뷰 뒤): 장부 쓰기 실패는 남기고 넘어간다. `covered` 는 장부를 먼저 쓰고 `-1` 을 단다 — 근거(MEDIUM): 장부 예외가 루프를 끊어 남은 키가 처리되지 않았다. 순서가 반대면 이유 없는 `-1` 만 남는다.
+- 2026-11-19 (리뷰 뒤): 판정 줄은 마지막(없으면 첫) 비어 있지 않은 줄만 본다. 닫는 펜스를 벗긴다. 게이트 이름은 대소문자·백틱을 무시한다 — 근거(MEDIUM·LOW): 본문 중간 예시 줄이 지워지거나, 펜스 뒤 판정에서 "```" 가 스킬에 남았다.
+- 2026-11-19 (구현 중): 실모델 확인을 계획의 1회 대신 2회 했다(`repeated-mistake` · `css-property-missing`) — 근거: 판정 값이 하나로 몰리는지 보려고. haiku 2회.
 - 2026-11-19: 표식을 스킬 파일 안이 아니라 장부 파일에 둔다 — 근거(검토 지적): `hermes-evolve-skill.py` 가 모델로 파일 전체를 다시 쓰므로 본문 안 표식은 조용히 사라질 수 있다.
 
 ## 7. 발견·예외
@@ -124,6 +129,10 @@
 - `mask-sensitive-data-before-commit.md` 는 게이트(R-privacy)가 막은 뒤 **통과하는 법**을 적은 스킬이다. "이미 막힘" 과 "막힌 뒤 어떻게 하나" 는 다르다 — 후자는 `prose` 다. 판정 지시에 넣는다(Step 3).
 - `hermes_sync_learning.py:164` 는 `max(crystallized, excluded.crystallized)` 로 합친다. 한 컴퓨터의 `-1`(거부)이 다른 컴퓨터의 `0`(대기)에 진다. 거부한 패턴이 다른 컴퓨터에서 다시 결정화될 수 있다. 이번 범위 밖 — 백로그로 보낸다(Step 6).
 - 2026-11-19 planner-lite 검토: NEEDS_WORK, 지적 8건. HIGH 3건(`-2` 읽는 곳 · 동기화 · 진화가 표식 지움)은 코드에서 확인 뒤 위 결정으로 반영했다. MEDIUM 5건(드림 경로 · 시험 방식 · 지어낸 게이트 · 되돌리기 · 실모델 통과 기준)은 G4~G6·§4·Step 4 에 반영했다.
+
+- 2026-11-19 code-reviewer: WARNING — MEDIUM 3 · LOW 3. MEDIUM 3 과 LOW 2(대소문자 · 본문 줄 삭제)를 고치고 시험 [f]·[i]·[j] 로 고정했다. LOW "db_path 가 폴더 없는 상대 경로" 는 `hermes_dir or "."` 로 막았다.
+- Step 4 실측(2026-11-19, 임시 프로젝트, haiku 2회): 두 번 모두 `ENFORCE:` 줄이 나왔다. 해석도 `note` 없이 됐다. 판정은 둘 다 `checkable:hook` 이었다. 스킬 본문의 `ENFORCE` 는 0회였다.
+  두 패턴(반복 실수 감지 · CSS flex 부모)이 정말 훅으로 잡히는지는 별개다 — 모델이 `checkable` 쪽으로 쏠리는지는 소급 판정(Step 5) 표본에서 본다.
 
 ## 8. 회고 (완료 시 작성)
 
