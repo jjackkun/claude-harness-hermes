@@ -130,6 +130,13 @@ r = v.split_verdict("# t\n예:\nENFORCE: checkable:hook\n- [ ] b\nENFORCE: prose
 check("본문 중간 예시 줄 보존", r[0] == "prose" and "ENFORCE: checkable:hook" in r[3])
 r = v.split_verdict("ENFORCE: checkable:test\n# t\n- [ ] a", G)
 check("첫 줄 판정도 인식·제거", r[0] == "checkable" and r[3].startswith("# t"))
+# 실측(2026-11-19 haiku 47회)에서 나온 꾸밈 — 판정 뒤 설명 · 굵게 · 판정 뒤 설명 문단
+r = v.split_verdict("# t\n\n`ENFORCE: checkable:gate` — 커밋 게이트로 잡을 수 있다.", G)
+check("판정 뒤 같은 줄 설명", r[:2] == ("checkable", "gate"))
+r = v.split_verdict("# t\n\n**ENFORCE: covered:R-secret**\n\n(R-secret 이 이미 막는다.)", G)
+check("굵게 + 뒤 설명 문단", r[:2] == ("covered", "R-secret") and "**ENFORCE" not in r[3])
+r = v.split_verdict("# t\n\nENFORCE: checkable:hook-ish", G)
+check("틀린 종류는 bad-kind", r[0] == "prose" and r[2] == "bad-kind")
 PY
 )
 

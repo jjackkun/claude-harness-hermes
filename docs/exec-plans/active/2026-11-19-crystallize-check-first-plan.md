@@ -99,7 +99,7 @@
 - 통과 기준: 모델 출력에 `ENFORCE:` 줄이 있고 `split_verdict` 가 `note=missing` 없이 해석한다. 판정 값(covered/checkable/prose)이 무엇인지는 기준이 아니다 — 기록만 한다.
 - 실패하면(줄이 없으면) 지시 문구를 고쳐 한 번 더. 두 번 실패하면 멈추고 보고한다.
 
-### Step 5. 소급 판정 — 승인 뒤에만 [보류]
+### Step 5. 소급 판정 — 47개 (2026-11-19 사용자 승인: "47개만 판정")
 
 - 비용: haiku 최대 166회. 더 싼 판: 본문에 "강제 장치"·"게이트"·"hook"·"훅" 이 들어간 47개만(worktree 155개 중 실측) → 47회.
 - 사용자 승인 없이는 돌리지 않는다. 결과로 파일을 지우지 않는다 — `covered` 판정 목록만 보이고, 지울지는 사람이 정한다.
@@ -133,6 +133,17 @@
 - 2026-11-19 code-reviewer: WARNING — MEDIUM 3 · LOW 3. MEDIUM 3 과 LOW 2(대소문자 · 본문 줄 삭제)를 고치고 시험 [f]·[i]·[j] 로 고정했다. LOW "db_path 가 폴더 없는 상대 경로" 는 `hermes_dir or "."` 로 막았다.
 - Step 4 실측(2026-11-19, 임시 프로젝트, haiku 2회): 두 번 모두 `ENFORCE:` 줄이 나왔다. 해석도 `note` 없이 됐다. 판정은 둘 다 `checkable:hook` 이었다. 스킬 본문의 `ENFORCE` 는 0회였다.
   두 패턴(반복 실수 감지 · CSS flex 부모)이 정말 훅으로 잡히는지는 별개다 — 모델이 `checkable` 쪽으로 쏠리는지는 소급 판정(Step 5) 표본에서 본다.
+
+- Step 5 실측(2026-11-19, haiku 47회, 일회용 스크립트 · 스킬 파일·DB·장부 무변경):
+  - 결과: checkable 34 · covered 6 · prose 5 · 질문 무시 2.
+  - **해석기가 너무 엄격했다.** 첫 해석에서 47 중 11(23%)이 형식 때문에 prose 로 떨어졌다 — 판정 뒤 같은 줄 설명 6 · 판정 뒤 설명 문단 3 · 질문 무시 2.
+    판정 앞머리만 읽고, 끝·첫 줄에 없으면 본문의 마지막 판정 줄을 찾도록 고쳤다(시험 [i] 3건 추가). 받은 출력을 다시 해석하니 형식 손실 11 → 2.
+  - 질문 무시 2건은 모델이 프롬프트 대신 "메시지가 비어 있습니다" · "활성 계획을 이어갈까요?" 로 답했다. `claude -p` 가 저장소 문맥(활성 계획)을 읽는 것으로 보인다 — 추정, 원인 미확인. 결정화도 같은 명령을 쓰지만 이 경우 prose 로 떨어질 뿐 데이터를 잃지 않는다.
+  - **checkable 쏠림.** 34/47(72%). 대상이 "게이트·훅" 말이 든 파일이라 높게 나올 수 있다. 그래도 Step 4 의 2/2 와 합치면 모델이 checkable 을 쉽게 고른다. 후보 목록은 사람이 거른다는 전제가 필요하다.
+  - covered 6 — 사람이 볼 목록(파일은 지우지 않음):
+    - R-privacy: `auto-redact-email-in-docs` · `check-privacy-before-commit` · `redact-sensitive-data-before-commit` · `mask-sensitive-data-before-commit`
+    - R-test: `full-test-suite-before-commit` · `test-gate-silent-skip-alerts`
+    - 주의: `mask-sensitive-data-before-commit` 는 §7 에서 "막힌 뒤 통과하는 법" 이라 prose 라고 본 것이다. 모델은 지시를 받고도 covered 로 냈다. `test-gate-silent-skip-alerts` 도 R-test 자체의 빈틈을 다룬 것이라 covered 가 의심스럽다. covered 6 중 2는 판정이 틀렸을 수 있다.
 
 ## 8. 회고 (완료 시 작성)
 

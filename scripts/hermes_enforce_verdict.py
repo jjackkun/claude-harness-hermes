@@ -17,7 +17,9 @@ import subprocess
 # 모델이 그 이름으로 covered 를 내면 스킬이 영영 안 생긴다(2026-11-19 리뷰 MEDIUM).
 _BLOCK_LINE = re.compile(r"^#\s*차단\s*\d+\s*—\s*(.+)$", re.MULTILINE)
 _GATE_NAME = re.compile(r"\bR-[a-z][a-z0-9-]*[a-z0-9]")
-_VERDICT_LINE = re.compile(r"^\s*`?ENFORCE:\s*(.*?)`?\s*$")
+# 판정 줄 꾸밈(``` ` ```·`**`)과 뒤에 붙는 설명을 허용한다. 실측(2026-11-19 haiku 47회): 47 중 9가 이 꾸밈 때문에 prose 로 떨어졌다.
+_VERDICT_LINE = re.compile(r"^[\s`*]*ENFORCE:\s*(.*?)\s*$")
+_VERDICT_HEAD = re.compile(r"^[`*\s]*(covered|checkable|prose)\b[`*\s]*(?::[`*\s]*([A-Za-z][A-Za-z0-9-]*))?", re.IGNORECASE)
 _TRAILING_FENCE = re.compile(r"\n```\s*$")
 _KINDS = ("hook", "gate", "test")
 
@@ -57,26 +59,29 @@ def gate_names(pre_commit: str) -> list:
 
 
 def _classify(raw: str, gates: list) -> tuple:
-    """(verdict, detail, note). 틀린 형식·목록 밖 게이트는 prose 로 강등한다. 게이트 이름은 대소문자·백틱 무시."""
-    head, _, detail = raw.partition(":")
-    head, detail = head.strip().lower(), detail.strip().strip("`").strip()
+    """(verdict, detail, note). 앞머리 `종류:값` 만 읽고 뒤 설명은 버린다. 목록 밖 게이트·틀린 종류는 prose 로 강등.
+    게이트 이름은 대소문자·백틱 무시."""
+    m = _VERDICT_HEAD.match(raw)
+    if not m:
+        return "prose", raw, "bad-format"
+    head, detail = m.group(1).lower(), (m.group(2) or "")
     if head == "covered":
         canon = next((g for g in gates if g.lower() == detail.lower()), None)
         return ("covered", canon, "") if canon else ("prose", detail, "unknown-gate")
     if head == "checkable":
         return ("checkable", detail.lower(), "") if detail.lower() in _KINDS else ("prose", detail, "bad-kind")
-    if head == "prose" and not detail:
-        return "prose", "", ""
-    return "prose", raw, "bad-format"
+    return "prose", "", ""
 
 
 def _verdict_index(lines: list):
-    """판정 줄 위치 — 마지막 비어 있지 않은 줄, 아니면 첫 비어 있지 않은 줄. 본문 중간의 예시 줄은 건드리지 않는다."""
+    """판정 줄 위치 — 마지막·첫 비어 있지 않은 줄을 먼저 본다. 둘 다 아니면 본문의 마지막 판정 줄
+    (모델이 판정 뒤에 설명 문단을 붙인 경우, 실측 47 중 3). 끝줄이 판정이면 중간 예시 줄은 건드리지 않는다."""
     filled = [i for i, line in enumerate(lines) if line.strip()]
     for i in (filled[-1:] + filled[:1]) if filled else []:
         if _VERDICT_LINE.match(lines[i]):
             return i
-    return None
+    hits = [i for i, line in enumerate(lines) if _VERDICT_LINE.match(line)]
+    return hits[-1] if hits else None
 
 
 def split_verdict(text: str, gates: list) -> tuple:
