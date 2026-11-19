@@ -12,7 +12,7 @@
 - [x] G2 `rule` 이 파일마다 검사 기준을 붙이고 같은 기준끼리 묶는다. 프로젝트 `.claude/review-rules.json`(`{"rules":[{"path","rule","merge_system_rule"?}]}`) 이 내장 기준을 바꾸거나 더한다. 깨진 JSON·`path`/`rule` 없는 항목은 종료 2 와 원인 줄로 멈춘다 — 검증: 같은 시험에서 `.py`→python, `.svelte`→default, 덮어쓰기·합치기·깨진 파일 단언
 - [x] G3 `check` 가 리뷰 장부(JSON)를 받아 빠진 파일·이유 없는 건너뜀·범위 밖 지적·파일 길이를 넘는 줄 번호를 실패(종료 1)로, 바뀐 줄 밖 지적을 경고로 낸다. 요약에 `total/reviewed/skipped/coverage_rate` 를 찍는다 — 검증: 같은 시험에서 각 경우 종료 코드·출력 단언
 - [x] G4 `code-reviewer` 에이전트가 스크립트가 있으면 scope → rule → 파일별 리뷰 → check 순서를 따르고, 없으면 기존 절차로 돌며 그 사실을 보고한다 — 검증: 시험이 에이전트 본문의 스크립트 경로(설치 뒤 `.claude/skills/review-coverage/scripts/review_scope.py`)·폴백 문구를 센다. 훅은 에이전트 이름만 읽고 본문은 읽지 않는다(grep 확인, 2026-11-19)
-- [ ] G5 workflow 프리셋에 스킬이 등록돼 update-all 로 소우주에 깔린다 — 검증: `tests/preset-integrity-test.sh` PASS, 전파 뒤 소우주에 `.claude/skills/review-coverage/scripts/review_scope.py` 존재
+- [x] G5 workflow 프리셋에 스킬이 등록돼 update-all 로 소우주에 깔린다 — 검증: `tests/preset-integrity-test.sh` PASS, 전파 뒤 소우주에 `.claude/skills/review-coverage/scripts/review_scope.py` 존재
 - [x] G6 이 저장소의 실제 커밋에 돌려 결과가 맞는다 — 검증: `scope --commit 0e155a5` 의 리뷰할 파일이 4개(`git show --name-status 0e155a5` 와 같은 4개 경로)
 
 ## 2-bis. 착수 전 확인한 사실 (2026-11-19)
@@ -81,4 +81,12 @@
 - 전파: 사용자가 2026-11-19 "적용해서 전파하면" 으로 지시했다. 대상은 `.installed-projects` 레지스트리(제외 목록은 메모리 기준)이고, 커밋 금지 목록(jj-agent-room · Nbbang-Run · 제로데이)은 설치만 한다.
 - 완료 판정: `tests/review-coverage-test.sh` 와 `tests/preset-integrity-test.sh` PASS, G6 실측값 기록, 전파 영수증 경로 기록.
 
-## 8. 회고 (완료 시 작성)
+- 전파 2026-11-19: update-all 성공 4 / 실패 0 (jj-agent-room · drh-cloth-shop · claude-harness-hermes · apt-curtain). 4곳 모두 `.claude/skills/review-coverage/scripts/review_scope.py` 존재, code-reviewer 에 새 절차. drh-cloth-shop 에서 `scope --commit HEAD` 31개, apt-curtain 에서 `rule --no-text` 실행 확인.
+  - 커밋: drh-cloth-shop 1982ad2 · apt-curtain e04f750 (브랜치 design/result-screen-trial) · 공장 자기 설치 3c2424d. jj-agent-room 은 커밋 금지 목록이라 설치만.
+  - 푸시: 공장 푸시가 자동 모드 검사에 막혔다. 소우주 푸시도 하지 않았다 — 사용자가 직접 한다.
+
+## 8. 회고
+
+- 잘된 것: 새 절차로 이 변경 자체를 리뷰시킨 것이 가장 값졌다. 정적 시험 39개가 다 통과한 뒤에도 실사용 조건(하위 폴더 실행, 저장소 안 worktree 폴더, 중괄호 패턴)에서 HIGH 3건이 나왔다.
+- 잘못된 것: 첫 판 `coverage_rate` 가 건너뜀을 덮었다 — 리뷰어 자신이 5/16 을 건너뛰고 1.0 을 받았다. 숫자가 무엇을 세는지 먼저 정하지 않았다.
+- 다음 룰 후보: 없음. 다만 "장부 이유 칸" 의 질(‘안 읽음’ 같은 이유)은 기계로 못 막는다 — 반복되면 code-reviewer 지시를 고친다.
