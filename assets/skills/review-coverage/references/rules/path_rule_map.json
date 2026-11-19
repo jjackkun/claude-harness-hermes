@@ -1,0 +1,22 @@
+{
+  "source": "alibaba/open-code-review@817ed02d7b1917ec6a36630d926af34661af9b97 internal/config/rules/system_rules.json (Apache-2.0), filtered",
+  "default_rule": "default.md",
+  "path_rule_map": {
+    "**/*.properties": "properties.md",
+    "**/*{mapper,dao}*.xml": "mapper_dao_xml.md",
+    "**/pom.xml": "pom_xml.md",
+    "**/build.gradle": "build_gradle.md",
+    "**/package.json": "package_json.md",
+    "**/*.{json,json5,jsonc}": "json.md",
+    ".github/workflows/**/*.{yaml,yml}": "github_workflows.md",
+    ".github/**/*.{yaml,yml}": "github_config.md",
+    "**/*.{yaml,yml}": "yaml.md",
+    "**/*.java": "java.md",
+    "**/*.go": "go.md",
+    "**/*.{ts,js,tsx,jsx,mjs,cjs}": "ts_js_tsx_jsx.md",
+    "**/*.{kt,kts}": "kotlin.md",
+    "**/*.rs": "rust.md",
+    "**/*.{py,pyi,ipynb}": "python.md",
+    "**/*.swift": "swift.md"
+  }
+}

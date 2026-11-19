@@ -1,0 +1,24 @@
+{
+  "skill_name": "review-coverage",
+  "note": "실행은 사용자 승인 뒤 (decision-ledger 5번). 정적 시험은 tests/review-coverage-test.sh",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "방금 고친 거 리뷰해 줘. 새로 만든 파일 두 개는 아직 git add 안 했어.",
+      "expected_output": "scope 를 인자 없이 돌려 untracked 새 파일까지 목록에 넣고, check 통과 뒤 요약 줄을 보고에 붙인다",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "feature/payment 브랜치 main 에 합치기 전에 전체 훑어봐. 파일이 40개쯤 바뀌었어.",
+      "expected_output": "scope --from main 으로 목록을 고정하고 rule 묶음별로 리뷰, 40개 전부 reviewed 또는 이유 있는 skipped 로 장부에 적는다",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "커밋 3f2a91c 하나만 봐 줘. 줄 번호 정확하게.",
+      "expected_output": "scope --commit 3f2a91c 와 check --commit 3f2a91c 를 쓰고, 줄 번호 오류가 있으면 고친 뒤 다시 check 한다",
+      "files": []
+    }
+  ]
+}

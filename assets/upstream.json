@@ -938,6 +938,27 @@
       "local_patch": {
         "description_prefix": "Playwright 로 로컬 웹앱을 조작·시험한다(스크린숏·브라우저 로그). "
       }
+    },
+    {
+      "name": "review-coverage",
+      "kind": "skills",
+      "path": "assets/skills/review-coverage",
+      "mode": "adapted",
+      "sources": [
+        {
+          "repo": "alibaba/open-code-review",
+          "path": "skills/open-code-review-delegate/SKILL.md",
+          "sha": "78bb26d19f2b2e6f56a16ef8673e208a04251855"
+        },
+        {
+          "repo": "alibaba/open-code-review",
+          "path": "internal/config/rules/rule_docs",
+          "sha": "8c06bf66bfc741c87f1feb309607e09e6acac6a8"
+        }
+      ],
+      "tests": [
+        "tests/review-coverage-test.sh"
+      ]
     }
   ],
   "untracked": [
