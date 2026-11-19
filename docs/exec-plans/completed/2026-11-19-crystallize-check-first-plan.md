@@ -16,21 +16,21 @@
 
 ## 2. 목표 (What — 검증 가능한 형태)
 
-- [ ] G1. 새 결정화마다 모델이 판정 한 줄을 낸다: `ENFORCE: covered:<R-이름> | checkable:<hook|gate|test> | prose`.
+- [x] G1. 새 결정화마다 모델이 판정 한 줄을 낸다: `ENFORCE: covered:<R-이름> | checkable:<hook|gate|test> | prose`.
   판정 줄은 스킬 본문에서 떼어 내고 장부에 적는다 —
   검증: 가짜 모델 출력 3종을 먹인 시험이 각각 기대한 분기로 간다. 쓰인 스킬 파일에 `ENFORCE:` 글자가 0회.
-- [ ] G2. `covered` 면 스킬 파일을 쓰지 않는다. `pattern_count.crystallized = -1`(기존 "다시 안 함" 값)로 두고,
+- [x] G2. `covered` 면 스킬 파일을 쓰지 않는다. `pattern_count.crystallized = -1`(기존 "다시 안 함" 값)로 두고,
   어느 게이트인지는 장부에 남긴다 —
   검증: `covered:R-size` 출력 뒤 skills 폴더 새 파일 0개 · `crystallized = -1` · 장부 1줄(`verdict=covered`, `gate=R-size`).
-- [ ] G3. `checkable` 이면 스킬은 지금처럼 쓰고, 장부에 `verdict=checkable`, `kind`, `skill_file` 을 남긴다.
+- [x] G3. `checkable` 이면 스킬은 지금처럼 쓰고, 장부에 `verdict=checkable`, `kind`, `skill_file` 을 남긴다.
   `list` 명령이 장부에서 후보를 모아 보인다 —
   검증: 후보 2건 장부 → `list` 출력 2줄. 스킬 파일을 진화(`hermes-evolve-skill.py`)로 다시 써도 `list` 결과가 같다.
-- [ ] G4. "이미 있는 게이트 목록" 은 설치된 pre-commit 첫머리 `#   차단 N — R-…` 줄에서 기계로 뽑는다(손 목록 금지).
+- [x] G4. "이미 있는 게이트 목록" 은 설치된 pre-commit 첫머리 `#   차단 N — R-…` 줄에서 기계로 뽑는다(손 목록 금지).
   모델이 목록에 없는 이름으로 `covered` 를 내면 `prose` 로 강등한다 —
   검증: 실제 `assets/hooks/pre-commit.sh` 에서 R-size·R-secret·R-cx·R-privacy 를 찾고, R-out·R-cov 는 없다. `covered:R-없는이름` → 스킬 파일 1개 생성, 장부 `verdict=prose`, `note=unknown-gate`.
-- [ ] G5. 판정 줄이 없거나 형식이 틀리면 `prose` 로 처리한다(결정화가 멈추지 않는다) —
+- [x] G5. 판정 줄이 없거나 형식이 틀리면 `prose` 로 처리한다(결정화가 멈추지 않는다) —
   검증: 판정 줄 없는 가짜 출력 → 스킬 파일 1개, 장부 `verdict=prose`, `note=missing`.
-- [ ] G6. 에이전트 개인 층(`--agent`)도 같은 분기를 탄다 —
+- [x] G6. 에이전트 개인 층(`--agent`)도 같은 분기를 탄다 —
   검증: 개인 층으로 `covered` 1건 → 개인 skills 폴더 새 파일 0개.
 
 ## 2-bis. 착수 전 확인한 사실 (2026-11-19)
@@ -153,5 +153,23 @@
 ## 8. 회고 (완료 시 작성)
 
 - 잘된 것:
+  - 시험을 먼저 써서(RED 24/27 실패) 계획의 가정 하나를 바로 깼다 — `core-beliefs.md` 제목만으로는 R-secret 을 못 찾았다.
+  - 두 번의 리뷰가 모두 코드로 확인되는 결함을 냈다. 계획 단계(planner-lite): 새 값 `-2` 가 정리·집계·동기화 세 곳에서 다르게 다뤄진다. 구현 단계(code-reviewer): 문서 속 R- 이름 전부를 게이트로 보면 측정 훅으로도 covered 가 된다. 둘 다 시험으로 고정했다.
+  - 소급 47회가 모의 시험이 못 잡은 결함을 잡았다. 실제 haiku 는 판정 뒤에 설명을 붙이거나 굵게 썼고, 해석기가 23% 를 버리고 있었다.
+  - 지우기 직전 사용 기록을 보고 1개(`auto-redact-email-in-docs`, 도움 5/6)를 살렸다.
 - 잘못된 것:
+  - 게이트 목록의 출처를 세 번 바꿨다(제목 → 문서 전체 → pre-commit "차단" 줄). 계획 단계에서 "covered 의 근거는 무엇이 실제로 막는가" 를 먼저 물었으면 처음부터 pre-commit 을 봤다.
+  - 가짜 모델 출력은 깔끔한 형식만 냈다. 실제 출력 표본(Step 4)을 2건이 아니라 10건쯤 봤으면 해석기 결함을 소급 전에 잡았다.
+  - 소급 출력을 끝 200자만 저장해 재해석 때 3건이 잘렸다.
+  - 전체 시험을 리뷰 반영 전 코드로 돌렸다. 반영 뒤에는 관련 시험만 다시 돌렸다.
 - 다음 룰 후보:
+  - 모델 출력을 해석하는 코드는 실제 출력 표본 10건 이상으로 시험을 만든다 — 모의 출력만으로는 꾸밈(굵게·뒤 설명)을 못 잡는다. 사례 1건.
+  - checkable 쏠림(72%) — 후보 목록을 사람이 거르는 단계가 없으면 후보가 쌓이기만 한다. `enforce-ratio-dashboard` 백로그에서 다룬다.
+
+## 9. 전파 (2026-11-19)
+
+- 공장 푸시 dd13664..1ce8872. update-all 4곳 성공 4 · 실패 0.
+- drh-cloth-shop: 영수증 경로 8개 커밋·푸시(2184c60).
+- apt-curtain: 영수증 경로 8개 커밋(9f8f3ac, 브랜치 `design/result-screen-trial`). 원격 저장소가 없어 푸시하지 못했다.
+- jj-agent-room: 설치만 했다. 커밋하지 않았다(전파 커밋 금지 목록).
+- 공장 DB: `skill_index` id 82 · 168 · 170 을 tombstoned 로 바꿨다(지운 스킬 3개). 바꾸기 전 DB 를 백업했다.
