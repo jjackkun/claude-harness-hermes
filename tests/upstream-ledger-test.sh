@@ -73,7 +73,8 @@ check(not missing, '원본 흔적이 있는 에셋이 모두 장부(감시 또�
 audit = open(os.path.join(root, 'docs/audits/2026-11-15-upstream-inventory.md')).read()
 rows = re.findall(r'^\| (skills|rules|agents|hooks) \| ([^|]+?) \| ([^|]+?) \|', audit, re.M)
 table = {(k, n.strip()): c.strip() for k, n, c in rows}
-actual = {(k, n) for k in ('skills', 'rules', 'agents', 'hooks') for n in os.listdir(os.path.join(root, 'assets', k))}
+actual = {(k, n) for k in ('skills', 'rules', 'agents', 'hooks') for n in os.listdir(os.path.join(root, 'assets', k))
+          if n != '__pycache__'}  # 시험 실행이 남기는 git 무시 폴더 — 에셋이 아니다
 check(set(table) == actual, f'조사 표의 이름 = assets/ 이름 ({len(actual)}개)'
       + ('' if set(table) == actual else f' — 표에만 {sorted(set(table) - actual)[:3]} · assets 에만 {sorted(actual - set(table))[:3]}'))
 CLASSES = {'공장 제작', '그대로', '고쳐 씀', '확인 못 함'}

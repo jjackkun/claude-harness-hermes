@@ -13,12 +13,14 @@
 
 ## 요약
 
-- 고쳐 씀: 37개
-- 공장 제작: 108개
+- 고쳐 씀: 38개
+- 공장 제작: 117개
 - 그대로: 13개
 - 확인 못 함: 8개
 
-훅 83개는 모두 공장(또는 사용자의 다른 프로젝트 rim-kanban)에서 만들었다. 외부 원본이 없다.
+2026-11-20: 조사 뒤 들어온 10개(스킬 review-coverage·watch·worktree-finish, 훅 7개)를 표에 더해 176개다.
+
+훅 91개는 모두 공장(또는 사용자의 다른 프로젝트 rim-kanban)에서 만들었다. 외부 원본이 없다.
 
 ## 전체 표
 
@@ -79,6 +81,9 @@
 | skills | verification-loop | 고쳐 씀 | affaan-m/ECC `skills/verification-loop` (유사도 0.643) |
 | skills | video-to-interaction | 공장 제작 | 처음 커밋: 8028e46 feat(skill): video-to-interaction — 참고 영상 10fps 전수 관 |
 | skills | webapp-testing | 그대로 | anthropics/skills `skills/webapp-testing` (유사도 1.0) |
+| skills | review-coverage | 고쳐 씀 | alibaba/open-code-review `skills/open-code-review-delegate` · `rule_docs` 17개(NOTICE.md, Apache-2.0) — 처음 커밋: 12da555 (조사 뒤 추가) |
+| skills | watch | 공장 제작 | 처음 커밋: deed879 feat(skill): watch — 유튜브·영상을 실제로 받아 자막 전부와 장면을 본다 (조사 뒤 추가) |
+| skills | worktree-finish | 공장 제작 | 처음 커밋: a45d291 feat(worktree): 끝낸 worktree 를 main 에 합치고 지운다 (조사 뒤 추가) |
 | rules | adhd | 고쳐 씀 | ayghri/i-have-adhd `skills/i-have-adhd/SKILL.md` |
 | rules | common | 고쳐 씀 | affaan-m/ECC `rules/common` |
 | rules | dart | 고쳐 씀 | affaan-m/ECC `rules/dart` |
@@ -190,3 +195,10 @@
 | hooks | structure-rule-reexport.mjs | 공장 제작 | 처음 커밋: 3dfd678 feat(struct): R-struct 를 언어 무관 엔진 + 언어 설정표로 바꾸고 Tier |
 | hooks | structure-rules-common.mjs | 공장 제작 | 처음 커밋: 3dfd678 feat(struct): R-struct 를 언어 무관 엔진 + 언어 설정표로 바꾸고 Tier |
 | hooks | claude-sessionstart-upstream.sh | 공장 제작 | 이 조사와 함께 만든 시작 훅(계획 2026-11-15-upstream-version-watch G5) |
+| hooks | claude-pretooluse-plan-overlap-guard.sh | 공장 제작 | 처음 커밋: a45d291 feat(worktree): 끝낸 worktree 를 main 에 합치고 지운다 (조사 뒤 추가) |
+| hooks | claude-sessionstart-unmerged-worktrees.sh | 공장 제작 | 처음 커밋: a45d291 feat(worktree): 끝낸 worktree 를 main 에 합치고 지운다 (조사 뒤 추가) |
+| hooks | claude-stop-worktree-finish-guard.sh | 공장 제작 | 처음 커밋: a45d291 feat(worktree): 끝낸 worktree 를 main 에 합치고 지운다 (조사 뒤 추가) |
+| hooks | plan_overlap.py | 공장 제작 | 처음 커밋: a45d291 feat(worktree): 끝낸 worktree 를 main 에 합치고 지운다 (조사 뒤 추가) |
+| hooks | worktree_finish_guard.py | 공장 제작 | 처음 커밋: a45d291 feat(worktree): 끝낸 worktree 를 main 에 합치고 지운다 (조사 뒤 추가) |
+| hooks | worktree_notice.py | 공장 제작 | 처음 커밋: a45d291 feat(worktree): 끝낸 worktree 를 main 에 합치고 지운다 (조사 뒤 추가) |
+| hooks | worktree_state.py | 공장 제작 | 처음 커밋: a45d291 feat(worktree): 끝낸 worktree 를 main 에 합치고 지운다 (조사 뒤 추가) |
