@@ -50,8 +50,7 @@ def _reason(state: ws.WorktreeState) -> str:
     return (
         f"[worktree-finish] 계획서 {plans} 를 completed 로 옮겼는데, 이 worktree 의 일이 main 에 없습니다 "
         f"(main 에 없는 커밋 {state.ahead}개 · 커밋 안 된 변경 {state.changes}개).\n"
-        "  → worktree-finish 스킬로 합치고 지우십시오: "
-        'bash .claude/skills/worktree-finish/scripts/finish.sh --message "<type>: <요약>"\n'
+        "  → worktree-finish 스킬을 불러 합치고 지우십시오(스킬 기준 폴더의 scripts/finish.sh, 셸 위치는 이 worktree).\n"
         "  → PR 로 합치는 저장소라면 PR 상태를 사용자에게 알리십시오.\n"
         "  → 합치지 않을 이유가 있으면 그 이유를 사용자에게 말하고 끝내십시오. 이 세션에서 같은 계획서로는 다시 막지 않습니다."
     )

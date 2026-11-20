@@ -23,13 +23,13 @@ description: worktree 세션에서 일을 **끝낼 때** 쓴다 — 이 worktree
 
 ### ② 스크립트를 부른다
 
-worktree 안에서 부른다. 커밋 안 된 변경이 있으면 커밋 메시지를 준다. 커밋 게이트(pre-commit)는 그대로 돈다.
+셸 위치는 worktree 안에 둔 채로, **이 스킬의 기준 폴더**(스킬을 불렀을 때 보이는 `Base directory`)의 `scripts/finish.sh` 를 부른다. 커밋 안 된 변경이 있으면 커밋 메시지를 준다. 커밋 게이트(pre-commit)는 그대로 돈다.
 
 ```bash
-bash .claude/skills/worktree-finish/scripts/finish.sh --message "<type>: <요약>"
+bash <기준 폴더>/scripts/finish.sh --message "<type>: <요약>"
 ```
 
-공장 저장소에서는 `assets/skills/worktree-finish/scripts/finish.sh` 다. 메인 브랜치 이름이 `main` 이 아니면 `--main <이름>` 을 준다.
+worktree 안의 상대 경로(`.claude/skills/...`)로 부르지 않는다. 설치된 스킬을 git 이 무시하는 저장소에서는 worktree 에 이 파일이 없다(2026-11-20 jj-agent-room 복제본 실측). 메인 브랜치 이름이 `main` 이 아니면 `--main <이름>` 을 준다.
 
 스크립트가 하는 일:
 1. 멈춤 조건을 검사한다(아래 표).

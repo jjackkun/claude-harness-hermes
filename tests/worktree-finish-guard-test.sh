@@ -33,6 +33,13 @@ echo "[막음] 커밋 전 이동"
 repo b; W=$(add_wt b feat); mkdir -p "$W/docs/exec-plans/completed"; mv "$W/$PLAN_REL" "$W/$DONE_REL"
 assert "막음" yes "$(blocked "$(stop_hook "$W" s1)")"
 
+echo "[막음] 가지에서 태어나 끝난 계획서(main 에 없던 것, 2026-11-20 복제본 실측)"
+repo b2; W=$(add_wt b2 feat); mkdir -p "$W/docs/exec-plans/active" "$W/docs/exec-plans/completed"
+printf '# born\n' > "$W/docs/exec-plans/active/2026-11-20-born-plan.md"; commit_in "$W" plan
+git -C "$W" mv docs/exec-plans/active/2026-11-20-born-plan.md docs/exec-plans/completed/; commit_in "$W" done
+assert "막음" yes "$(blocked "$(stop_hook "$W" s1)")"
+assert "이유에 상대 경로 명령이 없음" 0 "$(grep -c 'bash .claude/skills' <<<"$(stop_hook "$W" s3)")"
+
 echo "[통과]"
 assert "stop_hook_active" no "$(blocked "$(stop_hook "$W" s9 true)")"
 assert "cwd 가 없음(마무리로 지움)" no "$(blocked "$(stop_hook "$TMP/gone" s1)")"

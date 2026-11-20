@@ -84,17 +84,33 @@ def _names_under(entries: list[tuple[str, str]], prefix: str, codes: str) -> set
 
 
 def _completed(diff: list[tuple[str, str]], status: list[tuple[str, str]]) -> list[str]:
-    gone = _names_under(diff, _ACTIVE, "D") | _names_under(status, _ACTIVE, "D")
+    """main 과 비교해 completed/ 에 새로 생긴 계획서 — active/ 에서 옮겼든, 가지에서 태어나 끝났든.
+    active/ 에서 지워졌는지는 보지 않는다: 가지에서 쓰고 끝낸 계획서는 main 의 active/ 에 없었다(2026-11-20 복제본 실측)."""
     added = _names_under(diff, _COMPLETED, "A") | _names_under(status, _COMPLETED, "A?")
-    return sorted(n for n in gone & added if n.endswith(".md"))
+    return sorted(n for n in added if n.endswith(".md"))
 
 
 # 허용 폴더 안이어도 지우면 잃는 파일 — 그 세션에서 승인한 권한(코드 리뷰 M3).
 _KEEP = (".claude/settings.local.json",)
 
 
-def _is_regenerable(root: Path, rel: str) -> bool:
-    if rel in _KEEP or (rel.endswith("/") and any(k.startswith(rel) and (root / k).exists() for k in _KEEP)):
+def _same_as_main(root: Path, main_root: Path | None, rel: str) -> bool:
+    """메인 체크아웃의 같은 경로와 내용이 같다 — 앱이 메인에서 복사해 넣은 사본이라 지워도 잃지 않는다."""
+    if main_root is None or main_root == root:
+        return False
+    mine, theirs = root / rel, main_root / rel
+    return mine.is_file() and theirs.is_file() and mine.read_bytes() == theirs.read_bytes()
+
+
+def _kept_inside(root: Path, rel: str) -> list[str]:
+    """rel(파일 또는 뭉쳐 보인 폴더) 안에 있는 _KEEP 파일들."""
+    if rel in _KEEP:
+        return [rel]
+    return [k for k in _KEEP if rel.endswith("/") and k.startswith(rel) and (root / k).exists()]
+
+
+def _is_regenerable(root: Path, rel: str, main_root: Path | None = None) -> bool:
+    if any(not _same_as_main(root, main_root, k) for k in _kept_inside(root, rel)):
         return False
     if any(rel.startswith(top) for top in _IGNORED_ALLOWLIST["top"]):
         return True
@@ -103,11 +119,11 @@ def _is_regenerable(root: Path, rel: str) -> bool:
     return Path(rel).name == ".env" and (root / rel).is_symlink()
 
 
-def _stray_ignored(cwd: str | os.PathLike) -> list[str]:
+def _stray_ignored(cwd: str | os.PathLike, main_root: Path | None = None) -> list[str]:
     # matching: 무시 규칙에 걸린 그 폴더·파일 단위로 나온다(traditional 은 바깥 폴더 `server/` 로 뭉갠다).
     raw = _git(cwd, "status", "--porcelain", "-z", "--ignored=matching")
     ignored = [item[3:] for item in raw.split("\0") if item.startswith("!! ")]
-    return sorted(rel for rel in ignored if not _is_regenerable(Path(cwd), rel))
+    return sorted(rel for rel in ignored if not _is_regenerable(Path(cwd), rel, main_root))
 
 
 def is_linked_worktree(path: str | os.PathLike) -> bool:
@@ -172,7 +188,7 @@ def state_of(path: str | os.PathLike, main_branch: str = "main", with_stray: boo
         changes=len(status),
         touched_plans=sorted(p for p in names if p.startswith(_ACTIVE) and p.endswith(".md")),
         completed_plans=_completed(diff, status),
-        stray_ignored=_stray_ignored(path) if with_stray else [],  # 무시 파일 검사는 마무리(G1)만 — 훅은 건너뛴다(시간)
+        stray_ignored=_stray_ignored(path, Path(list_worktrees(path)[0][0])) if with_stray else [],  # 무시 파일 검사는 마무리(G1)만 — 훅은 건너뛴다(시간)
         last_commit=_git(path, "log", "-1", "--format=%cI").strip(),
     )
 

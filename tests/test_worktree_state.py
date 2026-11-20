@@ -166,3 +166,39 @@ def test_session_permissions_are_kept_even_inside_claude(repo, ignore_line):
     write(wt, ".claude/skills/x/SKILL.md")
     write(wt, ".claude/settings.local.json", "{}\n")
     assert ws.state_of(wt).stray_ignored == [".claude/settings.local.json" if ignore_line != ".claude/" else ".claude/"]
+
+
+def test_a_plan_born_and_finished_in_the_branch_is_seen(repo):
+    """main 에 없던 계획서를 가지에서 쓰고 completed 로 옮겨도 잡는다 — 2026-11-20 jj-agent-room 복제본 실측에서 놓쳤다."""
+    _, wt = repo
+    born = "docs/exec-plans/active/2026-11-20-born-plan.md"
+    write(wt, born, "# born\n")
+    git(wt, "add", "-A")
+    git(wt, "commit", "-qm", "plan")
+    (Path(wt) / "docs/exec-plans/completed").mkdir(parents=True, exist_ok=True)
+    git(wt, "mv", born, "docs/exec-plans/completed/2026-11-20-born-plan.md")
+    git(wt, "commit", "-qm", "done")
+    assert ws.state_of(wt).completed_plans == ["2026-11-20-born-plan.md"]
+
+
+def test_editing_a_plan_already_completed_in_main_is_not_finishing(repo):
+    main, wt = repo
+    (Path(main) / DONE).parent.mkdir(parents=True, exist_ok=True)
+    git(main, "mv", PLAN, DONE)
+    git(main, "commit", "-qm", "done in main")
+    git(wt, "merge", "-q", "--ff-only", "main")
+    write(wt, DONE, "# plan\nretro\n")
+    assert ws.state_of(wt).completed_plans == []
+
+
+def test_session_permissions_copied_from_main_are_safe_to_lose(repo):
+    """앱은 메인의 settings.local.json 을 worktree 로 복사한다 — 메인과 같으면 지워도 잃지 않는다."""
+    main, wt = repo
+    (Path(main) / ".gitignore").write_text(".claude/settings.local.json\n", encoding="utf-8")
+    git(main, "add", "-A"); git(main, "commit", "-qm", "ignore")
+    git(wt, "merge", "-q", "--ff-only", "main")
+    write(main, ".claude/settings.local.json", '{"a": 1}\n')
+    write(wt, ".claude/settings.local.json", '{"a": 1}\n')
+    assert ws.state_of(wt).stray_ignored == []
+    write(wt, ".claude/settings.local.json", '{"a": 2}\n')
+    assert ws.state_of(wt).stray_ignored == [".claude/settings.local.json"]

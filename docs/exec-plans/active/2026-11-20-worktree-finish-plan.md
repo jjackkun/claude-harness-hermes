@@ -1,6 +1,6 @@
 # 2026-11-20-worktree-finish — worktree 세션을 끝내면 main 에 합치고 worktree 를 지운다
 
-- 상태: Step 6 전파 끝(2026-11-20). 남은 것: G7 (b)(c) — 실제 worktree 세션에서 확인. 그 뒤 회고·completed 이동.
+- 상태: Step 6 전파 끝 · G7 복제본 확인에서 결함 3개를 찾아 공장에서 고침(2026-11-20, 커밋 전). 남은 것: 고친 판 커밋·재전파 → 회고·completed 이동.
 - 계기 프로젝트: jj-agent-room (2026-11-19~20 결재 작업).
 
 ## 1. 동기 (Why)
@@ -238,7 +238,14 @@
   - 설치물 커밋: 공장 `3770e41`(푸시) · apt-curtain `4384989`(원격 추적 브랜치 없음 — 푸시 안 함, 브랜치 `design/result-screen-trial`) · drh-cloth-shop `afb0a3e`(푸시) · jj-agent-room `835cdb5e`(푸시, 앞서 합친 커밋 5개 포함 6개).
   - drh-cloth-shop · jj-agent-room 은 R-privacy 가 막았다 — 「올리기 전 확인」 안 된 결정화 스킬 4개. 판정은 사용자 몫이라 스테이징에서만 빼고 작업 트리에 남겼다.
   - G5 실측: 설치 뒤 jj-agent-room 세션 끝에서 `worktree-not-synced` · `css-property-missing` 이 crystallized 0→1 (hooks.log 28907~28909). 스킬 3개 생김: `sync-worktree-to-main-checkout.md` · `copy-worktree-edits-to-main.md`(키 worktree-not-synced) · `flex-parent-display-required.md`. 모두 확인 대기(커밋 안 됨).
-- 남은 G7: (b) 실제 worktree 세션 하나를 `worktree-finish` 로 끝내기 · (c) 스킬 없이 끝낸 worktree 가 다음 시작에 알림으로 나오는지. 둘 다 아직 안 봤다.
+- 남은 G7: (b) 실제 worktree 세션 하나를 `worktree-finish` 로 끝내기 · (c) 스킬 없이 끝낸 worktree 가 다음 시작에 알림으로 나오는지.
+- G7 확인(2026-11-20, 사용자 "확인해봐"): 남의 세션 worktree 는 건드리지 않고, jj-agent-room 을 임시 폴더에 복제해 앱과 같은 모양의 worktree(메인의 `settings.local.json` 사본 · `.env` 링크)를 만들고 계획서를 가지에서 쓰고 completed 로 옮겨 커밋 2개를 쌓았다.
+  - 설치본으로 돌린 결과 — G3 알림: 나옴. **G2 Stop: 침묵(결함 ①).** **G1: `bash .claude/skills/worktree-finish/scripts/finish.sh` → 파일 없음(결함 ③).** 실제 jj worktree 3곳의 `.claude/settings.local.json` 이 "잃는 파일" 로 잡혀 G1 은 늘 멈춤 18 이었을 것(결함 ②).
+  - 결함 ① 가지에서 태어나 끝난 계획서는 main 의 active/ 에 없어 "active 에서 지워짐" 조건을 못 채웠다 → 완료 = main 과 비교해 completed/ 에 새로 생긴 계획서.
+  - 결함 ② 앱이 메인의 `settings.local.json` 을 worktree 로 복사한다(바이트 같음, 실측) → 메인과 같으면 잃지 않는 파일로 본다.
+  - 결함 ③ jj 는 `.claude/skills/*` 를 git 이 무시해 worktree 에 스킬 파일이 없다 → SKILL.md·Stop 메시지가 상대 경로 대신 스킬 기준 폴더를 쓴다.
+  - 고친 판으로 같은 복제본 재실행: G2 block · G3 `claude/g7-test · 커밋 2` · G1 `result: merged … (52a13cfc..bcd1639d)` 종료 0, worktree 0 · 브랜치 0, 합친 뒤 G3 빈 출력. 시험: pytest 27 · finish 62 · guard 34 · notice 18 · overlap 11 — 모두 통과. 결함 재현 시험 3개(고치기 전 2 실패 확인).
+  - 실제 앱 세션(사람이 띄운 worktree 세션)에서의 확인은 아직이다.
 
 ## 6. 의사결정 로그
 
