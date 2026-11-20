@@ -6,6 +6,9 @@
 판정에 실패한 묶음은 반으로 나눠 다시 묻는다. 끝내 판정하지 못한 문장은 **판정 기록 없이** 둔다 — 기록이 없으면
 내보내기·게이트가 막으므로 안전은 같고, 다음 내보내기 때 다시 판정된다. (처음엔 실패 = 대기였는데, 실측에서 묶음 하나
 115문장이 통째로 사람 확인 대기로 쌓였다 — 2026-09-28, 이 공장 저장소.)
+상한: 한 번 판정에 호출 _MAX_CALLS 번 · _MAX_SECONDS 초까지. 시간 초과는 나눠도 빨라지지 않으므로 나누지 않는다.
+실패 이유와 남긴 수는 stderr 로 남긴다(세션 끝 훅이 hooks.log 로 모은다). 2026-11-20 drh-cloth-shop: 153문장 3묶음에서
+호출이 계속 실패하면 반으로 나누기를 거듭해 303번(최악 303분)을 불렀다 — 내보내기가 두 번 연속 200초 넘게 멈춰 보였다.
 계획: docs/exec-plans/completed/2026-09-28-carry-agent-knowledge.md 목표 2
 
 공개: RULE · judge_and_mark
@@ -17,6 +20,7 @@ import re
 import shutil
 import subprocess
 import sys
+import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from hermes_machine_prompt import machine_prompt_cmd  # noqa: E402  (기계 프롬프트는 도구 없이)
@@ -32,25 +36,48 @@ JSON 만 출력한다: {{"flagged": [표시할 번호들]}}
 """
 _MODEL = "claude-haiku-4-5-20251001"   # 요약 호출과 같은 모델(hermes-summarize)
 _TIMEOUT = 60                          # 요약 호출과 같은 한도(hermes-summarize)
+_MAX_CALLS = 6                         # 한 번 판정의 호출 상한 — 정상이면 묶음 수(보통 1~3)면 끝난다
+_MAX_SECONDS = 300                     # 한 번 판정의 시간 상한 — 세션 끝 훅을 5분 넘게 붙잡지 않는다
 _BATCH_CHARS = 6000                    # 한 번에 보내는 글자 수 — 요약 호출의 델타 상한과 같다(hermes-summarize delta[:6000])
 
 
-def _ask(texts: list):
-    """표시된 번호 집합, 실패하면 None."""
+def _ask(texts: list) -> tuple:
+    """(표시된 번호 집합, "ok") 또는 (None, 실패 이유: nocli · timeout · exit · parse)."""
     if not shutil.which("claude"):
-        return None
+        return None, "nocli"
     items = "\n".join(f"{i}. {t}" for i, t in enumerate(texts))
     try:
         out = subprocess.run(machine_prompt_cmd(_MODEL),
                              input=_PROMPT.format(rule=RULE, items=items), capture_output=True, text=True,
                              timeout=_TIMEOUT, env={**os.environ, "HERMES_DISABLED": "1"})
-        if out.returncode != 0:
-            return None
+    except subprocess.TimeoutExpired:
+        return None, "timeout"
+    except (subprocess.SubprocessError, OSError):
+        return None, "exit"
+    if out.returncode != 0:
+        return None, "exit"
+    try:
         body = re.sub(r"^```[a-z]*\n|\n```$", "", out.stdout.strip())
         flagged = json.loads(body).get("flagged")
-        return {int(i) for i in flagged} if isinstance(flagged, list) else None
-    except (subprocess.SubprocessError, OSError, ValueError, TypeError, AttributeError):
-        return None
+        return ({int(i) for i in flagged}, "ok") if isinstance(flagged, list) else (None, "parse")
+    except (ValueError, TypeError, AttributeError):
+        return None, "parse"
+
+
+class _Budget:
+    """호출 수 · 시간 상한과 실패 이유를 센다."""
+
+    def __init__(self):
+        self.calls, self.started, self.failures = 0, time.monotonic(), {}
+
+    def take(self) -> bool:
+        if self.calls >= _MAX_CALLS or time.monotonic() - self.started >= _MAX_SECONDS:
+            return False
+        self.calls += 1
+        return True
+
+    def failed(self, why: str) -> None:
+        self.failures[why] = self.failures.get(why, 0) + 1
 
 
 def _batches(fresh: list) -> list:
@@ -66,14 +93,17 @@ def _batches(fresh: list) -> list:
     return out + ([cur] if cur else [])
 
 
-def _judge_batch(con, batch: list) -> int:
-    """한 묶음을 판정해 적는다. 실패하면 반씩 나눠 다시. 판정한 수(못 한 문장은 기록 없이 남는다)."""
-    flagged = _ask([t for _, _, t in batch])
+def _judge_batch(con, batch: list, budget: _Budget) -> int:
+    """한 묶음을 판정해 적는다. 형식 오류면 반씩 나눠 다시(예산 안에서). 판정한 수(못 한 문장은 기록 없이 남는다)."""
+    if not budget.take():
+        return 0
+    flagged, why = _ask([t for _, _, t in batch])
     if flagged is None:
-        if len(batch) == 1:
-            return 0
+        budget.failed(why)
+        if why in ("timeout", "nocli") or len(batch) == 1:
+            return 0   # 시간 초과는 나눠도 빨라지지 않는다 — 다음 내보내기 때 다시
         half = len(batch) // 2
-        return _judge_batch(con, batch[:half]) + _judge_batch(con, batch[half:])
+        return _judge_batch(con, batch[:half], budget) + _judge_batch(con, batch[half:], budget)
     for i, (kind, ref, text) in enumerate(batch):
         mark(con, kind, ref, text, "pending" if i in flagged else "clean")
     con.commit()
@@ -87,4 +117,9 @@ def judge_and_mark(con, items: list) -> int:
         if str(t).strip() and t not in seen and status_of(con, t) is None:
             seen.add(t)
             fresh.append((k, r, t))
-    return sum(_judge_batch(con, batch) for batch in _batches(fresh))
+    budget = _Budget()
+    judged = sum(_judge_batch(con, batch, budget) for batch in _batches(fresh))
+    if budget.failures or judged < len(fresh):
+        print(f"[hermes-privacy-judge] 판정 {judged} · 남김 {len(fresh) - judged} · 호출 {budget.calls}"
+              f" · 실패 {budget.failures} (다음 내보내기 때 다시)", file=sys.stderr)
+    return judged
