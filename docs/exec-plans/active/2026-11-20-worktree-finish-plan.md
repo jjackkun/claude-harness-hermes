@@ -1,6 +1,6 @@
 # 2026-11-20-worktree-finish — worktree 세션을 끝내면 main 에 합치고 worktree 를 지운다
 
-- 상태: Step 5 끝(2026-11-20, 커밋 전). 다음: Step 6(전파 — 사용자 승인).
+- 상태: Step 6 전파 끝(2026-11-20). 남은 것: G7 (b)(c) — 실제 worktree 세션에서 확인. 그 뒤 회고·completed 이동.
 - 계기 프로젝트: jj-agent-room (2026-11-19~20 결재 작업).
 
 ## 1. 동기 (Why)
@@ -230,8 +230,15 @@
   - 공장 메모리 `feedback-no-pr-solo.md` 두 벌(공장 저장소 `.claude/memory/` · `~/.claude/projects/…/memory/`)에 "규칙으로 옮김" 단락을 더했다. 두 벌은 같다(diff).
   - 전역 `~/.claude/rules/common/git-workflow.md` 는 공장 HEAD 판과 같다 — Step 6 전파 때 함께 바뀌는지 확인한다.
 
-### Step 6. 전파 [사용자 승인]
+### Step 6. 전파 [사용자 승인] — 끝(2026-11-20, 사용자 "커밋 후 전파")
 - 산출: G7. 설치 대상 프로젝트 수와 바뀌는 훅 수를 보이고 승인을 받는다.
+- 결과:
+  - 공장 커밋 `a45d291` 푸시. 게이트가 두 번 막았다 — ① R-test: 게이트가 넘긴 `GIT_*` 위치 변수로 test_worktree_state 15 errors → `worktree_state._git`·시험이 그 변수를 지우게 고침. ② R-cx 4건 → 함수 나눔(최대 11). 남은 경고: R-dep-4(새 모듈 5개에 `.deprc` tier 없음) · R-eval.
+  - `update-all.sh` → 성공 4 · 실패 0. 4곳 모두 `settings.json` 에 훅 3개 · `worktree-finish` 스킬 있음. 전역 `~/.claude/rules/common/git-workflow.md` 에 `worktree-finish` 2줄(G7 a). 프로젝트 안에는 공통 규칙 사본이 없다(전역 하나를 쓴다).
+  - 설치물 커밋: 공장 `3770e41`(푸시) · apt-curtain `4384989`(원격 추적 브랜치 없음 — 푸시 안 함, 브랜치 `design/result-screen-trial`) · drh-cloth-shop `afb0a3e`(푸시) · jj-agent-room `835cdb5e`(푸시, 앞서 합친 커밋 5개 포함 6개).
+  - drh-cloth-shop · jj-agent-room 은 R-privacy 가 막았다 — 「올리기 전 확인」 안 된 결정화 스킬 4개. 판정은 사용자 몫이라 스테이징에서만 빼고 작업 트리에 남겼다.
+  - G5 실측: 설치 뒤 jj-agent-room 세션 끝에서 `worktree-not-synced` · `css-property-missing` 이 crystallized 0→1 (hooks.log 28907~28909). 스킬 3개 생김: `sync-worktree-to-main-checkout.md` · `copy-worktree-edits-to-main.md`(키 worktree-not-synced) · `flex-parent-display-required.md`. 모두 확인 대기(커밋 안 됨).
+- 남은 G7: (b) 실제 worktree 세션 하나를 `worktree-finish` 로 끝내기 · (c) 스킬 없이 끝낸 worktree 가 다음 시작에 알림으로 나오는지. 둘 다 아직 안 봤다.
 
 ## 6. 의사결정 로그
 
@@ -275,6 +282,9 @@
 - 2026-11-20 리뷰: 본보기 Stop 훅(korean-guard)은 `stop_hook_active` 를 보지 않는다. G2 는 이 필드를 본다. korean-guard 도 같은 보강이 필요한지는 이 계획 밖이다. backlog 후보다.
 
 - 2026-11-20 Step 3: `tests/harness-hooks-smoke.sh` 가 "CLAUDE.md <= 100 줄" 에서 실패한다. 이 계획 전부터 102줄이었다(스킬 등록을 빼고 돌려 확인). `worktree-finish` 스킬 한 줄로 103줄이 됐다. 공장의 CLAUDE.md 생성 분량 문제라 이 계획 밖이다 — backlog 후보.
+
+- 2026-11-20 Step 6: `worktree-not-synced` 결정화가 스킬 2개를 만들었다. 그중 `copy-worktree-edits-to-main.md` 는 "worktree 파일을 `cp -r` 로 메인에 복사" 라고 적어 `worktree-finish`(rebase → ff)와 어긋난다. 결정화 프롬프트가 기존 스킬·규칙과 충돌하는지 보지 않는다 — backlog 후보. 이 파일은 확인 대기라 아직 어디에도 올라가지 않았다.
+- 2026-11-20 Step 6: apt-curtain 은 기능 브랜치(`design/result-screen-trial`)에 설치물이 커밋됐다. 원격 추적 브랜치가 없어 푸시하지 않았다.
 
 ## 8. 회고 (완료 시 작성)
 
