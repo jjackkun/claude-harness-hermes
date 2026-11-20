@@ -53,6 +53,11 @@
         "hooks": [
           {
             "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/scripts/hooks/claude-stop-worktree-finish-guard.sh",
+            "timeout": 30
+          },
+          {
+            "type": "command",
             "command": "${CLAUDE_PROJECT_DIR}/scripts/hooks/claude-stop-retrospective.sh",
             "timeout": 30
           },
@@ -125,6 +130,10 @@
           {
             "type": "command",
             "command": "${CLAUDE_PROJECT_DIR}/scripts/hooks/claude-sessionstart-install-uncommitted-warn.sh"
+          },
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/scripts/hooks/claude-sessionstart-unmerged-worktrees.sh"
           },
           {
             "type": "command",
@@ -250,6 +259,10 @@
       {
         "matcher": "Edit|Write|MultiEdit",
         "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/scripts/hooks/claude-pretooluse-plan-overlap-guard.sh"
+          },
           {
             "type": "command",
             "command": "${CLAUDE_PROJECT_DIR}/scripts/hooks/claude-pretooluse-identity-guard.sh"

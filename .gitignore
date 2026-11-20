@@ -48,6 +48,7 @@ docs/superpowers/plans/
 !.claude/memory/
 !.claude/memory/**
 .venv/
+.hermes/hooks.log
 .hermes/*
 !.hermes/skills/
 !.hermes/skills/**
