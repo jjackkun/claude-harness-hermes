@@ -344,9 +344,9 @@ Claude 전용 `CLAUDE.md`, `.claude/settings.json` / `.claude/settings.local.jso
 - **에이전트**: `architect-lite`, `devil-advocate`, `planner-lite`, `architect`, `planner`, `code-reviewer`, `silent-failure-hunter`, `tdd-guide`, `doc-updater`, `docs-lookup`, `performance-optimizer`, `refactor-cleaner`
 
 <!--===DS:COUNTS:BEGIN===-->
-- 세션 중 실행 훅 **18종** + 훅이 공유하는 판정 모듈 **19개**
+- 세션 중 실행 훅 **21종** + 훅이 공유하는 판정 모듈 **23개**
 - git pre-commit 게이트 **23종** — 차단 12 / 경고 11
-- harness 프리셋이 까는 스킬 **13종** · 에이전트 **12종** · 공장 테스트 **161개**
+- harness 프리셋이 까는 스킬 **14종** · 에이전트 **12종** · 공장 테스트 **165개**
 <!--===DS:COUNTS:END===-->
 
 > 위 수치는 `assets/hooks/doc_counts.py` 가 소스에서 산출합니다. 손으로 고치지 마십시오 —

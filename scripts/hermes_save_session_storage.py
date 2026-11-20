@@ -11,6 +11,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from hermes_human_turn import HUMAN_MARK, is_human_entry  # noqa: E402  (사람 입력 판정)
+from hermes_mistake_keys import MISTAKE_KEYS, NOT_CRYSTALLIZED  # noqa: E402  (실수 감지 키)
 
 
 def connect_db(db_path: str) -> sqlite3.Connection:
@@ -61,6 +62,24 @@ def load_transcript(path: str) -> list:
 
 
 
+def _mistake_targets(cur, already: list) -> list:
+    """실수 감지 훅이 센 키 가운데 임계(3)를 넘고 아직 판정 안 된 것 — 요약 키 루프는 이 키를 보지 않는다(G5).
+
+    훅은 hermes-increment.py 로 count 만 올리므로, 여기서 따로 고르지 않으면 영원히 결정화되지 않는다
+    (jj-agent-room worktree-not-synced: 104번, 2026-11-20). 계획: docs/exec-plans/active/2026-11-20-worktree-finish-plan.md
+    """
+    wanted = [k for k in MISTAKE_KEYS if k not in NOT_CRYSTALLIZED and k not in already]
+    if not wanted:
+        return []
+    marks = ",".join("?" * len(wanted))
+    rows = cur.execute(
+        f"SELECT pattern_key FROM pattern_count WHERE count >= 3 AND crystallized = 0 AND pattern_key IN ({marks}) "
+        "ORDER BY count DESC",
+        wanted,
+    ).fetchall()
+    return [r[0] for r in rows]
+
+
 def update_patterns(db_path: str, patterns: list, session_id: str) -> list:
     """pattern_count 업데이트. 결정화 임계값(3) 도달 패턴 목록 반환.
 
@@ -103,6 +122,7 @@ def update_patterns(db_path: str, patterns: list, session_id: str) -> list:
         if row and row[0] >= 3:
             crystallize_targets.append(key)
 
+    crystallize_targets += _mistake_targets(cur, crystallize_targets)
     con.commit()
     con.close()
     return crystallize_targets

@@ -22,3 +22,5 @@
 - [PR 안 씀 — 로컬 main 에 ff 합치기](feedback-no-pr-solo.md) — 혼자 작업, create_pr 제안 금지; 2026-11-12 지적
 - [빈 ~/.bash_profile 은 에이전트 샌드박스가 만든다](project-empty-bash-profile-sandbox.md) — PATH 이상(bw·claude 못 찾음) 첫 용의자; 11-12 한 줄 파일로 막음
 - [쉬운 말로 짧게](feedback-speak-plainly.md) — 단순 질문에 표·경로·변수명 나열 금지; 2026-11-15 "말 어렵게 하지 마"
+- [합친 뒤 푸시 제안 금지](feedback-no-push-suggestion-mid-discussion.md) — 커밋·합치기 끝을 "푸시해" 로 맺지 않는다; 2026-11-18 "더 논의할거야. 뭘 푸시해"
+- [논의 중엔 답만](feedback-discussion-mode-no-action-push.md) — "대화하자" 면 실행·시험 제안을 끝에 붙이지 않는다; 2026-11-18 "자꾸 뭐 할려고하지말고"

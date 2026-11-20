@@ -10,6 +10,10 @@ metadata:
 
 PR 을 열자고 묻지 않는다. 작업 브랜치(worktree 포함)가 끝나면 로컬 main 에 `merge --ff-only` 로 합친다.
 
+**규칙으로 옮김(2026-11-20):** 공장 규칙 `assets/rules/common/git-workflow.md` 「worktree 세션 마무리」 절과 `worktree-finish` 스킬이 이 내용을 모든 프로젝트에 전한다. 이 메모리는 공장 세션만 읽어서, jj-agent-room 에서 같은 실수가 104번 지적됐다(계획 2026-11-20-worktree-finish).
+
+**규칙으로 옮김(2026-11-20):** 공장 규칙 `assets/rules/common/git-workflow.md` 「worktree 세션 마무리」 절과 `worktree-finish` 스킬이 이 내용을 모든 프로젝트에 전한다. 이 메모리는 공장 세션만 읽어서, jj-agent-room 에서 같은 실수가 104번 지적됐다(계획 2026-11-20-worktree-finish).
+
 **Why:** 2026-11-12 사용자 — "나 혼자 작업중이잖아. PR안써도돼." (wrap_up 에서 PR 열기를 물은 데 대한 답)
 
 **How to apply:** 마무리 질문·버튼에 create_pr 을 넣지 않는다. 합치기 전 main 작업 트리의 미커밋 파일이 브랜치 변경과 겹치지 않는지 본다. 푸시는 [[feedback-push-current-repo-only]] 대로 따로 지시가 있을 때.

@@ -354,6 +354,11 @@ REGISTERED_TESTS=(
   video-to-interaction-test.sh
   watch-skill-test.sh
   review-coverage-test.sh
+  # worktree 마무리(계획 2026-11-20-worktree-finish) — 스킬(G1) · Stop 훅(G2) · 시작 알림(G3) · 계획서 편집 경고(G4)
+  worktree-finish-test.sh
+  worktree-finish-guard-test.sh
+  worktree-unmerged-notice-test.sh
+  plan-overlap-guard-test.sh
   code-mode-notice-test.sh
   planning-chain-test.sh
   hermes-repo-sync-test.sh
