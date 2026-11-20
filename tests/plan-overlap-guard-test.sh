@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # G4 같은 계획서 편집 경고 — 다른 worktree(또는 메인 체크아웃)가 같은 active 계획서를 고치는 중이면 편집 전에 알린다. 막지 않는다.
-# 계획: docs/exec-plans/active/2026-11-20-worktree-finish-plan.md (G4)
+# 계획: docs/exec-plans/completed/2026-11-20-worktree-finish-plan.md (G4)
 set -uo pipefail
 source "$(dirname "$0")/worktree-hooks-lib.bash"
 GUARD="$HOOKS/claude-pretooluse-plan-overlap-guard.sh"

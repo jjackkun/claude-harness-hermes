@@ -4,7 +4,7 @@
 stdin: PreToolUse 페이로드(cwd · tool_input.file_path). 겹칠 때만 stdout 에 additionalContext JSON.
 "고치는 중" = 그쪽이 main 에 없는 커밋이나 커밋 안 된 변경으로 같은 파일을 건드렸다. 자기 worktree 는 세지 않는다.
 2026-11-19 jj-agent-room: 두 세션이 같은 결재 계획서로 같은 단계를 따로 만들었다 — 편집 전에 알았다면 막을 수 있었다.
-계획: docs/exec-plans/active/2026-11-20-worktree-finish-plan.md (G4)
+계획: docs/exec-plans/completed/2026-11-20-worktree-finish-plan.md (G4)
 """
 
 from __future__ import annotations

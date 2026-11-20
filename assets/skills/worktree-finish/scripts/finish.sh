@@ -9,7 +9,7 @@
 #   23 합친 뒤 main 이 브랜치 끝에 없음(지우지 않음) · 2 사용법·판정 오류
 # 우회 플래그(--force · -D · --no-verify)는 쓰지 않는다 — 막히면 멈추고 사람에게 넘긴다.
 # 사용: (worktree 안에서) bash finish.sh [--message "<커밋 메시지>"] [--main <브랜치>]
-# 계획: docs/exec-plans/active/2026-11-20-worktree-finish-plan.md (G1)
+# 계획: docs/exec-plans/completed/2026-11-20-worktree-finish-plan.md (G1)
 set -uo pipefail
 
 MSG="" ; MAIN_BRANCH="main"

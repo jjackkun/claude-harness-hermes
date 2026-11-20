@@ -4,7 +4,7 @@
 stdin: SessionStart 페이로드(cwd). 알릴 것이 있을 때만 stdout 에 additionalContext JSON.
 메인 체크아웃은 세지 않는다(그곳의 커밋 안 된 변경은 평소 작업이다). 10개까지 이름을 보이고 나머지는 수로.
 판정 실패는 조용히 넘어간다 — 알림이 세션 시작을 막지 않는다.
-계획: docs/exec-plans/active/2026-11-20-worktree-finish-plan.md (G3)
+계획: docs/exec-plans/completed/2026-11-20-worktree-finish-plan.md (G3)
 """
 
 from __future__ import annotations

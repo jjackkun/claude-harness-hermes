@@ -6,7 +6,7 @@ R-iface-waiver: 공개 심볼은 전부 pytest 수집 대상 테스트 함수다
 무엇을 지키는가: 마무리 스킬(G1)·Stop 훅(G2)·시작 알림(G3)·계획서 편집 경고(G4)가 모두 이 판정에
 딛고 선다. 여기가 조용히 틀리면 합치지 않은 브랜치를 "합쳐짐" 으로, 지우면 안 되는 파일을
 "다시 만들 수 있음" 으로 읽는다.
-계획: docs/exec-plans/active/2026-11-20-worktree-finish-plan.md (Step 1)
+계획: docs/exec-plans/completed/2026-11-20-worktree-finish-plan.md (Step 1)
 """
 
 import importlib.util

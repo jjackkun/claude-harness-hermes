@@ -2,7 +2,7 @@
 # SessionStart hook — main 에 안 들어간 worktree 목록을 세션 시작에 한 번 알린다(G3). 막지 않는다.
 # 판정은 worktree_notice.py 가 한다. 이 파일은 stdin·끄기·시간 상한·로그만 맡는다. 판정 실패·시간 초과는 조용히 통과한다.
 # 끄기: WORKTREE_NOTICE_DISABLED=1
-# 계획: docs/exec-plans/active/2026-11-20-worktree-finish-plan.md (G3)
+# 계획: docs/exec-plans/completed/2026-11-20-worktree-finish-plan.md (G3)
 
 set -uo pipefail
 

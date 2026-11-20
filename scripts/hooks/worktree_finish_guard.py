@@ -5,7 +5,7 @@ stdin: Stop 훅 페이로드(session_id · cwd · stop_hook_active). 막을 때�
 통과: stop_hook_active · cwd 없음(마무리로 지움) · worktree 아님 · completed 이동 없음 · 이미 합침(조상이거나 main 과 내용이 같음) ·
 같은 완료 계획서 묶음으로 이 세션에 이미 한 번 막음(커밋이 이어져도 다시 막지 않는다 — 코드 리뷰 M2). 판정 실패(git 오류 등)도 통과 — 세션을 막지 않는다.
 기록: <git 공통 폴더>/worktree-finish-guard/<session_id> 에 막은 계획서 묶음 하나. 7일 지난 기록은 쓸 때 지운다.
-계획: docs/exec-plans/active/2026-11-20-worktree-finish-plan.md (G2)
+계획: docs/exec-plans/completed/2026-11-20-worktree-finish-plan.md (G2)
 """
 
 from __future__ import annotations

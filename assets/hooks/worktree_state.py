@@ -11,7 +11,7 @@
   이름 바꾸기 감지에 기대지 않는다(--no-renames) — 많이 고친 뒤 옮겨도 놓치지 않는다.
 - stray_ignored: git 이 무시하는 파일 가운데 다시 만들 수 있는 허용 목록 밖의 것(worktree 를 지우면 잃는다)
 
-계획: docs/exec-plans/active/2026-11-20-worktree-finish-plan.md (Step 1 · G1 ⑧ · G2)
+계획: docs/exec-plans/completed/2026-11-20-worktree-finish-plan.md (Step 1 · G1 ⑧ · G2)
 """
 
 from __future__ import annotations

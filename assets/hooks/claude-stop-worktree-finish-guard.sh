@@ -5,7 +5,7 @@
 # (2026-11-19 jj-agent-room 결재 A3). 판정은 worktree_finish_guard.py 가 하고, 이 파일은 stdin·끄기·시간 상한·로그만 맡는다.
 # 통과(막지 않음): 끄기 스위치 · python3 없음 · 판정 오류 · 시간 초과 — 판정 실패로 세션을 막지 않는다.
 # 끄기: WORKTREE_FINISH_GUARD_DISABLED=1
-# 계획: docs/exec-plans/active/2026-11-20-worktree-finish-plan.md (G2)
+# 계획: docs/exec-plans/completed/2026-11-20-worktree-finish-plan.md (G2)
 
 set -uo pipefail
 

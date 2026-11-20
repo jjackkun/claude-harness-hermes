@@ -151,3 +151,10 @@ tier: 4  scripts/hermes-dashboard.py
 tier: 0  scripts/upstream-check.py scripts/upstream-update.py
 # 결정화 검사 판정 — 둘 다 표준 라이브러리만 쓰고 서로 import 하지 않는다 (계획 2026-11-19-crystallize-check-first)
 tier: 0  scripts/hermes_enforce_verdict.py scripts/hermes_enforce_ledger.py
+# worktree 마무리(계획 2026-11-20-worktree-finish): 상태 판정은 표준 모듈만, 훅 판정 3개는 그것을 불러 쓴다.
+tier: 0  assets/hooks/worktree_state.py
+tier: 1  assets/hooks/worktree_finish_guard.py assets/hooks/worktree_notice.py assets/hooks/plan_overlap.py
+# 실수 감지 키 목록(같은 계획 G5): import 없음. 세션 저장(2)이 불러 쓴다.
+tier: 0  scripts/hermes_mistake_keys.py
+# 올리기 전 판정(재시도 상한, 2026-11-20): 판정 표 pending(1) 위.
+tier: 2  scripts/hermes_privacy_judge.py

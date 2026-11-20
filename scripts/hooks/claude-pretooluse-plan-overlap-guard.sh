@@ -2,7 +2,7 @@
 # PreToolUse(Edit|Write|MultiEdit) hook — 편집하려는 active 계획서를 다른 worktree 도 고치는 중이면 알린다(G4). 막지 않는다.
 # 판정은 plan_overlap.py 가 한다. 이 파일은 stdin·끄기·시간 상한·로그만 맡는다. 판정 실패·시간 초과는 조용히 통과한다.
 # 끄기: PLAN_OVERLAP_GUARD_DISABLED=1
-# 계획: docs/exec-plans/active/2026-11-20-worktree-finish-plan.md (G4)
+# 계획: docs/exec-plans/completed/2026-11-20-worktree-finish-plan.md (G4)
 
 set -uo pipefail
 

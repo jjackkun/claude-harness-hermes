@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # worktree 훅 시험 3개(G2·G3·G4)가 함께 쓰는 도우미 — source 해서 쓴다. 모델 0, 네트워크 0.
 # 시험은 임시 폴더 안에서만 돈다(2026-11-20 사고: 상대 git 경로로 공장 .git 을 덮었다).
-# 계획: docs/exec-plans/active/2026-11-20-worktree-finish-plan.md (Step 3)
+# 계획: docs/exec-plans/completed/2026-11-20-worktree-finish-plan.md (Step 3)
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 HOOKS="$REPO_ROOT/assets/hooks"
 # 커밋 게이트 안에서 돌면 git 이 넘기는 위치 변수가 임시 저장소 대신 이 저장소를 가리킨다 — 지운다.

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # G2 Stop 훅 — 계획서를 completed 로 옮겼는데 main 에 합치지 않은 worktree 세션의 끝내기를 한 번 막는다.
 # 막음 2(커밋된 이동 · 커밋 전 이동) · 통과 6(stop_hook_active · cwd 없음 · worktree 아님 · 이미 합침 · 같은 상태 두 번째 · 끄기)
-# 계획: docs/exec-plans/active/2026-11-20-worktree-finish-plan.md (G2)
+# 계획: docs/exec-plans/completed/2026-11-20-worktree-finish-plan.md (G2)
 set -uo pipefail
 source "$(dirname "$0")/worktree-hooks-lib.bash"
 GUARD="$HOOKS/claude-stop-worktree-finish-guard.sh"

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # G3 시작 알림 — main 에 안 들어간 worktree(앞선 커밋 또는 커밋 안 된 변경)만 알린다. 막지 않는다.
-# 계획: docs/exec-plans/active/2026-11-20-worktree-finish-plan.md (G3)
+# 계획: docs/exec-plans/completed/2026-11-20-worktree-finish-plan.md (G3)
 set -uo pipefail
 source "$(dirname "$0")/worktree-hooks-lib.bash"
 NOTICE="$HOOKS/claude-sessionstart-unmerged-worktrees.sh"

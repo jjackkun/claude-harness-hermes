@@ -28,7 +28,7 @@ Note: Attribution disabled globally via ~/.claude/settings.json.
 - **남의 worktree 는 건드리지 않는다** — 다른 세션의 커밋 안 된 변경을 옮기거나 지우지 않는다.
 
 이유: worktree 에 남긴 커밋은 main 에서 보이지 않는다. 다른 세션이 같은 일을 다시 하고(2026-11-19 jj-agent-room 결재 중복), worktree 가 쌓인다. 끝냈는데 합치지 않으면 Stop 훅이 한 번 막고, 세션 시작에 안 합친 worktree 를 알린다.
-근거: 공장 `docs/exec-plans/active/2026-11-20-worktree-finish-plan.md`
+근거: 공장 `docs/exec-plans/completed/2026-11-20-worktree-finish-plan.md`
 
 ## Pull Request Workflow
 
