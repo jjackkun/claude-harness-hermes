@@ -6,18 +6,22 @@
 #   13 원격에 있는 브랜치 · 14 메인의 커밋 안 된 변경과 겹침 · 15 rebase 충돌(abort 함) · 16 커밋 게이트가 막음
 #   17 main 이 계속 움직여 ff 두 번 실패 · 18 허용 목록 밖 무시 파일 · 19 worktree 지우기·branch -d 거부
 #   20 다른 마무리 진행 중(잠금) · 21 main 은 그대로인데 ff 거부 · 22 커밋 안 된 변경이 있는데 --message 없음
-#   23 합친 뒤 main 이 브랜치 끝에 없음(지우지 않음) · 2 사용법·판정 오류
+#   23 합친 뒤 main 이 브랜치 끝에 없음(지우지 않음) · 24 이 worktree 의 계획서·기획서가 아직 열려 있음(아무것도 안 바꿈)
+#   2 사용법·판정 오류
+# --keep-worktree: 합치기(커밋 → rebase → ff → 사후 확인)까지만 하고 worktree·브랜치를 남긴다. 열린 문서가 있어도 24 로 멈추지 않는다.
 # 우회 플래그(--force · -D · --no-verify)는 쓰지 않는다 — 막히면 멈추고 사람에게 넘긴다.
-# 사용: (worktree 안에서) bash finish.sh [--message "<커밋 메시지>"] [--main <브랜치>]
+# 사용: (worktree 안에서) bash finish.sh [--message "<커밋 메시지>"] [--main <브랜치>] [--keep-worktree]
 # 계획: docs/exec-plans/completed/2026-11-20-worktree-finish-plan.md (G1)
+#       docs/exec-plans/completed/2026-11-25-worktree-finish-open-docs-plan.md (24 · --keep-worktree)
 set -uo pipefail
 
-MSG="" ; MAIN_BRANCH="main"
+MSG="" ; MAIN_BRANCH="main" ; KEEP=0
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --message) MSG="${2:-}"; shift 2 ;;
     --main) MAIN_BRANCH="${2:-}"; shift 2 ;;
-    *) echo "usage: finish.sh [--message <msg>] [--main <branch>]" >&2; exit 2 ;;
+    --keep-worktree) KEEP=1; shift ;;
+    *) echo "usage: finish.sh [--message <msg>] [--main <branch>] [--keep-worktree]" >&2; exit 2 ;;
   esac
 done
 
@@ -41,6 +45,9 @@ mkdir "$LOCK" 2>/dev/null || stop 20 "다른 마무리가 진행 중입니다($L
 trap 'rmdir "$LOCK" 2>/dev/null' EXIT
 
 STATE="$(python3 "$STATE_PY" "$WT" "$MAIN_BRANCH")" || stop 2 "상태를 읽지 못했습니다"
+# 낡은 worktree_state.py 는 칸이 모자란다 — 트레이스백으로 죽기 전에 여기서 멈춘다.
+missing="$(python3 -c 'import json,sys;d=json.load(sys.stdin);print(" ".join(k for k in sys.argv[1:] if k not in d))' branch stray_ignored open_docs changes <<<"$STATE")"
+[[ -n "$missing" ]] && stop 2 "worktree_state.py 가 낡았습니다(칸 없음: $missing) — 다시 설치하십시오"
 BRANCH="$(field branch)"
 # ②
 [[ -z "$BRANCH" ]] && stop 12 "detached HEAD 입니다" "git switch -c <브랜치> 로 브랜치를 만든 뒤 다시 부르십시오"
@@ -56,6 +63,13 @@ fi
 # ⑧
 stray="$(field stray_ignored)"
 [[ -n "$stray" ]] && stop 18 "지우면 잃는 무시 파일이 있습니다: $(tr '\n' ' ' <<<"$stray")" "옮기거나 백업한 뒤 다시 부르십시오"
+# ⑪ 열린 계획서·기획서 — 커밋 앞에서 본다. 멈추면 아무것도 바꾸지 않는다(커밋 · main · worktree · 브랜치 그대로).
+opened="$(field open_docs)"
+if [[ -n "$opened" && "$KEEP" -eq 0 ]]; then
+  echo "열린 문서:" >&2; sed 's/^/  - /' <<<"$opened" >&2
+  stop 24 "이 worktree 의 계획서·기획서가 아직 끝나지 않았습니다 — 합치지도 지우지도 않았습니다" \
+    "계획이 끝날 때까지 worktree 에서 커밋만 하십시오. 사용자가 지금 main 에 넣으라고 했으면 --keep-worktree 로 다시 부르십시오"
+fi
 
 # 커밋
 if [[ "$(field changes)" != "0" ]]; then
@@ -105,6 +119,11 @@ MAIN_AFTER="$(git -C "$MAIN_DIR" rev-parse "$MAIN_REF")"
 # 사후 확인 — main 이 정말 이 브랜치 끝에 와 있을 때만 지운다(태그·다른 브랜치로 합친 경우를 여기서 막는다).
 [[ "$MAIN_AFTER" == "$(git -C "$MAIN_DIR" rev-parse "$BRANCH_REF")" ]] \
   || stop 23 "합친 뒤 확인이 맞지 않습니다: $MAIN_BRANCH=$MAIN_AFTER, $BRANCH=$(git -C "$MAIN_DIR" rev-parse "$BRANCH_REF") — 지우지 않았습니다" "사람이 git log 로 확인합니다"
+
+if [[ "$KEEP" -eq 1 ]]; then
+  echo "result: merged $BRANCH into $MAIN_BRANCH ($MAIN_BEFORE..$MAIN_AFTER), kept $WT"
+  exit 0
+fi
 
 # 지우기 — 이 셸이 지울 worktree 안에 있지 않도록 먼저 옮긴다.
 cd "$MAIN_DIR" || stop 2 "메인 체크아웃으로 옮기지 못했습니다"

@@ -202,3 +202,32 @@ def test_session_permissions_copied_from_main_are_safe_to_lose(repo):
     assert ws.state_of(wt).stray_ignored == []
     write(wt, ".claude/settings.local.json", '{"a": 2}\n')
     assert ws.state_of(wt).stray_ignored == [".claude/settings.local.json"]
+
+
+def test_open_docs_lists_only_docs_this_worktree_touched(repo):
+    """open_docs — 이 worktree 가 고친 열린 계획서만 센다. main 에만 있는 열린 계획서는 세지 않는다."""
+    main, wt = repo
+    other = "docs/exec-plans/active/2026-11-25-other-plan.md"
+    write(main, other, "## 2. 목표\n- [ ] 남의 일\n")
+    git(main, "add", "-A")
+    git(main, "commit", "-qm", "other")
+    git(wt, "rebase", "-q", "main")
+    write(wt, PLAN, "## 2. 목표\n- [x] G1\n- [ ] G2\n")
+    assert ws.state_of(wt).open_docs == [f"{PLAN} — §2 미완료 1개"]
+    write(wt, PLAN, "## 2. 목표\n- [x] G1\n- [x] G2\n")
+    assert ws.state_of(wt).open_docs == []
+
+
+def test_open_docs_without_the_judge_module_refuses(repo, monkeypatch):
+    """판정 모듈을 못 불러오면 열린 문서가 있는 것으로 본다 — 지우지 않는 쪽."""
+    _, wt = repo
+    monkeypatch.setattr(ws, "_load_open_docs", lambda: None)
+    assert ws.state_of(wt).open_docs == [ws._NO_JUDGE]
+
+
+def test_open_docs_reads_korean_and_space_paths(repo):
+    """리뷰 MEDIUM — 한글 · 공백 폴더의 열린 기획서도 state_of 를 거쳐 잡는다(-z 로 받은 경로)."""
+    _, wt = repo
+    prd = "docs/product-specs/음악 화면/prd.md"
+    write(wt, prd, "- status: draft\n")
+    assert ws.state_of(wt).open_docs == [f"{prd} — status: draft"]

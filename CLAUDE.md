@@ -75,7 +75,7 @@ PDF 4~5쪽: "AGENTS.md 를 백과사전이 아닌 *목차* 로 취급한다."
 이 프로젝트는 claude-harness-hermes 의 `harness` 프리셋으로 강제 장치가 깔려 있다 — 훅 실체는 `scripts/hooks/`, 커밋 게이트는 `.git/hooks/pre-commit`.
 
 <!--===DS:COUNTS:BEGIN===-->
-- 세션 중 실행 훅 **21종** + 훅이 공유하는 판정 모듈 **23개**
+- 세션 중 실행 훅 **21종** + 훅이 공유하는 판정 모듈 **24개**
 - git pre-commit 게이트 **23종** — 차단 12 / 경고 11
 - harness 프리셋이 까는 스킬 **14종** · 에이전트 **12종** · 공장 테스트 **165개**
 <!--===DS:COUNTS:END===-->

@@ -1,6 +1,6 @@
 ---
 name: worktree-finish
-description: worktree 세션에서 일을 **끝낼 때** 쓴다 — 이 worktree 의 작업을 커밋하고, 로컬 main 위로 rebase 한 뒤 메인 체크아웃에서 `--ff-only` 로 합치고, worktree 와 브랜치를 지운다. 푸시와 PR 은 하지 않는다. 작업 경로에 `.claude/worktrees/` 가 있거나 환경 안내에 "git worktree" 가 있는 세션에서, 계획서를 `completed/` 로 옮기려는 자리, "끝났습니다" · "마무리" · "완료 보고" 를 쓰려는 자리, 사용자가 "마무리해" · "메인에 반영해" · "합쳐" · "워크트리 정리해" · "왜 메인에 안 들어갔어" 라고 한 자리, Stop 훅이 "main 에 합치지 않았습니다" 라고 막은 자리에서 반드시 이 스킬을 쓴다. ⚠️ worktree 에 남긴 커밋은 main 에서 보이지 않고, 다른 세션이 같은 일을 다시 한다(2026-11-19 jj-agent-room 결재 A3 중복). 메인 체크아웃에서 일하는 세션 · 아직 일이 끝나지 않은 중간 커밋 · 원격 브랜치·PR 작업에는 쓰지 않는다.
+description: worktree 세션에서 일을 **끝낼 때** 쓴다 — 이 worktree 의 작업을 커밋하고, 로컬 main 위로 rebase 한 뒤 메인 체크아웃에서 `--ff-only` 로 합치고, worktree 와 브랜치를 지운다. 푸시와 PR 은 하지 않는다. 작업 경로에 `.claude/worktrees/` 가 있거나 환경 안내에 "git worktree" 가 있는 세션에서, 계획서를 `completed/` 로 옮기려는 자리, 계획서 §2 가 모두 끝난 뒤 "끝났습니다" · "마무리" · "완료 보고" 를 쓰려는 자리, 사용자가 "마무리해" · "메인에 반영해" · "합쳐" · "워크트리 정리해" · "왜 메인에 안 들어갔어" 라고 한 자리, Stop 훅이 "main 에 합치지 않았습니다" 라고 막은 자리에서 반드시 이 스킬을 쓴다. ⚠️ worktree 에 남긴 커밋은 main 에서 보이지 않고, 다른 세션이 같은 일을 다시 한다(2026-11-19 jj-agent-room 결재 A3 중복). Step 하나 · 단계 하나를 끝낸 보고에는 쓰지 않는다 — 그때는 worktree 에서 커밋만 한다. 메인 체크아웃에서 일하는 세션 · 아직 일이 끝나지 않은 중간 커밋 · 원격 브랜치·PR 작업에도 쓰지 않는다.
 ---
 
 # worktree-finish — 끝낸 worktree 를 main 에 합치고 지운다
@@ -20,6 +20,10 @@ description: worktree 세션에서 일을 **끝낼 때** 쓴다 — 이 worktree
 ### ① 끝났는지 본다
 
 계획서의 §2 목표가 모두 확인됐고, 시험이 통과했는지 본다. 끝나지 않았으면 이 스킬을 쓰지 않는다. 중간 커밋은 평소처럼 한다.
+
+Step 하나를 끝낸 것은 계획이 끝난 것이 아니다. 이 worktree 가 건드린 계획서의 §2 에 `[ ]` 가 남았거나 기획서(`prd.md`)가 `approved` 가 아니면, 스크립트가 아무것도 바꾸지 않고 24 로 멈춘다(2026-11-25 jj-agent-room: Step 하나 뒤에 worktree 를 지웠다).
+
+사용자가 "지금 main 에 넣어" 라고 했는데 계획이 아직 열려 있으면 `--keep-worktree` 를 준다. 합치기까지만 하고 worktree · 브랜치는 남긴다.
 
 ### ② 스크립트를 부른다
 
@@ -41,10 +45,13 @@ worktree 안의 상대 경로(`.claude/skills/...`)로 부르지 않는다. 설�
 7. worktree 를 지운다.
 8. 브랜치를 지운다(`branch -d`).
 
+`--keep-worktree` 이면 5 다음 사후 확인까지만 하고 6~8 을 건너뛴다.
+
 ### ③ 결과를 읽는다
 
 - 끝 줄이 `result: merged <브랜치> into main (<이전>..<이후>), removed <경로>` 이면 끝이다.
 - 이 세션의 작업 폴더가 사라졌다. 다음 명령은 메인 체크아웃 경로로 부른다.
+- 끝 줄이 `…, kept <경로>` 이면(`--keep-worktree`) 합치기만 끝났다. 작업 폴더는 그대로다. 계획의 다음 Step 을 이어 한다.
 - 보고에 합친 커밋 범위와 "푸시하지 않음" 을 쓴다.
 
 ### ④ 멈췄으면
@@ -67,6 +74,7 @@ worktree 안의 상대 경로(`.claude/skills/...`)로 부르지 않는다. 설�
 | 21 | main 은 그대로인데 ff 가 거부됐다 | git 의 오류 문구를 사용자에게 보인다 |
 | 22 | 커밋 안 된 변경이 있는데 `--message` 가 없다 | 메시지를 주고 다시 부른다 |
 | 23 | 합친 뒤 main 이 브랜치 끝에 있지 않다(아무것도 지우지 않음) | `git log` 를 보이고 사용자에게 넘긴다 |
+| 24 | 이 worktree 의 계획서 §2 에 `[ ]` 가 남았거나(§2 절 · 체크 항목이 없거나 코드 펜스가 닫히지 않은 것도 같다) 기획서가 `approved` 가 아니다(아무것도 바꾸지 않음 — 커밋도 안 함) | 계획이 끝날 때까지 worktree 에서 커밋만 한다. 사용자가 지금 main 에 넣으라고 했으면 `--keep-worktree` 로 다시 부른다. 18 과 함께 걸리면 18 이 먼저 나온다 |
 
 다시 만들 수 있어 지워도 되는 무시 파일: `node_modules` · `.venv` · 캐시 폴더 · 설치된 `.claude/` · `.harness/` · `.hermes/` · `.env` 심볼릭 링크. 진짜 `.env` 파일과 `.claude/settings.local.json`(그 세션에서 승인한 권한)은 지우면 잃는 파일로 본다.
 
@@ -80,4 +88,4 @@ worktree 안의 상대 경로(`.claude/skills/...`)로 부르지 않는다. 설�
 
 ## 검증
 
-정적 시험(모델 호출 0): `bash tests/worktree-finish-test.sh`. 임시 저장소마다 정상·멈춤 사례를 돌린다(단언 62개). 시험은 임시 폴더 안에서만 돈다.
+정적 시험(모델 호출 0): `bash tests/worktree-finish-test.sh`. 임시 저장소마다 정상·멈춤 사례를 돌린다(단언 102개). 열린 문서 판정: `.venv/bin/pytest -q tests/test_open_docs.py tests/test_worktree_state.py`. 시험은 임시 폴더 안에서만 돈다.

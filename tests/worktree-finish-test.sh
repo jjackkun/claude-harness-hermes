@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # worktree-finish 스킬 (계획 2026-11-20-worktree-finish G1) — 모델 0, 네트워크 0.
-# 임시 저장소마다 worktree 하나를 만들고 finish.sh 를 돌린다. 정상 1 · 멈춤 ①~⑩ · 메시지 없음 1.
+# 임시 저장소마다 worktree 하나를 만들고 finish.sh 를 돌린다. 정상 1 · 멈춤 ①~⑩ · 메시지 없음 1 · 열린 문서(24) 6 · --keep-worktree 1 · 낡은 판정 모듈 1.
 # 멈춤이면 main 끝 해시가 그대로이고(⑦ 은 시험이 일부러 main 을 움직인다), worktree 와 잠금이 남지 않는지 본다.
 set -uo pipefail
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -35,6 +35,11 @@ on_rebase() {  # rebase 가 커밋을 다시 쓴 직후 메인 체크아웃에�
   printf '#!/bin/sh\nunset GIT_DIR GIT_INDEX_FILE GIT_WORK_TREE\ncd "%s" && %s\n' "$M" "$1" > "$hooks/post-rewrite"; chmod +x "$hooks/post-rewrite"
 }
 wt_left() { git -C "$M" worktree list | grep -c "/wt "; }
+# 계획서·기획서(계획 2026-11-25-worktree-finish-open-docs) — "$1" 경로에 §2 항목 "$2"(예 "- [ ] G1") 로 쓴다.
+PLAN="docs/exec-plans/active/2026-11-25-x-plan.md"; DONE="docs/exec-plans/completed/2026-11-25-x-plan.md"; PRD="docs/product-specs/x/prd.md"
+doc() { mkdir -p "$(dirname "$WT/$1")"; printf '# x\n\n## 2. 목표\n\n%s\n\n## 3. 비목표\n' "$2" > "$WT/$1"; }
+prd() { mkdir -p "$WT/docs/product-specs/x"; printf -- '- status: %s\n' "$1" > "$WT/$PRD"; }
+commit_all() { git -C "$WT" add -A && git -C "$WT" commit -qm "${1:-docs}"; }
 
 echo "[구조]"
 assert "SKILL.md 의 name 이 폴더 이름과 같다" "worktree-finish" "$(sed -n 's/^name: *//p' "$SKILL/SKILL.md" | head -1)"
@@ -127,6 +132,54 @@ assert "종료 14" 14 "$(run)"; assert "main 그대로" "$before" "$(head_of)"; 
 echo "[메시지 없음] 커밋 안 된 변경이 있는데 --message 가 없음 → 22"
 fresh m22; printf 'x\n' > "$WT/b.txt"; before=$(head_of)
 assert "종료 22" 22 "$(run)"; assert "main 그대로" "$before" "$(head_of)"
+
+echo "[열린 문서 24] 열린 계획서 + 커밋 안 된 변경 + --message → 24, 아무것도 바꾸지 않음"
+fresh o1; doc "$PLAN" "- [ ] G1"; commit_all; printf 'x\n' > "$WT/b.txt"
+before=$(head_of); tip=$(git -C "$WT" rev-parse HEAD)
+assert "종료 24" 24 "$(run --message 'feat: b')"; assert "main 그대로" "$before" "$(head_of)"
+assert "커밋도 안 생김" "$tip" "$(git -C "$WT" rev-parse HEAD)"; assert "변경은 커밋 안 된 채" 1 "$(git -C "$WT" status --porcelain | wc -l)"
+assert "worktree 남음" 1 "$(wt_left)"; assert "브랜치 남음" 1 "$(git -C "$M" branch --list feat | wc -l)"; assert "잠금 없음" no "$(lock_left)"
+assert "경로와 이유를 보임" 1 "$(grep -c "$PLAN — §2 미완료 1개" "$TMP/out.log")"
+assert "다음 할 일에 --keep-worktree" 1 "$(grep -c -- '--keep-worktree 로 다시 부르십시오' "$TMP/out.log")"
+
+echo "[열린 문서 24] draft 기획서 → 24"
+fresh o2; prd draft; commit_all; before=$(head_of)
+assert "종료 24" 24 "$(run)"; assert "main 그대로" "$before" "$(head_of)"; assert "이유 status: draft" 1 "$(grep -c 'status: draft' "$TMP/out.log")"
+
+echo "[열린 문서 24] 닫힌 계획서 · approved 기획서 → 평소대로 합치고 지움"
+fresh o3; doc "$PLAN" "- [x] G1"; prd approved; commit_all
+assert "종료 0" 0 "$(run)"; assert "worktree 가 사라짐" 0 "$(wt_left)"; assert "main 에 docs 커밋" 1 "$(git -C "$M" log --format=%s main | grep -c '^docs$')"
+
+echo "[열린 문서 24] completed 로 옮겼는데 [ ] 남음 → 24"
+fresh o4; doc "$DONE" "- [x] G1
+- [ ] G2"; commit_all; before=$(head_of)
+assert "종료 24" 24 "$(run)"; assert "main 그대로" "$before" "$(head_of)"; assert "이유 completed" 1 "$(grep -c 'completed 인데 §2 미완료 1개' "$TMP/out.log")"
+
+echo "[열린 문서 24] 18 과 24 가 함께 → 18 이 먼저"
+fresh o5; doc "$PLAN" "- [ ] G1"; commit_all; mkdir -p "$WT/server/uploads" && printf 'x\n' > "$WT/server/uploads/a.bin"
+assert "종료 18" 18 "$(run)"
+
+echo "[열린 문서 24] 커밋 안 된 변경 + --message 없음 + 열린 문서 → 24(22 가 아님)"
+fresh o6; doc "$PLAN" "- [ ] G1"
+assert "종료 24" 24 "$(run)"; assert "잠금 없음" no "$(lock_left)"
+
+echo "[--keep-worktree] 열린 문서가 있어도 합치고 worktree · 브랜치를 남긴다"
+fresh k1; doc "$PLAN" "- [ ] G1"; commit_all; printf 'x\n' > "$WT/b.txt"
+assert "종료 0" 0 "$(run --keep-worktree --message 'feat: b')"
+assert "main 이 브랜치 끝" "$(git -C "$WT" rev-parse HEAD)" "$(head_of)"; assert "main 끝 커밋" "feat: b" "$(git -C "$M" log -1 --format=%s main)"
+assert "끝 줄에 kept" 1 "$(grep -c '^result: merged feat into main (.*), kept ' "$TMP/out.log")"; assert "removed 없음" 0 "$(grep -c 'removed' "$TMP/out.log")"
+assert "worktree 남음" 1 "$(wt_left)"; assert "브랜치 남음" 1 "$(git -C "$M" branch --list feat | wc -l)"; assert "잠금 없음" no "$(lock_left)"
+assert "바로 한 번 더 keep → 종료 0" 0 "$(run --keep-worktree)"; assert "main 그대로 브랜치 끝" "$(git -C "$WT" rev-parse HEAD)" "$(head_of)"
+work c.txt; doc "$PLAN" "- [x] G1"; commit_all "close plan"
+assert "문서를 닫고 keep 없이 → 종료 0" 0 "$(run)"; assert "worktree 가 사라짐" 0 "$(wt_left)"
+assert "브랜치 feat 가 사라짐" 0 "$(git -C "$M" branch --list feat | wc -l)"; assert "main 끝 커밋" "close plan" "$(git -C "$M" log -1 --format=%s main)"
+
+echo "[낡은 판정 모듈] worktree_state.py 가 open_docs 칸을 내지 않음 → 2, 트레이스백 없음"
+fresh old; work b.txt; before=$(head_of)
+printf '#!/usr/bin/env python3\nimport json\nprint(json.dumps({"branch":"feat","changes":0,"stray_ignored":[]}))\n' > "$TMP/old_state.py"
+assert "종료 2" 2 "$( (cd "$WT" && WORKTREE_STATE_PY="$TMP/old_state.py" bash "$FINISH" >"$TMP/out.log" 2>&1); echo $?)"
+assert "칸 이름을 보임" 1 "$(grep -c '칸 없음: open_docs' "$TMP/out.log")"; assert "트레이스백 없음" 0 "$(grep -c Traceback "$TMP/out.log")"
+assert "main 그대로" "$before" "$(head_of)"; assert "잠금 없음" no "$(lock_left)"
 
 echo "[메인 체크아웃에서 부름] → 10"
 fresh m0; assert "종료 10" 10 "$( (cd "$M" && bash "$FINISH" >/dev/null 2>&1); echo $?)"
