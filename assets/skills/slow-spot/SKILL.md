@@ -10,7 +10,8 @@ description: 느린 작업을 짐작으로 고치지 않고 — 먼저 재서 �
 2026-11-25 공장 설치가 1회 14초였다. 처음에는 매 도구 호출마다 도는 훅을 의심했다. 재 보니 훅은 모두 0.12초 아래였다.
 줄 단위로 재자 범인은 설치 안의 함수 하나(`manifest_add`)였다. 설치 시간의 55%였고, python 을 347번 띄웠다.
 그 함수만 고쳐 14초가 8초가 됐다. 고치기 전 결과 432개 파일과 바이트까지 같은지 대조한 뒤에 남겼다.
-기록: `docs/exec-plans/completed/2026-11-25-manifest-batch-write.md` · 계기 영상: `docs/videos/2026-11-24-fast-anything/`.
+기록은 공장 저장소(claude-harness-hermes)의 `docs/exec-plans/completed/2026-11-25-manifest-batch-write.md` 에 있다.
+같은 절차로 공장 시험 하나도 83초 → 15초가 됐다(`2026-11-25-harness-eval-template-reuse.md`).
 
 느린 곳은 짐작과 다른 곳에 있다. 그리고 빠르게 만든 코드는 조용히 다른 답을 낸다. 그래서 순서를 지킨다.
 

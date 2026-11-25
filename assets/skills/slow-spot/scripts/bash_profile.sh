@@ -26,6 +26,8 @@ mkdir -p "$(dirname "$trace")"
 exec {fd}> "$trace" || { echo "추적 파일을 열지 못했습니다: $trace" >&2; exit 2; }
 PS4='+@${EPOCHREALTIME}@${BASH_SOURCE[0]##*/}:${LINENO}@${FUNCNAME[0]:-main}@ ' BASH_XTRACEFD="$fd" bash -x "$@"
 rc=$?
+# 끝 표식 — 시간은 "다음 추적 줄까지" 로 재므로, 이 줄이 없으면 스크립트의 마지막 명령 시간이 0 으로 사라진다.
+printf '+@%s@(끝):0@main@ (끝)\n' "$EPOCHREALTIME" >&"$fd"
 exec {fd}>&-
 echo "추적: $trace ($(wc -l < "$trace") 줄) · 종료 코드 $rc" >&2
 exit "$rc"

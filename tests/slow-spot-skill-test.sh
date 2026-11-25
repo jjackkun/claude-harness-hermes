@@ -29,6 +29,9 @@ printf 'g(){ echo err-in-g >&2; python3 -c pass; }\ng 2>"$1"\n' > "$TMP/redir.sh
 bash "$S/bash_profile.sh" "$TMP/r.trace" "$TMP/redir.sh" "$TMP/g.err" 2>/dev/null
 assert "표준 오류를 돌린 함수 안 줄도 추적된다" 1 "$(grep -c '@g@ python3 -c pass' "$TMP/r.trace")"
 assert "스크립트의 표준 오류는 추적과 섞이지 않는다" "err-in-g" "$(cat "$TMP/g.err")"
+printf 'quick(){ :; }\nlast_slow(){ python3 -c "import time; time.sleep(0.3)"; }\nquick\nlast_slow\n' > "$TMP/last.sh"
+bash "$S/bash_profile.sh" "$TMP/l.trace" "$TMP/last.sh" 2>/dev/null
+assert "마지막 명령의 시간도 센다(끝 표식) — 1위 last_slow" "last_slow" "$(python3 "$S/trace_agg.py" "$TMP/l.trace" | sed -n '/^== 함수별/{n;p}' | awk '{print $NF}')"
 
 echo "[대조] 찍음 두 장"
 D="$TMP/d"; mkdir -p "$D/sub" "$D/.git"
@@ -52,12 +55,14 @@ assert "잡음만 바뀌면 --ignore 로 차이 0" 0 "$(dif s5 s6 --ignore '\.lo
 assert "--ignore 없으면 잡음도 차이" 1 "$(dif s5 s6)"
 assert "잘못된 정규식은 종료 2" 2 "$(dif s5 s6 --ignore '(')"
 
-echo "[배치] 공장 전용"
+echo "[배치] harness 프리셋"
 assert "SKILL.md 의 name 이 폴더 이름과 같다" "slow-spot" "$(sed -n 's/^name: *//p' "$SKILL/SKILL.md" | head -1)"
 assert "공장 .claude/skills 링크가 git 에 추적된다" 1 "$(git -C "$REPO_ROOT" ls-files .claude/skills/slow-spot | wc -l | tr -d ' ')"
 assert "링크가 assets 를 가리킨다" "../../assets/skills/slow-spot" "$(readlink "$REPO_ROOT/.claude/skills/slow-spot")"
-assert "어느 프리셋에도 없다(소우주 미배포)" 0 "$(grep -rlw 'slow-spot' "$REPO_ROOT/presets" | wc -l | tr -d ' ')"
-assert "README 공장 전용 스킬 표에 1줄" 1 "$(grep -c '^| `slow-spot` |' "$REPO_ROOT/README.md")"
+assert "workflow/harness 프리셋에 등록" 1 "$(grep -cE '^\s+slow-spot$' "$REPO_ROOT/presets/workflow/harness.conf")"
+assert "README harness 스킬 목록에 있다" 1 "$(grep -c '^- \*\*스킬\*\*:.*`slow-spot`' "$REPO_ROOT/README.md")"
+assert "README 공장 전용 표에는 없다" 0 "$(grep -c '^| `slow-spot` |' "$REPO_ROOT/README.md")"
+assert "SKILL.md 가 소우주에 없는 공장 문서 경로를 그대로 가리키지 않는다" 0 "$(grep -c '^기록: `docs/' "$SKILL/SKILL.md")"
 assert "run-all 에 등록" 1 "$(grep -cE '^\s+slow-spot-skill-test\.sh$' "$REPO_ROOT/tests/run-all.sh")"
 assert "전역 설치 명령 없음" 0 "$(grep -rcE 'pip install|apt(-get)? install|npm i(nstall)? -g' "$S" | awk -F: '{s+=$2} END{print s+0}')"
 

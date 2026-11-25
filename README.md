@@ -328,11 +328,12 @@ Claude 전용 `CLAUDE.md`, `.claude/settings.json` / `.claude/settings.local.jso
 
 `workflow/harness` 를 선택하면 프로젝트에 다음이 설치됩니다:
 
-- **스킬**: `harness-boundary-check`, `harness-reasoning-sandwich`, `harness-promote-rule`, `structured-file-layout`, `run-to-the-end`, `pre-commit-measure`, `ui-prototype`, `idea-check`, `prd-writer`, `intended-vs-implemented`, `video-to-interaction`, `watch`, `review-coverage`
+- **스킬**: `harness-boundary-check`, `harness-reasoning-sandwich`, `harness-promote-rule`, `structured-file-layout`, `run-to-the-end`, `pre-commit-measure`, `ui-prototype`, `idea-check`, `prd-writer`, `intended-vs-implemented`, `video-to-interaction`, `watch`, `review-coverage`, `slow-spot`
   - `ui-prototype` — 기획서·PRD·화면 흐름 문서에서 눌러 보는 시안을 만듭니다 (왼쪽 화면 목록 + 오른쪽 휴대폰·웹·태블릿·데스크톱 틀). 문서 → 시안 명세표(`spec.md`) 확정 → 시작 틀 복사 → `check_spec.py` 대조 → `build_single.py` 로 단일 HTML. 결과는 `docs/prototypes/<이름>/` 과 `<이름>.html`
   - `video-to-interaction` — 사용자가 준 참고 영상(인터랙션 녹화)을 0.1초 간격으로 **전부** 뽑아 보고(`video_frames.sh` — 8장 묶음·확대, ffmpeg 는 프로젝트 안 캐시), 본 것을 기록한 뒤 승인용 미리보기로 구현하고 Playwright 수치·영상 같은 순간 나란히 대조로 검증합니다. 천처럼 휘는 면은 `assets/cloth/`(Verlet 격자 + WebGL) 예시에서 출발
   - `watch` — 유튜브 링크나 영상 파일을 **실제로 받아서** 봅니다: 자막을 끝까지 읽고(`[MM:SS]` 정리) 장면 묶음을 본 뒤 내용·우리 프로젝트와의 접점을 답하고, 원하면 `docs/videos/` 에 기록합니다. yt-dlp 는 uv 캐시의 최신판(전역 설치 없음), ffmpeg 는 `video-to-interaction` 의 `video_frames.sh` 가 찾습니다
   - `review-coverage` — 리뷰할 파일을 git 으로 **고정**하고(`scope` — 작업 중·`--from`·`--commit`, untracked 포함, 잠금 파일·바이너리·`vendor/` 등은 이유와 함께 뺌), 파일 종류별 검사 기준을 붙인 뒤(`rule` — 알리바바 open-code-review 규칙 17개 원문 + 프로젝트 `.claude/review-rules.json`), 리뷰 장부를 `check` 로 검사합니다: 빠진 파일·이유 없는 건너뜀·파일 밖 줄 번호는 실패, 끝에 `coverage_rate`. `code-reviewer` 에이전트가 이 순서를 따르고, 스크립트가 없으면 예전 방식으로 돌며 그렇다고 적습니다. `ocr` 설치 없음(Apache-2.0, `NOTICE.md`)
+  - `slow-spot` — "왜 이렇게 오래 걸려", "시험이 너무 느리다", "어디가 병목이야" 처럼 명령·설치·시험이 느릴 때(또는 `/slow-spot`): 추적 없이 재고 → 프로파일로 1위 함수 하나를 찾고(bash 는 `bash_profile.sh` + `trace_agg.py` — 함수·줄·명령별 시간과 **호출 횟수**, Python·Node 는 cProfile·`-X importtime`·`node --cpu-prof`) → 고치기 전 결과를 두 번 찍어 잡음을 가린 뒤(`snapshot.py`) → 그 하나만 고치고 바이트까지 같을 때만 남깁니다. 1위가 20% 아래면 "고르게 퍼짐" 으로 멈춥니다. 다른 언어로 다시 쓰기는 원인이 계산일 때만 꺼냅니다. 계기: `docs/videos/2026-11-24-fast-anything/`
   - **기획 문서 사슬** — 한 기획의 문서를 `docs/product-specs/<이름>/` 한 폴더에 모으고, 자연어 한마디로 다음 단계를 부릅니다. 규칙 정본은 `prd-writer/references/contract.md` 한 곳 (`tests/planning-chain-test.sh` 가 대조)
     - `idea-check` — "이거 만들 가치 있나": 질문을 하나씩 → 전제 의심 → 대안 2~3개 → 판정(`만든다`·`좁힌다`·`보류`) → `brief.md`
     - `prd-writer` — "PRD 써 줘": brief 이어받기, 빈 곳 질문 최대 3개, 요구마다 FR 번호·검증 방법, 지어낸 숫자는 「가정」 으로 → `prd.md`, `check_prd.py` 통과해야 끝
@@ -346,7 +347,7 @@ Claude 전용 `CLAUDE.md`, `.claude/settings.json` / `.claude/settings.local.jso
 <!--===DS:COUNTS:BEGIN===-->
 - 세션 중 실행 훅 **21종** + 훅이 공유하는 판정 모듈 **24개**
 - git pre-commit 게이트 **23종** — 차단 12 / 경고 11
-- harness 프리셋이 까는 스킬 **14종** · 에이전트 **12종** · 공장 테스트 **167개**
+- harness 프리셋이 까는 스킬 **15종** · 에이전트 **12종** · 공장 테스트 **167개**
 <!--===DS:COUNTS:END===-->
 
 > 위 수치는 `assets/hooks/doc_counts.py` 가 소스에서 산출합니다. 손으로 고치지 마십시오 —
@@ -638,6 +639,11 @@ lint 설정 — 은 프로젝트가 고쳐 쓸 수 있습니다(예: `check-secr
 `.factory-new` 가 남아 있으면 pre-commit `R-merge` 가 **커밋을 막습니다** — 공장 개정이 아직 안 들어온 상태를
 그대로 굳히지 않기 위해서입니다. 푸는 법: 두 파일을 비교해 원하는 쪽을 합친 뒤 `.factory-new` 를 지웁니다.
 
+설치 목록(`.factory-manifest.json`)은 설치하는 동안 `<목록>.pending` 에 모았다가 **설치 끝에 한 번** 씁니다
+(`manifest_batch_begin`·`manifest_batch_end`, 설치가 도중에 끝나도 EXIT trap 이 씁니다). 전에는 파일 하나마다 python 을
+새로 띄워 설치 1회에 347번 다시 썼습니다 — 설치 1회 13.9초 → 7.8초, 결과 파일은 바이트까지 같습니다.
+`.pending` 이 남아 있으면(강제 종료) 다음 manifest 호출이 먼저 반영합니다.
+
 ```bash
 diff .git/hooks/check-secrets.py .git/hooks/check-secrets.py.factory-new   # 무엇이 겹치는지 본다
 # 합친 결과를 .git/hooks/check-secrets.py 에 반영한 뒤
@@ -748,9 +754,8 @@ git rm presets/<category>/<name>.conf
 
 | 스킬 | 언제 | 하는 일 |
 |------|------|---------|
-| `harness-eval` | 훅·규칙·스킬 문구를 바꾼 직후 | 훅이 실제 행동을 막는지 `claude -p`(haiku) 로 재서 pass@k·pass^k·"발화 후 위반" 을 낸다 (로컬·수동 전용) |
+| `harness-eval` | 훅·규칙·스킬 문구를 바꾼 직후 | 훅이 실제 행동을 막는지 `claude -p`(haiku) 로 재서 pass@k·pass^k·"발화 후 위반" 을 낸다 (로컬·수동 전용). 같은 초에 끝난 실행은 결과 파일에 `_02` 를 붙여 덮어쓰지 않는다. 시험(`harness-eval-test.sh`)만 `HARNESS_EVAL_TEMPLATE_DIR` 로 픽스처 설치를 한 번만 한다(83→15초) |
 | `readme-sync-before-commit` | 커밋 직전 | 이번 변경이 README 에 적혀야 하는지 판정하고, 그렇다면 해당 절을 고쳐 같은 커밋에 넣는다. 커밋 본문에 `README: …` 판정 한 줄을 남긴다 |
-| `slow-spot` | 명령·설치·시험이 느릴 때 | 재서(bash 줄 단위 집계·호출 횟수, Python·Node 표준 프로파일러) 시간을 가장 많이 먹는 함수 하나만 고치고, 고치기 전 결과와 폴더 찍음으로 바이트까지 대조해 같을 때만 남긴다. 효과를 본 뒤 소우주 전파 예정 |
 
 README 의 숫자 블록(`DS:COUNTS`)은 R-doc 이 자동으로 고치지만 설명은 고치지 않습니다 — `readme-sync-before-commit` 이 그 빈칸을 맡습니다.
 
@@ -768,7 +773,7 @@ SKIP_TESTS=windows-smoke.sh,hermes-loop-test.sh bash tests/run-all.sh
 
 | 축 | 테스트 |
 |----|--------|
-| 설치·무결성 | `preset-integrity-test.sh` (프리셋 → assets 참조), `update-all-roundtrip-test.sh`, `uninstall-roundtrip-test.sh`, `hook-prune-test.sh`, `memory-symlink-roundtrip-test.sh`, `claude-md-skill-index-test.sh` |
+| 설치·무결성 | `preset-integrity-test.sh` (프리셋 → assets 참조), `update-all-roundtrip-test.sh`, `uninstall-roundtrip-test.sh`, `hook-prune-test.sh`, `memory-symlink-roundtrip-test.sh`, `claude-md-skill-index-test.sh`, `manifest-batch-test.sh`(설치 목록 모아 쓰기) |
 | 게이트 (R 룰) | `iface-gate-test.sh`, `plan-declare-gate-test.sh`, `complexity-gate-test.sh`, `cx-baseline-distribution-test.sh`, `dep-contract-test.sh`, `pipe-gate-test.sh`, `struct-barrel-test.sh`, `coverage-probe-test.sh`, `plan-state-test.sh`, `r5-detection-test.sh` |
 | 변이 점검 (R-mut) | `mutation-probe-test.sh`, `mutation-trigger-test.sh` |
 | 게이트 텔레메트리 | `gate-event-test.sh`, `gate-report-test.sh`, `gate-instrumentation-test.sh`, `gate-precommit-instrumentation-test.sh` |
