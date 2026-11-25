@@ -346,7 +346,7 @@ Claude 전용 `CLAUDE.md`, `.claude/settings.json` / `.claude/settings.local.jso
 <!--===DS:COUNTS:BEGIN===-->
 - 세션 중 실행 훅 **21종** + 훅이 공유하는 판정 모듈 **24개**
 - git pre-commit 게이트 **23종** — 차단 12 / 경고 11
-- harness 프리셋이 까는 스킬 **14종** · 에이전트 **12종** · 공장 테스트 **166개**
+- harness 프리셋이 까는 스킬 **14종** · 에이전트 **12종** · 공장 테스트 **167개**
 <!--===DS:COUNTS:END===-->
 
 > 위 수치는 `assets/hooks/doc_counts.py` 가 소스에서 산출합니다. 손으로 고치지 마십시오 —
@@ -750,6 +750,7 @@ git rm presets/<category>/<name>.conf
 |------|------|---------|
 | `harness-eval` | 훅·규칙·스킬 문구를 바꾼 직후 | 훅이 실제 행동을 막는지 `claude -p`(haiku) 로 재서 pass@k·pass^k·"발화 후 위반" 을 낸다 (로컬·수동 전용) |
 | `readme-sync-before-commit` | 커밋 직전 | 이번 변경이 README 에 적혀야 하는지 판정하고, 그렇다면 해당 절을 고쳐 같은 커밋에 넣는다. 커밋 본문에 `README: …` 판정 한 줄을 남긴다 |
+| `slow-spot` | 명령·설치·시험이 느릴 때 | 재서(bash 줄 단위 집계·호출 횟수, Python·Node 표준 프로파일러) 시간을 가장 많이 먹는 함수 하나만 고치고, 고치기 전 결과와 폴더 찍음으로 바이트까지 대조해 같을 때만 남긴다. 효과를 본 뒤 소우주 전파 예정 |
 
 README 의 숫자 블록(`DS:COUNTS`)은 R-doc 이 자동으로 고치지만 설명은 고치지 않습니다 — `readme-sync-before-commit` 이 그 빈칸을 맡습니다.
 
