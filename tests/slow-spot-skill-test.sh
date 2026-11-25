@@ -62,7 +62,7 @@ assert "링크가 assets 를 가리킨다" "../../assets/skills/slow-spot" "$(re
 assert "workflow/harness 프리셋에 등록" 1 "$(grep -cE '^\s+slow-spot$' "$REPO_ROOT/presets/workflow/harness.conf")"
 assert "README harness 스킬 목록에 있다" 1 "$(grep -c '^- \*\*스킬\*\*:.*`slow-spot`' "$REPO_ROOT/README.md")"
 assert "README 공장 전용 표에는 없다" 0 "$(grep -c '^| `slow-spot` |' "$REPO_ROOT/README.md")"
-assert "SKILL.md 가 소우주에 없는 공장 문서 경로를 그대로 가리키지 않는다" 0 "$(grep -c '^기록: `docs/' "$SKILL/SKILL.md")"
+assert "스킬 파일이 공장·공장 문서·소우주에 없는 스킬을 가리키지 않는다(다른 프로젝트에서 혼자 돈다)" 0 "$(grep -rlE '공장|claude-harness|docs/exec-plans|docs/videos|systematic-debugging' "$SKILL" | wc -l | tr -d ' ')"
 assert "run-all 에 등록" 1 "$(grep -cE '^\s+slow-spot-skill-test\.sh$' "$REPO_ROOT/tests/run-all.sh")"
 assert "전역 설치 명령 없음" 0 "$(grep -rcE 'pip install|apt(-get)? install|npm i(nstall)? -g' "$S" | awk -F: '{s+=$2} END{print s+0}')"
 
