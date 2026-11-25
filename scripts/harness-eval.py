@@ -72,6 +72,31 @@ def _build_template(work):
     return tpl
 
 
+def _template(work):
+    """판마다 복제할 템플릿 폴더. HARNESS_EVAL_TEMPLATE_DIR 이 있으면 거기에 한 번만 만들고 다음 실행이 다시 쓴다.
+
+    시험 전용(tests/harness-eval-test.sh) — 러너를 9번 부르는 시험이 같은 픽스처 설치(약 8초)를 9번 하던 것을 1번으로
+    줄인다(2026-11-25 slow-spot 실측: 러너 호출이 시험 시간의 87.8%). 템플릿은 판마다 copytree 로 읽기만 하므로 공유해도
+    판 사이에 상태가 새지 않는다. 다 만든 뒤에만 .ready 를 적어, 도중에 실패한 반쪽 템플릿은 다시 쓰지 않는다.
+    실제 평가(사용자가 돌리는 경로)는 이 변수를 쓰지 않는다 — 설치는 늘 그때의 공장으로 새로 한다."""
+    cache = os.environ.get("HARNESS_EVAL_TEMPLATE_DIR")
+    if not cache:
+        return _build_template(work)
+    tpl, ready = os.path.join(cache, "template"), os.path.join(cache, ".ready")
+    if os.path.isfile(ready) and os.path.isdir(tpl):
+        return tpl
+    shutil.rmtree(cache, ignore_errors=True)   # .ready 없는 것은 반쪽이다 — 지우고 새로 만든다
+    os.makedirs(cache)
+    try:
+        _build_template(cache)
+    except Exception:
+        shutil.rmtree(cache, ignore_errors=True)
+        raise
+    with open(ready, "w", encoding="utf-8") as fh:
+        fh.write("ok\n")
+    return tpl
+
+
 def _is_fixture_path(p):
     """우리가 만든 임시 픽스처 경로만 — 사용자의 실제 프로젝트 항목은 절대 지우지 않는다."""
     return os.path.basename(os.path.dirname(p)).startswith("harness-eval.") and p.startswith(tempfile.gettempdir())
@@ -282,7 +307,7 @@ def _report(a, prev, results):
 def _execute(scenarios, levels, a):
     work = tempfile.mkdtemp(prefix="harness-eval.")
     try:
-        tpl = _build_template(work)
+        tpl = _template(work)
         jobs = [(s, st, i) for s in scenarios for st in levels for i in range(a.k)]
         dests = [os.path.join(work, f"{s['id']}-{st}-{i}") for s, st, i in jobs]
         print(f"[harness-eval] {len(jobs)}회 실행 (모델 {a.model}, 작업자 {a.workers})", file=sys.stderr)
@@ -327,7 +352,13 @@ def _print_drift(prev, agg):
 
 def _save(a, agg, results):
     os.makedirs(a.out_dir, exist_ok=True)
-    path = os.path.join(a.out_dir, time.strftime("%Y-%m-%d_%H%M%S") + ".json")
+    stem = os.path.join(a.out_dir, time.strftime("%Y-%m-%d_%H%M%S"))
+    path, n = stem + ".json", 1
+    # 같은 초에 끝난 실행이 서로를 덮어쓰지 않게 _02·_03 을 붙인다 — "_" 는 "." 보다 뒤에 정렬돼
+    # _previous_aggregate 의 "이름순 마지막 = 가장 최근" 이 그대로 맞는다(2026-11-25: 템플릿 재사용으로 실행이 1초 안에 끝나며 드러남).
+    while os.path.exists(path):
+        n += 1
+        path = f"{stem}_{n:02d}.json"
     with open(path, "w", encoding="utf-8") as fh:
         json.dump({"model": a.model, "k": a.k, "aggregate": agg, "results": results}, fh, ensure_ascii=False, indent=1)
     return path

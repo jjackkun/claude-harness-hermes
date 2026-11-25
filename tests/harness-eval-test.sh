@@ -21,6 +21,7 @@ assert() {
 }
 T="$(mktemp -d)"; trap 'rm -rf "$T"' EXIT
 export HOME="$T/home"; mkdir -p "$HOME" "$T/bin" "$T/out"
+export HARNESS_EVAL_TEMPLATE_DIR="$T/tpl-cache"   # 픽스처 설치를 러너 호출마다(9번) 하지 않고 한 번만 — 러너 _template
 unset CI   # GitHub Actions 는 CI=true — 러너의 CI 거부는 4절에서만 켜서 본다(2026-09-20: 이 시험이 CI 에서만 빨갰다)
 
 echo "== 1절 시나리오 픽스처"
@@ -81,9 +82,15 @@ echo "called" >> "${FAKE_EVAL_LOG:?}"
 [[ -n "${FAKE_DB_LOG:-}" ]] && { [[ -f .hermes/state.db ]] && echo 1 || echo 0; } >> "$FAKE_DB_LOG"
 # 진짜 claude 처럼 자기 cwd 항목에 키를 덧붙인다 — 정리가 키 모양에 기대면 항목이 남는다(2026-09-20 실측 36개 잔류)
 python3 - "$HARNESS_EVAL_CLAUDE_JSON" "$PWD" <<'PYEOF'
-import json, sys
-p, cwd = sys.argv[1:3]; d = json.load(open(p)); d.setdefault("projects", {}).setdefault(cwd, {})["lastAPIDuration"] = 1
-json.dump(d, open(p, "w"))
+import fcntl, json, sys
+p, cwd = sys.argv[1:3]
+# 러너는 판을 작업자 2개로 동시에 돌린다 — 잠금 없이 읽고-쓰면 한쪽이 파일을 비운 순간 다른 쪽이 읽어
+# JSONDecodeError 가 stderr_tail 에 남는다(2026-11-25 slow-spot 대조에서 발견). 진짜 claude 를 흉내 내는 것은 키 덧붙이기뿐이다.
+with open(p + ".lock", "w") as lk:
+    fcntl.flock(lk, fcntl.LOCK_EX)
+    d = json.load(open(p)); d.setdefault("projects", {}).setdefault(cwd, {})["lastAPIDuration"] = 1
+    with open(p, "w") as fh:
+        json.dump(d, fh)
 PYEOF
 case "${FAKE_EVAL_MODE:-clean}" in
   blocked)
