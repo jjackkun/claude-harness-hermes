@@ -10,8 +10,10 @@
 - completed_plans: active/X 가 지워지고 completed/X 가 생긴 계획서 이름(커밋했든 안 했든)
   이름 바꾸기 감지에 기대지 않는다(--no-renames) — 많이 고친 뒤 옮겨도 놓치지 않는다.
 - stray_ignored: git 이 무시하는 파일 가운데 다시 만들 수 있는 허용 목록 밖의 것(worktree 를 지우면 잃는다)
+- open_docs: 이 worktree 가 건드린 문서 가운데 아직 끝나지 않은 계획서·기획서 "경로 — 이유"(판정은 open_docs.py)
 
 계획: docs/exec-plans/completed/2026-11-20-worktree-finish-plan.md (Step 1 · G1 ⑧ · G2)
+      docs/exec-plans/completed/2026-11-25-worktree-finish-open-docs-plan.md (open_docs)
 """
 
 from __future__ import annotations
@@ -52,6 +54,7 @@ class WorktreeState:
     completed_plans: list[str] = field(default_factory=list)
     stray_ignored: list[str] = field(default_factory=list)
     last_commit: str = ""
+    open_docs: list[str] = field(default_factory=list)
 
 
 def _git(cwd: str | os.PathLike, *args: str) -> str:
@@ -126,6 +129,43 @@ def _stray_ignored(cwd: str | os.PathLike, main_root: Path | None = None) -> lis
     return sorted(rel for rel in ignored if not _is_regenerable(Path(cwd), rel, main_root))
 
 
+_NO_JUDGE = "판정 모듈 open_docs.py 없음 — 공장에서 다시 설치하십시오"  # open_docs.py 를 못 불러오면 열린 문서로 본다 — 지우지 않는 쪽
+
+
+def _load_open_docs():
+    """같은 폴더의 open_docs.py — 설치 판이 섞여 없으면 None."""
+    import importlib.util
+
+    src = Path(__file__).resolve().parent / "open_docs.py"
+    spec = importlib.util.spec_from_file_location("_worktree_open_docs", src)
+    if spec is None or spec.loader is None or not src.is_file():
+        return None
+    module = importlib.util.module_from_spec(spec)
+    try:
+        spec.loader.exec_module(module)
+    except Exception:  # noqa: BLE001 — 어떤 실패든 "판정 못 함" = 열린 문서로 본다(훅이 죽지 않게)
+        return None
+    return module
+
+
+def _read_or_none(root: Path, rel: str) -> str | None:
+    try:
+        return (root / rel).read_text(encoding="utf-8")
+    except FileNotFoundError:
+        return None
+    except (OSError, UnicodeDecodeError) as e:
+        return f"(읽지 못함: {e})"  # §2 절이 없으니 열린 문서가 된다
+
+
+def _open_docs(root: Path, names: set[str], completed: list[str]) -> list[str]:
+    """이 worktree 의 문서(건드린 것 + completed/ 에 새로 생긴 계획서) 가운데 열린 것. 본문은 작업 트리에서 읽는다."""
+    judge = _load_open_docs()
+    if judge is None:
+        return [_NO_JUDGE]
+    paths = {p for p in names if p.endswith(".md") and not p.startswith(_COMPLETED)} | {_COMPLETED + n for n in completed}
+    return [f"{p} — {why}" for p, why in judge.open_docs([(p, _read_or_none(root, p)) for p in paths])]
+
+
 def is_linked_worktree(path: str | os.PathLike) -> bool:
     """앱이나 `git worktree add` 가 만든 worktree 면 True, 메인 체크아웃이면 False."""
     git_dir = Path(_git(path, "rev-parse", "--absolute-git-dir").strip())
@@ -180,6 +220,7 @@ def state_of(path: str | os.PathLike, main_branch: str = "main", with_stray: boo
     status = _status_entries(path)
     diff = _diff_entries(path, main_branch)
     names = {p for _, p in diff} | {p for _, p in status}
+    completed = _completed(diff, status)
     return WorktreeState(
         path=str(path),
         branch=branch,
@@ -187,9 +228,10 @@ def state_of(path: str | os.PathLike, main_branch: str = "main", with_stray: boo
         ahead=int(_git(path, "rev-list", "--count", f"refs/heads/{main_branch}..HEAD").strip()),
         changes=len(status),
         touched_plans=sorted(p for p in names if p.startswith(_ACTIVE) and p.endswith(".md")),
-        completed_plans=_completed(diff, status),
+        completed_plans=completed,
         stray_ignored=_stray_ignored(path, Path(list_worktrees(path)[0][0])) if with_stray else [],  # 무시 파일 검사는 마무리(G1)만 — 훅은 건너뛴다(시간)
         last_commit=_git(path, "log", "-1", "--format=%cI").strip(),
+        open_docs=_open_docs(Path(path), names, completed),
     )
 
 
