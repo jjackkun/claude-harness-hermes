@@ -318,6 +318,7 @@ REGISTERED_TESTS=(
   copy-install-test.sh
   install-receipt-test.sh
   install-coexist-test.sh
+  manifest-batch-test.sh
   install-closure-test.sh
   raw-copy-guard-test.sh
   hermes-universe-test.sh

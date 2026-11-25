@@ -108,7 +108,10 @@ PROJECT_PATH=$(cd "$PROJECT_PATH" && pwd)
 declare -F harness_pyenv_bypass >/dev/null 2>&1 && harness_pyenv_bypass
 # 우회가 만든 임시 폴더를 끝에 지운다 — 안 지우면 설치마다 /tmp 에 하나씩 쌓인다(2026-09-23 리뷰 지적).
 # 이 프로세스가 만든 것만 지운다(harness_pyenv_cleanup 이 PID 로 가린다).
-trap 'declare -F harness_pyenv_cleanup >/dev/null 2>&1 && harness_pyenv_cleanup' EXIT
+# 설치 목록(.factory-manifest.json) 기록을 모았다가 끝에 한 번 쓴다 — 설치 1회 python 347번 → 1번(계획 2026-11-25-manifest-batch-write).
+# 도중에 끝나도(오류·exit) trap 이 모은 것을 쓴다.
+manifest_batch_begin
+trap 'manifest_batch_end; declare -F harness_pyenv_cleanup >/dev/null 2>&1 && harness_pyenv_cleanup' EXIT
 PROJECT_NAME=$(basename "$PROJECT_PATH")
 CLAUDE_DIR="$PROJECT_PATH/.claude"
 
@@ -214,6 +217,7 @@ generate_settings_json  "$CLAUDE_DIR/settings.json"
 generate_settings_local "$CLAUDE_DIR/settings.local.json"
 generate_claude_md "$PROJECT_PATH/CLAUDE.md" "$PROJECT_NAME"
 write_manifest "$CLAUDE_DIR/.dev-setting-manifest.json"
+manifest_batch_end   # 아래 untracked 경고·영수증이 설치 목록 파일을 본다 — 그 전에 쓴다
 
 # ---- Save preset list for setup_update.sh ----
 printf '%s\n' "${PRESETS[@]}" > "$CLAUDE_DIR/presets.lock"
